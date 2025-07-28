@@ -3,9 +3,9 @@ requires = ["hatchling>=1.26.1"]
 build-backend = "hatchling.build"
 
 [project]
-name = "himena-cryoem-io"
+name = "himena-relion"
 dynamic = ["version"]
-description = 'File readers and writers for cryo-EM'
+description = 'RELION GUI implemented as a himena plugin'
 readme = "README.md"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }
@@ -24,35 +24,34 @@ classifiers = [
   "Programming Language :: Python :: Implementation :: PyPy",
 ]
 dependencies = [
-  "starfile>=0.5.11",
-  "imodmodel>=0.0.14",
-  "mdocfile",
+  "starfile>=0.5.13",
+  "vispy",
   "mrcfile",
 ]
 
 [project.urls]
-Documentation = "https://github.com/hanjinliu/himena-cryoem-io#readme"
-Issues = "https://github.com/hanjinliu/himena-cryoem-io/issues"
-Source = "https://github.com/hanjinliu/himena-cryoem-io"
+Documentation = "https://github.com/hanjinliu/himena-relion#readme"
+Issues = "https://github.com/hanjinliu/himena-relion/issues"
+Source = "https://github.com/hanjinliu/himena-relion"
 
 [tool.hatch.version]
-path = "src/himena_cryoem_io/__init__.py"
+path = "src/himena_relion/__init__.py"
 
 [tool.hatch.envs.types]
 extra-dependencies = [
   "mypy>=1.0.0",
 ]
 [tool.hatch.envs.types.scripts]
-check = "mypy --install-types --non-interactive {args:src/himena_cryoem_io tests}"
+check = "mypy --install-types --non-interactive {args:src/himena_relion tests}"
 
 [tool.coverage.run]
-source_pkgs = ["himena_cryoem_io", "tests"]
+source_pkgs = ["himena_relion", "tests"]
 branch = true
 parallel = true
 
 [tool.coverage.paths]
-himena_cryoem_io = ["src/himena_cryoem_io", "*/himena-cryoem-io/src/himena_cryoem_io"]
-tests = ["tests", "*/himena-cryoem-io/tests"]
+himena_relion = ["src/himena_relion", "*/himena-relion/src/himena_relion"]
+tests = ["tests", "*/himena-relion/tests"]
 
 [tool.coverage.report]
 exclude_lines = [
@@ -62,5 +61,5 @@ exclude_lines = [
 ]
 
 [project.entry-points."himena.plugin"]
-"Cryo-EM IO" = "himena_cryoem_io.io"
-"Cryo-EM Fetch" = "himena_cryoem_io.fetch"
+"RELION 5 Tomo" = "himena_relion.relion5_tomo"
+"RELION Job IO" = "himena_relion.io"
