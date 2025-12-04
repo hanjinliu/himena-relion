@@ -27,7 +27,8 @@ dependencies = [
   "starfile>=0.5.13",
   "vispy",
   "mrcfile",
-  "tifffile"
+  "tifffile",
+  "watchfiles",
 ]
 
 [project.urls]

@@ -2,18 +2,17 @@ from __future__ import annotations
 
 import logging
 from qtpy import QtWidgets as QtW
-from himena_relion._widgets import JobWidgetBase, Q3DViewer, register_job, QIntWidget
+from himena_relion._widgets import QJobScrollArea, Q3DViewer, register_job, QIntWidget
 from himena_relion import _job
-from himena_relion.relion5_tomo.widgets._shared import standard_layout
 
 _LOGGER = logging.getLogger(__name__)
 
 
 @register_job(_job.InitialModel3DJobDirectory)
-class QInitialModelViewer(QtW.QScrollArea, JobWidgetBase):
+class QInitialModelViewer(QJobScrollArea):
     def __init__(self):
         super().__init__()
-        layout = standard_layout(self)
+        layout = self._layout
         self._viewer = Q3DViewer()
         self._viewer.setFixedSize(300, 300)
 

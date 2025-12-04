@@ -2,17 +2,16 @@ from __future__ import annotations
 from pathlib import Path
 
 from qtpy import QtWidgets as QtW
-from himena_relion._widgets import JobWidgetBase, Q2DViewer, register_job
+from himena_relion._widgets import QJobScrollArea, Q2DViewer, register_job
 from himena_relion import _job
-from himena_relion.relion5_tomo.widgets._shared import standard_layout
 
 
 @register_job(_job.MotionCorrectionJobDirectory)
-class QMotionCorrViewer(QtW.QScrollArea, JobWidgetBase):
+class QMotionCorrViewer(QJobScrollArea):
     def __init__(self):
         super().__init__()
         self._job_dir: _job.MotionCorrectionJobDirectory = None
-        layout = standard_layout(self)
+        layout = self._layout
 
         self._viewer = Q2DViewer()
         self._viewer.setFixedSize(300, 300)

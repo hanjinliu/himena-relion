@@ -5,6 +5,8 @@ from himena.qt._qlineedit import QIntLineEdit
 
 
 class QIntWidget(QtW.QWidget):
+    """Integer input widget in X/Xmax format."""
+
     valueChanged = QtCore.Signal(int)
 
     def __init__(self, text: str, label_width: int | None = None):

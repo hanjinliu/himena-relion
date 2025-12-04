@@ -2,16 +2,14 @@ from __future__ import annotations
 from pathlib import Path
 
 from qtpy import QtWidgets as QtW, QtCore, QtGui
-from himena_relion._widgets import JobWidgetBase, Q3DViewer, register_job, QIntWidget
+from himena_relion._widgets import QJobScrollArea, Q3DViewer, register_job, QIntWidget
 from himena_relion import _job
-from himena_relion.relion5_tomo.widgets._shared import standard_layout
 
 
 @register_job(_job.Class3DJobDirectory)
-class QClass3DViewer(QtW.QScrollArea, JobWidgetBase):
+class QClass3DViewer(QJobScrollArea):
     def __init__(self):
         super().__init__()
-        layout = standard_layout(self)
         self._viewer = Q3DViewer()
         self._viewer.setFixedSize(300, 300)
         self._percentage_label = QtW.QLabel("0%")
@@ -24,13 +22,13 @@ class QClass3DViewer(QtW.QScrollArea, JobWidgetBase):
         self._iter_choice = QIntWidget("Iteration", label_width=60)
         self._class_choice.setMinimum(1)
         self._iter_choice.setMinimum(0)
-        layout.addWidget(self._viewer)
-        layout.addWidget(self._percentage_label)
+        self._layout.addWidget(self._viewer)
+        self._layout.addWidget(self._percentage_label)
         hor_layout = QtW.QHBoxLayout()
         hor_layout.addWidget(self._iter_choice)
         hor_layout.addWidget(self._class_choice)
         hor_layout.setContentsMargins(0, 0, 0, 0)
-        layout.addLayout(hor_layout)
+        self._layout.addLayout(hor_layout)
         self._index_start = 1
         self._job_dir: _job.Class3DJobDirectory | None = None
 

@@ -24,7 +24,7 @@ JOB_ID_MAP = {
     "relion.reconstructtomograms": "Reconstruct Tomos",
     "relion.denoisetomo": "Denoise",
     "relion.picktomo": "Pick",
-    "relion.pseudosubtomo": "Pseudo Subtomos",
+    "relion.pseudosubtomo": "Extract",
     "relion.initialmodel.tomo": "Initial Model",
     "relion.refine3d.tomo": "Auto Refine",
     "relion.class3d": "3D Class",
@@ -35,4 +35,6 @@ JOB_ID_MAP = {
     "relion.maskcreate": "Create Mask",
     "relion.joinstar.particles": "Join Particles",
     "relion.joinstar.micrographs": "Join Micrographs",
+    "relion.framealigntomo": "Frame Align",
+    "relion.ctfrefinetomo": "CTF Refine",
 }

@@ -4,12 +4,12 @@ from himena_relion.relion5_tomo.widgets import (
     _initial_model,
     _import,
     _extract,
-    _denoise,
     _mask_create,
     _tomogram,
     _postprocess,
     _reconstruct,
     _motioncor,
+    _select,
 )
 
 del (
@@ -19,9 +19,9 @@ del (
     _initial_model,
     _import,
     _extract,
-    _denoise,
     _mask_create,
     _postprocess,
     _reconstruct,
     _motioncor,
+    _select,
 )

@@ -16,6 +16,8 @@ from himena_relion._widgets._job_widgets import (
     QRunErrLog,
     QRunOutLog,
     QNoteLog,
+    QJobInputs,
+    QJobOutputs,
 )
 from himena_relion.consts import Type
 
@@ -53,6 +55,8 @@ class QRelionJobWidget(QtW.QWidget):
             wdt = wcls()
             self.add_job_widget(wdt)
 
+        self.add_job_widget(QJobInputs())
+        self.add_job_widget(QJobOutputs())
         self.add_job_widget(QRunOutLog())
         self.add_job_widget(QRunErrLog())
         self.add_job_widget(QNoteLog())
@@ -72,7 +76,7 @@ class QRelionJobWidget(QtW.QWidget):
 
     @validate_protocol
     def size_hint(self):
-        return 400, 420
+        return 370, 420
 
     @validate_protocol
     def widget_closed_callback(self):
@@ -88,7 +92,7 @@ class QRelionJobWidget(QtW.QWidget):
     @thread_worker(start_thread=True)
     def _watch_job_directory(self, path: Path):
         """Watch the job directory for changes."""
-        for changes in watch(path, rust_timeout=1000, yield_on_timeout=True):
+        for changes in watch(path, rust_timeout=400, yield_on_timeout=True):
             if self._watcher is None:
                 return  # stopped
             for change, fp in changes:

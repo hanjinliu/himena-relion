@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterator, Literal, TYPE_CHECKING
@@ -9,10 +10,12 @@ import pandas as pd
 import starfile
 import mrcfile
 from himena_relion._image_readers._array import ArrayFilteredView
-from himena_relion.consts import RelionJobState
+from himena_relion.consts import RelionJobState, JOB_ID_MAP
 
 if TYPE_CHECKING:
     from typing import Self
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class JobDirectory:
@@ -43,6 +46,20 @@ class JobDirectory:
         cls = JobDirectory._type_map.get(job_type, JobDirectory)
         job_dir = fp.parent
         return cls(job_dir)
+
+    @property
+    def job_id(self) -> str:
+        """Return the job ID based on the directory name."""
+        _id = self.path.stem
+        if _id.startswith("job"):
+            return _id[3:]
+        return _id
+
+    @property
+    def job_type_repr(self) -> str:
+        if label := getattr(self, "_job_type", None):
+            return JOB_ID_MAP.get(label, label)
+        return "Unknown"
 
     @property
     def relion_project_dir(self) -> Path:
@@ -87,9 +104,10 @@ class JobDirectory:
             return RelionJobState.ELSE
 
     def get_job_param(self, param: str) -> str:
-        df = self.job_star["joboptions_values"]
+        dfs = starfile.read(self.job_star(), always_dict=True)
+        df: pd.DataFrame = dfs["joboptions_values"]
         sl = df["rlnJobOptionVariable"] == param
-        return df[sl]["rlnJobOptionValue"][0]
+        return df[sl]["rlnJobOptionValue"].iloc[0]
 
 
 @dataclass
@@ -318,6 +336,19 @@ class TomogramInfo(AlignedTiltSeriesInfo):
             ]
         return out
 
+    @classmethod
+    def from_series_denoised(cls, series: pd.Series) -> Self:
+        """Create a TomogramInfo instance from a pandas Series for denoised tomograms."""
+        out = super().from_series(series)
+        out.tomogram_binning = series.get("rlnTomoTomogramBinning", -1.0)
+        out.tomo_size_x = series.get("rlnTomoSizeX", -1)
+        out.tomo_size_y = series.get("rlnTomoSizeY", -1)
+        out.tomo_size_z = series.get("rlnTomoSizeZ", -1)
+        out.reconstructed_tomogram = [
+            Path(series.get("rlnTomoReconstructedTomogramDenoised")).name
+        ]
+        return out
+
     @property
     def is_halfset_reconstruction(self) -> bool:
         """Check if the tomogram reconstruction is half-set."""
@@ -364,15 +395,21 @@ class DenoiseJobDirectory(JobDirectory):
         self._is_train = self.get_job_param("do_cryocare_train") == "Yes"
         self._is_predict = self.get_job_param("do_cryocare_predict") == "Yes"
 
+    def tomograms_star(self) -> Path:
+        """Return the path to the tomograms star file."""
+        return self.path / "tomograms.star"
+
+    def iter_tomogram(self) -> Iterator[TomogramInfo]:
+        """Iterate over all tilt series info."""
+        star = _read_star_as_df(self.tomograms_star())
+        for _, row in star.iterrows():
+            yield TomogramInfo.from_series_denoised(row)
+
 
 @dataclass
 class _3DResultsBase:
     path: Path
     it_str: str
-
-    def __post_init__(self):
-        if not self._data_star().exists():
-            raise FileNotFoundError(f"Results for iteration {self.it_str} not found")
 
     @classmethod
     def from_niter(cls, path: Path, niter: int) -> Self:
@@ -474,19 +511,32 @@ class Refine3DResults(_3DResultsBase):
 
     def halfmaps(
         self, class_id: int
-    ) -> tuple[NDArray[np.floating], NDArray[np.floating]]:
+    ) -> tuple[NDArray[np.floating] | None, NDArray[np.floating] | None]:
         """Return the half maps for a given class ID."""
         half1_path = self._half_class_mrc(class_id + 1, 1)
         half2_path = self._half_class_mrc(class_id + 1, 2)
-        with mrcfile.open(half1_path, mode="r") as mrc1:
-            img1 = mrc1.data
-        with mrcfile.open(half2_path, mode="r") as mrc2:
-            img2 = mrc2.data
+        try:
+            with mrcfile.open(half1_path, mode="r") as mrc1:
+                img1 = mrc1.data
+        except Exception as e:
+            _LOGGER.warning(f"Failed to read half1 map from {half1_path}: {e}")
+            img1 = None
+        try:
+            with mrcfile.open(half2_path, mode="r") as mrc2:
+                img2 = mrc2.data
+        except Exception:
+            _LOGGER.warning(f"Failed to read half2 map from {half2_path}")
+            img2 = None
         return img1, img2
 
-    def fsc_dataframe(self, class_id: int) -> pd.DataFrame:
-        _dict = starfile.read(f"run{self.it_str}_half1_model.star")
-        return _dict[f"model_class_{class_id}"]
+    def fsc_dataframe(self, class_id: int) -> pd.DataFrame | None:
+        starpath = self.path / f"run{self.it_str}_half1_model.star"
+        try:
+            _dict = starfile.read(starpath)
+            return _dict[f"model_class_{class_id}"]
+        except Exception as e:
+            _LOGGER.warning(f"Failed to read FSC data from {starpath}: {e}")
+            return None
 
     # def angdist(self, class_id: int) -> list[np.ndarray]:
     #     """Return the angular distribution for a given class ID."""
@@ -538,14 +588,6 @@ class Refine3DJobDirectory(JobDirectory):
 
     def get_result(self, niter: int) -> Refine3DResults:
         return Refine3DResults.from_niter(self.path, niter)
-
-    def iter_results(self) -> Iterator[Refine3DResults]:
-        """Iterate over all refine 3D results."""
-        for niter in range(1, 1000000):
-            try:
-                yield self.get_result(niter)
-            except FileNotFoundError:
-                break
 
     def get_final_result(self) -> Refine3DResults:
         """Return the final result of the refine 3D job."""
@@ -651,10 +693,70 @@ class PostProcessJobDirectory(JobDirectory):
     def fsc_dataframe(self) -> pd.DataFrame:
         """Return the FSC DataFrame."""
         star_path = self.path / "postprocess.star"
-        df = starfile.read(star_path, always_dict=True)["data_fsc"]
+        df = starfile.read(star_path, always_dict=True)["fsc"]
         if not isinstance(df, pd.DataFrame):
             raise TypeError(f"Expected a DataFrame, got {type(df)}")
         return df
+
+
+class SelectInteractiveJobDirectory(JobDirectory):
+    _job_type = "relion.select.interactive"
+
+    def particles_star(self) -> Path:
+        """Return the path to the particles star file."""
+        return self.path / "particles.star"
+
+    def particles_pre_star(self) -> Path:
+        """Return the path to the pre-selection particles star file."""
+        path_opt_star = self._opt_star()
+        opt_dict = starfile.read(self.relion_project_dir / path_opt_star)
+        return self.relion_project_dir / opt_dict["rlnTomoParticlesFile"]
+
+    def is_selected_array(self) -> NDArray[np.bool_] | None:
+        try:
+            df = _read_star_as_df(self.path / "backup_selection.star")
+            return df["rlnSelected"].to_numpy(dtype=np.bool_)
+        except Exception:
+            return None
+
+    def class_map_paths(self, num_classes: int) -> list[Path | None]:
+        """Return the paths to the class maps."""
+        path_opt_star = self._opt_star()
+        # path_opt_star is something like .../run_it0XX_optimisation_set.star
+        nchars = len("optimisation_set")
+        mrc_paths = []
+        prefix = path_opt_star.stem[:-nchars]
+        for i in range(num_classes):
+            path = (
+                self.relion_project_dir
+                / path_opt_star.parent
+                / (prefix + f"class{i + 1:0>3}.mrc")
+            )
+            if path.exists():
+                mrc_paths.append(path)
+            else:
+                mrc_paths.append(None)
+        return mrc_paths
+
+    def _opt_star(self):
+        dfs = starfile.read(self.path / "job_pipeline.star")
+        optimizer_star_path = Path(
+            dfs["pipeline_input_edges"]["rlnPipeLineEdgeFromNode"].iloc[0]
+        )
+        new_stem = optimizer_star_path.stem[: -len("optimiser")] + "optimisation_set"
+        return optimizer_star_path.parent / (new_stem + ".star")
+
+
+class RemoveDuplicatesJobDirectory(JobDirectory):
+    _job_type = "relion.select.removeduplicates"
+
+    def particles_star(self) -> Path:
+        """Return the path to the particles star file."""
+        return self.path / "particles.star"
+
+    def particles_removed_star(self) -> Path:
+        """Return the path to the particles_removed star file."""
+        return self.path / "particles_removed.star"
 
 
 # class JoinStarJobDirectory(JobDirectory):
