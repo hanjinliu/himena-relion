@@ -1,42 +1,61 @@
 from __future__ import annotations
+from pathlib import Path
 
-from qtpy import QtWidgets as QtW, QtCore
-from himena_relion._widgets import JobWidgetBase, Q3DViewer, register_job
+from qtpy import QtWidgets as QtW
+from himena_relion._widgets import JobWidgetBase, Q3DViewer, register_job, QIntWidget
 from himena_relion import _job
+from himena_relion.relion5_tomo.widgets._shared import standard_layout
 
 
 @register_job(_job.Refine3DJobDirectory)
 class QRefine3DViewer(QtW.QScrollArea, JobWidgetBase):
     def __init__(self):
         super().__init__()
-        self._inner = QtW.QWidget()
-        self.setWidget(self._inner)
-        self.setWidgetResizable(True)
-        layout = QtW.QVBoxLayout(self._inner)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignTop)
+        layout = standard_layout(self)
         self._viewer = Q3DViewer()
-        self._viewer.setFixedHeight(240)
-        self._class_choice = QtW.QSpinBox()
-        self._iter_choice = QtW.QSpinBox()
+        self._viewer.setFixedSize(300, 300)
+        self._class_choice = QIntWidget("Class", label_width=50)
+        self._iter_choice = QIntWidget("Iteration", label_width=60)
+        self._class_choice.setMinimum(1)
+        self._iter_choice.setMinimum(0)
         layout.addWidget(self._viewer)
-        layout.addWidget(self._class_choice)
-        layout.addWidget(self._iter_choice)
+        hor_layout = QtW.QHBoxLayout()
+        hor_layout.addWidget(self._iter_choice)
+        hor_layout.addWidget(self._class_choice)
+        hor_layout.setContentsMargins(0, 0, 0, 0)
+        layout.addLayout(hor_layout)
         self._index_start = 1
+        self._job_dir: _job.Refine3DJobDirectory | None = None
+
+        self._iter_choice.valueChanged.connect(self._on_iter_changed)
+        self._class_choice.valueChanged.connect(self._on_class_changed)
 
     def on_job_updated(self, job_dir: _job.Refine3DJobDirectory, path: str):
         """Handle changes to the job directory."""
-        self.initialize(job_dir)
+        if Path(path).suffix not in [".out", ".err", ".star"]:
+            self.initialize(job_dir)
 
     def initialize(self, job_dir: _job.Refine3DJobDirectory):
         """Initialize the viewer with the job directory."""
+        self._job_dir = job_dir
         nclasses = job_dir.num_classes()
         if nclasses == 0:
             return
         niters = job_dir.num_iters()
-        self._class_choice.setRange(1, nclasses)
-        self._iter_choice.setRange(0, niters - 1)
+        self._class_choice.setMaximum(nclasses)
+        self._iter_choice.setMaximum(max(niters - 1, 0))
+        self._iter_choice.setValue(self._iter_choice.maximum())
+        self._on_iter_changed(self._iter_choice.value())
+        self._viewer.auto_threshold()
+        self._viewer.auto_fit()
 
-        res = job_dir.get_result(self._iter_choice.value())
-        map_refined = res.refined_map(self._class_choice.value() - self._index_start)
-        self._viewer.set_image(map_refined)
+    def _on_iter_changed(self, value: int):
+        self._update_for_value(value, self._class_choice.value())
+
+    def _on_class_changed(self, value: int):
+        self._update_for_value(self._iter_choice.value(), value)
+
+    def _update_for_value(self, niter: int, class_id: int):
+        res = self._job_dir.get_result(niter)
+        map0, map1 = res.halfmaps(class_id - self._index_start)
+        self._viewer.set_image(map0 + map1)

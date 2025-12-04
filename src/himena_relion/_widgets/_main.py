@@ -1,6 +1,7 @@
 from __future__ import annotations
 from pathlib import Path
 from typing import Callable, Iterator, TypeVar
+import logging
 
 from himena import WidgetDataModel
 from qtpy import QtWidgets as QtW, QtCore
@@ -16,6 +17,9 @@ from himena_relion._widgets._job_widgets import (
     QRunOutLog,
     QNoteLog,
 )
+from himena_relion.consts import Type
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class QRelionJobWidget(QtW.QWidget):
@@ -45,6 +49,7 @@ class QRelionJobWidget(QtW.QWidget):
         self._watcher = self._watch_job_directory(job_dir.path)
 
         if wcls := RelionJobViewRegistry.instance().get_widget_class(type(job_dir)):
+            _LOGGER.info(f"Adding job widget for {job_dir.path}: {wcls!r}")
             wdt = wcls()
             self.add_job_widget(wdt)
 
@@ -54,6 +59,16 @@ class QRelionJobWidget(QtW.QWidget):
         self._state_widget.initialize(job_dir)
         for wdt in self._iter_job_widgets():
             wdt.initialize(job_dir)
+
+    @validate_protocol
+    def to_model(self) -> WidgetDataModel:
+        """Convert the widget state back to a model."""
+        if self._job_dir is None:
+            raise RuntimeError("Job directory is not set.")
+        return WidgetDataModel(
+            value=self._job_dir,
+            type=Type.RELION_JOB,
+        )
 
     @validate_protocol
     def size_hint(self):
@@ -111,7 +126,9 @@ class RelionJobViewRegistry:
         return cls._instance
 
     def register(
-        self, job_type: type[_job.JobDirectory], widget_cls: type[JobWidgetBase]
+        self,
+        job_type: type[_job.JobDirectory],
+        widget_cls: type[JobWidgetBase],
     ):
         """Register a widget class for a specific job type."""
         if not issubclass(widget_cls, JobWidgetBase):

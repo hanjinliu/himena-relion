@@ -5,6 +5,9 @@ from qtpy import QtWidgets as QtW, QtCore
 from vispy.app import use_app
 from magicclass.ext.vispy import Vispy3DCanvas, VispyImageCanvas
 from skimage.filters.thresholding import threshold_yen
+from himena_builtins.qt.widgets._shared import labeled
+from himena_relion._image_readers import ArrayFilteredView
+# TODO: don't use magicclass
 
 
 class Q2DViewer(QtW.QWidget):
@@ -15,23 +18,33 @@ class Q2DViewer(QtW.QWidget):
         layout = QtW.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self._canvas.native)
-        self._tomogram = None
+        self._array_view = None
         self._dims_slider = QtW.QSlider(QtCore.Qt.Orientation.Horizontal, self)
         layout.addWidget(self._dims_slider)
         self._dims_slider.valueChanged.connect(self._on_slider_changed)
 
-    def set_image(self, image: np.ndarray):
+    def set_array_view(self, image: np.ndarray | ArrayFilteredView):
         """Set the 3D image to be displayed."""
-        self._tomogram = image
-        self._dims_slider.setRange(0, image.shape[0] - 1)
-        self._dims_slider.setValue(image.shape[0] // 2)
+        if isinstance(image, np.ndarray):
+            self._array_view = ArrayFilteredView.from_array(image)
+        else:
+            self._array_view = image
+        num_slices = self._array_view.num_slices()
+        self._dims_slider.setRange(0, num_slices - 1)
+        self._dims_slider.setValue(num_slices // 2)
         self._on_slider_changed(self._dims_slider.value())
 
     def _on_slider_changed(self, value: int):
         """Update the displayed slice based on the slider value."""
-        if self._tomogram is not None:
-            slice_image = self._tomogram[value, :, :]
+        if self._array_view is not None:
+            slice_image = self._array_view.get_slice(value)
             self._canvas.image = np.asarray(slice_image)
+
+    def auto_fit(self):
+        """Automatically fit the camera to the image."""
+        if (img := self._canvas.image) is not None:
+            self._canvas.xrange = (-0.5, img.shape[1])
+            self._canvas.yrange = (-0.5, img.shape[0])
 
 
 class Q3DViewer(QtW.QWidget):
@@ -45,16 +58,28 @@ class Q3DViewer(QtW.QWidget):
         self._image_layer = self._canvas.add_image(
             np.zeros((2, 2, 2)),
         )
-        layout.addWidget(self._image_layer.widgets.iso_threshold.native)
+        layout.addWidget(
+            labeled("Threshold", self._image_layer.widgets.iso_threshold.native)
+        )
 
     def set_image(self, image: np.ndarray):
         """Set the 3D image to be displayed."""
         self._image_layer.data = image
         self._image_layer.contrast_limits = (np.min(image), np.max(image))
         self._image_layer.rendering = "iso"
-        self._image_layer.iso_threshold = threshold_yen(image)
-        self._canvas.camera.center = np.array(image.shape) / 2
-        self._canvas.camera.scale = max(image.shape)
+
+    def auto_threshold(self, thresh: float | None = None):
+        """Automatically set the threshold based on the image data."""
+        if (img := self._image_layer.data) is not None:
+            if thresh is None:
+                thresh = threshold_yen(img)
+            self._image_layer.iso_threshold = thresh
+
+    def auto_fit(self):
+        """Automatically fit the camera to the image."""
+        if (img := self._image_layer.data) is not None:
+            self._canvas.camera.center = np.array(img.shape) / 2
+            self._canvas.camera.scale = max(img.shape)
 
     def set_text_overlay(self, text: str, color: str = "white", size: int = 20):
         """Set a text overlay on the viewer."""

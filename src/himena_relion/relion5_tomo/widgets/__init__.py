@@ -1,3 +1,27 @@
-from . import _refine, _recon, _class3d, _initial_model
+from himena_relion.relion5_tomo.widgets import (
+    _refine,
+    _class3d,
+    _initial_model,
+    _import,
+    _extract,
+    _denoise,
+    _mask_create,
+    _tomogram,
+    _postprocess,
+    _reconstruct,
+    _motioncor,
+)
 
-del _refine, _recon, _class3d, _initial_model
+del (
+    _refine,
+    _tomogram,
+    _class3d,
+    _initial_model,
+    _import,
+    _extract,
+    _denoise,
+    _mask_create,
+    _postprocess,
+    _reconstruct,
+    _motioncor,
+)

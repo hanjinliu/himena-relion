@@ -23,10 +23,35 @@ def _(path: Path):
     return None
 
 
+@register_reader_plugin(priority=500)
+def read_relion_pipeline(path: Path) -> WidgetDataModel:
+    if pipeline_star := _get_default_pipeline_star(path):
+        from himena_relion import _pipeline
+
+        pipeline = _pipeline.RelionPipeline.from_pipeline_star(pipeline_star)
+        return WidgetDataModel(value=pipeline, type=Type.RELION_PIPELINE)
+
+
+@read_relion_pipeline.define_matcher
+def _(path: Path):
+    if _get_default_pipeline_star(path) is not None:
+        return Type.RELION_PIPELINE
+    return None
+
+
 def _get_job_star(path: Path) -> Path | None:
     """Get the path to the job.star file."""
-    if path.is_dir() and (job_star := path.joinpath("job.star")).exists():
-        return job_star
-    if path.is_file() and path.name == "job.star":
+    return _get_star(path, "job.star")
+
+
+def _get_default_pipeline_star(path: Path) -> Path | None:
+    """Get the path to the default pipeline.star file."""
+    return _get_star(path, "default_pipeline.star")
+
+
+def _get_star(path: Path, name: str) -> Path | None:
+    """Get the path to a .star file with the given name."""
+    if path.is_dir() and (star := path.joinpath(name)).exists():
+        return star
+    if path.is_file() and path.name == name:
         return path
-    return None

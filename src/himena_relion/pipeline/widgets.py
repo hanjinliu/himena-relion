@@ -1,0 +1,110 @@
+from __future__ import annotations
+from pathlib import Path
+
+from himena import MainWindow, WidgetDataModel
+from qtpy import QtGui
+from cmap import Color
+from himena.qt._qflowchart import QFlowChartWidget, BaseNodeItem
+from himena.plugins import validate_protocol
+from himena.style import Theme
+from himena_relion.consts import Type, JOB_ID_MAP
+from himena_relion._pipeline import RelionPipeline, RelionJobInfo, NodeStatus
+
+
+class RelionJobNodeItem(BaseNodeItem):
+    def __init__(self, job: RelionJobInfo):
+        self._job = job
+
+    def text(self) -> str:
+        """Return the text of the node"""
+        jobxxx = self._job.path.stem
+        if jobxxx.startswith("job"):
+            jobxxx = jobxxx[3:]
+        title = JOB_ID_MAP.get(self._job.type_label, self._job.type_label)
+        return f"{jobxxx}: {title}"
+
+    def color(self):
+        """Return the color of the node"""
+        match self._job.status:
+            case NodeStatus.SUCCEEDED:
+                return Color("lightgreen")
+            case NodeStatus.FAILED:
+                return Color("lightcoral")
+            case NodeStatus.ABORTED:
+                return Color("lightyellow")
+            case _:
+                return Color("lightgray")
+
+    def tooltip(self) -> str:
+        """Return the tooltip text for the node"""
+        return f"Status: {self._job.status.value.capitalize()}"
+
+    def id(self):
+        """Return a unique identifier for the node"""
+        return self._job.path
+
+    def content(self) -> str:
+        """Return the content of the node, default is the text"""
+        return self.text()
+
+
+class QRelionPipelineFlowChart(QFlowChartWidget):
+    def __init__(self, ui: MainWindow):
+        super().__init__()
+        # self.view.item_right_clicked.connect(self._on_right_clicked)
+        self._ui = ui
+        self._pipeline = RelionPipeline([])
+        self._relion_project_dir: Path = Path.cwd()
+        self.view.item_left_double_clicked.connect(self._on_item_double_clicked)
+
+    @validate_protocol
+    def update_model(self, model: WidgetDataModel) -> None:
+        if not isinstance(src := model.source, Path):
+            raise TypeError("RELION project source not found.")
+        self.clear_all()
+        self.add_pipeline(model.value)
+        self._relion_project_dir = src.parent
+
+    @validate_protocol
+    def to_model(self) -> WidgetDataModel:
+        return WidgetDataModel(value=self._pipeline, type=Type.RELION_PIPELINE)
+
+    @validate_protocol
+    def model_type(self) -> str:
+        return Type.RELION_PIPELINE
+
+    @validate_protocol
+    def size_hint(self):
+        return 500, 400
+
+    @validate_protocol
+    def theme_changed_callback(self, theme: Theme) -> None:
+        self.setBackgroundBrush(QtGui.QColor(Color(theme.background).hex))
+
+    def add_pipeline(self, pipeline: RelionPipeline) -> None:
+        for info in pipeline._nodes:
+            if info.path not in self.view._node_map:
+                self._add_job_node_item(info)
+
+    def clear_all(self) -> None:
+        self.scene.clear()
+        self.view._node_map.clear()
+
+    def _add_job_node_item(self, info: RelionJobInfo) -> None:
+        parents: list[Path] = []
+        for parent in info.parents:
+            parent_info = parent.node
+            if parent_info.path not in self.view._node_map:
+                self._add_job_node_item(parent_info)
+            if parent_info.path not in parents:
+                parents.append(parent_info.path)
+        item = RelionJobNodeItem(info)
+        self.view.add_child(item, parents=parents)
+
+    def _on_item_double_clicked(self, item: RelionJobNodeItem):
+        # open the item
+        path = self._relion_project_dir / item.id()
+        if path.exists():
+            self._ui.read_file(path)
+        else:
+            raise FileNotFoundError(f"File {path} does not exist.")

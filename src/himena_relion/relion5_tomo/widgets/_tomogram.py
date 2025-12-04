@@ -1,8 +1,10 @@
 from __future__ import annotations
+from pathlib import Path
 
-from qtpy import QtWidgets as QtW, QtCore
+from qtpy import QtWidgets as QtW
 from himena_relion._widgets import JobWidgetBase, Q2DViewer, register_job
 from himena_relion import _job
+from himena_relion.relion5_tomo.widgets._shared import standard_layout
 
 
 @register_job(_job.TomogramJobDirectory)
@@ -10,15 +12,10 @@ class QTomogramViewer(QtW.QScrollArea, JobWidgetBase):
     def __init__(self):
         super().__init__()
         self._job_dir: _job.TomogramJobDirectory = None
-        self._inner = QtW.QWidget()
-        self.setWidget(self._inner)
-        self.setWidgetResizable(True)
-        layout = QtW.QVBoxLayout(self._inner)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignTop)
+        layout = standard_layout(self)
 
         self._viewer = Q2DViewer()
-        self._viewer.setFixedHeight(240)
+        self._viewer.setFixedSize(300, 300)
         layout.addWidget(self._viewer)
         self._tomo_choice = QtW.QComboBox()
         self._tomo_choice.currentTextChanged.connect(self._on_tomo_changed)
@@ -26,7 +23,8 @@ class QTomogramViewer(QtW.QScrollArea, JobWidgetBase):
 
     def on_job_updated(self, job_dir: _job.TomogramJobDirectory, path: str):
         """Handle changes to the job directory."""
-        self.initialize(job_dir)
+        if Path(path).suffix not in [".out", ".err", ".star"]:
+            self.initialize(job_dir)
 
     def initialize(self, job_dir: _job.TomogramJobDirectory):
         """Initialize the viewer with the job directory."""
@@ -51,5 +49,5 @@ class QTomogramViewer(QtW.QScrollArea, JobWidgetBase):
                 break
         else:
             return
-        tomo = info.read_tomogram()
-        self._viewer.set_image(tomo)
+        tomo_view = info.read_tomogram(job_dir.path)
+        self._viewer.set_array_view(tomo_view)

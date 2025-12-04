@@ -8,6 +8,7 @@ from numpy.typing import NDArray
 import pandas as pd
 import starfile
 import mrcfile
+from himena_relion._image_readers._array import ArrayFilteredView
 from himena_relion.consts import RelionJobState
 
 if TYPE_CHECKING:
@@ -42,6 +43,11 @@ class JobDirectory:
         cls = JobDirectory._type_map.get(job_type, JobDirectory)
         job_dir = fp.parent
         return cls(job_dir)
+
+    @property
+    def relion_project_dir(self) -> Path:
+        """Return the path to the RELION project directory."""
+        return self.path.parent.parent
 
     def job_star(self) -> Path:
         """Return the path to the job.star file."""
@@ -79,6 +85,11 @@ class JobDirectory:
             return RelionJobState.ABORT_NOW
         else:
             return RelionJobState.ELSE
+
+    def get_job_param(self, param: str) -> str:
+        df = self.job_star["joboptions_values"]
+        sl = df["rlnJobOptionVariable"] == param
+        return df[sl]["rlnJobOptionValue"][0]
 
 
 @dataclass
@@ -120,11 +131,11 @@ class ImportJobDirectory(JobDirectory):
 
     def iter_tilt_series(self) -> Iterator[TiltSeriesInfo]:
         """Iterate over all tilt series info."""
-        star = starfile.read(self.tilt_series_star())
-        if not isinstance(star, pd.DataFrame):
-            raise TypeError(f"Expected a DataFrame, got {type(star)}")
-        for _, row in star.iterrows():
+        for _, row in _read_star_as_df(self.tilt_series_star()).iterrows():
             yield TiltSeriesInfo.from_series(row)
+
+    # def tilt_series_paths(self) -> list[Path]:
+    #     df = _read_star_as_df(self.tilt_series_star())
 
 
 @dataclass
@@ -137,6 +148,13 @@ class CorrectedTiltSeriesInfo(TiltSeriesInfo):
         out = super().from_series(series)
         out.tomo_tilt_series_pixel_size = series.get("rlnTomoTiltSeriesPixelSize", -1.0)
         return out
+
+    def read_tilt_series(self, job_dir: Path) -> ArrayFilteredView:
+        """Read the tilt series from the file."""
+        rln_job_dir = job_dir.parent.parent
+        df = _read_star_as_df(rln_job_dir / self.tomo_tilt_series_star_file)
+        paths = [rln_job_dir / p for p in df["rlnMicrographName"]]
+        return ArrayFilteredView.from_mrcs(paths)
 
 
 class MotionCorrectionJobDirectory(JobDirectory):
@@ -155,6 +173,17 @@ class MotionCorrectionJobDirectory(JobDirectory):
             raise TypeError(f"Expected a DataFrame, got {type(star)}")
         for _, row in star.iterrows():
             yield CorrectedTiltSeriesInfo.from_series(row)
+
+    def corrected_tilt_series(self, tomoname: str) -> CorrectedTiltSeriesInfo:
+        """Return the first corrected tilt series info."""
+        star = starfile.read(self.corrected_tilt_series_star())
+        if not isinstance(star, pd.DataFrame):
+            raise TypeError(f"Expected a DataFrame, got {type(star)}")
+        star_filt = star[star["rlnTomoName"] == tomoname]
+        if len(star_filt) == 0:
+            raise ValueError(f"Tilt series {tomoname} not found in star file.")
+        row = star_filt.iloc[0]
+        return CorrectedTiltSeriesInfo.from_series(row)
 
 
 # _rlnTomoTiltMovieFrameCount #1
@@ -268,7 +297,7 @@ class TomogramInfo(AlignedTiltSeriesInfo):
     tomo_size_x: int = -1
     tomo_size_y: int = -1
     tomo_size_z: int = -1
-    reconstructed_tomogram: list[Path] = field(default_factory=list)
+    reconstructed_tomogram: list[str] = field(default_factory=list)
 
     @classmethod
     def from_series(cls, series: pd.Series) -> Self:
@@ -279,26 +308,34 @@ class TomogramInfo(AlignedTiltSeriesInfo):
         out.tomo_size_y = series.get("rlnTomoSizeY", -1)
         out.tomo_size_z = series.get("rlnTomoSizeZ", -1)
         if "rlnTomoReconstructedTomogram" in series:
-            out.reconstructed_tomogram = [Path(series["rlnTomoReconstructedTomogram"])]
+            out.reconstructed_tomogram = [
+                Path(series["rlnTomoReconstructedTomogram"]).name
+            ]
         else:
             out.reconstructed_tomogram = [
-                Path(series.get("rlnTomoReconstructedTomogramHalf1")),
-                Path(series.get("rlnTomoReconstructedTomogramHalf2")),
+                Path(series.get("rlnTomoReconstructedTomogramHalf1")).name,
+                Path(series.get("rlnTomoReconstructedTomogramHalf2")).name,
             ]
         return out
 
-    def read_tomogram(self) -> NDArray[np.floating]:
+    @property
+    def is_halfset_reconstruction(self) -> bool:
+        """Check if the tomogram reconstruction is half-set."""
+        return len(self.reconstructed_tomogram) == 2
+
+    def read_tomogram(self, job_dir: Path) -> ArrayFilteredView:
         """Read the reconstructed tomogram from the file."""
-        image = 0
-        for path in self.reconstructed_tomogram:
-            if path.exists():
-                with mrcfile.open(path, mode="r") as mrc:
-                    image += mrc.data
-        if image == 0:
-            raise FileNotFoundError(
-                f"Reconstructed tomogram not found in {self.reconstructed_tomogram}"
+        if self.is_halfset_reconstruction:
+            return ArrayFilteredView.from_mrc_splits(
+                [
+                    job_dir / "tomograms" / self.reconstructed_tomogram[0],
+                    job_dir / "tomograms" / self.reconstructed_tomogram[1],
+                ]
             )
-        return image
+        else:
+            return ArrayFilteredView.from_mrc(
+                job_dir / "tomograms" / self.reconstructed_tomogram[0]
+            )
 
 
 class TomogramJobDirectory(JobDirectory):
@@ -312,11 +349,20 @@ class TomogramJobDirectory(JobDirectory):
 
     def iter_tomogram(self) -> Iterator[TomogramInfo]:
         """Iterate over all tilt series info."""
-        star = starfile.read(self.tomograms_star())
-        if not isinstance(star, pd.DataFrame):
-            raise TypeError(f"Expected a DataFrame, got {type(star)}")
+        star = _read_star_as_df(self.tomograms_star())
         for _, row in star.iterrows():
             yield TomogramInfo.from_series(row)
+
+
+class DenoiseJobDirectory(JobDirectory):
+    """Class for handling denoise/predict job directories in RELION."""
+
+    _job_type = "relion.denoisetomo"
+
+    def __init__(self, path: str | Path):
+        super().__init__(path)
+        self._is_train = self.get_job_param("do_cryocare_train") == "Yes"
+        self._is_predict = self.get_job_param("do_cryocare_predict") == "Yes"
 
 
 @dataclass
@@ -407,7 +453,7 @@ class InitialModel3DJobDirectory(JobDirectory):
 
     def num_classes(self) -> int:
         """Return the number of classes."""
-        return len(list(self.path.glob("run_it000_class*.star")))
+        return len(list(self.path.glob("run_it000_class*.mrc")))
 
     def niter_list(self) -> list[int]:
         """Return the list of number of iterations."""
@@ -430,8 +476,8 @@ class Refine3DResults(_3DResultsBase):
         self, class_id: int
     ) -> tuple[NDArray[np.floating], NDArray[np.floating]]:
         """Return the half maps for a given class ID."""
-        half1_path = self._half_class_mrc(class_id, 1)
-        half2_path = self._half_class_mrc(class_id, 2)
+        half1_path = self._half_class_mrc(class_id + 1, 1)
+        half2_path = self._half_class_mrc(class_id + 1, 2)
         with mrcfile.open(half1_path, mode="r") as mrc1:
             img1 = mrc1.data
         with mrcfile.open(half2_path, mode="r") as mrc2:
@@ -511,7 +557,7 @@ class Refine3DJobDirectory(JobDirectory):
 
     def num_iters(self) -> int:
         """Return the number of iterations in the refine 3D job."""
-        return len(list(self.path.glob("run_it*_half1_model_class001.star")))
+        return len(list(self.path.glob("run_it*_data.star")))
 
 
 class Class3DResults(_3DResultsBase):
@@ -521,10 +567,10 @@ class Class3DResults(_3DResultsBase):
         with mrcfile.open(mrc_path, mode="r") as mrc:
             return mrc.data
 
-    def value_ratio(self, num_classes: int) -> dict[int, float]:
+    def value_ratio(self) -> dict[int, float]:
         counts = self.particles()["rlnClassNumber"].value_counts().sort_index()
         ratio = counts / counts.sum()
-        return {num: ratio.get(num, 0.0) for num in range(1, num_classes + 1)}
+        return {num: ratio.get(num, 0.0) for num in range(1, len(ratio) + 1)}
 
 
 class Class3DJobDirectory(JobDirectory):
@@ -554,3 +600,75 @@ class Class3DJobDirectory(JobDirectory):
     def num_iters(self) -> int:
         """Return the number of iterations in the class 3D job."""
         return len(list(self.path.glob("run_it*_model.star")))
+
+
+class ReconstructParticlesJobDirectory(JobDirectory):
+    """Class for handling reconstruct particles job directories in RELION."""
+
+    _job_type = "relion.reconstructparticletomo"
+
+    def merged_mrc(self) -> NDArray[np.floating]:
+        """Return the path to the merged MRC file."""
+        path = self.path / "merged.mrc"
+        with mrcfile.open(path, mode="r") as mrc:
+            return mrc.data
+
+    def halfmap_mrc(self, half: Literal[1, 2]) -> NDArray[np.floating]:
+        """Return the path to the halfmap MRC file."""
+        name = f"half{half}.mrc"
+        path = self.path / name
+        with mrcfile.open(path, mode="r") as mrc:
+            return mrc.data
+
+
+class MaskCreateJobDirectory(JobDirectory):
+    """Class for handling mask creation job directories in RELION."""
+
+    _job_type = "relion.maskcreate"
+
+    def mask_mrc(self) -> NDArray[np.floating]:
+        """Return the mask MRC file."""
+        mask_path = self.path / "mask.mrc"
+        if not mask_path.exists():
+            raise FileNotFoundError(f"Mask file {mask_path} does not exist.")
+
+        with mrcfile.open(mask_path, mode="r") as mrc:
+            return mrc.data
+
+
+class PostProcessJobDirectory(JobDirectory):
+    """Class for handling post-processing job directories in RELION."""
+
+    _job_type = "relion.postprocess"
+
+    def map_mrc(self, masked: bool = False) -> NDArray[np.floating]:
+        """Return the post-processed map MRC file."""
+        name = "postprocess_masked.mrc" if masked else "postprocess.mrc"
+        mrc_path = self.path / name
+        with mrcfile.open(mrc_path, mode="r") as mrc:
+            return mrc.data
+
+    def fsc_dataframe(self) -> pd.DataFrame:
+        """Return the FSC DataFrame."""
+        star_path = self.path / "postprocess.star"
+        df = starfile.read(star_path, always_dict=True)["data_fsc"]
+        if not isinstance(df, pd.DataFrame):
+            raise TypeError(f"Expected a DataFrame, got {type(df)}")
+        return df
+
+
+# class JoinStarJobDirectory(JobDirectory):
+#     """Class for handling join star job directories in RELION."""
+
+#     _job_type = "relion.joinstar.particles"
+
+#     def output_star(self) -> Path:
+#         """Return the path to the output star file."""
+#         return self.path / "output.star"
+
+
+def _read_star_as_df(star_path: Path) -> pd.DataFrame:
+    star = starfile.read(star_path)
+    if not isinstance(star, pd.DataFrame):
+        raise TypeError(f"Expected a DataFrame, got {type(star)}")
+    return star

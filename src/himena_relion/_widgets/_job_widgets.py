@@ -1,3 +1,5 @@
+"""The shared widget classes for RELION jobs."""
+
 from __future__ import annotations
 
 from pathlib import Path
