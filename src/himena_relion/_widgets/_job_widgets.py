@@ -3,16 +3,13 @@
 from __future__ import annotations
 
 from pathlib import Path
-from himena import io_utils
-from himena.types import DragDataModel
 from qtpy import QtWidgets as QtW, QtGui, QtCore
 import starfile
 from superqt.utils import qthrottled
 from himena_relion import _job
 from himena.consts import MonospaceFontFamily
-from himena.qt import drag_model
+from himena.qt import drag_files
 from himena_builtins.qt.widgets._dragarea import QDraggableArea
-from himena_relion.consts import Type
 
 
 class JobWidgetBase:
@@ -108,66 +105,58 @@ class QNoteLog(QLogWatcher):
             note_path.write_text(text)
 
 
-class QJobIOBase(QtW.QWidget, JobWidgetBase):
+class QJobInOut(QtW.QWidget, JobWidgetBase):
     def __init__(self):
         super().__init__()
         layout = QtW.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        self._list_widget = QtW.QListWidget()
-        layout.addWidget(self._list_widget)
+        self._list_widget_in = QtW.QListWidget()
+        self._list_widget_out = QtW.QListWidget()
+        layout.addWidget(QtW.QLabel("<b>Inputs</b>"))
+        layout.addWidget(self._list_widget_in)
+        layout.addWidget(QtW.QLabel("<b>Outputs</b>"))
+        layout.addWidget(self._list_widget_out)
 
     def on_job_updated(self, job_dir, fp):
         if fp.name == "job_pipeline.star":
             self.initialize(job_dir)
 
-
-class QJobInputs(QJobIOBase):
     def initialize(self, job_dir):
         path = job_dir.job_pipeline()
-        self._list_widget.clear()
+        self._list_widget_in.clear()
+        self._list_widget_out.clear()
         if not path.exists():
             return
-        df = starfile.read(path, always_dict=True).get("pipeline_input_edges", None)
-        if df is None:
-            return
+        df_in = starfile.read(path, always_dict=True).get("pipeline_input_edges", None)
         rln_dir = job_dir.relion_project_dir
-        for input_path_rel in df["rlnPipeLineEdgeFromNode"]:
-            # such as Select/job016/particles.star
-            input_path = rln_dir / input_path_rel
-            item = QRelionNodeItem(input_path)
-            list_item = QtW.QListWidgetItem(self._list_widget)
-            list_item.setSizeHint(item.sizeHint())
-            self._list_widget.addItem(list_item)
-            self._list_widget.setItemWidget(list_item, item)
+        if df_in is not None:
+            for input_path_rel in df_in["rlnPipeLineEdgeFromNode"]:
+                # such as Select/job016/particles.star
+                input_path = rln_dir / input_path_rel
+                item = QRelionNodeItem(input_path)
+                list_item = QtW.QListWidgetItem(self._list_widget_in)
+                list_item.setSizeHint(item.sizeHint())
+                self._list_widget_in.addItem(list_item)
+                self._list_widget_in.setItemWidget(list_item, item)
+
+        df_out = starfile.read(path, always_dict=True).get(
+            "pipeline_output_edges", None
+        )
+        if df_out is not None:
+            for output_path_rel in df_out["rlnPipeLineEdgeToNode"]:
+                # such as Class3D/job017/run_it025_data.star
+                if Path(output_path_rel).is_absolute():
+                    output_path = Path(output_path_rel)
+                else:
+                    output_path = rln_dir / output_path_rel
+                item = QRelionNodeItem(output_path, show_dir=False)
+                list_item = QtW.QListWidgetItem(self._list_widget_out)
+                list_item.setSizeHint(item.sizeHint())
+                self._list_widget_out.addItem(list_item)
+                self._list_widget_out.setItemWidget(list_item, item)
 
     def tab_title(self) -> str:
-        return "Inputs"
-
-
-class QJobOutputs(QJobIOBase):
-    def initialize(self, job_dir):
-        path = job_dir.job_pipeline()
-        self._list_widget.clear()
-        if not path.exists():
-            return
-        df = starfile.read(path, always_dict=True).get("pipeline_output_edges", None)
-        if df is None:
-            return
-        rln_dir = job_dir.relion_project_dir
-        for output_path_rel in df["rlnPipeLineEdgeToNode"]:
-            # such as Class3D/job017/run_it025_data.star
-            if Path(output_path_rel).is_absolute():
-                output_path = Path(output_path_rel)
-            else:
-                output_path = rln_dir / output_path_rel
-            item = QRelionNodeItem(output_path, show_dir=False)
-            list_item = QtW.QListWidgetItem(self._list_widget)
-            list_item.setSizeHint(item.sizeHint())
-            self._list_widget.addItem(list_item)
-            self._list_widget.setItemWidget(list_item, item)
-
-    def tab_title(self) -> str:
-        return "Outputs"
+        return "In/Out"
 
 
 class QRelionNodeItem(QtW.QWidget):
@@ -210,19 +199,15 @@ class QRelionNodeItem(QtW.QWidget):
         layout.addWidget(drag_file)
 
     def _drag_dir_event(self):
-        model = DragDataModel(
-            getter=lambda: io_utils.read(self._filepath.parent),
-            type=Type.RELION_JOB,
-        )
-        drag_model(
-            model,
+        drag_files(
+            self._filepath.parent,
             desc=self._filepath_rel.parent.as_posix(),
             source=self,
         )
 
     def _drag_file_event(self):
-        drag_model(
-            DragDataModel(getter=lambda: io_utils.read(self._filepath)),
+        drag_files(
+            self._filepath,
             desc=self._filepath_rel.as_posix(),
             source=self,
         )

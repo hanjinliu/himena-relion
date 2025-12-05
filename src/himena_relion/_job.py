@@ -172,7 +172,14 @@ class CorrectedTiltSeriesInfo(TiltSeriesInfo):
         rln_job_dir = job_dir.parent.parent
         df = _read_star_as_df(rln_job_dir / self.tomo_tilt_series_star_file)
         paths = [rln_job_dir / p for p in df["rlnMicrographName"]]
-        return ArrayFilteredView.from_mrcs(paths)
+        if "rlnTomoNominalStageTiltAngle" in df:
+            tilt_angles = df["rlnTomoNominalStageTiltAngle"]
+            order = np.argsort(tilt_angles)
+            paths = [paths[i] for i in order]
+            df = df.iloc[order].reset_index(drop=True)
+        view = ArrayFilteredView.from_mrcs(paths)
+        view.dataframe = df
+        return view
 
 
 class MotionCorrectionJobDirectory(JobDirectory):
@@ -307,6 +314,21 @@ class AlignTiltSeriesJobDirectory(JobDirectory):
             raise TypeError(f"Expected a DataFrame, got {type(star)}")
         for _, row in star.iterrows():
             yield AlignedTiltSeriesInfo.from_series(row)
+
+    def xf_file(self, tomoname: str) -> Path:
+        """Return the path to the .xf file for a given tomogram name."""
+        return self.path / "external" / tomoname / f"{tomoname}.xf"
+
+    def aligned_tilt_series(self, tomoname: str) -> AlignedTiltSeriesInfo:
+        """Return the first corrected tilt series info."""
+        star = starfile.read(self.aligned_tilt_series_star())
+        if not isinstance(star, pd.DataFrame):
+            raise TypeError(f"Expected a DataFrame, got {type(star)}")
+        star_filt = star[star["rlnTomoName"] == tomoname]
+        if len(star_filt) == 0:
+            raise ValueError(f"Tilt series {tomoname} not found in star file.")
+        row = star_filt.iloc[0]
+        return AlignedTiltSeriesInfo.from_series(row)
 
 
 @dataclass
@@ -683,20 +705,26 @@ class PostProcessJobDirectory(JobDirectory):
 
     _job_type = "relion.postprocess"
 
-    def map_mrc(self, masked: bool = False) -> NDArray[np.floating]:
-        """Return the post-processed map MRC file."""
+    def map_mrc_path(self, masked: bool = False) -> Path:
+        """Return the path to the post-processed map MRC file."""
         name = "postprocess_masked.mrc" if masked else "postprocess.mrc"
-        mrc_path = self.path / name
-        with mrcfile.open(mrc_path, mode="r") as mrc:
-            return mrc.data
+        return self.path / name
 
-    def fsc_dataframe(self) -> pd.DataFrame:
+    def map_mrc(self, masked: bool = False) -> NDArray[np.floating] | None:
+        """Return the post-processed map MRC file."""
+        mrc_path = self.map_mrc_path(masked=masked)
+        if mrc_path.exists():
+            with mrcfile.open(mrc_path, mode="r") as mrc:
+                return mrc.data
+
+    def fsc_dataframe(self) -> pd.DataFrame | None:
         """Return the FSC DataFrame."""
         star_path = self.path / "postprocess.star"
-        df = starfile.read(star_path, always_dict=True)["fsc"]
-        if not isinstance(df, pd.DataFrame):
-            raise TypeError(f"Expected a DataFrame, got {type(df)}")
-        return df
+        if star_path.exists():
+            df = starfile.read(star_path, always_dict=True)["fsc"]
+            if not isinstance(df, pd.DataFrame):
+                raise TypeError(f"Expected a DataFrame, got {type(df)}")
+            return df
 
 
 class SelectInteractiveJobDirectory(JobDirectory):

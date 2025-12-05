@@ -16,8 +16,7 @@ from himena_relion._widgets._job_widgets import (
     QRunErrLog,
     QRunOutLog,
     QNoteLog,
-    QJobInputs,
-    QJobOutputs,
+    QJobInOut,
 )
 from himena_relion.consts import Type
 
@@ -55,8 +54,7 @@ class QRelionJobWidget(QtW.QWidget):
             wdt = wcls()
             self.add_job_widget(wdt)
 
-        self.add_job_widget(QJobInputs())
-        self.add_job_widget(QJobOutputs())
+        self.add_job_widget(QJobInOut())
         self.add_job_widget(QRunOutLog())
         self.add_job_widget(QRunErrLog())
         self.add_job_widget(QNoteLog())

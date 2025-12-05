@@ -1,4 +1,5 @@
 from himena_relion.relion5_tomo.widgets import (
+    _aligntilt,
     _refine,
     _class3d,
     _initial_model,
@@ -13,6 +14,7 @@ from himena_relion.relion5_tomo.widgets import (
 )
 
 del (
+    _aligntilt,
     _refine,
     _tomogram,
     _class3d,

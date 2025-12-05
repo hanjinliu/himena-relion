@@ -13,9 +13,10 @@ import tifffile
 if TYPE_CHECKING:
     Arr = NDArray[np.number]
     PathLike = str | Path
+    import pandas as pd
 
 
-def _no_filter(x: Arr) -> Arr:
+def _no_filter(x: Arr, i: int) -> Arr:
     return x
 
 
@@ -23,24 +24,25 @@ class ArrayFilteredView:
     def __init__(
         self,
         view: ArrayViewBase,
-        post_filter: Callable[[Arr], Arr] | None = None,
+        post_filter: Callable[[Arr, int], Arr] | None = None,
     ):
         self._view = view
         if post_filter is None:
             self._post_filter = _no_filter
         else:
             self._post_filter = post_filter
+        self.dataframe: pd.DataFrame | None = None
 
     def get_slice(self, index: int) -> Arr:
         """Get a slice of the filtered array."""
         arr = self._view.get_slice(index)
-        return self._post_filter(arr)
+        return self._post_filter(arr, index)
 
     def num_slices(self) -> int:
         """Get the number of slices in the array."""
         return self._view.num_slices()
 
-    def with_filter(self, post_filter: Callable[[Arr], Arr]) -> ArrayFilteredView:
+    def with_filter(self, post_filter: Callable[[Arr, int], Arr]) -> ArrayFilteredView:
         return ArrayFilteredView(self._view, post_filter)
 
     @classmethod
