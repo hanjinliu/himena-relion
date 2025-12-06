@@ -1,40 +1,48 @@
 from __future__ import annotations
 from concurrent.futures import Future, ThreadPoolExecutor
-
+from typing import NamedTuple
 import numpy as np
 from qtpy import QtWidgets as QtW, QtCore
-from superqt import ensure_main_thread
-from vispy.app import use_app
-from magicclass.ext.vispy import Vispy3DCanvas, VispyImageCanvas
-from skimage.filters.thresholding import threshold_yen
+from superqt import ensure_main_thread, QLabeledDoubleSlider
 from himena.qt._qlineedit import QIntLineEdit, QDoubleLineEdit
 from himena_builtins.qt.widgets._shared import labeled
 from himena_builtins.qt.widgets._image_components import QHistogramView
+
 from himena_relion._image_readers import ArrayFilteredView
+from himena_relion._widgets._spinbox import QIntWidget
+from himena_relion._widgets._vispy import Vispy2DViewer, Vispy3DViewer
 from himena_relion import _utils
-# TODO: don't use magicclass
+
+
+class SliceResult(NamedTuple):
+    image: np.ndarray
+    clim: tuple[float, float]
+    points: np.ndarray
 
 
 class Q2DViewer(QtW.QWidget):
     _executor = ThreadPoolExecutor(max_workers=2)
 
-    def __init__(self, parent=None):
+    def __init__(self, zlabel: str = "z", parent=None):
         super().__init__(parent)
-        use_app("pyqt6")
-        self._last_future: Future[tuple[np.ndarray, float, float]] | None = None
+        self._last_future: Future[SliceResult] | None = None
         self._last_clim: tuple[float, float] | None = None
-        self._canvas = VispyImageCanvas()
+        self._canvas = Vispy2DViewer()
         self._canvas.native.setFixedSize(340, 340)
         layout = QtW.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self._canvas.native)
         self._array_view = None
+        self._points = np.empty((0, 3), dtype=np.float32)
         self._dims_slider = QtW.QSlider(QtCore.Qt.Orientation.Horizontal, self)
         self._histogram_view = QHistogramView()
         self._histogram_view.clim_changed.connect(self._on_clim_changed)
         self._histogram_view.setFixedHeight(36)
+        self._zpos_box = QIntWidget("", label_width=0)
+        self._zpos_box.valueChanged.connect(self._on_zpos_box_changed)
+        self._zpos_box.setFixedWidth(90)
 
-        layout.addWidget(labeled("z", self._dims_slider))
+        layout.addWidget(labeled(zlabel, self._dims_slider, self._zpos_box))
         layout.addWidget(self._histogram_view)
         self._dims_slider.valueChanged.connect(self._on_slider_changed)
 
@@ -52,28 +60,40 @@ class Q2DViewer(QtW.QWidget):
         num_slices = self._array_view.num_slices()
         self._dims_slider.setRange(0, num_slices - 1)
         self._dims_slider.setValue(num_slices // 2)
+        self._zpos_box.setRange(0, num_slices - 1)
         self.redraw()
+
+    def set_points(self, points: np.ndarray):
+        """Set the 3D points to be displayed."""
+        self._points = points
 
     def redraw(self):
         self._on_slider_changed(self._dims_slider.value(), force_sync=True)
 
+    def _on_zpos_box_changed(self, value: int):
+        """Update the slider when the z position box changes."""
+        self._dims_slider.blockSignals(True)
+        try:
+            self._dims_slider.setValue(value)
+        finally:
+            self._dims_slider.blockSignals(False)
+
     def _on_slider_changed(self, value: int, *, force_sync: bool = False):
         """Update the displayed slice based on the slider value."""
+        self._zpos_box.setValue(value)
         if self._last_future:
             self._last_future.cancel()  # cancel last task
         if self._array_view is not None:
             if force_sync:
-                slice_image, min_, max_ = self._get_image_slice(value)
+                val = self._get_image_slice(value)
                 future = Future()
-                future.set_result((slice_image, min_, max_))
+                future.set_result(val)
                 self._on_calc_slice_done(future)
             else:
                 self._last_future = self._executor.submit(self._get_image_slice, value)
                 self._last_future.add_done_callback(self._on_calc_slice_done)
 
-            # TODO: don't update clim
-
-    def _get_image_slice(self, slider_value: int):
+    def _get_image_slice(self, slider_value: int) -> SliceResult:
         slice_image = np.asarray(self._array_view.get_slice(slider_value))
         if self._last_clim is None:
             min_ = slice_image.min()
@@ -81,17 +101,36 @@ class Q2DViewer(QtW.QWidget):
             self._last_clim = (min_, max_)
         else:
             min_, max_ = self._last_clim
-        return slice_image, min_, max_
+        zs = self._points[:, 0]
+        mask = (slider_value - 2 <= zs) & (zs <= slider_value + 2)
+        points_in_slice = self._points[mask]
+        return SliceResult(slice_image, (min_, max_), points_in_slice)
 
     @ensure_main_thread
-    def _on_calc_slice_done(self, future: Future[tuple[np.ndarray, float, float]]):
+    def _on_calc_slice_done(self, future: Future[SliceResult]):
         self._last_future = None
         if future.cancelled():
             return
-        img, min_, max_ = future.result()
-        self._canvas.image = img
-        self._histogram_view.set_hist_for_array(img, (min_, max_))
-        self._on_clim_changed((min_, max_))
+        result = future.result()
+        self._canvas.image = result.image
+        self._histogram_view.set_hist_for_array(result.image, result.clim)
+        self._on_clim_changed(result.clim)
+        if result.points.shape[0] > 0:
+            self._canvas.markers_visual.set_data(
+                result.points[:, [2, 1]],
+                face_color=np.zeros(4),
+                edge_color="lime",
+                size=10,
+            )
+            self._canvas.markers_visual.visible = True
+        else:
+            self._canvas.markers_visual.set_data(
+                np.ones((1, 2), dtype=np.float32),
+                face_color=np.zeros(4),
+                edge_color=np.zeros(4),
+                size=10,
+            )
+            self._canvas.markers_visual.visible = False
 
     def _on_clim_changed(self, clim: tuple[float, float]):
         """Update the contrast limits based on the histogram view."""
@@ -100,9 +139,7 @@ class Q2DViewer(QtW.QWidget):
 
     def auto_fit(self):
         """Automatically fit the camera to the image."""
-        img = self._canvas.image
-        self._canvas.xrange = (-0.5, img.shape[1])
-        self._canvas.yrange = (-0.5, img.shape[0])
+        self._canvas.auto_fit()
 
     def set_text_overlay(self, text: str, color: str = "white", size: int = 20):
         """Set a text overlay on the viewer."""
@@ -112,46 +149,47 @@ class Q2DViewer(QtW.QWidget):
 class Q3DViewer(QtW.QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
-        use_app("pyqt6")
-        self._canvas = Vispy3DCanvas()
+        self._canvas = Vispy3DViewer()
         layout = QtW.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
+        self._iso_slider = QLabeledDoubleSlider(QtCore.Qt.Orientation.Horizontal)
+        self._iso_slider.valueChanged.connect(self._on_iso_changed)
+
         layout.addWidget(self._canvas.native)
-        self._image_layer = self._canvas.add_image(
-            np.zeros((2, 2, 2)),
-        )
-        layout.addWidget(
-            labeled("Threshold", self._image_layer.widgets.iso_threshold.native)
-        )
+
+        layout.addWidget(labeled("Threshold", self._iso_slider))
 
     def set_image(self, image: np.ndarray | None):
         """Set the 3D image to be displayed."""
         if image is None:
-            self._image_layer.data = np.zeros((2, 2, 2))
-            self._image_layer.visible = False
+            self._canvas.image = np.zeros((2, 2, 2))
+            self._canvas.image_visual.visible = False
         else:
-            self._image_layer.data = image
-            self._image_layer.contrast_limits = (np.min(image), np.max(image))
-            self._image_layer.visible = True
-        self._image_layer.rendering = "iso"
+            self._canvas.image = image
+            self._canvas.image_visual.visible = True
 
     def auto_threshold(self, thresh: float | None = None):
         """Automatically set the threshold based on the image data."""
-        img = self._image_layer.data
-        if self._image_layer.visible:
+        img = self._canvas.image
+        if self._canvas.image_visual.visible:
             if thresh is None:
-                thresh = threshold_yen(img)
-            self._image_layer.iso_threshold = thresh
+                thresh = _utils.threshold_yen(img)
+            self._canvas.set_iso_threshold(thresh)
+            self._iso_slider.setRange(*self._canvas._lims)
 
     def auto_fit(self):
         """Automatically fit the camera to the image."""
-        img = self._image_layer.data
+        img = self._canvas.image
         self._canvas.camera.center = np.array(img.shape) / 2
-        self._canvas.camera.scale = max(img.shape)
+        self._canvas.camera.scale_factor = max(img.shape)
+        self._canvas.camera.update()
 
     def set_text_overlay(self, text: str, color: str = "white", size: int = 20):
         """Set a text overlay on the viewer."""
         # TODO
+
+    def _on_iso_changed(self, value: float):
+        self._canvas.set_iso_threshold(value)
 
 
 class Q2DFilterWidget(QtW.QWidget):

@@ -51,3 +51,7 @@ class QIntWidget(QtW.QWidget):
 
     def setValue(self, value: int):
         self._int_edit.setText(str(value))
+
+    def setRange(self, min_value: int, max_value: int):
+        self.setMinimum(min_value)
+        self.setMaximum(max_value)

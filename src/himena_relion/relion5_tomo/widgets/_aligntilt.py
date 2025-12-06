@@ -15,7 +15,7 @@ class QAlignTiltSeriesViewer(QJobScrollArea):
         self._job_dir: _job.AlignTiltSeriesJobDirectory = None
         layout = self._layout
 
-        self._viewer = Q2DViewer()
+        self._viewer = Q2DViewer(zlabel="Tilt index")
         self._ts_choice = QtW.QComboBox()
         self._ts_choice.currentTextChanged.connect(self._ts_choice_changed)
         self._error_label = QtW.QLabel("Residual error: N/A")

@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterator, Literal, TYPE_CHECKING
+from typing import Callable, Iterator, Literal, TYPE_CHECKING
 import numpy as np
 from numpy.typing import NDArray
 import pandas as pd
@@ -337,7 +337,8 @@ class TomogramInfo(AlignedTiltSeriesInfo):
     tomo_size_x: int = -1
     tomo_size_y: int = -1
     tomo_size_z: int = -1
-    reconstructed_tomogram: list[str] = field(default_factory=list)
+    reconstructed_tomogram: list[Path] = field(default_factory=list)
+    get_particles: Callable[[], pd.DataFrame] | None = None
 
     @classmethod
     def from_series(cls, series: pd.Series) -> Self:
@@ -348,13 +349,11 @@ class TomogramInfo(AlignedTiltSeriesInfo):
         out.tomo_size_y = series.get("rlnTomoSizeY", -1)
         out.tomo_size_z = series.get("rlnTomoSizeZ", -1)
         if "rlnTomoReconstructedTomogram" in series:
-            out.reconstructed_tomogram = [
-                Path(series["rlnTomoReconstructedTomogram"]).name
-            ]
+            out.reconstructed_tomogram = [Path(series["rlnTomoReconstructedTomogram"])]
         else:
             out.reconstructed_tomogram = [
-                Path(series.get("rlnTomoReconstructedTomogramHalf1")).name,
-                Path(series.get("rlnTomoReconstructedTomogramHalf2")).name,
+                Path(series.get("rlnTomoReconstructedTomogramHalf1")),
+                Path(series.get("rlnTomoReconstructedTomogramHalf2")),
             ]
         return out
 
@@ -367,7 +366,7 @@ class TomogramInfo(AlignedTiltSeriesInfo):
         out.tomo_size_y = series.get("rlnTomoSizeY", -1)
         out.tomo_size_z = series.get("rlnTomoSizeZ", -1)
         out.reconstructed_tomogram = [
-            Path(series.get("rlnTomoReconstructedTomogramDenoised")).name
+            Path(series.get("rlnTomoReconstructedTomogramDenoised"))
         ]
         return out
 
@@ -376,19 +375,29 @@ class TomogramInfo(AlignedTiltSeriesInfo):
         """Check if the tomogram reconstruction is half-set."""
         return len(self.reconstructed_tomogram) == 2
 
-    def read_tomogram(self, job_dir: Path) -> ArrayFilteredView:
+    @property
+    def tomo_pixel_size(self) -> float:
+        """Return the pixel size of the tomogram tilt series."""
+        if self.tomogram_binning > 0 and self.tomo_tilt_series_pixel_size > 0:
+            return self.tomo_tilt_series_pixel_size * self.tomogram_binning
+        return -1.0
+
+    @property
+    def tomo_shape(self) -> tuple[int, int, int]:
+        """Return the shape of the tomogram as (Z, Y, X)."""
+        return (self.tomo_size_z, self.tomo_size_y, self.tomo_size_x)
+
+    def read_tomogram(self, rln_dir: Path) -> ArrayFilteredView:
         """Read the reconstructed tomogram from the file."""
         if self.is_halfset_reconstruction:
             return ArrayFilteredView.from_mrc_splits(
                 [
-                    job_dir / "tomograms" / self.reconstructed_tomogram[0],
-                    job_dir / "tomograms" / self.reconstructed_tomogram[1],
+                    rln_dir / self.reconstructed_tomogram[0],
+                    rln_dir / self.reconstructed_tomogram[1],
                 ]
             )
         else:
-            return ArrayFilteredView.from_mrc(
-                job_dir / "tomograms" / self.reconstructed_tomogram[0]
-            )
+            return ArrayFilteredView.from_mrc(rln_dir / self.reconstructed_tomogram[0])
 
 
 class TomogramJobDirectory(JobDirectory):
@@ -426,6 +435,58 @@ class DenoiseJobDirectory(JobDirectory):
         star = _read_star_as_df(self.tomograms_star())
         for _, row in star.iterrows():
             yield TomogramInfo.from_series_denoised(row)
+
+
+class PickJobDirectory(JobDirectory):
+    """Class for handling particle picking job directories in RELION."""
+
+    _job_type = "relion.picktomo"
+
+    def tomo_and_particles_star(self) -> tuple[Path, Path]:
+        """Return the path to the tomogram and particles star file."""
+        path_opt = self.path / "optimisation_set.star"
+        opt_dict = starfile.read(path_opt)
+        particles_star = opt_dict["rlnTomoParticlesFile"].iloc[0]
+        df_pipeline = starfile.read(self.job_pipeline(), always_dict=True)
+        df_in = df_pipeline["pipeline_input_edges"]
+        df_types: pd.DataFrame = df_pipeline["pipeline_nodes"]
+        type_map = {
+            row["rlnPipeLineNodeName"]: row["rlnPipeLineNodeTypeLabel"]
+            for _, row in df_types.iterrows()
+        }
+        rln_dir = self.relion_project_dir
+        for input_path_rel in df_in["rlnPipeLineEdgeFromNode"]:
+            if type_map.get(input_path_rel) == "TomogramGroupMetadata.star.relion":
+                break
+        else:
+            raise ValueError(
+                "No tomogram group metadata found in pipeline input edges."
+            )
+        return rln_dir / input_path_rel, rln_dir / particles_star
+
+    def iter_tomogram(self) -> Iterator[TomogramInfo]:
+        """Iterate over all tilt series info."""
+        tomo_star, particles_star = self.tomo_and_particles_star()
+        star = _read_star_as_df(tomo_star)
+        df_particles = _read_star_as_df(particles_star)
+        for _, row in star.iterrows():
+            getter = self._make_get_particles(df_particles, row)
+            info = TomogramInfo.from_series(row)
+            info.get_particles = getter
+            yield info
+
+    def _make_get_particles(
+        self,
+        df_particles: pd.DataFrame,
+        row: pd.Series,
+    ) -> Callable[[], pd.DataFrame]:
+        """Create a function to get particles for a given tomogram."""
+
+        def get_particles() -> pd.DataFrame:
+            sl = df_particles["rlnTomoName"] == str(row["rlnTomoName"])
+            return df_particles[sl].reset_index(drop=True)
+
+        return get_particles
 
 
 @dataclass

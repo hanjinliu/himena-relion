@@ -29,6 +29,7 @@ dependencies = [
   "mrcfile",
   "tifffile",
   "watchfiles",
+  "superqt",
 ]
 
 [project.urls]
