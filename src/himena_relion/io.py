@@ -11,7 +11,7 @@ def read_relion_job(path: Path) -> WidgetDataModel:
     if job_star := _get_job_star(path):
         from himena_relion import _job
 
-        job_dir = _job.Refine3DJobDirectory.from_job_star(job_star)
+        job_dir = _job.JobDirectory.from_job_star(job_star)
         return WidgetDataModel(value=job_dir, type=Type.RELION_JOB)
     raise ValueError(f"Expected an existing job.star file, got {path}")
 

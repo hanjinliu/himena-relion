@@ -277,6 +277,17 @@ class ExcludeTiltSeriesJobDirectory(JobDirectory):
         for _, row in star.iterrows():
             yield SelectedTiltSeriesInfo.from_series(row)
 
+    def selected_tilt_series(self, tomoname: str) -> SelectedTiltSeriesInfo:
+        """Return the first corrected tilt series info."""
+        star = starfile.read(self.selected_tilt_series_star())
+        if not isinstance(star, pd.DataFrame):
+            raise TypeError(f"Expected a DataFrame, got {type(star)}")
+        star_filt = star[star["rlnTomoName"] == tomoname]
+        if len(star_filt) == 0:
+            raise ValueError(f"Tilt series {tomoname} not found in star file.")
+        row = star_filt.iloc[0]
+        return SelectedTiltSeriesInfo.from_series(row)
+
 
 @dataclass
 class AlignedTiltSeriesInfo(SelectedTiltSeriesInfo):

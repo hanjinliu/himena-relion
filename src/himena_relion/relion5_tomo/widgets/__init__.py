@@ -6,10 +6,10 @@ from himena_relion.relion5_tomo.widgets import (
     _import,
     _extract,
     _mask_create,
+    _tilt_series,
     _tomogram,
     _postprocess,
     _reconstruct,
-    _motioncor,
     _select,
 )
 
@@ -24,6 +24,6 @@ del (
     _mask_create,
     _postprocess,
     _reconstruct,
-    _motioncor,
+    _tilt_series,
     _select,
 )

@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from qtpy import QtWidgets as QtW, QtGui, QtCore
 import starfile
+from superqt import QToggleSwitch
 from superqt.utils import qthrottled
 from himena_relion import _job
 from himena.consts import MonospaceFontFamily
@@ -40,13 +41,35 @@ class QJobScrollArea(QtW.QScrollArea, JobWidgetBase):
         self._layout = layout
 
 
-class QLogWatcher(QtW.QTextEdit, JobWidgetBase):
+class QLogWatcher(QtW.QWidget, JobWidgetBase):
     def __init__(self, parent=None):
         super().__init__(parent)
+        layout = QtW.QVBoxLayout(self)
+        self._wordwrap_checkbox = QToggleSwitch("Word wrap")
+        self._wordwrap_checkbox.setChecked(False)
+        self._wordwrap_checkbox.toggled.connect(self._on_wordwrap_changed)
+        self._text_edit = QtW.QTextEdit()
         self.setFont(QtGui.QFont(MonospaceFontFamily, 10))
-        self.setReadOnly(True)
-        self.setLineWrapMode(QtW.QTextEdit.LineWrapMode.NoWrap)
-        self.setUndoRedoEnabled(False)
+        self._text_edit.setReadOnly(True)
+        self._text_edit.setWordWrapMode(QtGui.QTextOption.WrapMode.NoWrap)
+        self._text_edit.setUndoRedoEnabled(False)
+        layout.addWidget(self._wordwrap_checkbox)
+        layout.addWidget(self._text_edit)
+
+    def _on_wordwrap_changed(self, checked: bool):
+        if checked:
+            self._text_edit.setWordWrapMode(QtGui.QTextOption.WrapMode.WordWrap)
+        else:
+            self._text_edit.setWordWrapMode(QtGui.QTextOption.WrapMode.NoWrap)
+
+    def toPlainText(self) -> str:
+        return self._text_edit.toPlainText()
+
+    def setText(self, text: str):
+        self._text_edit.setPlainText(text)
+
+    def setReadOnly(self, readonly: bool):
+        self._text_edit.setReadOnly(readonly)
 
 
 class QRunOutLog(QLogWatcher):
@@ -80,7 +103,7 @@ class QNoteLog(QLogWatcher):
         super().__init__(parent)
         self.setReadOnly(False)
         self._job_dir: _job.JobDirectory | None = None
-        self.textChanged.connect(self._autosave_throttled)
+        self._text_edit.textChanged.connect(self._autosave_throttled)
 
     def on_job_updated(self, job_dir: _job.JobDirectory, fp: Path):
         """Handle updates to the job directory."""
