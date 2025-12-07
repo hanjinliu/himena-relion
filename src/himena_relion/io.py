@@ -1,9 +1,36 @@
 from __future__ import annotations
 
 from pathlib import Path
-from himena import WidgetDataModel
+import numpy as np
+from himena import StandardType, WidgetDataModel, create_image_model
+from himena.standards.model_meta import DimAxis
 from himena.plugins import register_reader_plugin
 from himena_relion.consts import Type
+
+
+@register_reader_plugin(priority=0)
+def read_density_map(path: Path) -> WidgetDataModel:
+    import mrcfile
+
+    with mrcfile.open(path, permissive=True) as mrc:
+        arr = np.asarray(mrc.data)
+        voxel_size = mrc.voxel_size
+    axes = [
+        DimAxis(name="z", scale=voxel_size.z, unit="Å"),
+        DimAxis(name="y", scale=voxel_size.y, unit="Å"),
+        DimAxis(name="x", scale=voxel_size.x, unit="Å"),
+    ]
+    return create_image_model(
+        arr,
+        axes=axes,
+        extension_default=".mrc",
+        force_open_with="himena-relion:Q3DViewer",
+    )
+
+
+@read_density_map.define_matcher
+def _(path: Path):
+    return StandardType.IMAGE
 
 
 @register_reader_plugin(priority=500)

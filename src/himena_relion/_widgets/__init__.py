@@ -1,3 +1,4 @@
+from himena import StandardType
 from himena.plugins import register_widget_class
 from himena_relion._widgets._main import register_job, QRelionJobWidget
 from himena_relion._widgets._job_widgets import JobWidgetBase, QJobScrollArea
@@ -19,3 +20,4 @@ __all__ = [
 ]
 
 register_widget_class(Type.RELION_JOB, QRelionJobWidget)
+register_widget_class(StandardType.IMAGE, Q3DViewer, priority=0)

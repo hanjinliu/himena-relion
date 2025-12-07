@@ -74,7 +74,7 @@ class QRelionJobWidget(QtW.QWidget):
 
     @validate_protocol
     def size_hint(self):
-        return 370, 420
+        return 420, 420
 
     @validate_protocol
     def widget_closed_callback(self):

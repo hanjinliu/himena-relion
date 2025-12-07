@@ -1,4 +1,5 @@
 from __future__ import annotations
+from pathlib import Path
 
 import numpy as np
 from functools import lru_cache
@@ -56,3 +57,8 @@ def threshold_yen(image: np.ndarray, nbins=256):
     # '-inf' in crit. ImageJ Yen implementation replaces those values by zero.
     crit = np.log(((P1_sq[:-1] * P2_sq[1:]) ** -1) * (P1[:-1] * (1.0 - P1[:-1])) ** 2)
     return bin_centers[crit.argmax()]
+
+
+def read_icon_svg(name: str) -> str:
+    path = Path(__file__).parent / "resources" / f"{name}.svg"
+    return path.read_text(encoding="utf-8")

@@ -17,7 +17,7 @@ class QCtfFindViewer(QJobScrollArea):
         super().__init__()
         self._job_dir: _job.CtfCorrectionJobDirectory = None
         layout = self._layout
-        self._defocus_canvas = QPlotCanvas()
+        self._defocus_canvas = QPlotCanvas(self)
         self._defocus_canvas.setFixedSize(360, 120)
         self._viewer = Q2DViewer(zlabel="Tilt index")
         self._ts_choice = QtW.QComboBox()

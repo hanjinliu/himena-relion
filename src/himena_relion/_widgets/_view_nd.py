@@ -1,10 +1,12 @@
 from __future__ import annotations
 from concurrent.futures import Future, ThreadPoolExecutor
 from typing import NamedTuple
+from himena import StandardType, WidgetDataModel
 import numpy as np
 from qtpy import QtWidgets as QtW, QtCore
 from superqt import ensure_main_thread, QLabeledDoubleSlider
 from himena.qt._qlineedit import QIntLineEdit, QDoubleLineEdit
+from himena.plugins import validate_protocol
 from himena_builtins.qt.widgets._shared import labeled
 from himena_builtins.qt.widgets._image_components import QHistogramView
 
@@ -147,6 +149,9 @@ class Q2DViewer(QtW.QWidget):
 
 
 class Q3DViewer(QtW.QWidget):
+    __himena_widget_id__ = "himena-relion:Q3DViewer"
+    __himena_display_name__ = "3D volume viewer"
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self._canvas = Vispy3DViewer()
@@ -154,6 +159,7 @@ class Q3DViewer(QtW.QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         self._iso_slider = QLabeledDoubleSlider(QtCore.Qt.Orientation.Horizontal)
         self._iso_slider.valueChanged.connect(self._on_iso_changed)
+        self._has_image = False
 
         layout.addWidget(self._canvas.native)
 
@@ -164,9 +170,11 @@ class Q3DViewer(QtW.QWidget):
         if image is None:
             self._canvas.image = np.zeros((2, 2, 2))
             self._canvas.image_visual.visible = False
+            self._has_image = False
         else:
             self._canvas.image = image
             self._canvas.image_visual.visible = True
+            self._has_image = True
         self._canvas.set_iso_threshold(self._iso_slider.value())
 
     def auto_threshold(self, thresh: float | None = None):
@@ -191,6 +199,32 @@ class Q3DViewer(QtW.QWidget):
 
     def _on_iso_changed(self, value: float):
         self._canvas.set_iso_threshold(value)
+
+    @validate_protocol
+    def update_model(self, model: WidgetDataModel):
+        arr = np.asarray(model.value, dtype=np.float32)
+        if arr.ndim != 3:
+            raise ValueError("Input array must be 3D.")
+        had_image = self._has_image
+        self.set_image(arr)
+        if not had_image:
+            self.auto_threshold()
+            self.auto_fit()
+
+    @validate_protocol
+    def model_type(self) -> str:
+        return StandardType.IMAGE
+
+    @validate_protocol
+    def to_model(self) -> WidgetDataModel:
+        return WidgetDataModel(
+            value=self._canvas.image,
+            type=StandardType.IMAGE,
+        )
+
+    @validate_protocol
+    def size_hint(self):
+        return 330, 350
 
 
 class Q2DFilterWidget(QtW.QWidget):
