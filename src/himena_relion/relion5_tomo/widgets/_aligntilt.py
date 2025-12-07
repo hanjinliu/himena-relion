@@ -62,7 +62,7 @@ class QAlignTiltSeriesViewer(QJobScrollArea):
         err = f"{info.imod_residual_error_mean:.2f} ± {info.imod_residual_error_stddev}"
         self._error_label.setText(f"Residual error: {err} nm")
         nbin = max(round(16 / info.tomo_tilt_series_pixel_size), 1)
-        ts_view = info.read_tilt_series(job_dir.path)
+        ts_view = info.read_tilt_series(job_dir.relion_project_dir)
         aligner = ImodImageAligner.from_xf(xf, nbin)
         self._viewer.set_array_view(ts_view.with_filter(aligner))
 

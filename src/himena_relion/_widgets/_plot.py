@@ -13,6 +13,20 @@ class QPlotCanvas(QModelMatplotlibCanvas):
         super().__init__()
         self.setFixedSize(340, 180)
 
+    def plot_defocus(self, df: pd.DataFrame):
+        fig = hplt.figure()
+
+        tilt_angle = df["rlnTomoNominalStageTiltAngle"]
+        defocus_u_um = df["rlnDefocusU"] / 10000
+        defocus_v_um = df["rlnDefocusV"] / 10000
+        fig.plot(tilt_angle, defocus_u_um, name="U")
+        fig.plot(tilt_angle, defocus_v_um, name="V")
+        fig.x.label = "Nominal stage tilt angle (°)"
+        fig.y.label = "Defocus (µm)"
+        fig.set_legend(font_size=9.0)
+        self.update_model(WidgetDataModel(value=fig, type=StandardType.PLOT))
+        self.tight_layout()
+
     def plot_fsc_refine(self, df: pd.DataFrame):
         x = df["rlnResolution"]
         xticklabels = df["rlnAngstromResolution"]

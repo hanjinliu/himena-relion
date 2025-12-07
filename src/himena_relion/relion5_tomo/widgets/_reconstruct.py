@@ -21,5 +21,5 @@ class QReconstructViewer(QJobScrollArea):
         """Initialize the viewer with the job directory."""
         img = job_dir.merged_mrc()
         self._viewer.set_image(img)
-        self._viewer.auto_threshold(0.5)
+        self._viewer.auto_threshold()
         self._viewer.auto_fit()

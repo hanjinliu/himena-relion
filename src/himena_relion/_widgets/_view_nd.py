@@ -167,6 +167,7 @@ class Q3DViewer(QtW.QWidget):
         else:
             self._canvas.image = image
             self._canvas.image_visual.visible = True
+        self._canvas.set_iso_threshold(self._iso_slider.value())
 
     def auto_threshold(self, thresh: float | None = None):
         """Automatically set the threshold based on the image data."""
@@ -174,7 +175,7 @@ class Q3DViewer(QtW.QWidget):
         if self._canvas.image_visual.visible:
             if thresh is None:
                 thresh = _utils.threshold_yen(img)
-            self._canvas.set_iso_threshold(thresh)
+            self._iso_slider.setValue(thresh)
             self._iso_slider.setRange(*self._canvas._lims)
 
     def auto_fit(self):

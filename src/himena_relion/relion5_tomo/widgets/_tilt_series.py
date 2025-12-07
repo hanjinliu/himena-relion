@@ -24,8 +24,8 @@ class QMotionCorrViewer(QJobScrollArea):
         self._ts_choice.currentTextChanged.connect(self._ts_choice_changed)
         layout.addWidget(QtW.QLabel("<b>Motion corrected tilt series</b>"))
         layout.addWidget(self._filter_widget)
-        layout.addWidget(self._viewer)
         layout.addWidget(self._ts_choice)
+        layout.addWidget(self._viewer)
         self._filter_widget.value_changed.connect(self._viewer.redraw)
         self._binsize_old = -1
 
@@ -70,7 +70,7 @@ class QMotionCorrViewer(QJobScrollArea):
 
         info = job_dir.corrected_tilt_series(text)
         self._filter_widget.set_image_scale(info.tomo_tilt_series_pixel_size)
-        ts_view = info.read_tilt_series(job_dir.path)
+        ts_view = info.read_tilt_series(job_dir.relion_project_dir)
         self._viewer.set_array_view(ts_view.with_filter(self._filter_widget.apply))
 
 
@@ -87,14 +87,14 @@ class QExcludeTiltViewer(QJobScrollArea):
         self._ts_choice.currentTextChanged.connect(self._ts_choice_changed)
         layout.addWidget(QtW.QLabel("<b>Selected tilt series</b>"))
         layout.addWidget(self._filter_widget)
-        layout.addWidget(self._viewer)
         layout.addWidget(self._ts_choice)
+        layout.addWidget(self._viewer)
         self._filter_widget.value_changed.connect(self._viewer.redraw)
         self._binsize_old = -1
 
     def on_job_updated(self, job_dir: _job.ExcludeTiltSeriesJobDirectory, path: str):
         """Handle changes to the job directory."""
-        if Path(path).suffix == ".mrc":
+        if Path(path).name == "selected_tilt_series.star":
             self._process_update(job_dir)
 
     def _param_changed(self):
@@ -114,8 +114,7 @@ class QExcludeTiltViewer(QJobScrollArea):
 
     def _process_update(self):
         choices = [
-            p.tomo_tilt_series_star_file.stem
-            for p in self._job_dir.iter_excluded_tilt_series()
+            p.tomo_tilt_series_star_file.stem for p in self._job_dir.iter_tilt_series()
         ]
         index = self._ts_choice.currentIndex()
         self._ts_choice.clear()
@@ -133,5 +132,5 @@ class QExcludeTiltViewer(QJobScrollArea):
 
         info = job_dir.selected_tilt_series(text)
         self._filter_widget.set_image_scale(info.tomo_tilt_series_pixel_size)
-        ts_view = info.read_tilt_series(job_dir.path)
+        ts_view = info.read_tilt_series(job_dir.relion_project_dir)
         self._viewer.set_array_view(ts_view.with_filter(self._filter_widget.apply))

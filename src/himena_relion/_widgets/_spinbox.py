@@ -27,6 +27,8 @@ class QIntWidget(QtW.QWidget):
         self._int_edit.valueChanged.connect(self._on_value_changed)
 
     def _on_value_changed(self, value: str):
+        if value == "":
+            return
         self.valueChanged.emit(int(value))
 
     def minimum(self) -> int:

@@ -137,6 +137,12 @@ class TiltSeriesInfo:
             tomo_hand=series.get("rlnTomoHand", 1),
         )
 
+    def read_tilt_series_star(self, job_dir: Path) -> pd.DataFrame:
+        """Read the tilt series star file."""
+        rln_job_dir = job_dir.parent.parent
+        df = _read_star_as_df(rln_job_dir / self.tomo_tilt_series_star_file)
+        return df
+
 
 class ImportJobDirectory(JobDirectory):
     """Class for handling import job directories in RELION."""
@@ -167,11 +173,14 @@ class CorrectedTiltSeriesInfo(TiltSeriesInfo):
         out.tomo_tilt_series_pixel_size = series.get("rlnTomoTiltSeriesPixelSize", -1.0)
         return out
 
-    def read_tilt_series(self, job_dir: Path) -> ArrayFilteredView:
+    def read_tilt_series(self, rln_dir: Path) -> ArrayFilteredView:
         """Read the tilt series from the file."""
-        rln_job_dir = job_dir.parent.parent
-        df = _read_star_as_df(rln_job_dir / self.tomo_tilt_series_star_file)
-        paths = [rln_job_dir / p for p in df["rlnMicrographName"]]
+        return self._read_image_series(rln_dir, "rlnMicrographName")
+
+    def _read_image_series(self, rln_dir: Path, column_name: str) -> ArrayFilteredView:
+        """Read the image series from the specified column in the star file."""
+        df = _read_star_as_df(rln_dir / self.tomo_tilt_series_star_file)
+        paths = [rln_dir / p for p in df[column_name]]
         if "rlnTomoNominalStageTiltAngle" in df:
             tilt_angles = df["rlnTomoNominalStageTiltAngle"]
             order = np.argsort(tilt_angles)
@@ -230,6 +239,25 @@ class MotionCorrectionJobDirectory(JobDirectory):
 # _rlnDefocusAngle #17
 # _rlnCtfFigureOfMerit #18
 # _rlnCtfMaxResolution #19
+class CtfCorrectedTiltSeriesInfo(CorrectedTiltSeriesInfo):
+    """Data class for CTF-corrected tilt series information."""
+
+    tomo_tilt_series_ctf_image: Path = Path("")
+
+    @classmethod
+    def from_series(cls, series: pd.Series) -> Self:
+        """Create a CtfCorrectedTiltSeriesInfo instance from a pandas Series."""
+        out = super().from_series(series)
+        out.tomo_tilt_series_ctf_image = Path(
+            series.get("rlnTomoTiltSeriesCtfImage", "")
+        )
+        return out
+
+    def read_ctf_series(self, rln_dir: Path) -> ArrayFilteredView:
+        """Read the tilt series from the file."""
+        return self._read_image_series(rln_dir, "rlnCtfImage")
+
+
 class CtfCorrectionJobDirectory(JobDirectory):
     """Class for handling CTF correction job directories in RELION."""
 
@@ -239,13 +267,13 @@ class CtfCorrectionJobDirectory(JobDirectory):
         """Return the path to the CTF-corrected tilt series star file."""
         return self.path / "tilt_series_ctf.star"
 
-    def iter_tilt_series_ctf(self) -> Iterator[CorrectedTiltSeriesInfo]:
+    def iter_tilt_series(self) -> Iterator[CtfCorrectedTiltSeriesInfo]:
         """Iterate over all CTF-corrected tilt series info."""
         star = starfile.read(self.tilt_series_ctf_star())
         if not isinstance(star, pd.DataFrame):
             raise TypeError(f"Expected a DataFrame, got {type(star)}")
         for _, row in star.iterrows():
-            yield CorrectedTiltSeriesInfo.from_series(row)
+            yield CtfCorrectedTiltSeriesInfo.from_series(row)
 
 
 @dataclass
@@ -269,7 +297,7 @@ class ExcludeTiltSeriesJobDirectory(JobDirectory):
         """Return the path to the selected tilt series star file."""
         return self.path / "selected_tilt_series.star"
 
-    def iter_excluded_tilt_series(self) -> Iterator[SelectedTiltSeriesInfo]:
+    def iter_tilt_series(self) -> Iterator[SelectedTiltSeriesInfo]:
         """Iterate over all excluded tilt series info."""
         star = starfile.read(self.selected_tilt_series_star())
         if not isinstance(star, pd.DataFrame):
@@ -707,6 +735,24 @@ class Class3DResults(_3DResultsBase):
         counts = self.particles()["rlnClassNumber"].value_counts().sort_index()
         ratio = counts / counts.sum()
         return {num: ratio.get(num, 0.0) for num in range(1, len(ratio) + 1)}
+
+    def summary_dataframe(self) -> pd.DataFrame | None:
+        starpath = self.path / f"run{self.it_str}_model.star"
+        try:
+            _dict = starfile.read(starpath)
+            return _dict["model_classes"]
+        except Exception as e:
+            _LOGGER.warning(f"Failed to read FSC data from {starpath}: {e}")
+            return None
+
+    def fsc_dataframe(self, class_id: int) -> pd.DataFrame | None:
+        starpath = self.path / f"run{self.it_str}_model.star"
+        try:
+            _dict = starfile.read(starpath)
+            return _dict[f"model_class_{class_id}"]
+        except Exception as e:
+            _LOGGER.warning(f"Failed to read FSC data from {starpath}: {e}")
+            return None
 
 
 class Class3DJobDirectory(JobDirectory):

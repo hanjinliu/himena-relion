@@ -139,9 +139,13 @@ class ArrayFromMrcs(ArrayFromFiles):
 
     def get_slice(self, index: int) -> Arr:
         path = self._paths[index]
+        sl = slice(None)
+        if path.name.endswith(":mrc"):  # Ctf
+            path = path.with_name(path.name[:-4])
+            sl = 0  # CTF files are (1, N, M) arrays
         with mrcfile.mmap(path, mode="r") as mrc:
             data = np.asarray(mrc.data)
-        return data
+        return data[sl]
 
 
 class ArrayFromTifs(ArrayFromFiles):

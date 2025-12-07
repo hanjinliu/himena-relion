@@ -9,8 +9,12 @@ from himena.plugins import register_config, config_field, get_config
 
 @dataclass
 class RelionConfig:
-    motioncor2 = config_field(default="", tooltip="Path to the MotionCor2 executable")
-    batchruntomo = config_field(
+    motioncor2: str = config_field(
+        default="", tooltip="Path to the MotionCor2 executable"
+    )
+    ctffind4: str = config_field(default="", tooltip="Path to the CTFFIND4 executable")
+    relion: str = config_field(default="", tooltip="Path to the RELION executable")
+    batchruntomo: str = config_field(
         default="", tooltip="Path to the batchruntomo executable"
     )
 

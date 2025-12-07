@@ -1,7 +1,7 @@
 from __future__ import annotations
 from pathlib import Path
 
-from qtpy import QtWidgets as QtW, QtCore, QtGui
+from qtpy import QtWidgets as QtW, QtGui
 from himena_relion._widgets import QJobScrollArea, Q3DViewer, register_job, QIntWidget
 from himena_relion import _job
 
@@ -10,25 +10,25 @@ from himena_relion import _job
 class QClass3DViewer(QJobScrollArea):
     def __init__(self):
         super().__init__()
+        self._text_edit = QtW.QTextEdit()
+        self._text_edit.setReadOnly(True)
+        self._text_edit.setWordWrapMode(QtGui.QTextOption.WrapMode.NoWrap)
+
         self._viewer = Q3DViewer()
         self._viewer.setFixedSize(300, 300)
-        self._percentage_label = QtW.QLabel("0%")
-        self._percentage_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
-        font = self._percentage_label.font()
-        font.setPointSize(8)
-        self._percentage_label.setFont(font)
-        self._percentage_label.setFixedSize(300, QtGui.QFontMetrics(font).height() + 2)
         self._class_choice = QIntWidget("Class", label_width=50)
         self._iter_choice = QIntWidget("Iteration", label_width=60)
         self._class_choice.setMinimum(1)
         self._iter_choice.setMinimum(0)
-        self._layout.addWidget(self._viewer)
-        self._layout.addWidget(self._percentage_label)
-        hor_layout = QtW.QHBoxLayout()
-        hor_layout.addWidget(self._iter_choice)
-        hor_layout.addWidget(self._class_choice)
-        hor_layout.setContentsMargins(0, 0, 0, 0)
-        self._layout.addLayout(hor_layout)
+        hor_layout0 = QtW.QHBoxLayout()
+        hor_layout0.addWidget(self._viewer)
+        hor_layout0.addWidget(self._text_edit)
+        self._layout.addLayout(hor_layout0)
+        hor_layout1 = QtW.QHBoxLayout()
+        hor_layout1.addWidget(self._iter_choice)
+        hor_layout1.addWidget(self._class_choice)
+        hor_layout1.setContentsMargins(0, 0, 0, 0)
+        self._layout.addLayout(hor_layout1)
         self._index_start = 1
         self._job_dir: _job.Class3DJobDirectory | None = None
 
@@ -56,6 +56,8 @@ class QClass3DViewer(QJobScrollArea):
 
     def _on_iter_changed(self, value: int):
         self._update_for_value(value, self._class_choice.value())
+        self._text_edit.clear()
+        self._print_summary_table(value)
 
     def _on_class_changed(self, value: int):
         self._update_for_value(self._iter_choice.value(), value)
@@ -64,5 +66,26 @@ class QClass3DViewer(QJobScrollArea):
         res = self._job_dir.get_result(niter)
         map0 = res.class_map(class_id - self._index_start)
         self._viewer.set_image(map0)
-        ratio = res.value_ratio()[class_id]
-        self._percentage_label.setText(f"{ratio * 100:.2f}%")
+
+    def _print_summary_table(self, niter):
+        cursor = self._text_edit.textCursor()
+        res = self._job_dir.get_result(niter)
+        df = res.summary_dataframe()
+        if df is None:
+            return
+
+        nclasses = len(df)
+        if texttable := cursor.insertTable(nclasses + 1, 3):
+            _insert(texttable, 0, 0, "Class")
+            _insert(texttable, 0, 1, "Distribution")
+            _insert(texttable, 0, 2, "Resolution")
+            for ith in range(nclasses):
+                _insert(texttable, ith + 1, 0, str(ith + 1))
+                _insert(texttable, ith + 1, 1, f"{df.iloc[ith, 1]:.2%}")
+                _insert(texttable, ith + 1, 2, f"{df.iloc[ith, 4]:.2f} Å")
+        cursor.movePosition(QtGui.QTextCursor.MoveOperation.End)
+        cursor.insertText("\n\n")
+
+
+def _insert(texttable: QtGui.QTextTable, row: int, col: int, text: str):
+    texttable.cellAt(row, col).firstCursorPosition().insertText(text)
