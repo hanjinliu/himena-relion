@@ -225,7 +225,7 @@ class QRelionNodeItem(QtW.QWidget):
             else:
                 self._filepath_rel = filepath
                 widget_dir = QFileLabel()
-            widget_dir.setFixedWidth(155)
+            widget_dir.setFixedWidth(170)
             layout.addWidget(widget_dir)
         else:
             self._filepath_rel = Path(*filepath.parts[-3:])
@@ -234,6 +234,7 @@ class QRelionNodeItem(QtW.QWidget):
             path=filepath,
             path_rel=self._filepath_rel,
             icon_label=self.item_icon_label(),
+            text=self._filepath.name if show_dir else None,
         )
         if widget_file._enabled:
             widget_file.dragged.connect(self._drag_file_event)
@@ -349,6 +350,7 @@ class QFileLabel(QtW.QWidget):
         path: Path | None = None,
         path_rel: Path | None = None,
         icon_label: QtW.QLabel | None = None,
+        text: str | None = None,
     ):
         super().__init__()
         self._path = path
@@ -361,7 +363,10 @@ class QFileLabel(QtW.QWidget):
         self._pressed_pos = QtCore.QPoint()
         self._enabled = False
         if path and path_rel:
-            qlabel = QtW.QLabel(path_rel.as_posix())
+            if text:
+                qlabel = QtW.QLabel(text)
+            else:
+                qlabel = QtW.QLabel(path_rel.as_posix())
             if not path.exists():
                 qlabel.setStyleSheet("color: gray;")
             else:

@@ -25,11 +25,13 @@ classifiers = [
 ]
 dependencies = [
   "starfile>=0.5.13",
-  "vispy",
-  "mrcfile",
-  "tifffile",
-  "watchfiles",
-  "superqt",
+  "vispy>=0.15.2",
+  "mrcfile>=1.5.4",
+  "tifffile>=2025.10.16",
+  "watchfiles>=1.1.0",
+  "superqt>=0.7.6",
+  "himena>=0.1.3",
+  "matplotlib>=3.7.2",
 ]
 
 [project.urls]
