@@ -80,7 +80,9 @@ class QRunOutLog(QLogWatcher):
             self.initialize(job_dir)
 
     def initialize(self, job_dir: _job.JobDirectory):
-        self.setText(job_dir.run_out().read_text(encoding="utf-8"))
+        with open(job_dir.run_out(), encoding="utf-8", newline="\n") as f:
+            text = f.read()
+        self.setText(text)
 
     def tab_title(self) -> str:
         return "run.out"
@@ -319,7 +321,7 @@ class QJobStateLabel(QtW.QWidget, JobWidgetBase):
             case _job.RelionJobState.ABORT_NOW:
                 self._state_label.setText("Aborting ...")
             case _:
-                self._state_label.setText("Unknown")
+                self._state_label.setText("Running ...")
 
 
 class QFileLabel(QtW.QWidget):

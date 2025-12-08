@@ -11,7 +11,7 @@ class RelionJobState(Enum):
     EXIT_FAILURE = "exit_failure"
     EXIT_ABORTED = "exit_aborted"
     ABORT_NOW = "abort_now"
-    ELSE = "else"
+    RUNNING = "else"
 
 
 JOB_ID_MAP = {

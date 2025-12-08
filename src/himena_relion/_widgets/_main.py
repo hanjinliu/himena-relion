@@ -3,12 +3,13 @@ from pathlib import Path
 from typing import Callable, Iterator, TypeVar
 import logging
 
-from himena import WidgetDataModel
 from qtpy import QtWidgets as QtW, QtCore
 from superqt.utils import thread_worker, GeneratorWorker
 from watchfiles import watch
 
+from himena import WidgetDataModel
 from himena.plugins import validate_protocol
+from himena_builtins.qt.widgets._shared import spacer_widget
 from himena_relion import _job
 from himena_relion._widgets._job_widgets import (
     JobWidgetBase,
@@ -37,6 +38,7 @@ class QRelionJobWidget(QtW.QWidget):
         layout.addWidget(self._tab_widget)
         self._watcher: GeneratorWorker | None = None
         self.job_updated.connect(self._on_job_updated)
+        self._control: QRelionJobControl | None = None
 
     @validate_protocol
     def update_model(self, model: WidgetDataModel):
@@ -81,6 +83,13 @@ class QRelionJobWidget(QtW.QWidget):
     @validate_protocol
     def size_hint(self):
         return 420, 420
+
+    @validate_protocol
+    def control_widget(self) -> QRelionJobControl | None:
+        """Return the control widget for the job."""
+        if self._control is None:
+            self._control = QRelionJobControl(self)
+        return self._control
 
     @validate_protocol
     def widget_closed_callback(self):
@@ -167,3 +176,24 @@ def register_job(job_type: type[_job.JobDirectory]) -> Callable[[_T], _T]:
         return widget_cls
 
     return inner
+
+
+class QRelionJobControl(QtW.QWidget):
+    """Control widget for QRelionJobWidget."""
+
+    def __init__(self, job_widget: QRelionJobWidget):
+        super().__init__()
+        self._job_widget = job_widget
+        layout = QtW.QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        self._abort_button = QtW.QPushButton("Abort Job")
+        layout.addWidget(spacer_widget())
+        layout.addWidget(self._abort_button)
+
+        self._abort_button.clicked.connect(self._on_abort_clicked)
+
+    def _on_abort_clicked(self):
+        if job_dir := self._job_widget._job_dir:
+            if job_dir.state() == _job.RelionJobState.EXIT_SUCCESS:
+                raise RuntimeError("Cannot abort a finished job.")
+            job_dir.path.joinpath("RELION_JOB_ABORT_NOW").touch()

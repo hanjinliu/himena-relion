@@ -48,6 +48,10 @@ class Q2DViewer(QtW.QWidget):
         layout.addWidget(self._histogram_view)
         self._dims_slider.valueChanged.connect(self._on_slider_changed)
 
+    def clear(self):
+        self._array_view = None
+        self._points = np.empty((0, 3), dtype=np.float32)
+
     def set_array_view(
         self,
         image: np.ndarray | ArrayFilteredView,
@@ -94,6 +98,11 @@ class Q2DViewer(QtW.QWidget):
             else:
                 self._last_future = self._executor.submit(self._get_image_slice, value)
                 self._last_future.add_done_callback(self._on_calc_slice_done)
+        else:
+            self._canvas.image = np.zeros((2, 2), dtype=np.float32)
+            self._histogram_view.set_hist_for_array(
+                np.zeros((2, 2), dtype=np.float32), (0.0, 1.0)
+            )
 
     def _get_image_slice(self, slider_value: int) -> SliceResult:
         slice_image = np.asarray(self._array_view.get_slice(slider_value))

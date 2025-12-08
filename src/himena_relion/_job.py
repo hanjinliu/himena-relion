@@ -105,7 +105,7 @@ class JobDirectory:
         elif self.path.joinpath("RELION_JOB_ABORT_NOW").exists():
             return RelionJobState.ABORT_NOW
         else:
-            return RelionJobState.ELSE
+            return RelionJobState.RUNNING
 
     def get_job_param(self, param: str) -> str:
         dfs = starfile.read(self.job_star(), always_dict=True)

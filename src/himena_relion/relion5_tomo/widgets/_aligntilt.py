@@ -38,11 +38,14 @@ class QAlignTiltSeriesViewer(QJobScrollArea):
         for imod_dir in job_dir.path.joinpath("external").glob("*"):
             if imod_dir.joinpath(f"{imod_dir.name}.xf").exists():
                 choices.append(imod_dir.name)
+        choices.sort()
         text = self._ts_choice.currentText()
         self._ts_choice.clear()
         self._ts_choice.addItems(choices)
         if text in choices:
             self._ts_choice.setCurrentText(text)
+        elif choices == []:
+            self._viewer.clear()
 
     def _ts_choice_changed(self, text: str):
         """Update the viewer when the selected tomogram changes."""
