@@ -39,7 +39,8 @@ class Vispy2DViewer(VispyViewerBase):
 
         # initialize image visual
         self._image = VispyImage(cmap="gray", parent=self._viewbox.scene)
-        self._image.set_data(np.zeros((0, 0), dtype=np.float32))
+        self._image.set_data(np.zeros((1, 1), dtype=np.float32))
+        self._image.visible = False
         self._markers = VispyMarkers(
             pos=np.ones((1, 2), dtype=np.float32), scaling=True, face_color=np.zeros(4),
             edge_color="lime", size=10, parent=self._viewbox.scene
@@ -104,6 +105,7 @@ class Vispy3DViewer(VispyViewerBase):
             interpolation="linear",
             method="iso",
         )
+        self._volume_visual.visible = False
         self._scene.events.mouse_double_click.connect(lambda event: self.auto_fit())
 
     @property

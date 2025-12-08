@@ -37,12 +37,14 @@ class Q2DViewer(QtW.QWidget):
         self._array_view = None
         self._points = np.empty((0, 3), dtype=np.float32)
         self._dims_slider = QtW.QSlider(QtCore.Qt.Orientation.Horizontal, self)
+        self._dims_slider.setMaximum(0)
         self._histogram_view = QHistogramView()
         self._histogram_view.clim_changed.connect(self._on_clim_changed)
         self._histogram_view.setFixedHeight(36)
         self._zpos_box = QIntWidget("", label_width=0)
         self._zpos_box.valueChanged.connect(self._on_zpos_box_changed)
         self._zpos_box.setFixedWidth(90)
+        self._zpos_box.setMaximum(0)
 
         layout.addWidget(labeled(zlabel, self._dims_slider, self._zpos_box))
         layout.addWidget(self._histogram_view)
