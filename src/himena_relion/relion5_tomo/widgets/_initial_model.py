@@ -34,7 +34,8 @@ class QInitialModelViewer(QJobScrollArea):
 
     def on_job_updated(self, job_dir: _job.InitialModel3DJobDirectory, path: str):
         """Handle changes to the job directory."""
-        self.initialize(job_dir)
+        if path.suffix == ".mrc":
+            self.initialize(job_dir)
 
     def initialize(self, job_dir: _job.InitialModel3DJobDirectory):
         """Initialize the viewer with the job directory."""

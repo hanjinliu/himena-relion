@@ -26,7 +26,7 @@ class QAlignTiltSeriesViewer(QJobScrollArea):
 
     def on_job_updated(self, job_dir: _job.AlignTiltSeriesJobDirectory, path: str):
         """Handle changes to the job directory."""
-        if Path(path).suffix == ".mrc":
+        if Path(path).suffix == ".xf":
             self._process_update(job_dir)
 
     def initialize(self, job_dir: _job.AlignTiltSeriesJobDirectory):
