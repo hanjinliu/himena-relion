@@ -18,11 +18,9 @@ class QAlignTiltSeriesViewer(QJobScrollArea):
         self._viewer = Q2DViewer(zlabel="Tilt index")
         self._ts_choice = QtW.QComboBox()
         self._ts_choice.currentTextChanged.connect(self._ts_choice_changed)
-        self._error_label = QtW.QLabel("Residual error: N/A")
         layout.addWidget(QtW.QLabel("<b>Aligned tilt series</b>"))
         layout.addWidget(self._ts_choice)
         layout.addWidget(self._viewer)
-        layout.addWidget(self._error_label)
 
     def on_job_updated(self, job_dir: _job.AlignTiltSeriesJobDirectory, path: str):
         """Handle changes to the job directory."""
@@ -32,21 +30,19 @@ class QAlignTiltSeriesViewer(QJobScrollArea):
     def initialize(self, job_dir: _job.AlignTiltSeriesJobDirectory):
         """Initialize the viewer with the job directory."""
         self._job_dir = job_dir
-        self._process_update()
+        self._process_update(job_dir)
         self._viewer.auto_fit()
 
-    def _process_update(self):
-        choices = [
-            p.tomo_tilt_series_star_file.stem
-            for p in self._job_dir.iter_aligned_tilt_series()
-        ]
-        index = self._ts_choice.currentIndex()
+    def _process_update(self, job_dir: _job.AlignTiltSeriesJobDirectory):
+        choices: list[str] = []
+        for imod_dir in job_dir.path.joinpath("external").glob("*"):
+            if imod_dir.joinpath(f"{imod_dir.name}.xf").exists():
+                choices.append(imod_dir.name)
+        text = self._ts_choice.currentText()
         self._ts_choice.clear()
         self._ts_choice.addItems(choices)
-        if choices:
-            self._ts_choice.setCurrentIndex(
-                min(index if index >= 0 else 0, len(choices) - 1)
-            )
+        if text in choices:
+            self._ts_choice.setCurrentText(text)
 
     def _ts_choice_changed(self, text: str):
         """Update the viewer when the selected tomogram changes."""
@@ -58,13 +54,22 @@ class QAlignTiltSeriesViewer(QJobScrollArea):
         if not xf.exists():
             return
 
-        info = job_dir.aligned_tilt_series(text)
-        err = f"{info.imod_residual_error_mean:.2f} ± {info.imod_residual_error_stddev}"
-        self._error_label.setText(f"Residual error: {err} nm")
-        nbin = max(round(16 / info.tomo_tilt_series_pixel_size), 1)
-        ts_view = info.read_tilt_series(job_dir.relion_project_dir)
-        aligner = ImodImageAligner.from_xf(xf, nbin)
-        self._viewer.set_array_view(ts_view.with_filter(aligner))
+        # Don't use the tilt series inside IMOD project directories. They are redundant
+        # and can be deleted by users after this job finished.
+        pipeline = job_dir.parse_job_pipeline()
+        if node := pipeline.get_input_by_type("TomogramGroupMetadata.star.relion"):
+            tilt_job_dir = _job.JobDirectory.from_job_star(
+                job_dir.relion_project_dir / node.path_job / "job.star"
+            )
+            for info in tilt_job_dir.iter_tilt_series():
+                if info.tomo_name == text:
+                    break
+            else:
+                raise ValueError(f"Tilt series {text} not found.")
+            nbin = max(round(16 / info.tomo_tilt_series_pixel_size), 1)
+            ts_view = info.read_tilt_series(job_dir.relion_project_dir)
+            aligner = ImodImageAligner.from_xf(xf, nbin)
+            self._viewer.set_array_view(ts_view.with_filter(aligner))
 
 
 class ImodImageAligner:
@@ -96,4 +101,5 @@ class ImodImageAligner:
         )
         mat = t @ np.linalg.inv(mat) @ np.linalg.inv(t)
         imgb = _utils.bin_image(img, self._nbin)
-        return ndi.affine_transform(imgb.astype(np.float32), mat, order=1, cval=0)
+        cval = np.mean(imgb[::50])
+        return ndi.affine_transform(imgb.astype(np.float32), mat, order=1, cval=cval)

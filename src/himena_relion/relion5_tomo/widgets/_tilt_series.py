@@ -51,8 +51,7 @@ class QMotionCorrViewer(QJobScrollArea):
 
     def _process_update(self):
         choices = [
-            p.tomo_tilt_series_star_file.stem
-            for p in self._job_dir.iter_corrected_tilt_series()
+            p.tomo_tilt_series_star_file.stem for p in self._job_dir.iter_tilt_series()
         ]
         index = self._ts_choice.currentIndex()
         self._ts_choice.clear()

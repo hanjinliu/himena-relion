@@ -8,7 +8,7 @@ from himena.qt._qflowchart import QFlowChartWidget, BaseNodeItem
 from himena.plugins import validate_protocol
 from himena.style import Theme
 from himena_relion.consts import Type, JOB_ID_MAP
-from himena_relion._pipeline import RelionPipeline, RelionJobInfo, NodeStatus
+from himena_relion._pipeline import RelionDefaultPipeline, RelionJobInfo, NodeStatus
 
 
 class RelionJobNodeItem(BaseNodeItem):
@@ -53,7 +53,7 @@ class QRelionPipelineFlowChart(QFlowChartWidget):
         super().__init__()
         # self.view.item_right_clicked.connect(self._on_right_clicked)
         self._ui = ui
-        self._pipeline = RelionPipeline([])
+        self._pipeline = RelionDefaultPipeline([])
         self._relion_project_dir: Path = Path.cwd()
         self.view.item_left_double_clicked.connect(self._on_item_double_clicked)
 
@@ -81,7 +81,7 @@ class QRelionPipelineFlowChart(QFlowChartWidget):
     def theme_changed_callback(self, theme: Theme) -> None:
         self.setBackgroundBrush(QtGui.QColor(Color(theme.background).hex))
 
-    def add_pipeline(self, pipeline: RelionPipeline) -> None:
+    def add_pipeline(self, pipeline: RelionDefaultPipeline) -> None:
         for info in pipeline._nodes:
             if info.path not in self.view._node_map:
                 self._add_job_node_item(info)

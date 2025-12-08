@@ -58,9 +58,15 @@ class QRelionJobWidget(QtW.QWidget):
         self.add_job_widget(QRunOutLog())
         self.add_job_widget(QRunErrLog())
         self.add_job_widget(QNoteLog())
-        self._state_widget.initialize(job_dir)
+        try:
+            self._state_widget.initialize(job_dir)
+        except Exception as e:
+            _LOGGER.error(f"Failed to initialize job state widget: {e!r}")
         for wdt in self._iter_job_widgets():
-            wdt.initialize(job_dir)
+            try:
+                wdt.initialize(job_dir)
+            except Exception as e:
+                _LOGGER.error(f"Failed to initialize job widget {wdt!r}: {e!r}")
 
     @validate_protocol
     def to_model(self) -> WidgetDataModel:

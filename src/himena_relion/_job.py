@@ -11,6 +11,7 @@ import starfile
 import mrcfile
 from himena_relion._image_readers._array import ArrayFilteredView
 from himena_relion.consts import RelionJobState, JOB_ID_MAP
+from himena_relion._pipeline import RelionPipeline
 
 if TYPE_CHECKING:
     from typing import Self
@@ -82,6 +83,9 @@ class JobDirectory:
         """Return the path to the job's pipeline control file."""
         return self.path / "job_pipeline.star"
 
+    def parse_job_pipeline(self) -> RelionPipeline:
+        return RelionPipeline.from_file(self.job_pipeline())
+
     def default_pipeline(self) -> Path:
         """Return the default pipeline control file."""
         return self.path / "default_pipeline.star"
@@ -109,6 +113,12 @@ class JobDirectory:
         sl = df["rlnJobOptionVariable"] == param
         return df[sl]["rlnJobOptionValue"].iloc[0]
 
+    def iter_tilt_series(self) -> Iterator[TiltSeriesInfo]:
+        """Iterate over all tilt series info."""
+        raise NotImplementedError(
+            f"iter_tilt_series not implemented for {self.__class__.__name__}"
+        )
+
 
 @dataclass
 class TiltSeriesInfo:
@@ -119,6 +129,7 @@ class TiltSeriesInfo:
     amplitude_contrast: float = -1.0
     micrograph_original_pixel_size: float = -1.0
     tomo_hand: Literal[1, -1] = 1
+    tomo_tilt_series_pixel_size: float = -1.0
 
     @classmethod
     def from_series(cls, series: pd.Series) -> Self:
@@ -143,6 +154,23 @@ class TiltSeriesInfo:
         df = _read_star_as_df(rln_job_dir / self.tomo_tilt_series_star_file)
         return df
 
+    def read_tilt_series(self, rln_dir: Path) -> ArrayFilteredView:
+        """Read the tilt series from the file."""
+        return self._read_image_series(rln_dir, "rlnMicrographName")
+
+    def _read_image_series(self, rln_dir: Path, column_name: str) -> ArrayFilteredView:
+        """Read the image series from the specified column in the star file."""
+        df = _read_star_as_df(rln_dir / self.tomo_tilt_series_star_file)
+        paths = [rln_dir / p for p in df[column_name]]
+        if "rlnTomoNominalStageTiltAngle" in df:
+            tilt_angles = df["rlnTomoNominalStageTiltAngle"]
+            order = np.argsort(tilt_angles)
+            paths = [paths[i] for i in order]
+            df = df.iloc[order].reset_index(drop=True)
+        view = ArrayFilteredView.from_mrcs(paths)
+        view.dataframe = df
+        return view
+
 
 class ImportJobDirectory(JobDirectory):
     """Class for handling import job directories in RELION."""
@@ -164,31 +192,12 @@ class ImportJobDirectory(JobDirectory):
 
 @dataclass
 class CorrectedTiltSeriesInfo(TiltSeriesInfo):
-    tomo_tilt_series_pixel_size: float = -1.0
-
     @classmethod
     def from_series(cls, series: pd.Series) -> Self:
         """Create a CorrectedTiltSeriesInfo instance from a pandas Series."""
         out = super().from_series(series)
         out.tomo_tilt_series_pixel_size = series.get("rlnTomoTiltSeriesPixelSize", -1.0)
         return out
-
-    def read_tilt_series(self, rln_dir: Path) -> ArrayFilteredView:
-        """Read the tilt series from the file."""
-        return self._read_image_series(rln_dir, "rlnMicrographName")
-
-    def _read_image_series(self, rln_dir: Path, column_name: str) -> ArrayFilteredView:
-        """Read the image series from the specified column in the star file."""
-        df = _read_star_as_df(rln_dir / self.tomo_tilt_series_star_file)
-        paths = [rln_dir / p for p in df[column_name]]
-        if "rlnTomoNominalStageTiltAngle" in df:
-            tilt_angles = df["rlnTomoNominalStageTiltAngle"]
-            order = np.argsort(tilt_angles)
-            paths = [paths[i] for i in order]
-            df = df.iloc[order].reset_index(drop=True)
-        view = ArrayFilteredView.from_mrcs(paths)
-        view.dataframe = df
-        return view
 
 
 class MotionCorrectionJobDirectory(JobDirectory):
@@ -200,7 +209,7 @@ class MotionCorrectionJobDirectory(JobDirectory):
         """Return the path to the motion-corrected tilt series star file."""
         return self.path / "corrected_tilt_series.star"
 
-    def iter_corrected_tilt_series(self) -> Iterator[CorrectedTiltSeriesInfo]:
+    def iter_tilt_series(self) -> Iterator[CorrectedTiltSeriesInfo]:
         """Iterate over all motion correction info."""
         star = starfile.read(self.corrected_tilt_series_star())
         if not isinstance(star, pd.DataFrame):
@@ -486,22 +495,12 @@ class PickJobDirectory(JobDirectory):
         path_opt = self.path / "optimisation_set.star"
         opt_dict = starfile.read(path_opt)
         particles_star = opt_dict["rlnTomoParticlesFile"].iloc[0]
-        df_pipeline = starfile.read(self.job_pipeline(), always_dict=True)
-        df_in = df_pipeline["pipeline_input_edges"]
-        df_types: pd.DataFrame = df_pipeline["pipeline_nodes"]
-        type_map = {
-            row["rlnPipeLineNodeName"]: row["rlnPipeLineNodeTypeLabel"]
-            for _, row in df_types.iterrows()
-        }
+
+        job_pipeline = self.parse_job_pipeline()
         rln_dir = self.relion_project_dir
-        for input_path_rel in df_in["rlnPipeLineEdgeFromNode"]:
-            if type_map.get(input_path_rel) == "TomogramGroupMetadata.star.relion":
-                break
-        else:
-            raise ValueError(
-                "No tomogram group metadata found in pipeline input edges."
-            )
-        return rln_dir / input_path_rel, rln_dir / particles_star
+        if node := job_pipeline.get_input_by_type("TomogramGroupMetadata.star.relion"):
+            return rln_dir / node.path, rln_dir / particles_star
+        raise ValueError("No tomogram found in pipeline input edges.")
 
     def iter_tomogram(self) -> Iterator[TomogramInfo]:
         """Iterate over all tilt series info."""

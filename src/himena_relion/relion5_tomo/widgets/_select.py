@@ -27,6 +27,12 @@ class QSelectJobBase(QJobScrollArea):
         if Path(path).suffix not in [".out", ".err", ".star"]:
             self.initialize(job_dir)
 
+    def _print_running(self):
+        self._text_edit.setText("Job is running...")
+
+    def _print_file_broken(self):
+        self._text_edit.setText("Output file is broken or missing.")
+
     def _print_summary_table(self, n_selected: int, n_removed: int, n_all: int):
         cursor = self._text_edit.textCursor()
         if texttable := cursor.insertTable(3, 3):
@@ -54,12 +60,16 @@ class QRemoveDuplicatesViewer(QSelectJobBase):
         self._job_dir = job_dir
         self._text_edit.clear()
         self._text_edit.setFixedHeight(220)
-        df_selected = starfile.read(job_dir.particles_star(), always_dict=True).get(
-            "particles", None
-        )
+        path_sel = job_dir.particles_star()
+        path_rem = job_dir.particles_removed_star()
+        if not (path_sel.exists() and path_rem.exists()):
+            return self._print_running()
+        df_selected = starfile.read(path_sel, always_dict=True).get("particles", None)
         if df_selected is None:
-            return
-        df_removed = starfile.read(job_dir.particles_removed_star())
+            return self._print_file_broken()
+        df_removed = starfile.read(path_rem)
+        if df_removed is None:
+            return self._print_file_broken()
         n_selected = df_selected.shape[0]
         n_removed = df_removed.shape[0]
         n_all = n_selected + n_removed
@@ -74,30 +84,28 @@ class QSelectInteractiveViewer(QSelectJobBase):
 
         self._text_edit.clear()
         self._text_edit.setFixedHeight(400)
-        cursor = self._text_edit.textCursor()
+        path_all = job_dir.particles_pre_star()
+        path_sel = job_dir.particles_star()
 
-        df_all = starfile.read(job_dir.particles_pre_star(), always_dict=True).get(
-            "particles", None
-        )
+        df_all = starfile.read(path_all, always_dict=True).get("particles", None)
         if df_all is None:
-            return
-        df_selected = starfile.read(job_dir.particles_star(), always_dict=True).get(
-            "particles", None
-        )
+            return self._print_file_broken()
+        df_selected = starfile.read(path_sel, always_dict=True).get("particles", None)
         if df_selected is None:
-            return
+            return self._print_file_broken()
         n_all = df_all.shape[0]
         if n_all == 0:
             return
         n_selected = df_selected.shape[0]
         n_removed = n_all - n_selected
+        cursor = self._text_edit.textCursor()
 
         cursor.insertHtml("<h2>Summary</h2>")
         self._print_summary_table(n_selected, n_removed, n_all)
 
         is_selected = job_dir.is_selected_array()
         if is_selected is None:
-            return
+            return self._print_file_broken()
 
         # print selected and removed images in the text edit
         images_selected: list[tuple[Path, np.ndarray | None]] = []

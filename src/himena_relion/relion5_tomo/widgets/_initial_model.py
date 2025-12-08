@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from qtpy import QtWidgets as QtW
 from himena_relion._widgets import QJobScrollArea, Q3DViewer, register_job, QIntWidget
 from himena_relion import _job
@@ -34,7 +35,7 @@ class QInitialModelViewer(QJobScrollArea):
 
     def on_job_updated(self, job_dir: _job.InitialModel3DJobDirectory, path: str):
         """Handle changes to the job directory."""
-        if path.suffix == ".mrc":
+        if Path(path).suffix == ".mrc":
             self.initialize(job_dir)
 
     def initialize(self, job_dir: _job.InitialModel3DJobDirectory):

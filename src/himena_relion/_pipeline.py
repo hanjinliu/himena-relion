@@ -2,12 +2,12 @@ from __future__ import annotations
 from typing import Sequence
 from enum import Enum
 from pathlib import Path
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import starfile
 import pandas as pd
 
 
-class RelionPipeline(Sequence["RelionJobInfo"]):
+class RelionDefaultPipeline(Sequence["RelionJobInfo"]):
     def __init__(self, nodes: list[RelionJobInfo]):
         self._nodes = nodes
 
@@ -21,7 +21,7 @@ class RelionPipeline(Sequence["RelionJobInfo"]):
         return iter(self._nodes)
 
     @classmethod
-    def from_pipeline_star(cls, star_path: Path) -> RelionPipeline:
+    def from_pipeline_star(cls, star_path: Path) -> RelionDefaultPipeline:
         dfs = starfile.read(star_path, always_dict=True)
 
         # |rlnPipeLineProcessName|rlnPipeLineProcessAlias|rlnPipeLineProcessTypeLabel|rlnPipeLineProcessStatusLabel
@@ -43,7 +43,7 @@ class RelionPipeline(Sequence["RelionJobInfo"]):
                 path=Path(path),
                 type_label=type_label,
                 parents=[],
-                status=NodeStatus(NodeStatus(status.lower())),
+                status=NodeStatus(status.lower()),
             )
             nodes[Path(path)] = node
 
@@ -79,3 +79,97 @@ class RelionJobInfo:
 class RelionOutputFile:
     node: RelionJobInfo
     filename: str
+
+
+### job_pipeline.star ###
+
+
+@dataclass
+class RelionJobPipelineNode:
+    path_file: Path  # like xxx.star
+    path_job: Path | None = None  # relative path like Class3D/job009
+    type_label: str | None = None
+
+    @property
+    def path(self) -> Path:
+        """Return the full path (maybe relative) of the node."""
+        if self.path_job is None:
+            return self.path_file
+        return self.path_job / self.path_file
+
+    @classmethod
+    def from_file_path(
+        cls,
+        path: str,
+        type_label: str | None = None,
+    ) -> RelionJobPipelineNode:
+        path_obj = Path(path)
+        if (
+            len(path_obj.parts) == 1
+            or path_obj.is_absolute()
+            or not path_obj.parent.name.startswith("job")
+        ):
+            # probably not inside a job directory
+            return cls(path_obj, None, type_label)
+        else:
+            return cls(Path(path_obj.name), path_obj.parent, type_label)
+
+
+@dataclass
+class RelionPipeline:
+    process_name: str
+    process_type_label: str
+    process_alias: str | None = None
+    inputs: list[RelionJobPipelineNode] = field(default_factory=list)
+    outputs: list[RelionJobPipelineNode] = field(default_factory=list)
+
+    def get_input_by_type(self, type_label: str) -> RelionJobPipelineNode | None:
+        """Get input nodes by type label."""
+        for node in self.inputs:
+            if node.type_label == type_label:
+                return node
+        return None
+
+    @classmethod
+    def from_file(cls, path: str | Path) -> RelionPipeline:
+        df_all = starfile.read(path, always_dict=True)
+        assert isinstance(df_all, dict)
+        df_processes = df_all.get("pipeline_processes")
+        assert isinstance(df_processes, pd.DataFrame)
+        process_name = df_processes["rlnPipeLineProcessName"].iloc[0]
+        process_alias = df_processes["rlnPipeLineProcessAlias"].iloc[0]
+        process_type_label = df_processes["rlnPipeLineProcessTypeLabel"].iloc[0]
+
+        # construct type map
+        df_type_map = df_all.get("pipeline_nodes")
+        assert isinstance(df_type_map, pd.DataFrame)
+        _type_map = {}
+        for _, row in df_type_map.iterrows():
+            _type_map[row["rlnPipeLineNodeName"]] = row["rlnPipeLineNodeTypeLabel"]
+
+        df_in = df_all.get("pipeline_input_edges")
+        assert isinstance(df_in, pd.DataFrame)
+        inputs = [
+            RelionJobPipelineNode.from_file_path(
+                input_path_rel,
+                _type_map.get(input_path_rel, None),
+            )
+            for input_path_rel in df_in["rlnPipeLineEdgeFromNode"]
+        ]
+
+        df_out = df_all.get("pipeline_output_edges")
+        assert isinstance(df_out, pd.DataFrame)
+        outputs = [
+            RelionJobPipelineNode.from_file_path(
+                output_path_rel,
+                _type_map.get(output_path_rel, None),
+            )
+            for output_path_rel in df_out["rlnPipeLineEdgeToNode"]
+        ]
+        return cls(
+            process_name,
+            process_type_label,
+            process_alias,
+            inputs,
+            outputs,
+        )
