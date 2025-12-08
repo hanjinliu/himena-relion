@@ -319,9 +319,9 @@ class QJobStateLabel(QtW.QWidget, JobWidgetBase):
             case _job.RelionJobState.EXIT_ABORTED:
                 self._state_label.setText("Aborted")
             case _job.RelionJobState.ABORT_NOW:
-                self._state_label.setText("Aborting ...")
+                self._state_label.setText("Aborting")
             case _:
-                self._state_label.setText("Running ...")
+                self._state_label.setText("Running")
 
 
 class QFileLabel(QtW.QWidget):

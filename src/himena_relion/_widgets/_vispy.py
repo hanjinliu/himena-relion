@@ -54,6 +54,11 @@ class Vispy2DViewer(VispyViewerBase):
 
     @image.setter
     def image(self, img: NDArray[np.float32]):
+        if img.size == 0:
+            img = np.zeros((1, 1), dtype=np.float32)
+            self._image.visible = False
+        else:
+            self._image.visible = True
         self._image.set_data(img)
 
     @property
@@ -108,6 +113,11 @@ class Vispy3DViewer(VispyViewerBase):
     @image.setter
     def image(self, img: NDArray[np.float32]):
         img = img.astype(np.float32, copy=False)
+        if img.size == 0:
+            img = np.zeros((2, 2, 2), dtype=np.float32)
+            self._volume_visual.visible = False
+        else:
+            self._volume_visual.visible = True
         self._volume_visual.set_data(img, copy=False)
         self._image_data = img
         self._cache_lims(img)
