@@ -8,14 +8,7 @@ import pandas as pd
 import numpy as np
 from numpy.typing import NDArray
 import starfile
-from himena_relion import _job
-
-
-def _make_mat(deg: float) -> NDArray[np.float32]:
-    rad = np.deg2rad(deg)
-    cos = np.cos(rad)
-    sin = np.sin(rad)
-    return np.array([[cos, 0, -sin], [0, 1, 0], [sin, 0, cos]], dtype=np.float32)
+from himena_relion import _job, _utils
 
 
 def _xf_to_array(xf: str | Path) -> NDArray[np.floating]:
@@ -37,7 +30,7 @@ def project_fiducials(
         a11, a12, a21, a22, tx, ty = xf[i]
         mat_al = np.linalg.inv(np.array([[a22, a21], [a12, a11]]))
         for zyx in fid_center:
-            zyx0 = _make_mat(d) @ zyx + tomo_center
+            zyx0 = _utils.make_tilt_projection_mat(d) @ zyx + tomo_center
             zyx0[1:] = mat_al @ (zyx0[1:] - [ty, tx] - tomo_center[1:]) + tilt_center
             zyx0[0] = i
             out.append(zyx0)

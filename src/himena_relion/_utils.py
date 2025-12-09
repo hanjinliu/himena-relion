@@ -2,6 +2,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import numpy as np
+from numpy.typing import NDArray
 from functools import lru_cache
 
 
@@ -62,3 +63,10 @@ def threshold_yen(image: np.ndarray, nbins=256):
 def read_icon_svg(name: str) -> str:
     path = Path(__file__).parent / "resources" / f"{name}.svg"
     return path.read_text(encoding="utf-8")
+
+
+def make_tilt_projection_mat(deg: float) -> NDArray[np.float32]:
+    rad = np.deg2rad(deg)
+    cos = np.cos(rad)
+    sin = np.sin(rad)
+    return np.array([[cos, 0, -sin], [0, 1, 0], [sin, 0, cos]], dtype=np.float32)

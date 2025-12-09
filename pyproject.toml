@@ -25,6 +25,7 @@ classifiers = [
 ]
 dependencies = [
   "starfile>=0.5.13",
+  "imodmodel",
   "vispy>=0.15.2",
   "mrcfile>=1.5.4",
   "tifffile>=2025.10.16",

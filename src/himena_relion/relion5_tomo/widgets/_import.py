@@ -1,8 +1,10 @@
 from __future__ import annotations
 from pathlib import Path
-
+import logging
 from himena_relion._widgets import QJobScrollArea, register_job
 from himena_relion import _job
+
+_LOGGER = logging.getLogger(__name__)
 
 
 @register_job(_job.ImportJobDirectory)
@@ -14,6 +16,7 @@ class QImportTiltSeriesViewer(QJobScrollArea):
         """Handle changes to the job directory."""
         if Path(path).suffix not in [".out", ".err", ".star"]:
             self.initialize(job_dir)
+            _LOGGER.debug("%s Updated", self._job_dir.job_id)
 
     def initialize(self, job_dir: _job.ImportJobDirectory):
         """Initialize the viewer with the job directory."""

@@ -69,6 +69,8 @@ class QRelionJobWidget(QtW.QWidget):
                 wdt.initialize(job_dir)
             except Exception as e:
                 _LOGGER.error(f"Failed to initialize job widget {wdt!r}: {e!r}")
+        if control := self._control:
+            control._abort_button.setEnabled(job_dir.can_abort())
 
     @validate_protocol
     def to_model(self) -> WidgetDataModel:
@@ -89,6 +91,8 @@ class QRelionJobWidget(QtW.QWidget):
         """Return the control widget for the job."""
         if self._control is None:
             self._control = QRelionJobControl(self)
+            if self._job_dir is not None:
+                self._control._abort_button.setEnabled(self._job_dir.can_abort())
         return self._control
 
     @validate_protocol
@@ -119,8 +123,7 @@ class QRelionJobWidget(QtW.QWidget):
         if path.stem.startswith("RELION_JOB_"):
             self._state_widget.on_job_updated(self._job_dir, path)
             if control := self._control:
-                can_abort = len(list(self._job_dir.path.glob("RELION_JOB_*"))) == 0
-                control._abort_button.setEnabled(can_abort)
+                control._abort_button.setEnabled(self._job_dir.can_abort())
             return
         for wdt in self._iter_job_widgets():
             wdt.on_job_updated(self._job_dir, Path(path))

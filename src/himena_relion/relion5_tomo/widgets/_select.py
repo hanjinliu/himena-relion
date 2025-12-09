@@ -1,6 +1,6 @@
 from __future__ import annotations
 from pathlib import Path
-
+import logging
 import mrcfile
 import numpy as np
 from qtpy import QtWidgets as QtW, QtGui
@@ -11,6 +11,8 @@ from himena_relion import _job
 import base64
 from io import BytesIO
 from PIL import Image
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class QSelectJobBase(QJobScrollArea):
@@ -26,6 +28,7 @@ class QSelectJobBase(QJobScrollArea):
         """Handle changes to the job directory."""
         if Path(path).suffix not in [".out", ".err", ".star"]:
             self.initialize(job_dir)
+            _LOGGER.debug("%s Updated", job_dir.job_id)
 
     def _print_running(self):
         self._text_edit.setText("Job is running...")

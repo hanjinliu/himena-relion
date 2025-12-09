@@ -29,7 +29,7 @@ class Q2DViewer(QtW.QWidget):
         super().__init__(parent)
         self._last_future: Future[SliceResult] | None = None
         self._last_clim: tuple[float, float] | None = None
-        self._canvas = Vispy2DViewer()
+        self._canvas = Vispy2DViewer(self)
         self._canvas.native.setFixedSize(340, 340)
         layout = QtW.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -49,6 +49,7 @@ class Q2DViewer(QtW.QWidget):
         layout.addWidget(labeled(zlabel, self._dims_slider, self._zpos_box))
         layout.addWidget(self._histogram_view)
         self._dims_slider.valueChanged.connect(self._on_slider_changed)
+        self._out_of_slice = True
 
     def clear(self):
         self._array_view = None
@@ -71,9 +72,10 @@ class Q2DViewer(QtW.QWidget):
         self._zpos_box.setRange(0, num_slices - 1)
         self.redraw()
 
-    def set_points(self, points: np.ndarray):
+    def set_points(self, points: np.ndarray, out_of_slice: bool = True):
         """Set the 3D points to be displayed."""
         self._points = points
+        self._out_of_slice = out_of_slice
 
     def redraw(self):
         self._on_slider_changed(self._dims_slider.value(), force_sync=True)
@@ -115,7 +117,8 @@ class Q2DViewer(QtW.QWidget):
         else:
             min_, max_ = self._last_clim
         zs = self._points[:, 0]
-        mask = (slider_value - 2 <= zs) & (zs <= slider_value + 2)
+        thick = 4 if self._out_of_slice else 0.1
+        mask = (slider_value - thick / 2 <= zs) & (zs <= slider_value + thick / 2)
         points_in_slice = self._points[mask]
         return SliceResult(slice_image, (min_, max_), points_in_slice)
 
@@ -165,7 +168,7 @@ class Q3DViewer(QtW.QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._canvas = Vispy3DViewer()
+        self._canvas = Vispy3DViewer(self)
         layout = QtW.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         self._iso_slider = QLabeledDoubleSlider(QtCore.Qt.Orientation.Horizontal)

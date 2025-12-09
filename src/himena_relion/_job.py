@@ -11,7 +11,7 @@ import starfile
 import mrcfile
 from himena_relion._image_readers._array import ArrayFilteredView
 from himena_relion.consts import RelionJobState, JOB_ID_MAP
-from himena_relion._pipeline import RelionPipeline
+from himena_relion._pipeline import RelionPipeline, RelionOptimisationSet
 
 if TYPE_CHECKING:
     from typing import Self
@@ -66,6 +66,10 @@ class JobDirectory:
     def relion_project_dir(self) -> Path:
         """Return the path to the RELION project directory."""
         return self.path.parent.parent
+
+    def can_abort(self) -> bool:
+        """Check if the job can be aborted."""
+        return len(list(self.path.glob("RELION_JOB_*"))) == 0
 
     def job_star(self) -> Path:
         """Return the path to the job.star file."""
@@ -367,6 +371,34 @@ class AlignTiltSeriesJobDirectory(JobDirectory):
         """Return the path to the .xf file for a given tomogram name."""
         return self.path / "external" / tomoname / f"{tomoname}.xf"
 
+    def fid_file(self, tomoname: str) -> Path:
+        """Return the path to the .fid file for a given tomogram name."""
+        # this is the mod file of tracked fiducials
+        return self.path / "external" / tomoname / f"{tomoname}.fid"
+
+    def preali_file(self, tomoname: str) -> Path:
+        """Return the path to the .preali file for a given tomogram name."""
+        return self.path / "external" / tomoname / f"{tomoname}_preali.mrc"
+
+    def image_shape_params(self, tomoname: str) -> tuple[int, int, int] | None:
+        path_prenewst = self.path / "external" / tomoname / "prenewst.com"
+        path_tilt = self.path / "external" / tomoname / "tilt.com"
+        nbin_fid = ny = nx = -1
+        with path_prenewst.open("r") as f:
+            for line in f:
+                if line.startswith("BinByFactor	"):
+                    nbin_fid = int(line.split()[1])
+                    break
+
+        with path_tilt.open("r") as f:
+            # FULLIMAGE 3838 3710
+            for line in f:
+                if line.startswith("FULLIMAGE "):
+                    nx, ny = map(int, line.split()[1:3])
+        if nbin_fid > 0 and ny > 0 and nx > 0:
+            return (nbin_fid, ny, nx)
+        return None
+
     def aligned_tilt_series(self, tomoname: str) -> AlignedTiltSeriesInfo:
         """Return the first corrected tilt series info."""
         star = starfile.read(self.aligned_tilt_series_star())
@@ -490,27 +522,40 @@ class PickJobDirectory(JobDirectory):
 
     _job_type = "relion.picktomo"
 
-    def tomo_and_particles_star(self) -> tuple[Path, Path]:
+    def tomo_and_particles_star(self) -> tuple[Path | None, Path | None]:
         """Return the path to the tomogram and particles star file."""
-        path_opt = self.path / "optimisation_set.star"
-        opt_dict = starfile.read(path_opt)
-        particles_star = opt_dict["rlnTomoParticlesFile"].iloc[0]
-
         job_pipeline = self.parse_job_pipeline()
         rln_dir = self.relion_project_dir
         if node := job_pipeline.get_input_by_type("TomogramGroupMetadata.star.relion"):
-            return rln_dir / node.path, rln_dir / particles_star
-        raise ValueError("No tomogram found in pipeline input edges.")
+            tomo_star_path = rln_dir / node.path
+        else:
+            tomo_star_path = None
+        if (path_opt := self.path / "optimisation_set.star").exists():
+            opt_set = RelionOptimisationSet.from_file(path_opt)
+            particle_star_path = rln_dir / opt_set.particles_star
+        elif node_part := job_pipeline.get_input_by_type(
+            "ParticleGroupMetadata.star.relion"
+        ):
+            particle_star_path = rln_dir / node_part.path
+        else:
+            particle_star_path = None
+        return tomo_star_path, particle_star_path
 
     def iter_tomogram(self) -> Iterator[TomogramInfo]:
         """Iterate over all tilt series info."""
         tomo_star, particles_star = self.tomo_and_particles_star()
+        if tomo_star is None:
+            return
         star = _read_star_as_df(tomo_star)
-        df_particles = _read_star_as_df(particles_star)
+        if particles_star is None:
+            df_particles = None
+        else:
+            df_particles = _read_star_as_df(particles_star)
         for _, row in star.iterrows():
-            getter = self._make_get_particles(df_particles, row)
             info = TomogramInfo.from_series(row)
-            info.get_particles = getter
+            if df_particles is not None:
+                getter = self._make_get_particles(df_particles, row)
+                info.get_particles = getter
             yield info
 
     def _make_get_particles(

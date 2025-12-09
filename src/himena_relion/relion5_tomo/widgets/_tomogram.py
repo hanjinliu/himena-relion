@@ -1,6 +1,6 @@
 from __future__ import annotations
 from pathlib import Path
-
+import logging
 import numpy as np
 from qtpy import QtWidgets as QtW
 from himena_relion._widgets import (
@@ -11,6 +11,8 @@ from himena_relion._widgets import (
 )
 from himena_relion import _job
 from himena_relion._image_readers import ArrayFilteredView
+
+_LOGGER = logging.getLogger(__name__)
 
 
 @register_job(_job.TomogramJobDirectory)
@@ -36,6 +38,7 @@ class QTomogramViewer(QJobScrollArea):
         """Handle changes to the job directory."""
         if Path(path).suffix == ".mrc":
             self.initialize(job_dir)
+            _LOGGER.debug("%s Updated", job_dir.job_id)
 
     def initialize(self, job_dir: _job.TomogramJobDirectory):
         """Initialize the viewer with the job directory."""
@@ -43,6 +46,9 @@ class QTomogramViewer(QJobScrollArea):
         current_text = self._tomo_choice.currentText()
         items: list[str] = []
         self._is_split = job_dir.get_job_param("generate_split_tomograms") == "Yes"
+        self._filter_widget.set_image_scale(
+            float(job_dir.get_job_param("binned_angpix"))
+        )
         for p in job_dir.path.joinpath("tomograms").glob("*.mrc"):
             if self._is_split:
                 if p.stem.endswith("_half2"):
@@ -76,7 +82,10 @@ class QTomogramViewer(QJobScrollArea):
             tomo_view = ArrayFilteredView.from_mrc(mrc_path)
             ok = mrc_path.exists()
         if ok:
-            self._viewer.set_array_view(tomo_view, self._viewer._last_clim)
+            self._viewer.set_array_view(
+                tomo_view.with_filter(self._filter_widget.apply),
+                self._viewer._last_clim,
+            )
 
 
 @register_job(_job.DenoiseJobDirectory)
@@ -97,6 +106,7 @@ class QDenoiseTomogramViewer(QJobScrollArea):
         """Handle changes to the job directory."""
         if Path(path).suffix not in [".out", ".err", ".star"]:
             self.initialize(job_dir)
+            _LOGGER.debug("%s Updated", job_dir.job_id)
 
     def initialize(self, job_dir: _job.DenoiseJobDirectory):
         """Initialize the viewer with the job directory."""
@@ -147,6 +157,7 @@ class PickViewer(QJobScrollArea):
         """Handle changes to the job directory."""
         if Path(path).suffix not in [".out", ".err", ".star"]:
             self.initialize(job_dir)
+            _LOGGER.debug("%s Updated", job_dir.job_id)
 
     def initialize(self, job_dir: _job.PickJobDirectory):
         """Initialize the viewer with the job directory."""

@@ -14,10 +14,9 @@ from vispy.scene.visuals import (
 
 
 class VispyViewerBase:
-    def __init__(self):
+    def __init__(self, parent):
         use_app("pyqt6")
-        _scene = scene.SceneCanvas(keys="interactive")
-        _scene.create_native()
+        _scene = scene.SceneCanvas(keys="interactive", parent=parent)
         self._scene = _scene
         self._native_qt_widget = _scene.native
 
@@ -27,8 +26,8 @@ class VispyViewerBase:
 
 
 class Vispy2DViewer(VispyViewerBase):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         viewbox = self._scene.central_widget.add_view(camera="panzoom")
         assert isinstance(viewbox, ViewBox)
         self._viewbox = viewbox
@@ -87,8 +86,8 @@ class Vispy2DViewer(VispyViewerBase):
 
 
 class Vispy3DViewer(VispyViewerBase):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super().__init__(parent)
         self._camera = scene.ArcballCamera(fov=0)
         grid = self._scene.central_widget.add_grid()
         viewbox = grid.add_view()

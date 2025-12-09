@@ -173,3 +173,21 @@ class RelionPipeline:
             inputs,
             outputs,
         )
+
+
+@dataclass
+class RelionOptimisationSet:
+    tomogram_star: Path
+    particles_star: Path
+
+    @classmethod
+    def from_file(cls, path: str | Path) -> RelionOptimisationSet:
+        df = starfile.read(path)
+        if isinstance(df, pd.DataFrame):
+            tomo_star_path: str = df["rlnTomoTomogramsFile"][0]
+            particles_path: str = df["rlnTomoParticlesFile"][0]
+        else:
+            tomo_star_path: str = df["rlnTomoTomogramsFile"]
+            particles_path: str = df["rlnTomoParticlesFile"]
+
+        return cls(Path(tomo_star_path), Path(particles_path))

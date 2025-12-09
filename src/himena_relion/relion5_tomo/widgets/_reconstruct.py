@@ -1,8 +1,10 @@
 from __future__ import annotations
 from pathlib import Path
-
+import logging
 from himena_relion._widgets import QJobScrollArea, Q3DViewer, register_job
 from himena_relion import _job
+
+_LOGGER = logging.getLogger(__name__)
 
 
 @register_job(_job.ReconstructParticlesJobDirectory)
@@ -16,6 +18,7 @@ class QReconstructViewer(QJobScrollArea):
         """Handle changes to the job directory."""
         if Path(path).suffix == ".mrc":
             self.initialize(job_dir)
+            _LOGGER.debug("%s Updated", job_dir.job_id)
 
     def initialize(self, job_dir: _job.ReconstructParticlesJobDirectory):
         """Initialize the viewer with the job directory."""

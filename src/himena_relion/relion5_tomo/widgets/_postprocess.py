@@ -1,9 +1,11 @@
 from __future__ import annotations
 from pathlib import Path
-
+import logging
 from superqt import QToggleSwitch
 from himena_relion._widgets import QJobScrollArea, QPlotCanvas, register_job, Q3DViewer
 from himena_relion import _job
+
+_LOGGER = logging.getLogger(__name__)
 
 
 @register_job(_job.PostProcessJobDirectory)
@@ -25,6 +27,7 @@ class QPostProcessViewer(QJobScrollArea):
         """Handle changes to the job directory."""
         if Path(path).suffix not in [".out", ".err"]:
             self.initialize(job_dir)
+            _LOGGER.debug("%s Updated", self._job_dir.job_id)
 
     def initialize(self, job_dir: _job.PostProcessJobDirectory):
         """Initialize the viewer with the job directory."""

@@ -1,6 +1,6 @@
 from __future__ import annotations
 from pathlib import Path
-
+import logging
 from qtpy import QtWidgets as QtW
 from himena_relion._widgets import (
     QJobScrollArea,
@@ -9,6 +9,8 @@ from himena_relion._widgets import (
     register_job,
 )
 from himena_relion import _job
+
+_LOGGER = logging.getLogger(__name__)
 
 
 @register_job(_job.MotionCorrectionJobDirectory)
@@ -33,6 +35,7 @@ class QMotionCorrViewer(QJobScrollArea):
         """Handle changes to the job directory."""
         if Path(path).suffix == ".mrc":
             self._process_update(job_dir)
+            _LOGGER.debug("%s Updated", job_dir.job_id)
 
     def _param_changed(self):
         """Handle changes to filter parameters."""
@@ -95,6 +98,7 @@ class QExcludeTiltViewer(QJobScrollArea):
         """Handle changes to the job directory."""
         if Path(path).name == "selected_tilt_series.star":
             self._process_update(job_dir)
+            _LOGGER.debug("%s Updated", job_dir.job_id)
 
     def _param_changed(self):
         """Handle changes to filter parameters."""
