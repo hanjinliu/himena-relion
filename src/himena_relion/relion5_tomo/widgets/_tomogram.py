@@ -57,9 +57,8 @@ class QTomogramViewer(QJobScrollArea):
             self._viewer.clear()
         if current_text in items:
             self._tomo_choice.setCurrentText(current_text)
-        else:
-            self._on_tomo_changed(self._tomo_choice.currentText())
-            self._viewer.auto_fit()
+        self._on_tomo_changed(self._tomo_choice.currentText())
+        self._viewer.auto_fit()
 
     def _on_tomo_changed(self, text: str):
         """Update the viewer when the selected tomogram changes."""
@@ -71,13 +70,13 @@ class QTomogramViewer(QJobScrollArea):
             mrc_path1 = job_dir.path / "tomograms" / f"rec_{text}_half1.mrc"
             mrc_path2 = job_dir.path / "tomograms" / f"rec_{text}_half2.mrc"
             tomo_view = ArrayFilteredView.from_mrc_splits([mrc_path1, mrc_path2])
-            ok = mrc_path1.exists() and mrc_path2.exists()
+            ok = mrc_path1.exists() or mrc_path2.exists()
         else:
             mrc_path = job_dir.path / "tomograms" / f"rec_{text}.mrc"
             tomo_view = ArrayFilteredView.from_mrc(mrc_path)
             ok = mrc_path.exists()
         if ok:
-            self._viewer.set_array_view(tomo_view)
+            self._viewer.set_array_view(tomo_view, self._viewer._last_clim)
 
 
 @register_job(_job.DenoiseJobDirectory)
@@ -112,9 +111,8 @@ class QDenoiseTomogramViewer(QJobScrollArea):
             self._viewer.clear()
         if current_text in items:
             self._tomo_choice.setCurrentText(current_text)
-        else:
-            self._on_tomo_changed(self._tomo_choice.currentText())
-            self._viewer.auto_fit()
+        self._on_tomo_changed(self._tomo_choice.currentText())
+        self._viewer.auto_fit()
 
     def _on_tomo_changed(self, text: str):
         """Update the viewer when the selected tomogram changes."""
@@ -124,7 +122,7 @@ class QDenoiseTomogramViewer(QJobScrollArea):
         mrc_path = job_dir.path / "tomograms" / f"rec_{text}.mrc"
         if mrc_path.exists():
             tomo_view = ArrayFilteredView.from_mrc(mrc_path)
-            self._viewer.set_array_view(tomo_view)
+            self._viewer.set_array_view(tomo_view, self._viewer._last_clim)
 
 
 @register_job(_job.PickJobDirectory)
@@ -182,4 +180,4 @@ class PickViewer(QJobScrollArea):
                 np.array(info.tomo_shape, dtype=np.float32) / info.tomogram_binning - 1
             ) / 2
             self._viewer.set_points(points + center[np.newaxis])
-        self._viewer.set_array_view(tomo_view)
+        self._viewer.set_array_view(tomo_view, self._viewer._last_clim)

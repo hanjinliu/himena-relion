@@ -120,8 +120,13 @@ class ArrayFromMrcSplits(ArrayViewBase):
 
     def _iter_images(self, index: int) -> Iterator[Arr]:
         for path in self._paths:
-            with mrcfile.mmap(path, mode="r") as mrc:
-                yield np.asarray(mrc.data[index])
+            try:
+                with mrcfile.mmap(path, mode="r") as mrc:
+                    out = np.asarray(mrc.data[index])
+            except Exception:
+                pass
+            else:
+                yield out
 
 
 class ArrayFromFiles(ArrayViewBase):

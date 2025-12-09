@@ -50,7 +50,7 @@ class QLogWatcher(QtW.QWidget, JobWidgetBase):
         self._wordwrap_checkbox.setChecked(False)
         self._wordwrap_checkbox.toggled.connect(self._on_wordwrap_changed)
         self._text_edit = QtW.QTextEdit()
-        self.setFont(QtGui.QFont(MonospaceFontFamily, 10))
+        self.setFont(QtGui.QFont(MonospaceFontFamily, 8))
         self._text_edit.setReadOnly(True)
         self._text_edit.setWordWrapMode(QtGui.QTextOption.WrapMode.NoWrap)
         self._text_edit.setUndoRedoEnabled(False)
