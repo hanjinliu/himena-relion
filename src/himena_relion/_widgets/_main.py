@@ -19,7 +19,7 @@ from himena_relion._widgets._job_widgets import (
     QNoteLog,
     QJobInOut,
 )
-from himena_relion.consts import Type
+from himena_relion.consts import Type, FileNames
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -118,6 +118,9 @@ class QRelionJobWidget(QtW.QWidget):
             return
         if path.stem.startswith("RELION_JOB_"):
             self._state_widget.on_job_updated(self._job_dir, path)
+            if control := self._control:
+                can_abort = len(list(self._job_dir.path.glob("RELION_JOB_*"))) == 0
+                control._abort_button.setEnabled(can_abort)
             return
         for wdt in self._iter_job_widgets():
             wdt.on_job_updated(self._job_dir, Path(path))
@@ -196,4 +199,4 @@ class QRelionJobControl(QtW.QWidget):
         if job_dir := self._job_widget._job_dir:
             if job_dir.state() == _job.RelionJobState.EXIT_SUCCESS:
                 raise RuntimeError("Cannot abort a finished job.")
-            job_dir.path.joinpath("RELION_JOB_ABORT_NOW").touch()
+            job_dir.path.joinpath(FileNames.ABORT_NOW).touch()

@@ -34,7 +34,7 @@ class QTomogramViewer(QJobScrollArea):
 
     def on_job_updated(self, job_dir: _job.TomogramJobDirectory, path: str):
         """Handle changes to the job directory."""
-        if Path(path).suffix not in [".out", ".err", ".star"]:
+        if Path(path).suffix == ".mrc":
             self.initialize(job_dir)
 
     def initialize(self, job_dir: _job.TomogramJobDirectory):
@@ -53,6 +53,8 @@ class QTomogramViewer(QJobScrollArea):
                 items.append(p.stem[4:])
         self._tomo_choice.clear()
         self._tomo_choice.addItems(items)
+        if len(items) == 0:
+            self._viewer.clear()
         if current_text in items:
             self._tomo_choice.setCurrentText(current_text)
         else:
@@ -106,6 +108,8 @@ class QDenoiseTomogramViewer(QJobScrollArea):
         items = [p.stem[4:] for p in job_dir.path.joinpath("tomograms").glob("*.mrc")]
         self._tomo_choice.clear()
         self._tomo_choice.addItems(items)
+        if len(items) == 0:
+            self._viewer.clear()
         if current_text in items:
             self._tomo_choice.setCurrentText(current_text)
         else:
@@ -153,6 +157,8 @@ class PickViewer(QJobScrollArea):
         items = [info.tomo_name for info in job_dir.iter_tomogram()]
         self._tomo_choice.clear()
         self._tomo_choice.addItems(items)
+        if len(items) == 0:
+            self._viewer.clear()
         if current_text in items:
             self._tomo_choice.setCurrentText(current_text)
         self._on_tomo_changed(self._tomo_choice.currentText())

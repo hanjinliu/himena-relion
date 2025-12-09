@@ -80,9 +80,12 @@ class QRunOutLog(QLogWatcher):
             self.initialize(job_dir)
 
     def initialize(self, job_dir: _job.JobDirectory):
+        lines: list[str] = []
         with open(job_dir.run_out(), encoding="utf-8", newline="\n") as f:
-            text = f.read()
-        self.setText(text)
+            for line in f:
+                # run.out use "\r" to overwrite lines. Keep only the last part.
+                lines.append(line.split("\r")[-1])
+        self.setText("".join(lines))
 
     def tab_title(self) -> str:
         return "run.out"

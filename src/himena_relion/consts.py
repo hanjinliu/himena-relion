@@ -11,7 +11,14 @@ class RelionJobState(Enum):
     EXIT_FAILURE = "exit_failure"
     EXIT_ABORTED = "exit_aborted"
     ABORT_NOW = "abort_now"
-    RUNNING = "else"
+    RUNNING = "running"
+
+
+class FileNames:
+    EXIT_SUCCESS = "RELION_JOB_EXIT_SUCCESS"
+    EXIT_FAILURE = "RELION_JOB_EXIT_FAILURE"
+    EXIT_ABORTED = "RELION_JOB_EXIT_ABORTED"
+    ABORT_NOW = "RELION_JOB_ABORT_NOW"
 
 
 JOB_ID_MAP = {
