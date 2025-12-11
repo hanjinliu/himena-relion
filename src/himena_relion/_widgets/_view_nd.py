@@ -22,7 +22,11 @@ class SliceResult(NamedTuple):
     points: np.ndarray
 
 
-class Q2DViewer(QtW.QWidget):
+class QViewer(QtW.QWidget):
+    pass
+
+
+class Q2DViewer(QViewer):
     _executor = ThreadPoolExecutor(max_workers=2)
 
     def __init__(self, zlabel: str = "z", parent=None):
@@ -30,14 +34,16 @@ class Q2DViewer(QtW.QWidget):
         self._last_future: Future[SliceResult] | None = None
         self._last_clim: tuple[float, float] | None = None
         self._canvas = Vispy2DViewer(self)
-        self._canvas.native.setFixedSize(340, 340)
+        self._canvas.native.setFixedHeight(340)
         layout = QtW.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self._canvas.native)
+        layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignHCenter)
         self._array_view = None
         self._points = np.empty((0, 3), dtype=np.float32)
         self._dims_slider = QtW.QSlider(QtCore.Qt.Orientation.Horizontal, self)
         self._dims_slider.setMaximum(0)
+        self._dims_slider.setMinimumWidth(150)
         self._histogram_view = QHistogramView()
         self._histogram_view.clim_changed.connect(self._on_clim_changed)
         self._histogram_view.setFixedHeight(36)
@@ -162,7 +168,7 @@ class Q2DViewer(QtW.QWidget):
         # TODO
 
 
-class Q3DViewer(QtW.QWidget):
+class Q3DViewer(QViewer):
     __himena_widget_id__ = "himena-relion:Q3DViewer"
     __himena_display_name__ = "3D volume viewer"
 
@@ -171,12 +177,12 @@ class Q3DViewer(QtW.QWidget):
         self._canvas = Vispy3DViewer(self)
         layout = QtW.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
+        layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignHCenter)
         self._iso_slider = QLabeledDoubleSlider(QtCore.Qt.Orientation.Horizontal)
         self._iso_slider.valueChanged.connect(self._on_iso_changed)
         self._has_image = False
 
         layout.addWidget(self._canvas.native)
-
         layout.addWidget(labeled("Threshold", self._iso_slider))
 
     def set_image(self, image: np.ndarray | None):

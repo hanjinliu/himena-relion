@@ -55,7 +55,7 @@ def read_relion_pipeline(path: Path) -> WidgetDataModel:
     if pipeline_star := _get_default_pipeline_star(path):
         from himena_relion import _pipeline
 
-        pipeline = _pipeline.RelionPipeline.from_pipeline_star(pipeline_star)
+        pipeline = _pipeline.RelionDefaultPipeline.from_pipeline_star(pipeline_star)
         return WidgetDataModel(value=pipeline, type=Type.RELION_PIPELINE)
 
 

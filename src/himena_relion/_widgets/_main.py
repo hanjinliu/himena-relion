@@ -26,6 +26,7 @@ _LOGGER = logging.getLogger(__name__)
 
 class QRelionJobWidget(QtW.QWidget):
     job_updated = QtCore.Signal(Path)
+    _instances = set["QRelionJobWidget"]()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -39,6 +40,7 @@ class QRelionJobWidget(QtW.QWidget):
         self._watcher: GeneratorWorker | None = None
         self.job_updated.connect(self._on_job_updated)
         self._control: QRelionJobControl | None = None
+        self._instances.add(self)
 
     @validate_protocol
     def update_model(self, model: WidgetDataModel):
@@ -84,7 +86,7 @@ class QRelionJobWidget(QtW.QWidget):
 
     @validate_protocol
     def size_hint(self):
-        return 420, 420
+        return 420, 540
 
     @validate_protocol
     def control_widget(self) -> QRelionJobControl | None:
