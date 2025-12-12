@@ -71,6 +71,7 @@ def get_qt_app():
     return app
 
 
+@lru_cache(maxsize=1)
 def is_egl_available() -> bool:
     try:
         use("egl")
@@ -79,181 +80,8 @@ def is_egl_available() -> bool:
         return False
 
 
-class Vispy2DViewer:
-    def __init__(self, parent):
-        app = get_qt_app()
-        _scene = scene.SceneCanvas(keys="interactive", parent=parent, app=app)
-        self._scene = _scene
-        self._native_qt_widget = _scene.native
-        viewbox = self._scene.central_widget.add_view(camera="panzoom")
-        assert isinstance(viewbox, ViewBox)
-        self._viewbox = viewbox
-
-        # initialize camera
-        self._viewbox.camera.aspect = 1.0
-        self._viewbox.camera.flip = (False, True, False)
-
-        # initialize image visual
-        self._image = VispyImage(cmap="gray", parent=self._viewbox.scene)
-        self._image.set_data(np.zeros((1, 1), dtype=np.float32))
-        self._image.visible = False
-        self._markers = VispyMarkers(
-            pos=np.ones((1, 2), dtype=np.float32), scaling=True, face_color=np.zeros(4),
-            edge_color="lime", size=10, parent=self._viewbox.scene
-        )  # fmt: skip
-        self._markers.update_gl_state(depth_test=False)
-        self._markers.visible = False
-        self._scene.events.mouse_double_click.connect(lambda event: self.auto_fit())
-
-    @property
-    def native(self) -> QtW.QWidget:
-        return self._native_qt_widget
-
-    @property
-    def image(self) -> NDArray[np.float32]:
-        return self._image._data
-
-    @image.setter
-    def image(self, img: NDArray[np.float32]):
-        if img.size == 0:
-            img = np.zeros((1, 1), dtype=np.float32)
-            self._image.visible = False
-        else:
-            self._image.visible = True
-        self._image.set_data(img)
-
-    @property
-    def markers_visual(self) -> VispyMarkers:
-        return self._markers
-
-    @property
-    def contrast_limits(self) -> tuple[float, float]:
-        return self._image.clim
-
-    @contrast_limits.setter
-    def contrast_limits(self, clim: tuple[float, float]):
-        self._image.clim = clim
-
-    def auto_fit(self):
-        img = self.image
-        self._viewbox.camera.set_range(
-            x=(-0.5, img.shape[0] - 0.5), y=(-0.5, img.shape[1] - 0.5)
-        )
-
-    def set_camera_range(
-        self, xrange: tuple[float, float], yrange: tuple[float, float]
-    ):
-        self._viewbox.camera.set_range(x=xrange, y=yrange)
-
-
-class ArcballCamera(scene.ArcballCamera):
-    def viewbox_mouse_event(self, event):
-        # enable translation with middle mouse button
-        super().viewbox_mouse_event(event)
-        if event.handled or not self.interactive:
-            return
-
-        if event.type == "mouse_move":
-            if event.press_event is None:
-                return
-            p1 = event.mouse_event.press_event.pos
-            p2 = event.mouse_event.pos
-
-            if 3 in event.buttons:
-                # Translate
-                norm = np.mean(self._viewbox.size)
-                if self._event_value is None or len(self._event_value) == 2:
-                    self._event_value = self.center
-                dist = (p1 - p2) / norm * self._scale_factor
-                dist[1] *= -1
-                # Black magic part 1: turn 2D into 3D translations
-                dx, dy, dz = self._dist_to_trans(dist)
-                # Black magic part 2: take up-vector and flipping into account
-                ff = self._flip_factors
-                up, forward, right = self._get_dim_vectors()
-                dx, dy, dz = right * dx + forward * dy + up * dz
-                dx, dy, dz = ff[0] * dx, ff[1] * dy, dz * ff[2]
-                c = self._event_value
-                self.center = c[0] + dx, c[1] + dy, c[2] + dz
-
-
-class _Vispy3DBase:
-    def __init__(self):
-        self._scene = self.make_scene()
-        self._camera = ArcballCamera(fov=0)
-        viewbox = self._scene.central_widget.add_view()
-        assert isinstance(viewbox, ViewBox)
-        viewbox.camera = self._camera
-        self._viewbox = viewbox
-        self._lims: tuple[float, float] = (0.0, 1.0)
-        self._image_data = np.zeros((2, 2, 2), dtype=np.float32)
-        self._volume_visual = VispyVolume(
-            self._image_data,
-            parent=self._viewbox.scene,
-            threshold=1,
-            cmap="grays",
-            interpolation="linear",
-            method="iso",
-        )
-        self._volume_visual.visible = False
-        self._scene.events.mouse_double_click.connect(lambda _: self.auto_fit())
-
-    def make_scene(self) -> scene.SceneCanvas:
-        raise NotImplementedError
-
-    @property
-    def image(self) -> NDArray[np.float32]:
-        return self._image_data
-
-    @image.setter
-    def image(self, img: NDArray[np.float32]):
-        img = img.astype(np.float32, copy=False)
-        if img.size == 0:
-            img = np.zeros((2, 2, 2), dtype=np.float32)
-            self._volume_visual.visible = False
-        else:
-            self._volume_visual.visible = True
-        self._volume_visual.set_data(img, copy=False)
-        self._image_data = img
-        self._cache_lims(img)
-
-    @property
-    def image_visual(self) -> VispyVolume:
-        return self._volume_visual
-
-    @property
-    def camera(self) -> scene.ArcballCamera:
-        return self._camera
-
-    @property
-    def contrast_limits(self) -> tuple[float, float]:
-        return self._volume_visual.clim
-
-    @contrast_limits.setter
-    def contrast_limits(self, clim: tuple[float, float]):
-        self._volume_visual.clim = clim
-
-    def set_iso_threshold(self, value):
-        _min, _max = self._lims
-        self._volume_visual.threshold = (value - _min) / (_max - _min)
-        self._volume_visual.update()
-
-    def auto_fit(self):
-        img = self._image_data
-        self._camera.center = np.array(img.shape) / 2
-        self._camera.scale_factor = max(img.shape)
-        self._camera.update()
-
-    def _cache_lims(self, img):
-        _min, _max = np.min(img), np.max(img)
-        if _min == _max:
-            _max = _min + 1e-6  # Avoid division by zero in thresholding
-        self._lims = _min, _max
-        self._volume_visual.clim = _min, _max
-
-
-class VispyOffScreen3DViewer(QViewBox, _Vispy3DBase):
-    """Vispy 3D viewer widget using offscreen rendering to a QPixmap.
+class QOffScreenViewBox(QViewBox):
+    """Vispy viewer widget using offscreen rendering to a QPixmap.
 
     3D rendering is extremely slow when vispy is used via SSH with X11 forwarding,
     because OpenGL uses the fallback software rendering (llvmpipe) that runs on CPU.
@@ -262,7 +90,6 @@ class VispyOffScreen3DViewer(QViewBox, _Vispy3DBase):
 
     def __init__(self, parent):
         super().__init__(parent)
-        _Vispy3DBase.__init__(self)
         self.setSizePolicy(
             QtW.QSizePolicy.Policy.Expanding,
             QtW.QSizePolicy.Policy.Expanding,
@@ -275,15 +102,6 @@ class VispyOffScreen3DViewer(QViewBox, _Vispy3DBase):
             "last_mouse_press": None,
         }
         self._last_time = 0.0
-
-    def _update_pixmap(self, *_):
-        size = self.size()
-        self._store_qpixmap(size)
-        self.update()
-
-    def set_iso_threshold(self, value):
-        super().set_iso_threshold(value)
-        self._update_pixmap()
 
     @property
     def native(self) -> QtW.QWidget:
@@ -300,6 +118,11 @@ class VispyOffScreen3DViewer(QViewBox, _Vispy3DBase):
     def make_pixmap(self, size: QtCore.QSize) -> NDArray[np.uint8]:
         return self._scene.render()
 
+    def _update_pixmap(self, *_):
+        size = self.size()
+        self._store_qpixmap(size)
+        self.update()
+
     def resizeEvent(self, a0: QtGui.QResizeEvent):
         ratio = self.devicePixelRatioF()
         # Both scene and viewbox need to be resized
@@ -308,7 +131,7 @@ class VispyOffScreen3DViewer(QViewBox, _Vispy3DBase):
             int(ratio * a0.size().height()),
         )
         self._viewbox.size = self._scene.size
-        self._camera.viewbox_resize_event(None)
+        self.camera.viewbox_resize_event(None)
         return super().resizeEvent(a0)
 
     def closeEvent(self, event):
@@ -452,10 +275,9 @@ class VispyOffScreen3DViewer(QViewBox, _Vispy3DBase):
         return posx, posy
 
 
-class VispyNative3DViewer(_Vispy3DBase):
+class QNativeViewBox:
     def __init__(self, parent):
         self._parent = parent
-        super().__init__()
 
     def make_scene(self) -> scene.SceneCanvas:
         app = get_qt_app()
@@ -468,9 +290,198 @@ class VispyNative3DViewer(_Vispy3DBase):
         return self._native_qt_widget
 
 
+class _Vispy2DBase:
+    def __init__(self):
+        _scene = self.make_scene()
+        self._scene = _scene
+        self._native_qt_widget = _scene.native
+        viewbox = self._scene.central_widget.add_view(camera="panzoom")
+        assert isinstance(viewbox, ViewBox)
+        self._viewbox = viewbox
+
+        # initialize camera
+        self._viewbox.camera.aspect = 1.0
+        self._viewbox.camera.flip = (False, True, False)
+
+        # initialize image visual
+        self._image = VispyImage(cmap="gray", parent=self._viewbox.scene)
+        self._image.set_data(np.zeros((1, 1), dtype=np.float32))
+        self._image.visible = False
+        self._markers = VispyMarkers(
+            pos=np.ones((1, 2), dtype=np.float32), scaling=True, face_color=np.zeros(4),
+            edge_color="lime", size=10, parent=self._viewbox.scene
+        )  # fmt: skip
+        self._markers.update_gl_state(depth_test=False)
+        self._markers.visible = False
+        self._scene.events.mouse_double_click.connect(lambda event: self.auto_fit())
+
+    def make_scene(self) -> scene.SceneCanvas:
+        raise NotImplementedError
+
+    @property
+    def camera(self) -> scene.PanZoomCamera:
+        return self._viewbox.camera
+
+    @property
+    def image(self) -> NDArray[np.float32]:
+        return self._image._data
+
+    @image.setter
+    def image(self, img: NDArray[np.float32]):
+        if img.size == 0:
+            img = np.zeros((1, 1), dtype=np.float32)
+            self._image.visible = False
+        else:
+            self._image.visible = True
+        self._image.set_data(img)
+
+    @property
+    def markers_visual(self) -> VispyMarkers:
+        return self._markers
+
+    @property
+    def contrast_limits(self) -> tuple[float, float]:
+        return self._image.clim
+
+    @contrast_limits.setter
+    def contrast_limits(self, clim: tuple[float, float]):
+        self._image.clim = clim
+
+    def auto_fit(self):
+        img = self.image
+        self._viewbox.camera.set_range(
+            x=(-0.5, img.shape[0] - 0.5), y=(-0.5, img.shape[1] - 0.5)
+        )
+
+    def set_camera_range(
+        self, xrange: tuple[float, float], yrange: tuple[float, float]
+    ):
+        self._viewbox.camera.set_range(x=xrange, y=yrange)
+
+
+class _Vispy3DBase:
+    def __init__(self):
+        self._scene = self.make_scene()
+        self._camera = ArcballCamera(fov=0)
+        viewbox = self._scene.central_widget.add_view()
+        assert isinstance(viewbox, ViewBox)
+        viewbox.camera = self._camera
+        self._viewbox = viewbox
+        self._lims: tuple[float, float] = (0.0, 1.0)
+        self._image_data = np.zeros((2, 2, 2), dtype=np.float32)
+        self._volume_visual = VispyVolume(
+            self._image_data,
+            parent=self._viewbox.scene,
+            threshold=1,
+            cmap="grays",
+            interpolation="linear",
+            method="iso",
+        )
+        self._volume_visual.visible = False
+        self._scene.events.mouse_double_click.connect(lambda _: self.auto_fit())
+
+    def make_scene(self) -> scene.SceneCanvas:
+        raise NotImplementedError
+
+    @property
+    def image(self) -> NDArray[np.float32]:
+        return self._image_data
+
+    @image.setter
+    def image(self, img: NDArray[np.float32]):
+        img = img.astype(np.float32, copy=False)
+        if img.size == 0:
+            img = np.zeros((2, 2, 2), dtype=np.float32)
+            self._volume_visual.visible = False
+        else:
+            self._volume_visual.visible = True
+        self._volume_visual.set_data(img, copy=False)
+        self._image_data = img
+        self._cache_lims(img)
+
+    @property
+    def image_visual(self) -> VispyVolume:
+        return self._volume_visual
+
+    @property
+    def camera(self) -> scene.ArcballCamera:
+        return self._camera
+
+    @property
+    def contrast_limits(self) -> tuple[float, float]:
+        return self._volume_visual.clim
+
+    @contrast_limits.setter
+    def contrast_limits(self, clim: tuple[float, float]):
+        self._volume_visual.clim = clim
+
+    def set_iso_threshold(self, value):
+        _min, _max = self._lims
+        self._volume_visual.threshold = (value - _min) / (_max - _min)
+        self._volume_visual.update()
+
+    def auto_fit(self):
+        img = self._image_data
+        self._camera.center = np.array(img.shape) / 2
+        self._camera.scale_factor = max(img.shape)
+        self._camera.update()
+
+    def _cache_lims(self, img):
+        _min, _max = np.min(img), np.max(img)
+        if _min == _max:
+            _max = _min + 1e-6  # Avoid division by zero in thresholding
+        self._lims = _min, _max
+        self._volume_visual.clim = _min, _max
+
+
+##########################################################
+###   Concrete viewer classes
+##########################################################
+
+
+class VispyOffScreen2DViewer(QOffScreenViewBox, _Vispy2DBase):
+    def __init__(self, parent):
+        super().__init__(parent)
+        _Vispy2DBase.__init__(self)
+
+    @_Vispy2DBase.image.setter
+    def image(self, img: NDArray[np.float32]):
+        super(VispyOffScreen2DViewer, self.__class__).image.fset(self, img)
+        self._update_pixmap()
+
+    @_Vispy2DBase.contrast_limits.setter
+    def contrast_limits(self, clim: tuple[float, float]):
+        super(VispyOffScreen2DViewer, self.__class__).contrast_limits.fset(self, clim)
+        self._update_pixmap()
+
+
+class VispyNative2DViewer(QNativeViewBox, _Vispy2DBase):
+    def __init__(self, parent):
+        super().__init__(parent)
+        _Vispy2DBase.__init__(self)
+
+
+class VispyOffScreen3DViewer(QOffScreenViewBox, _Vispy3DBase):
+    def __init__(self, parent):
+        super().__init__(parent)
+        _Vispy3DBase.__init__(self)
+
+    def set_iso_threshold(self, value):
+        super().set_iso_threshold(value)
+        self._update_pixmap()
+
+
+class VispyNative3DViewer(QNativeViewBox, _Vispy3DBase):
+    def __init__(self, parent):
+        super().__init__(parent)
+        _Vispy3DBase.__init__(self)
+
+
 if is_egl_available():
+    Vispy2DViewer = VispyOffScreen2DViewer
     Vispy3DViewer = VispyOffScreen3DViewer
 else:
+    Vispy2DViewer = VispyNative2DViewer
     Vispy3DViewer = VispyNative3DViewer
 
 BUTTONMAP = {
@@ -481,3 +492,34 @@ BUTTONMAP = {
     QtCore.Qt.MouseButton.BackButton: 4,
     QtCore.Qt.MouseButton.ForwardButton: 5,
 }
+
+
+class ArcballCamera(scene.ArcballCamera):
+    def viewbox_mouse_event(self, event):
+        # enable translation with middle mouse button
+        super().viewbox_mouse_event(event)
+        if event.handled or not self.interactive:
+            return
+
+        if event.type == "mouse_move":
+            if event.press_event is None:
+                return
+            p1 = event.mouse_event.press_event.pos
+            p2 = event.mouse_event.pos
+
+            if 3 in event.buttons:
+                # Translate
+                norm = np.mean(self._viewbox.size)
+                if self._event_value is None or len(self._event_value) == 2:
+                    self._event_value = self.center
+                dist = (p1 - p2) / norm * self._scale_factor
+                dist[1] *= -1
+                # Black magic part 1: turn 2D into 3D translations
+                dx, dy, dz = self._dist_to_trans(dist)
+                # Black magic part 2: take up-vector and flipping into account
+                ff = self._flip_factors
+                up, forward, right = self._get_dim_vectors()
+                dx, dy, dz = right * dx + forward * dy + up * dz
+                dx, dy, dz = ff[0] * dx, ff[1] * dy, dz * ff[2]
+                c = self._event_value
+                self.center = c[0] + dx, c[1] + dy, c[2] + dz

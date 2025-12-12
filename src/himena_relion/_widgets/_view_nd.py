@@ -134,7 +134,6 @@ class Q2DViewer(QViewer):
         if future.cancelled():
             return
         result = future.result()
-        self._canvas.image = result.image
         self._histogram_view.set_hist_for_array(result.image, result.clim)
         self._on_clim_changed(result.clim)
         if result.points.shape[0] > 0:
@@ -153,6 +152,7 @@ class Q2DViewer(QViewer):
                 size=10,
             )
             self._canvas.markers_visual.visible = False
+        self._canvas.image = result.image
 
     def _on_clim_changed(self, clim: tuple[float, float]):
         """Update the contrast limits based on the histogram view."""
