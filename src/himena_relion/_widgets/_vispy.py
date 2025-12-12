@@ -1,3 +1,43 @@
+# Some parts of this code are adapted from the Vispy library, under the
+# following licensing terms.
+
+# Vispy licensing terms
+# ---------------------
+
+# Vispy is licensed under the terms of the (new) BSD license:
+
+# Copyright (c) 2013-2025, Vispy Development Team. All rights reserved.
+
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+# * Redistributions of source code must retain the above copyright
+#   notice, this list of conditions and the following disclaimer.
+# * Redistributions in binary form must reproduce the above copyright
+#   notice, this list of conditions and the following disclaimer in the
+#   documentation and/or other materials provided with the distribution.
+# * Neither the name of Vispy Development Team nor the names of its
+#   contributors may be used to endorse or promote products
+#   derived from this software without specific prior written permission.
+
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+# IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+# TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+# PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER
+# OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+# LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+# NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+# SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+# Exceptions
+# ----------
+
+# The examples code in the examples directory can be considered public
+# domain, unless otherwise indicated in the corresponding source file.
+
 from __future__ import annotations
 from functools import lru_cache
 import sys
@@ -7,6 +47,7 @@ from numpy.typing import NDArray
 from qtpy import QtWidgets as QtW, QtCore, QtGui
 
 from vispy import scene, use
+from vispy.app import MouseEvent
 from vispy.scene import ViewBox
 from vispy.scene.visuals import (
     Image as VispyImage,
@@ -18,6 +59,7 @@ from vispy.util import keys as VispyKeys
 from himena_relion._widgets._qviewbox import QViewBox
 
 
+@lru_cache(maxsize=1)
 def get_qt_app():
     # look for the imported Qt backend
     for libname in ["PyQt5", "PyQt6", "PySide2", "PySide6"]:
@@ -25,25 +67,24 @@ def get_qt_app():
             app = libname.lower()
             break
     else:
-        raise RuntimeError("No Qt backend found for Vispy2DViewer.")
+        raise RuntimeError("No Qt backend found for vispy viewer.")
     return app
 
 
-class VispyViewerBase:
+def is_egl_available() -> bool:
+    try:
+        use("egl")
+        return True
+    except Exception:
+        return False
+
+
+class Vispy2DViewer:
     def __init__(self, parent):
         app = get_qt_app()
         _scene = scene.SceneCanvas(keys="interactive", parent=parent, app=app)
         self._scene = _scene
         self._native_qt_widget = _scene.native
-
-    @property
-    def native(self) -> QtW.QWidget:
-        return self._native_qt_widget
-
-
-class Vispy2DViewer(VispyViewerBase):
-    def __init__(self, parent):
-        super().__init__(parent)
         viewbox = self._scene.central_widget.add_view(camera="panzoom")
         assert isinstance(viewbox, ViewBox)
         self._viewbox = viewbox
@@ -63,6 +104,10 @@ class Vispy2DViewer(VispyViewerBase):
         self._markers.update_gl_state(depth_test=False)
         self._markers.visible = False
         self._scene.events.mouse_double_click.connect(lambda event: self.auto_fit())
+
+    @property
+    def native(self) -> QtW.QWidget:
+        return self._native_qt_widget
 
     @property
     def image(self) -> NDArray[np.float32]:
@@ -101,25 +146,41 @@ class Vispy2DViewer(VispyViewerBase):
         self._viewbox.camera.set_range(x=xrange, y=yrange)
 
 
-@lru_cache(maxsize=1)
-def get_offscreen_vispy_app() -> str:
-    try:
-        app = "egl"
-        use(app)
-    except Exception:
-        try:
-            app = "osmesa"
-            use(app)
-        except Exception:
-            app = get_qt_app()
-            use(app)
-    return app
+class ArcballCamera(scene.ArcballCamera):
+    def viewbox_mouse_event(self, event):
+        # enable translation with middle mouse button
+        super().viewbox_mouse_event(event)
+        if event.handled or not self.interactive:
+            return
+
+        if event.type == "mouse_move":
+            if event.press_event is None:
+                return
+            p1 = event.mouse_event.press_event.pos
+            p2 = event.mouse_event.pos
+
+            if 3 in event.buttons:
+                # Translate
+                norm = np.mean(self._viewbox.size)
+                if self._event_value is None or len(self._event_value) == 2:
+                    self._event_value = self.center
+                dist = (p1 - p2) / norm * self._scale_factor
+                dist[1] *= -1
+                # Black magic part 1: turn 2D into 3D translations
+                dx, dy, dz = self._dist_to_trans(dist)
+                # Black magic part 2: take up-vector and flipping into account
+                ff = self._flip_factors
+                up, forward, right = self._get_dim_vectors()
+                dx, dy, dz = right * dx + forward * dy + up * dz
+                dx, dy, dz = ff[0] * dx, ff[1] * dy, dz * ff[2]
+                c = self._event_value
+                self.center = c[0] + dx, c[1] + dy, c[2] + dz
 
 
 class _Vispy3DBase:
     def __init__(self):
         self._scene = self.make_scene()
-        self._camera = scene.ArcballCamera(fov=0)
+        self._camera = ArcballCamera(fov=0)
         viewbox = self._scene.central_widget.add_view()
         assert isinstance(viewbox, ViewBox)
         viewbox.camera = self._camera
@@ -191,7 +252,14 @@ class _Vispy3DBase:
         self._volume_visual.clim = _min, _max
 
 
-class Vispy3DViewer(QViewBox, _Vispy3DBase):
+class VispyOffScreen3DViewer(QViewBox, _Vispy3DBase):
+    """Vispy 3D viewer widget using offscreen rendering to a QPixmap.
+
+    3D rendering is extremely slow when vispy is used via SSH with X11 forwarding,
+    because OpenGL uses the fallback software rendering (llvmpipe) that runs on CPU.
+    This class uses offscreen rendering by EGL on the server side to avoid this issue.
+    """
+
     def __init__(self, parent):
         super().__init__(parent)
         _Vispy3DBase.__init__(self)
@@ -199,6 +267,7 @@ class Vispy3DViewer(QViewBox, _Vispy3DBase):
             QtW.QSizePolicy.Policy.Expanding,
             QtW.QSizePolicy.Policy.Expanding,
         )
+        self.setFocusPolicy(QtCore.Qt.FocusPolicy.WheelFocus)
         self._vispy_mouse_data = {
             "buttons": [],
             "press_event": None,
@@ -223,13 +292,28 @@ class Vispy3DViewer(QViewBox, _Vispy3DBase):
     def make_scene(self):
         return scene.SceneCanvas(
             keys="interactive",
-            app=get_offscreen_vispy_app(),
+            app="egl",
             show=False,
             size=(340, 340),
         )
 
     def make_pixmap(self, size: QtCore.QSize) -> NDArray[np.uint8]:
         return self._scene.render()
+
+    def resizeEvent(self, a0: QtGui.QResizeEvent):
+        ratio = self.devicePixelRatioF()
+        # Both scene and viewbox need to be resized
+        self._scene.size = (
+            int(ratio * a0.size().width()),
+            int(ratio * a0.size().height()),
+        )
+        self._viewbox.size = self._scene.size
+        self._camera.viewbox_resize_event(None)
+        return super().resizeEvent(a0)
+
+    def closeEvent(self, event):
+        self._scene.close()
+        return super().closeEvent(event)
 
     def mousePressEvent(self, ev: QtGui.QMouseEvent):
         vispy_event = self._vispy_mouse_press(
@@ -316,7 +400,7 @@ class Vispy3DViewer(QViewBox, _Vispy3DBase):
 
         return ev
 
-    def _vispy_mouse_move(self, **kwargs):
+    def _vispy_mouse_move(self, **kwargs) -> MouseEvent:
         if default_timer() - self._last_time < 0.01:
             return
         self._last_time = default_timer()
@@ -338,7 +422,7 @@ class Vispy3DViewer(QViewBox, _Vispy3DBase):
         self._vispy_mouse_data["last_event"] = ev
         return ev
 
-    def _vispy_mouse_release(self, **kwargs):
+    def _vispy_mouse_release(self, **kwargs) -> MouseEvent:
         # default method for delivering mouse release events to the canvas
         kwargs.update(self._vispy_mouse_data)
 
@@ -355,7 +439,7 @@ class Vispy3DViewer(QViewBox, _Vispy3DBase):
 
         return ev
 
-    def _vispy_mouse_double_click(self, **kwargs):
+    def _vispy_mouse_double_click(self, **kwargs) -> MouseEvent:
         # default method for delivering double-click events to the canvas
         kwargs.update(self._vispy_mouse_data)
 
@@ -368,10 +452,14 @@ class Vispy3DViewer(QViewBox, _Vispy3DBase):
         return posx, posy
 
 
-class VispyNative3DViewer:
+class VispyNative3DViewer(_Vispy3DBase):
+    def __init__(self, parent):
+        self._parent = parent
+        super().__init__()
+
     def make_scene(self) -> scene.SceneCanvas:
         app = get_qt_app()
-        _scene = scene.SceneCanvas(keys="interactive", app=app)
+        _scene = scene.SceneCanvas(keys="interactive", app=app, parent=self._parent)
         self._native_qt_widget = _scene.native
         return _scene
 
@@ -379,6 +467,11 @@ class VispyNative3DViewer:
     def native(self) -> QtW.QWidget:
         return self._native_qt_widget
 
+
+if is_egl_available():
+    Vispy3DViewer = VispyOffScreen3DViewer
+else:
+    Vispy3DViewer = VispyNative3DViewer
 
 BUTTONMAP = {
     QtCore.Qt.MouseButton.NoButton: 0,
