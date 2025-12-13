@@ -2,7 +2,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from himena import MainWindow, WidgetDataModel
-from qtpy import QtGui
+from qtpy import QtGui, QtWidgets as QtW, QtCore
 from cmap import Color
 from himena.qt._qflowchart import QFlowChartWidget, BaseNodeItem
 from himena.plugins import validate_protocol
@@ -48,7 +48,48 @@ class RelionJobNodeItem(BaseNodeItem):
         return self.text()
 
 
-class QRelionPipelineFlowChart(QFlowChartWidget):
+class QRelionPipelineFlowChart(QtW.QWidget):
+    def __init__(self, ui: MainWindow):
+        super().__init__()
+        layout = QtW.QVBoxLayout(self)
+        self._directory_label = QtW.QLabel("RELION Pipeline Flow Chart", self)
+        self._flow_chart = QRelionPipelineFlowChartView(ui)
+        layout.addWidget(self._directory_label)
+        layout.addWidget(self._flow_chart)
+
+    def sizeHint(self):
+        return QtCore.QSize(320, 400)
+
+    @validate_protocol
+    def update_model(self, model: WidgetDataModel) -> None:
+        if not isinstance(src := model.source, Path):
+            raise TypeError("RELION project source not found.")
+        self._flow_chart.clear_all()
+        self._flow_chart.add_pipeline(model.value)
+        self._flow_chart._relion_project_dir = src.parent
+        self._directory_label.setText(f"/{src.parent.name}")
+
+    @validate_protocol
+    def to_model(self) -> WidgetDataModel:
+        return WidgetDataModel(
+            value=self._flow_chart._pipeline, type=Type.RELION_PIPELINE
+        )
+
+    @validate_protocol
+    def model_type(self) -> str:
+        return Type.RELION_PIPELINE
+
+    @validate_protocol
+    def size_hint(self):
+        hint = self.sizeHint()
+        return (hint.width(), hint.height())
+
+    @validate_protocol
+    def theme_changed_callback(self, theme: Theme) -> None:
+        self._flow_chart.setBackgroundBrush(QtGui.QColor(Color(theme.background).hex))
+
+
+class QRelionPipelineFlowChartView(QFlowChartWidget):
     def __init__(self, ui: MainWindow):
         super().__init__()
         # self.view.item_right_clicked.connect(self._on_right_clicked)
@@ -57,31 +98,8 @@ class QRelionPipelineFlowChart(QFlowChartWidget):
         self._relion_project_dir: Path = Path.cwd()
         self.view.item_left_double_clicked.connect(self._on_item_double_clicked)
 
-    @validate_protocol
-    def update_model(self, model: WidgetDataModel) -> None:
-        if not isinstance(src := model.source, Path):
-            raise TypeError("RELION project source not found.")
-        self.clear_all()
-        self.add_pipeline(model.value)
-        self._relion_project_dir = src.parent
-
-    @validate_protocol
-    def to_model(self) -> WidgetDataModel:
-        return WidgetDataModel(value=self._pipeline, type=Type.RELION_PIPELINE)
-
-    @validate_protocol
-    def model_type(self) -> str:
-        return Type.RELION_PIPELINE
-
-    @validate_protocol
-    def size_hint(self):
-        return 500, 400
-
-    @validate_protocol
-    def theme_changed_callback(self, theme: Theme) -> None:
-        self.setBackgroundBrush(QtGui.QColor(Color(theme.background).hex))
-
     def add_pipeline(self, pipeline: RelionDefaultPipeline) -> None:
+        self._pipeline = pipeline
         for info in pipeline._nodes:
             if info.path not in self.view._node_map:
                 self._add_job_node_item(info)

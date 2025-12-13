@@ -8,7 +8,10 @@ from superqt import ensure_main_thread, QLabeledDoubleSlider
 from himena.qt._qlineedit import QIntLineEdit, QDoubleLineEdit
 from himena.plugins import validate_protocol
 from himena_builtins.qt.widgets._shared import labeled
-from himena_builtins.qt.widgets._image_components import QHistogramView
+from himena_builtins.qt.widgets._image_components import (
+    QHistogramView,
+    QAutoContrastButton,
+)
 
 from himena_relion._image_readers import ArrayFilteredView
 from himena_relion._widgets._spinbox import QIntWidget
@@ -34,7 +37,6 @@ class Q2DViewer(QViewer):
         self._last_future: Future[SliceResult] | None = None
         self._last_clim: tuple[float, float] | None = None
         self._canvas = Vispy2DViewer(self)
-        self._canvas.native.setFixedHeight(340)
         layout = QtW.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self._canvas.native)
@@ -47,13 +49,20 @@ class Q2DViewer(QViewer):
         self._histogram_view = QHistogramView()
         self._histogram_view.clim_changed.connect(self._on_clim_changed)
         self._histogram_view.setFixedHeight(36)
+        self._auto_contrast_btn = QAutoContrastButton(self._auto_contrast)
+        self._auto_contrast_btn.qminmax = (0.0001, 0.9999)
         self._zpos_box = QIntWidget("", label_width=0)
         self._zpos_box.valueChanged.connect(self._on_zpos_box_changed)
         self._zpos_box.setFixedWidth(90)
         self._zpos_box.setMaximum(0)
+        self._auto_contrast_btn.update_color("gray")
 
         layout.addWidget(labeled(zlabel, self._dims_slider, self._zpos_box))
-        layout.addWidget(self._histogram_view)
+        hlayout = QtW.QHBoxLayout()
+        hlayout.addWidget(self._auto_contrast_btn)
+        hlayout.addWidget(self._histogram_view)
+        hlayout.setContentsMargins(8, 0, 8, 0)
+        layout.addLayout(hlayout)
         self._dims_slider.valueChanged.connect(self._on_slider_changed)
         self._out_of_slice = True
 
@@ -135,7 +144,9 @@ class Q2DViewer(QViewer):
             return
         result = future.result()
         self._histogram_view.set_hist_for_array(result.image, result.clim)
-        self._on_clim_changed(result.clim)
+        self._canvas.image = result.image
+        self._canvas.contrast_limits = result.clim
+        self._last_clim = result.clim
         if result.points.shape[0] > 0:
             self._canvas.markers_visual.set_data(
                 result.points[:, [2, 1]],
@@ -152,16 +163,42 @@ class Q2DViewer(QViewer):
                 size=10,
             )
             self._canvas.markers_visual.visible = False
-        self._canvas.image = result.image
+        self._canvas.update_canvas()
+
+    def _auto_contrast(self):
+        """Automatically adjust the contrast based on the histogram."""
+        range_min, range_max = self._histogram_view._view_range
+        minmax = self._histogram_view.calc_contrast_limits(
+            *self._auto_contrast_btn.qminmax
+        )
+        if minmax is None:
+            return
+        min_new, max_new = minmax
+
+        min_old, max_old = self._histogram_view.clim()
+        self._histogram_view.set_clim((min_new, max_new))
+
+        # ensure both end is visible
+        changed = False
+        if min_new < min_old:
+            range_min = min_new
+            changed = True
+        if max_new > max_old:
+            range_max = max_new
+            changed = True
+        if changed:
+            self._histogram_view.set_view_range(range_min, range_max)
 
     def _on_clim_changed(self, clim: tuple[float, float]):
         """Update the contrast limits based on the histogram view."""
         self._canvas.contrast_limits = clim
         self._last_clim = clim
+        self._canvas.update_canvas()
 
     def auto_fit(self):
         """Automatically fit the camera to the image."""
         self._canvas.auto_fit()
+        self._canvas.update_canvas()
 
     def set_text_overlay(self, text: str, color: str = "white", size: int = 20):
         """Set a text overlay on the viewer."""
@@ -196,6 +233,7 @@ class Q3DViewer(QViewer):
             self._canvas.image_visual.visible = True
             self._has_image = True
         self._canvas.set_iso_threshold(self._iso_slider.value())
+        self._canvas.update_canvas()
 
     def auto_threshold(self, thresh: float | None = None):
         """Automatically set the threshold based on the image data."""
@@ -205,6 +243,7 @@ class Q3DViewer(QViewer):
                 thresh = _utils.threshold_yen(img)
             self._iso_slider.setValue(thresh)
             self._iso_slider.setRange(*self._canvas._lims)
+        self._canvas.update_canvas()
 
     def auto_fit(self):
         """Automatically fit the camera to the image."""
@@ -212,6 +251,7 @@ class Q3DViewer(QViewer):
         self._canvas.camera.center = np.array(img.shape) / 2
         self._canvas.camera.scale_factor = max(img.shape)
         self._canvas.camera.update()
+        self._canvas.update_canvas()
 
     def set_text_overlay(self, text: str, color: str = "white", size: int = 20):
         """Set a text overlay on the viewer."""
@@ -219,6 +259,7 @@ class Q3DViewer(QViewer):
 
     def _on_iso_changed(self, value: float):
         self._canvas.set_iso_threshold(value)
+        self._canvas.update_canvas()
 
     @validate_protocol
     def update_model(self, model: WidgetDataModel):

@@ -123,6 +123,9 @@ class QOffScreenViewBox(QViewBox):
         self._store_qpixmap(size)
         self.update()
 
+    def update_canvas(self):
+        self._update_pixmap()
+
     def resizeEvent(self, a0: QtGui.QResizeEvent):
         ratio = self.devicePixelRatioF()
         # Both scene and viewbox need to be resized
@@ -289,6 +292,9 @@ class QNativeViewBox:
     def native(self) -> QtW.QWidget:
         return self._native_qt_widget
 
+    def update_canvas(self):
+        pass
+
 
 class _Vispy2DBase:
     def __init__(self):
@@ -444,16 +450,6 @@ class VispyOffScreen2DViewer(QOffScreenViewBox, _Vispy2DBase):
         super().__init__(parent)
         _Vispy2DBase.__init__(self)
 
-    @_Vispy2DBase.image.setter
-    def image(self, img: NDArray[np.float32]):
-        super(VispyOffScreen2DViewer, self.__class__).image.fset(self, img)
-        self._update_pixmap()
-
-    @_Vispy2DBase.contrast_limits.setter
-    def contrast_limits(self, clim: tuple[float, float]):
-        super(VispyOffScreen2DViewer, self.__class__).contrast_limits.fset(self, clim)
-        self._update_pixmap()
-
 
 class VispyNative2DViewer(QNativeViewBox, _Vispy2DBase):
     def __init__(self, parent):
@@ -465,10 +461,6 @@ class VispyOffScreen3DViewer(QOffScreenViewBox, _Vispy3DBase):
     def __init__(self, parent):
         super().__init__(parent)
         _Vispy3DBase.__init__(self)
-
-    def set_iso_threshold(self, value):
-        super().set_iso_threshold(value)
-        self._update_pixmap()
 
 
 class VispyNative3DViewer(QNativeViewBox, _Vispy3DBase):

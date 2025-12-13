@@ -18,6 +18,7 @@ it for your real data processing.
 #### Roadmap
 
 - [x] View (most of the) RELION jobs.
+- [x] Efficient 2D/3D rendering using [vispy](https://github.com/vispy/vispy) and EGL over SSH.
 - [x] View job flowchart, and open jobs from the flowchart.
 - [x] Drag-and-drop support for job inputs and outputs.
 - [ ] Run RELION jobs from the GUI.

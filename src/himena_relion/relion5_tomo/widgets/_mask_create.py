@@ -12,6 +12,7 @@ class QMaskCreateViewer(QJobScrollArea):
     def __init__(self):
         super().__init__()
         self._viewer = Q3DViewer()
+        self._viewer.setMaximumHeight(480)
         self._layout.addWidget(self._viewer)
 
     def on_job_updated(self, job_dir: _job.MaskCreateJobDirectory, path: str):

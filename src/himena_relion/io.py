@@ -36,10 +36,12 @@ def _(path: Path):
 @register_reader_plugin(priority=500)
 def read_relion_job(path: Path) -> WidgetDataModel:
     if job_star := _get_job_star(path):
-        from himena_relion import _job
+        from himena_relion._job import JobDirectory
 
-        job_dir = _job.JobDirectory.from_job_star(job_star)
-        return WidgetDataModel(value=job_dir, type=Type.RELION_JOB)
+        return WidgetDataModel(
+            value=JobDirectory.from_job_star(job_star),
+            type=Type.RELION_JOB,
+        ).use_tab()
     raise ValueError(f"Expected an existing job.star file, got {path}")
 
 
@@ -53,10 +55,14 @@ def _(path: Path):
 @register_reader_plugin(priority=500)
 def read_relion_pipeline(path: Path) -> WidgetDataModel:
     if pipeline_star := _get_default_pipeline_star(path):
-        from himena_relion import _pipeline
+        from himena_relion.pipeline import RelionDefaultPipeline
 
-        pipeline = _pipeline.RelionDefaultPipeline.from_pipeline_star(pipeline_star)
-        return WidgetDataModel(value=pipeline, type=Type.RELION_PIPELINE)
+        return WidgetDataModel(
+            value=RelionDefaultPipeline.from_pipeline_star(pipeline_star),
+            type=Type.RELION_PIPELINE,
+            title="RELION Pipeline",
+        ).use_dock_widget(area="left")
+    raise ValueError(f"Expected an existing default_pipeline.star file, got {path}")
 
 
 @read_relion_pipeline.define_matcher

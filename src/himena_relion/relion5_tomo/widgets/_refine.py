@@ -20,7 +20,7 @@ class QRefine3DViewer(QJobScrollArea):
         super().__init__()
         layout = self._layout
         self._viewer = Q3DViewer()
-        self._viewer.setFixedSize(300, 300)
+        self._viewer.setMaximumHeight(480)
         self._fsc_plot = QPlotCanvas(self)
         self._class_choice = QIntWidget("Class", label_width=50)
         self._iter_choice = QIntWidget("Iteration", label_width=60)
