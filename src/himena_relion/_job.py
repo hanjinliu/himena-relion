@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import contextmanager
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -88,7 +89,7 @@ class JobDirectory:
         return self.path / "job_pipeline.star"
 
     def parse_job_pipeline(self) -> RelionPipeline:
-        return RelionPipeline.from_file(self.job_pipeline())
+        return RelionPipeline.from_star(self.job_pipeline())
 
     def default_pipeline(self) -> Path:
         """Return the default pipeline control file."""
@@ -97,6 +98,20 @@ class JobDirectory:
     def note(self) -> Path:
         """Return the path to the job's note file."""
         return self.path / "note.txt"
+
+    @contextmanager
+    def edit_job_pipeline(self):
+        """Edit job_pipeline.star in this context.
+
+        Examples
+        --------
+        with job_dir.edit_job_pipeline() as pipeline:
+            # modify pipeline
+            pipeline.append_output("particles.star", "ParticleGroupMetadata.star")
+        """
+        pipeline = self.parse_job_pipeline()
+        yield pipeline
+        pipeline.write_star(self.job_pipeline())
 
     def state(self) -> RelionJobState:
         """Return the state of the job based on the existence of certain files."""

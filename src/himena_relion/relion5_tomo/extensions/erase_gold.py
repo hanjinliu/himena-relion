@@ -117,18 +117,20 @@ MIC_EVEN = "rlnMicrographNameEven"
 
 def run_find_beads_3d(
     in_mics: str,  # path
-    o: str,  # path
+    out_job_dir: _job.JobDirectory,
     gold_nm: float = 10.0,
 ):
     """Run findbeads and store all the model files."""
     df_tomo = starfile.read(in_mics)
     assert isinstance(df_tomo, pd.DataFrame)
-
-    _out_job_dir = _job.JobDirectory(Path(o))
-
     console = Console(record=True)
-    models_dir = _out_job_dir.path.joinpath("models")
+    models_dir = out_job_dir.path.joinpath("models")
     models_dir.mkdir(exist_ok=True, parents=True)
+
+    output_node_path = out_job_dir.path.joinpath("tomograms.star")
+    with out_job_dir.edit_job_pipeline() as pipeline:
+        pipeline.append_output(output_node_path, "TomogramGroupMetadata.star")
+
     model_paths = []
     for _, row in df_tomo.iterrows():
         info = _job.TomogramInfo.from_series(row)
@@ -138,19 +140,22 @@ def run_find_beads_3d(
         tilt_star_df = starfile.read(path_star)
         angrange = tilt_star_df[TILT_ANGLE].min(), tilt_star_df[TILT_ANGLE].max()
         model_path = models_dir / f"{info.tomo_name}.mod"
-        model_paths.append(model_path.relative_to(_out_job_dir.relion_project_dir))
+        model_paths.append(model_path.relative_to(out_job_dir.relion_project_dir))
         console.log(f"Running findbeads3d for tomogram {info.tomo_name}")
         _findbeads3d_wrapped(tomo_path, model_path, size_pix, angrange)
-        check_abort(_out_job_dir)
+        yield
 
     df_tomo["TomoBeadModel"] = model_paths
     df_tomo["TomoBeadSize"] = gold_nm
-    starfile.write(df_tomo, _out_job_dir.path.joinpath("tomograms.star"))
+    starfile.write(df_tomo, output_node_path)
+    console.log(
+        f"findbeads3d jobs finished successfully, output saved to {output_node_path}"
+    )
 
 
 def run_erase_gold(
     in_mics: str,  # path
-    o: str,  # path
+    out_job_dir: _job.JobDirectory,
     seed: int = 1427,
     mask_expand_factor: float = 1.2,
 ):
@@ -158,13 +163,12 @@ def run_erase_gold(
     console = Console(record=True)
     df_tomo = starfile.read(in_mics)
     assert isinstance(df_tomo, pd.DataFrame)
-    _out_job_dir = _job.JobDirectory(Path(o))
 
-    tilt_save_dir = _out_job_dir.path / "tilt_series"
+    tilt_save_dir = out_job_dir.path / "tilt_series"
     tilt_save_dir.mkdir(exist_ok=True, parents=True)
-    frame_save_dir = _out_job_dir.path / "frames"
+    frame_save_dir = out_job_dir.path / "frames"
     frame_save_dir.mkdir(exist_ok=True, parents=True)
-    rln_dir = _out_job_dir.relion_project_dir
+    rln_dir = out_job_dir.relion_project_dir
 
     for _, row in df_tomo.iterrows():
         info = _job.TomogramInfo.from_series(row)
@@ -185,7 +189,7 @@ def run_erase_gold(
         xf = _xf_to_array(edf_path.with_suffix(".xf"))
         console.log(f"{fid.shape[0]} fiducials found for tomogram {info.tomo_name}")
         fid_tr = project_fiducials(fid, tomo_center, deg, xf, tilt_center)
-        check_abort(_out_job_dir)
+        yield
         for col in [MIC_NAME, MIC_ODD, MIC_EVEN]:
             if col in tilt_star_df.columns:
                 _to_update = []
@@ -195,14 +199,14 @@ def run_erase_gold(
                         img = mrc.data
                         voxel_size = mrc.voxel_size
                     z_matches = abs(fid_tr[:, 0] - ith) < 0.01
-                    check_abort(_out_job_dir)
+                    yield
                     img_erased = _erase_gold(
                         img,
                         pos=fid_tr[z_matches, 1:],
                         rng=rng,
                         gold_px=gold_nm / voxel_size.x * 10 * mask_expand_factor,
                     )
-                    check_abort(_out_job_dir)
+                    yield
                     save_path = (
                         frame_save_dir.relative_to(rln_dir)
                         / f"{mic_path.stem}_erased{mic_path.suffix}"
@@ -211,7 +215,7 @@ def run_erase_gold(
                     with mrcfile.new(rln_dir / save_path, overwrite=True) as mrc_out:
                         mrc_out.set_data(img_erased)
                         mrc_out.voxel_size = voxel_size
-                    check_abort(_out_job_dir)
+                    yield
                 tilt_star_df[col] = _to_update
 
         star_save_path = tilt_save_dir / info.tomo_tilt_series_star_file.name
@@ -223,9 +227,4 @@ def run_erase_gold(
         / f"{_job.TomogramInfo.from_series(row).tomo_name}.star"
         for _, row in df_tomo.iterrows()
     ]
-    starfile.write(df_tomo, _out_job_dir.path.joinpath("tilt_series.star"))
-
-
-def check_abort(job_dir: _job.JobDirectory):
-    if job_dir.state() == _job.RelionJobState.ABORT_NOW:
-        raise RuntimeError("Job aborted")
+    starfile.write(df_tomo, out_job_dir.path.joinpath("tilt_series.star"))

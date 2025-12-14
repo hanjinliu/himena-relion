@@ -21,6 +21,15 @@ class FileNames:
     ABORT_NOW = "RELION_JOB_ABORT_NOW"
 
 
+class RelionNodeTypeLabels:
+    TOMO_GROUP_META = "TomogramGroupMetadata"
+    PARTICLES_GROUP_META = "ParticleGroupMetadata"
+    TOMO_OPT_STAR = "TomoOptimisationSet"
+    DENSITY_MAP = "DensityMap"
+    MASK = "Mask3D"
+    PROCESSED_DATA = "ProcessData"
+
+
 JOB_ID_MAP = {
     "relion.importtomo": "Import Tomo",
     "relion.motioncorr.motioncor2": "Motion Corr.",

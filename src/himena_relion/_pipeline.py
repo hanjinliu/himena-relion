@@ -118,9 +118,11 @@ class RelionJobPipelineNode:
 
 @dataclass
 class RelionPipeline:
+    general: pd.DataFrame
     process_name: str
     process_type_label: str
     process_alias: str | None = None
+    status_label: str | None = None
     inputs: list[RelionJobPipelineNode] = field(default_factory=list)
     outputs: list[RelionJobPipelineNode] = field(default_factory=list)
 
@@ -131,15 +133,22 @@ class RelionPipeline:
                 return node
         return None
 
+    def append_output(self, path, type_label: str):
+        """Append an output node."""
+        node = RelionJobPipelineNode.from_file_path(path, type_label)
+        self.outputs.append(node)
+
     @classmethod
-    def from_file(cls, path: str | Path) -> RelionPipeline:
+    def from_star(cls, path: str | Path) -> RelionPipeline:
         df_all = starfile.read(path, always_dict=True)
         assert isinstance(df_all, dict)
+        df_general = df_all.get("pipeline_general")
         df_processes = df_all.get("pipeline_processes")
         assert isinstance(df_processes, pd.DataFrame)
         process_name = df_processes["rlnPipeLineProcessName"].iloc[0]
         process_alias = df_processes["rlnPipeLineProcessAlias"].iloc[0]
         process_type_label = df_processes["rlnPipeLineProcessTypeLabel"].iloc[0]
+        process_status_label = df_processes["rlnPipeLineProcessStatusLabel"].iloc[0]
 
         # construct type map
         df_type_map = df_all.get("pipeline_nodes")
@@ -168,12 +177,55 @@ class RelionPipeline:
             for output_path_rel in df_out["rlnPipeLineEdgeToNode"]
         ]
         return cls(
+            df_general,
             process_name,
             process_type_label,
             process_alias,
+            process_status_label,
             inputs,
             outputs,
         )
+
+    def write_star(self, path: str | Path):
+        nodes = self.inputs + self.outputs
+        df_all = {
+            "pipeline_general": self.general,
+            "pipeline_processes": pd.DataFrame(
+                {
+                    "rlnPipeLineProcessName": [self.process_name],
+                    "rlnPipeLineProcessAlias": [self.process_alias or ""],
+                    "rlnPipeLineProcessTypeLabel": [self.process_type_label],
+                    "rlnPipeLineProcessStatusLabel": [self.status_label or ""],
+                }
+            ),
+            "pipeline_nodes": pd.DataFrame(
+                {
+                    "rlnPipeLineNodeName": [node.path.as_posix() for node in nodes],
+                    "rlnPipeLineNodeTypeLabel": [
+                        node.type_label or "" for node in nodes
+                    ],
+                    "rlnPipeLineNodeTypeLabelDepth": [1 for _ in nodes],
+                }
+            ),
+            "pipeline_input_edges": pd.DataFrame(
+                {
+                    "rlnPipeLineEdgeFromNode": [
+                        node.path.as_posix() for node in self.inputs
+                    ],
+                    "rlnPipeLineEdgeProcess": [self.process_name for _ in self.inputs],
+                }
+            ),
+            "pipeline_output_edges": pd.DataFrame(
+                {
+                    "rlnPipeLineEdgeProcess": [self.process_name for _ in self.outputs],
+                    "rlnPipeLineEdgeToNode": [
+                        node.path.as_posix() for node in self.outputs
+                    ],
+                }
+            ),
+        }
+        starfile.write(df_all, path)
+        return
 
 
 @dataclass

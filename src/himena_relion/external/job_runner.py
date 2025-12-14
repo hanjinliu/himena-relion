@@ -1,3 +1,4 @@
+# Widget to run a job inside himena app
 from __future__ import annotations
 import inspect
 from typing import Callable

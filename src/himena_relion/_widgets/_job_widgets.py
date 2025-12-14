@@ -166,7 +166,7 @@ class QJobInOut(QtW.QWidget, JobWidgetBase):
             return
         rln_dir = job_dir.relion_project_dir
 
-        job_pipeline = RelionPipeline.from_file(path)
+        job_pipeline = RelionPipeline.from_star(path)
         for input_node in job_pipeline.inputs:
             input_path = rln_dir / input_node.path
             item = QRelionNodeItem(input_path, filetype=input_node.type_label)

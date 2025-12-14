@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from pathlib import Path
 import numpy as np
-from himena import StandardType, WidgetDataModel, create_image_model
+from himena import StandardType, WidgetDataModel, create_image_model, create_text_model
 from himena.standards.model_meta import DimAxis
-from himena.plugins import register_reader_plugin
+from himena.plugins import register_reader_plugin, register_function
 from himena_relion.consts import Type
 
 
@@ -71,6 +71,48 @@ def _(path: Path):
     if _get_default_pipeline_star(path) is not None:
         return Type.RELION_PIPELINE
     return None
+
+
+### Converter functions
+@register_function(
+    menus=[],
+    types=[Type.RELION_JOB],
+    title="Open job.star as text",
+    command_id="himena-relion:open-job-star",
+)
+def open_relion_job_star(model: WidgetDataModel) -> WidgetDataModel:
+    from himena_relion._job import JobDirectory
+
+    if isinstance(job_dir := model.value, JobDirectory):
+        job_star_path = job_dir.job_star()
+        return create_text_model(
+            job_star_path.read_text(),
+            title=job_star_path.name,
+            extension_default=".star",
+        )
+    raise TypeError(f"Expected JobDirectory object, got {type(model.value)}")
+
+
+@register_function(
+    menus=[],
+    types=[Type.RELION_JOB],
+    title="Open job_pipeline.star as text",
+    command_id="himena-relion:open-job-pipeline-star",
+)
+def open_relion_job_pipeline_star(model: WidgetDataModel) -> WidgetDataModel:
+    from himena_relion._job import JobDirectory
+
+    if isinstance(job_dir := model.value, JobDirectory):
+        job_star_path = job_dir.job_pipeline()
+        return create_text_model(
+            job_star_path.read_text(),
+            title=job_star_path.name,
+            extension_default=".star",
+        )
+    raise TypeError(f"Expected JobDirectory object, got {type(model.value)}")
+
+
+### Helper functions
 
 
 def _get_job_star(path: Path) -> Path | None:

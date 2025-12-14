@@ -1,10 +1,17 @@
 from __future__ import annotations
 
+from pathlib import Path
 import sys
 import argparse
 from typing import Any, Callable, Annotated
 import inspect
+
+import starfile
+
+from himena_relion.consts import FileNames
+from himena_relion._job import JobDirectory
 from himena_relion.external.typemap import parse_string
+from himena_relion.external.writers import prep_job_star
 
 
 class RelionExternalArgParser(argparse.ArgumentParser):
@@ -15,18 +22,26 @@ class RelionExternalArgParser(argparse.ArgumentParser):
 
     ```bash
     himena-relion himena_relion.relion5_tomo.extensions.erase_gold.run_erase_gold \
-        --in_mics TestEraseGold/job_find/tomograms.star --o TestEraseGold/job_erase \
+        --in_mics External/job_find/tomograms.star --o External/job_erase \
         --seed 441442
+    ```
+
+    and from RELION GUI, you can set the command by
+    ```
+    (Input)
+    External executable: himena-relion himena_relion.relion5_tomo.extensions.erase_gold.run_erase_gold
+    Input micrographs: External/job_find/tomograms.star
+    (Params)
+    seed: 441442
     ```
     """
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.add_argument("function_id", type=str)
-        for yyy in ["movies", "mics", "parts", "coords", "3dref", "mask"]:
-            self.add_argument(f"--in_{yyy}", type=str)
         self.add_argument("--o", type=str)
-        self.add_argument("--j", type=int)
+        self.add_argument("--j", type=int, default=1)
+        self.add_argument("--prep_job_star", action="store_true")
 
 
 def parse_argv(argv: list[str] | None = None) -> dict[str, Any]:
@@ -89,23 +104,52 @@ def _unwrapped_annotated(annot: Any) -> Any:
         return annot
 
 
-def run_function() -> None:
+def run_function(argv: list[str] | None = None) -> None:
     """Run the selected function with parsed arguments."""
-    args = parse_argv()
-    function_id = args.pop("function_id")
+    args = parse_argv(argv)
+    function_id = str(args.pop("function_id"))
     func = pick_function(function_id)
+    is_prep_job_star = args.pop("prep_job_star", False)
+
+    if args.get("o", None) is None:
+        raise ValueError("Output directory (--o) is required but not given.")
+    o_dir = Path(args["o"])
 
     sig = inspect.signature(func)
     func_args = {}
     for param in sig.parameters.values():
         if param.name in args:
-            arg = args[param.name]
+            arg = args.pop(param.name)
             annot = _unwrapped_annotated(param.annotation)
-            arg = parse_string(arg, annot)
-            func_args[param.name] = arg
+            arg_parsed = parse_string(arg, annot)
+            func_args[param.name] = arg_parsed
+        elif param.annotation is JobDirectory:
+            job_dir = JobDirectory(o_dir)
+            func_args[param.name] = job_dir
         elif param.default is param.empty:
             raise ValueError(f"Missing required argument: {param.name}")
 
-    print(func_args)
+    # check if undefined arguments remain
+    if unknown := set(args.keys()) - {"o", "j"}:
+        func_name = function_id.rsplit(".", 1)[-1]
+        raise ValueError(
+            f"Unknown arguments for {func_name}: {unknown}. Function signature is "
+            f"{func_name}{sig}."
+        )
+
+    if is_prep_job_star:
+        df = prep_job_star(f"himena-relion {function_id}", **func_args)
+        starfile.write(df, o_dir / "job.star")
+        return
+
     # Run the function
-    func(**func_args)
+    is_generator = inspect.isgeneratorfunction(func)
+    if is_generator:
+        for _ in func(**func_args):
+            # check abort signal here
+            if o_dir.joinpath(FileNames.ABORT_NOW).exists():
+                raise RuntimeError("Job aborted by user.")
+    else:
+        func(**func_args)
+    if o_dir.exists():
+        o_dir.joinpath(FileNames.EXIT_SUCCESS).touch()
