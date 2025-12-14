@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Iterator
 from qtpy import QtWidgets as QtW, QtGui, QtCore
 from superqt import QToggleSwitch
 from superqt.utils import qthrottled
@@ -157,6 +158,8 @@ class QJobInOut(QtW.QWidget, JobWidgetBase):
     def on_job_updated(self, job_dir, fp):
         if fp.name == "job_pipeline.star":
             self.initialize(job_dir)
+        elif fp.suffix in [".mrc", ".star"]:
+            self.update_item_colors(job_dir)
 
     def initialize(self, job_dir):
         path = job_dir.job_pipeline()
@@ -184,6 +187,23 @@ class QJobInOut(QtW.QWidget, JobWidgetBase):
             self._list_widget_out.addItem(list_item)
             self._list_widget_out.setItemWidget(list_item, item)
 
+    def update_item_colors(self, job_dir: _job.JobDirectory):
+        rln_dir = job_dir.relion_project_dir
+        text_color = self.palette().text().color().name()
+        for item_widget in self._iter_output_node_items():
+            for labels in item_widget.draggable_widgets:
+                if labels.path_exists(rln_dir):
+                    labels.label_widget.setStyleSheet(f"color: {text_color};")
+                else:
+                    labels.label_widget.setStyleSheet("color: gray;")
+
+    def _iter_output_node_items(self) -> Iterator[QRelionNodeItem]:
+        for i in range(self._list_widget_out.count()):
+            list_item = self._list_widget_out.item(i)
+            item_widget = self._list_widget_out.itemWidget(list_item)
+            if isinstance(item_widget, QRelionNodeItem):
+                yield item_widget
+
     def tab_title(self) -> str:
         return "In/Out"
 
@@ -201,6 +221,7 @@ class QRelionNodeItem(QtW.QWidget):
         layout = QtW.QHBoxLayout(self)
         layout.setContentsMargins(2, 0, 0, 0)
         layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
+        self.draggable_widgets: list[QFileLabel] = []
         if show_dir:
             if self._filepath.parent.stem.startswith("job"):
                 self._filepath_rel = Path(*filepath.parts[-3:])
@@ -209,14 +230,14 @@ class QRelionNodeItem(QtW.QWidget):
                     path_rel=self._filepath_rel.parent,
                     icon_label=self.item_icon_label(is_dir=True),
                 )
-                if widget_dir._enabled:
-                    widget_dir.dragged.connect(self._drag_dir_event)
-                    widget_dir.double_clicked.connect(self._open_dir_event)
+                widget_dir.dragged.connect(self._drag_dir_event)
+                widget_dir.double_clicked.connect(self._open_dir_event)
             else:
                 self._filepath_rel = filepath
                 widget_dir = QFileLabel()
             widget_dir.setFixedWidth(170)
             layout.addWidget(widget_dir)
+            self.draggable_widgets.append(widget_dir)
         else:
             self._filepath_rel = Path(*filepath.parts[-3:])
 
@@ -226,9 +247,9 @@ class QRelionNodeItem(QtW.QWidget):
             icon_label=self.item_icon_label(),
             text=self._filepath.name if show_dir else None,
         )
-        if widget_file._enabled:
-            widget_file.dragged.connect(self._drag_file_event)
-            widget_file.double_clicked.connect(self._open_file_event)
+        widget_file.dragged.connect(self._drag_file_event)
+        widget_file.double_clicked.connect(self._open_file_event)
+        self.draggable_widgets.append(widget_file)
         self.setToolTip(f"{self._filepath_rel.as_posix()}\nType: {self._filetype}")
 
         layout.addWidget(widget_file)
@@ -271,7 +292,9 @@ class QRelionNodeItem(QtW.QWidget):
         )
 
     def _open_dir_event(self):
-        current_instance().read_file(self._filepath.parent)
+        if not (path := self._filepath.parent).exists():
+            raise FileNotFoundError(f"Directory {path} does not exist.")
+        current_instance().read_file(path)
 
     def _drag_file_event(self):
         drag_files(
@@ -282,8 +305,10 @@ class QRelionNodeItem(QtW.QWidget):
         )
 
     def _open_file_event(self):
+        if not (path := self._filepath).exists():
+            raise FileNotFoundError(f"File {path} does not exist.")
         current_instance().read_file(
-            self._filepath,
+            path,
             plugin=self._plugin_for_filetype(),
         )
 
@@ -366,8 +391,15 @@ class QFileLabel(QtW.QWidget):
             qlabel = QtW.QLabel("--")
             qlabel.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(qlabel)
-        if self._enabled:
-            self.setCursor(QtCore.Qt.CursorShape.SizeAllCursor)
+        self.setCursor(QtCore.Qt.CursorShape.SizeAllCursor)
+        self._label_widget = qlabel
+
+    @property
+    def label_widget(self) -> QtW.QLabel:
+        return self._label_widget
+
+    def path_exists(self, relion_dir: Path) -> bool:
+        return self._path.exists() or relion_dir.joinpath(self._path_rel).exists()
 
     def mousePressEvent(self, a0):
         if a0.button() == QtCore.Qt.MouseButton.LeftButton:

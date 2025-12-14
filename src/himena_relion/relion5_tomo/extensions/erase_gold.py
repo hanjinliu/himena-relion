@@ -38,6 +38,7 @@ def project_fiducials(
 
 
 def _findbeads3d_wrapped(
+    exe: str,
     tomo_path: str | Path,
     out_path: str | Path,
     size_pix: float,
@@ -50,7 +51,7 @@ def _findbeads3d_wrapped(
     with open(stdout_path, "w") as stdout_file, open(stderr_path, "w") as stderr_file:
         out = subprocess.run(
             [
-                "findbeads3d",
+                exe,
                 str(tomo_path),
                 str(out_path),
                 "-angle",
@@ -119,6 +120,7 @@ def run_find_beads_3d(
     in_mics: str,  # path
     out_job_dir: _job.JobDirectory,
     gold_nm: float = 10.0,
+    findbeads3d_exe: str = "findbeads3d",
 ):
     """Run findbeads and store all the model files."""
     df_tomo = starfile.read(in_mics)
@@ -142,7 +144,7 @@ def run_find_beads_3d(
         model_path = models_dir / f"{info.tomo_name}.mod"
         model_paths.append(model_path.relative_to(out_job_dir.relion_project_dir))
         console.log(f"Running findbeads3d for tomogram {info.tomo_name}")
-        _findbeads3d_wrapped(tomo_path, model_path, size_pix, angrange)
+        _findbeads3d_wrapped(findbeads3d_exe, tomo_path, model_path, size_pix, angrange)
         yield
 
     df_tomo["TomoBeadModel"] = model_paths

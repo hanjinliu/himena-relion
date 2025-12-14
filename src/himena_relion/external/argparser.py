@@ -145,11 +145,21 @@ def run_function(argv: list[str] | None = None) -> None:
     # Run the function
     is_generator = inspect.isgeneratorfunction(func)
     if is_generator:
-        for _ in func(**func_args):
-            # check abort signal here
+        iterator = func(**func_args)
+        while True:
+            try:
+                next(iterator)
+            except StopIteration:
+                break
+            except Exception as e:
+                o_dir.joinpath(FileNames.EXIT_FAILURE).touch()
+                raise e
             if o_dir.joinpath(FileNames.ABORT_NOW).exists():
                 raise RuntimeError("Job aborted by user.")
     else:
-        func(**func_args)
+        try:
+            func(**func_args)
+        except Exception:
+            o_dir.joinpath(FileNames.EXIT_FAILURE).touch()
     if o_dir.exists():
         o_dir.joinpath(FileNames.EXIT_SUCCESS).touch()

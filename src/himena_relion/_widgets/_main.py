@@ -126,9 +126,9 @@ class QRelionJobWidget(QtW.QWidget):
             self._state_widget.on_job_updated(self._job_dir, path)
             if control := self._control:
                 control._abort_button.setEnabled(self._job_dir.can_abort())
-            return
-        for wdt in self._iter_job_widgets():
-            wdt.on_job_updated(self._job_dir, Path(path))
+        else:
+            for wdt in self._iter_job_widgets():
+                wdt.on_job_updated(self._job_dir, Path(path))
 
     def _iter_job_widgets(self) -> Iterator[JobWidgetBase]:
         """Iterate over all job widgets in the tab widget."""
