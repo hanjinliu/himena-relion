@@ -21,6 +21,8 @@ class RelionJobNodeItem(BaseNodeItem):
         if jobxxx.startswith("job"):
             jobxxx = jobxxx[3:]
         title = JOB_ID_MAP.get(self._job.type_label, self._job.type_label)
+        if alias := self._job.alias:
+            return f"{jobxxx}: {title}\n{alias}"
         return f"{jobxxx}: {title}"
 
     def color(self):
@@ -69,7 +71,11 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         self._flow_chart.clear_all()
         self._flow_chart.add_pipeline(model.value)
         self._flow_chart._relion_project_dir = src.parent
-        self._directory_label.setText(f"/{src.parent.name}")
+        parts = src.parts
+        if len(parts) >= 3:
+            self._directory_label.setText(f"{parts[-3]}/{parts[-2]}/")
+        else:
+            self._directory_label.setText(f"{parts[-2]}/")
 
     @validate_protocol
     def to_model(self) -> WidgetDataModel:

@@ -3,7 +3,13 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 from qtpy import QtWidgets as QtW
-from himena_relion._widgets import QJobScrollArea, Q3DViewer, register_job, QIntWidget
+from himena_relion._widgets import (
+    QJobScrollArea,
+    Q3DViewer,
+    register_job,
+    QIntWidget,
+    spacer_widget,
+)
 from himena_relion import _job
 
 _LOGGER = logging.getLogger(__name__)
@@ -15,7 +21,7 @@ class QInitialModelViewer(QJobScrollArea):
         super().__init__()
         layout = self._layout
         self._viewer = Q3DViewer()
-        self._viewer.setMaximumHeight(480)
+        self._viewer.setMaximumSize(400, 400)
 
         self._class_choice = QIntWidget("Class", label_width=50)
         self._iter_choice = QIntWidget("Iteration", label_width=60)
@@ -27,6 +33,7 @@ class QInitialModelViewer(QJobScrollArea):
         hor_layout.addWidget(self._class_choice)
         hor_layout.setContentsMargins(0, 0, 0, 0)
         layout.addLayout(hor_layout)
+        layout.addWidget(spacer_widget())
         self._iter_choice.valueChanged.connect(self._on_iter_changed)
         self._class_choice.valueChanged.connect(self._on_class_changed)
         self._index_start = 1

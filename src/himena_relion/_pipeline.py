@@ -33,15 +33,21 @@ class RelionDefaultPipeline(Sequence["RelionJobInfo"]):
         mappers: pd.DataFrame = dfs["pipeline_input_edges"]
 
         nodes: dict[Path, RelionJobInfo] = {}
-        for path, type_label, status in zip(
+        for path, alias, type_label, status in zip(
             processes["rlnPipeLineProcessName"],
+            processes["rlnPipeLineProcessAlias"],
             processes["rlnPipeLineProcessTypeLabel"],
             processes["rlnPipeLineProcessStatusLabel"],
             strict=True,
         ):
+            if alias == "None":
+                _alias = None
+            elif isinstance(alias, str):
+                _alias = alias.split("/")[-1]
             node = RelionJobInfo(
                 path=Path(path),
                 type_label=type_label,
+                alias=_alias,
                 parents=[],
                 status=NodeStatus(status.lower()),
             )
@@ -72,6 +78,7 @@ class NodeStatus(Enum):
 class RelionJobInfo:
     path: Path
     type_label: str
+    alias: str | None
     parents: list[RelionOutputFile]
     status: NodeStatus = NodeStatus.SUCCEEDED
 

@@ -14,7 +14,7 @@ class QPlotCanvas(QModelMatplotlibCanvas):
     def __init__(self, parent):
         super().__init__()
         self.setParent(parent)
-        self.setFixedSize(340, 180)
+        self.setMaximumSize(400, 280)
 
     def plot_defocus(self, df: pd.DataFrame):
         with self._plot_style():

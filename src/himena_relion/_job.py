@@ -68,6 +68,11 @@ class JobDirectory:
         """Return the path to the RELION project directory."""
         return self.path.parent.parent
 
+    def job_alias(self) -> str | None:
+        """Return the job alias if exists."""
+        pipeline = self.parse_job_pipeline()
+        return pipeline.process_alias
+
     def can_abort(self) -> bool:
         """Check if the job can be aborted."""
         return len(list(self.path.glob("RELION_JOB_*"))) == 0

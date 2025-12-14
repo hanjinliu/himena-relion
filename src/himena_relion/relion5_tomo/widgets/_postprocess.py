@@ -19,7 +19,7 @@ class QPostProcessViewer(QJobScrollArea):
     def __init__(self):
         super().__init__()
         self._viewer = Q3DViewer()
-        self._viewer.setMaximumHeight(480)
+        self._viewer.setMaximumSize(400, 400)
         self._use_mask = QToggleSwitch("Show masked map")
         self._use_mask.setChecked(False)
         self._canvas = QPlotCanvas(self)

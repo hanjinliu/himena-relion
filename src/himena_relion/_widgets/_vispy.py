@@ -56,7 +56,7 @@ from vispy.scene.visuals import (
 )
 from vispy.util import keys as VispyKeys
 
-from himena_relion._widgets._qviewbox import QViewBox
+from himena.qt import QViewBox
 
 
 @lru_cache(maxsize=1)

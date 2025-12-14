@@ -24,7 +24,7 @@ class QClass3DViewer(QJobScrollArea):
         self._text_edit.setWordWrapMode(QtGui.QTextOption.WrapMode.NoWrap)
 
         self._viewer = Q3DViewer()
-        self._viewer.setFixedSize(300, 300)
+        self._viewer.setMaximumSize(400, 400)
         self._class_choice = QIntWidget("Class", label_width=50)
         self._iter_choice = QIntWidget("Iteration", label_width=60)
         self._class_choice.setMinimum(1)

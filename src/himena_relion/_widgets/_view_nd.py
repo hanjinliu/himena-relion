@@ -215,6 +215,10 @@ class Q3DViewer(QViewer):
         layout = QtW.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignHCenter)
+        self.setSizePolicy(
+            QtW.QSizePolicy.Policy.Expanding,
+            QtW.QSizePolicy.Policy.Expanding,
+        )
         self._iso_slider = QLabeledDoubleSlider(QtCore.Qt.Orientation.Horizontal)
         self._iso_slider.valueChanged.connect(self._on_iso_changed)
         self._has_image = False
