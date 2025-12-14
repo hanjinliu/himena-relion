@@ -72,6 +72,7 @@ class NodeStatus(Enum):
     FAILED = "failed"
     ABORTED = "aborted"
     RUNNING = "running"
+    SCHEDULED = "scheduled"
 
 
 @dataclass

@@ -226,6 +226,7 @@ class QRelionNodeItem(QtW.QWidget):
             if self._filepath.parent.stem.startswith("job"):
                 self._filepath_rel = Path(*filepath.parts[-3:])
                 widget_dir = QFileLabel(
+                    self,
                     path=filepath.parent,
                     path_rel=self._filepath_rel.parent,
                     icon_label=self.item_icon_label(is_dir=True),
@@ -234,7 +235,7 @@ class QRelionNodeItem(QtW.QWidget):
                 widget_dir.double_clicked.connect(self._open_dir_event)
             else:
                 self._filepath_rel = filepath
-                widget_dir = QFileLabel()
+                widget_dir = QFileLabel(self)
             widget_dir.setFixedWidth(170)
             layout.addWidget(widget_dir)
             self.draggable_widgets.append(widget_dir)
@@ -242,6 +243,7 @@ class QRelionNodeItem(QtW.QWidget):
             self._filepath_rel = Path(*filepath.parts[-3:])
 
         widget_file = QFileLabel(
+            self,
             path=filepath,
             path_rel=self._filepath_rel,
             icon_label=self.item_icon_label(),
@@ -362,12 +364,13 @@ class QFileLabel(QtW.QWidget):
 
     def __init__(
         self,
+        parent: QRelionNodeItem,
         path: Path | None = None,
         path_rel: Path | None = None,
         icon_label: QtW.QLabel | None = None,
         text: str | None = None,
     ):
-        super().__init__()
+        super().__init__(parent)
         self._path = path
         self._path_rel = path_rel
         layout = QtW.QHBoxLayout(self)
@@ -393,10 +396,14 @@ class QFileLabel(QtW.QWidget):
         layout.addWidget(qlabel)
         self.setCursor(QtCore.Qt.CursorShape.SizeAllCursor)
         self._label_widget = qlabel
+        self._relion_node_item = parent
 
     @property
     def label_widget(self) -> QtW.QLabel:
         return self._label_widget
+
+    def relion_node_item(self) -> QRelionNodeItem:
+        return self._relion_node_item
 
     def path_exists(self, relion_dir: Path) -> bool:
         return self._path.exists() or relion_dir.joinpath(self._path_rel).exists()

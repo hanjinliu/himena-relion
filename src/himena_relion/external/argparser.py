@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from pathlib import Path
+import subprocess
 import sys
 import argparse
 from typing import Any, Callable, Annotated
 import inspect
+from enum import IntEnum
 
 import starfile
 
@@ -41,7 +43,7 @@ class RelionExternalArgParser(argparse.ArgumentParser):
         self.add_argument("function_id", type=str)
         self.add_argument("--o", type=str)
         self.add_argument("--j", type=int, default=1)
-        self.add_argument("--prep_job_star", action="store_true")
+        self.add_argument("--prep_job_star_for_pipeliner")
 
 
 def parse_argv(argv: list[str] | None = None) -> dict[str, Any]:
@@ -109,7 +111,7 @@ def run_function(argv: list[str] | None = None) -> None:
     args = parse_argv(argv)
     function_id = str(args.pop("function_id"))
     func = pick_function(function_id)
-    is_prep_job_star = args.pop("prep_job_star", False)
+    prep_job_star_enum = PrepJobStarEnum(args.pop("prep_job_star_for_pipeliner", 0))
 
     if args.get("o", None) is None:
         raise ValueError("Output directory (--o) is required but not given.")
@@ -137,9 +139,16 @@ def run_function(argv: list[str] | None = None) -> None:
             f"{func_name}{sig}."
         )
 
-    if is_prep_job_star:
+    if prep_job_star_enum > 0:
         df = prep_job_star(f"himena-relion {function_id}", **func_args)
         starfile.write(df, o_dir / "job.star")
+        if prep_job_star_enum is PrepJobStarEnum.PREP_ONLY:
+            pass
+        elif prep_job_star_enum is PrepJobStarEnum.PREP_AND_ADD:
+            subprocess.run(
+                ["relion_pipeliner", "--addJobFromStar", str(o_dir / "job.star")],
+                check=True,
+            )
         return
 
     # Run the function
@@ -163,3 +172,9 @@ def run_function(argv: list[str] | None = None) -> None:
             o_dir.joinpath(FileNames.EXIT_FAILURE).touch()
     if o_dir.exists():
         o_dir.joinpath(FileNames.EXIT_SUCCESS).touch()
+
+
+class PrepJobStarEnum(IntEnum):
+    NONE = 0
+    PREP_ONLY = 1
+    PREP_AND_ADD = 2

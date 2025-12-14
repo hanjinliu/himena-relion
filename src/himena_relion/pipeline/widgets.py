@@ -36,6 +36,8 @@ class RelionJobNodeItem(BaseNodeItem):
                 return Color("lightyellow")
             case NodeStatus.RUNNING:
                 return Color("lightblue")
+            case NodeStatus.SCHEDULED:
+                return Color("orange")
             case _:
                 return Color("lightgray")
 
