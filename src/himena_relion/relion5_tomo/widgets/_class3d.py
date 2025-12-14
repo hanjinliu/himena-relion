@@ -3,7 +3,13 @@ from pathlib import Path
 
 import logging
 from qtpy import QtWidgets as QtW, QtGui
-from himena_relion._widgets import QJobScrollArea, Q3DViewer, register_job, QIntWidget
+from himena_relion._widgets import (
+    QJobScrollArea,
+    Q3DViewer,
+    register_job,
+    QIntWidget,
+    spacer_widget,
+)
 from himena_relion import _job
 
 _LOGGER = logging.getLogger(__name__)
@@ -37,6 +43,7 @@ class QClass3DViewer(QJobScrollArea):
 
         self._iter_choice.valueChanged.connect(self._on_iter_changed)
         self._class_choice.valueChanged.connect(self._on_class_changed)
+        self._layout.addWidget(spacer_widget())
 
     def on_job_updated(self, job_dir: _job.Class3DJobDirectory, path: str):
         """Handle changes to the job directory."""

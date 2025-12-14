@@ -8,6 +8,7 @@ from himena_relion._widgets import (
     register_job,
     QIntWidget,
     QPlotCanvas,
+    spacer_widget,
 )
 from himena_relion import _job
 
@@ -33,7 +34,7 @@ class QRefine3DViewer(QJobScrollArea):
         hor_layout.setContentsMargins(0, 0, 0, 0)
         layout.addLayout(hor_layout)
         layout.addWidget(self._fsc_plot)
-
+        layout.addWidget(spacer_widget())
         self._index_start = 1
         self._job_dir: _job.Refine3DJobDirectory | None = None
 

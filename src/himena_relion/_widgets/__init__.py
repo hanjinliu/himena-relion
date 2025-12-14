@@ -6,6 +6,7 @@ from himena_relion._widgets._view_nd import Q2DViewer, Q3DViewer, Q2DFilterWidge
 from himena_relion._widgets._spinbox import QIntWidget
 from himena_relion._widgets._plot import QPlotCanvas
 from himena_relion.consts import Type
+from himena_relion._widgets._misc import spacer_widget
 
 __all__ = [
     "register_job",
@@ -17,6 +18,7 @@ __all__ = [
     "Q2DFilterWidget",
     "QIntWidget",
     "QRelionJobWidget",
+    "spacer_widget",
 ]
 
 register_widget_class(Type.RELION_JOB, QRelionJobWidget)

@@ -32,7 +32,7 @@ dependencies = [
   "tifffile>=2025.10.16",
   "watchfiles>=1.1.0",
   "superqt>=0.7.6",
-  "himena>=0.2.0",
+  "himena>=0.1.4",
   "matplotlib>=3.7.2",
 ]
 
@@ -40,6 +40,9 @@ dependencies = [
 Documentation = "https://github.com/hanjinliu/himena-relion#readme"
 Issues = "https://github.com/hanjinliu/himena-relion/issues"
 Source = "https://github.com/hanjinliu/himena-relion"
+
+[project.scripts]
+himena-relion = "himena_relion.__main__:main"
 
 [tool.hatch.version]
 path = "src/himena_relion/__init__.py"

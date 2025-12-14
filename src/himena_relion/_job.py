@@ -572,6 +572,76 @@ class PickJobDirectory(JobDirectory):
         return get_particles
 
 
+class ExtractJobDirectory(JobDirectory):
+    """Class for handling particle extraction job directories in RELION."""
+
+    _job_type = "relion.pseudosubtomo"
+
+    def particles_star(self) -> Path:
+        """Return the path to the particles star file."""
+        return self.path / "particles.star"
+
+    def particles(self) -> pd.DataFrame:
+        """Return the particles DataFrame for this iteration."""
+        star_path = self.particles_star()
+        return starfile.read(star_path)["particles"]
+
+    def is_2d(self) -> bool:
+        """Return whether the extraction is 2D stack or 3D subtomogram."""
+        return self.get_job_param("do_stack2d") == "Yes"
+
+    def tomo_names(self) -> list[str]:
+        """Return the list of tomogram names from the particles star file."""
+        return [path.name for path in self.path.joinpath("Subtomograms").iterdir()]
+
+    def max_num_subtomograms(self, tomoname: str) -> int:
+        """Return the number of subtomograms for a given tomogram name."""
+        tomo_dir = self.path / "Subtomograms" / tomoname
+        if self.is_2d():
+            suffix = "_stack2d.mrcs"
+        else:
+            suffix = "_data.mrc"
+        ndigits = 1
+        while True:
+            question_marks = "?" * ndigits
+            if next(tomo_dir.glob(f"{question_marks}{suffix}"), None):
+                ndigits += 1
+            else:
+                break
+        if ndigits == 1:
+            return 0
+        path = next(tomo_dir.rglob(f"{'?' * (ndigits - 1)}{suffix}"))
+        return int(path.name[: -len(suffix)])
+
+    def iter_subtomogram_paths(
+        self,
+        tomoname: str,
+        indices: list[int],
+    ) -> Iterator[tuple[int, Path]]:
+        """Iterate over all subtomogram paths for a given tomogram name."""
+        tomo_dir = self.path / "Subtomograms" / tomoname
+        if self.is_2d():
+            suffix = "_stack2d.mrcs"
+        else:
+            suffix = "_data.mrc"
+        for i in indices:
+            path = tomo_dir / f"{i}{suffix}"
+            yield i, path
+
+    def iter_subtomograms(
+        self,
+        tomoname: str,
+        indices: list[int],
+    ) -> Iterator[tuple[int, NDArray[np.floating] | None]]:
+        """Iterate over all subtomogram paths for a given tomogram name."""
+        for i, path in self.iter_subtomogram_paths(tomoname, indices):
+            try:
+                with mrcfile.open(path, mode="r") as mrc:
+                    yield i, mrc.data
+            except Exception:
+                yield i, None
+
+
 @dataclass
 class _3DResultsBase:
     path: Path

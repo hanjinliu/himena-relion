@@ -41,6 +41,7 @@ def read_relion_job(path: Path) -> WidgetDataModel:
         return WidgetDataModel(
             value=JobDirectory.from_job_star(job_star),
             type=Type.RELION_JOB,
+            title=job_star.parent.name,
         ).use_tab()
     raise ValueError(f"Expected an existing job.star file, got {path}")
 

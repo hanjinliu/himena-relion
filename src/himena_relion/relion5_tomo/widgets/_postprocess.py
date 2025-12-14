@@ -2,7 +2,13 @@ from __future__ import annotations
 from pathlib import Path
 import logging
 from superqt import QToggleSwitch
-from himena_relion._widgets import QJobScrollArea, QPlotCanvas, register_job, Q3DViewer
+from himena_relion._widgets import (
+    QJobScrollArea,
+    QPlotCanvas,
+    register_job,
+    Q3DViewer,
+    spacer_widget,
+)
 from himena_relion import _job
 
 _LOGGER = logging.getLogger(__name__)
@@ -20,6 +26,7 @@ class QPostProcessViewer(QJobScrollArea):
         self._layout.addWidget(self._viewer)
         self._layout.addWidget(self._use_mask)
         self._layout.addWidget(self._canvas)
+        self._layout.addWidget(spacer_widget())
         self._job_dir: _job.PostProcessJobDirectory | None = None
         self._use_mask.toggled.connect(self._on_use_mask_toggled)
 

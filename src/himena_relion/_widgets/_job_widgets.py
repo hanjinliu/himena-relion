@@ -67,7 +67,10 @@ class QLogWatcher(QtW.QWidget, JobWidgetBase):
         return self._text_edit.toPlainText()
 
     def setText(self, text: str):
+        vbar = self._text_edit.verticalScrollBar()
+        val_old = vbar.value()
         self._text_edit.setPlainText(text)
+        vbar.setValue(min(val_old, vbar.maximum()))
 
     def setReadOnly(self, readonly: bool):
         self._text_edit.setReadOnly(readonly)

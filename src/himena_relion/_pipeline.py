@@ -65,6 +65,7 @@ class NodeStatus(Enum):
     SUCCEEDED = "succeeded"
     FAILED = "failed"
     ABORTED = "aborted"
+    RUNNING = "running"
 
 
 @dataclass

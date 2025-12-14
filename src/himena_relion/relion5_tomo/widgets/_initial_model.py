@@ -78,6 +78,7 @@ class QInitialModelViewer(QJobScrollArea):
         self._update_for_value(self._iter_choice.value(), value)
 
     def _update_for_value(self, niter: int, class_id: int):
+        _LOGGER.info("Updating viewer to iteration %s, class %s", niter, class_id)
         res = self._job_dir.get_result(niter)
         map0 = res.class_map(class_id - self._index_start)
         self._viewer.set_image(map0)
