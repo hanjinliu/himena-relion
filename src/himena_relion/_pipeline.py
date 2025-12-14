@@ -158,24 +158,28 @@ class RelionPipeline:
             _type_map[row["rlnPipeLineNodeName"]] = row["rlnPipeLineNodeTypeLabel"]
 
         df_in = df_all.get("pipeline_input_edges")
-        assert isinstance(df_in, pd.DataFrame)
-        inputs = [
-            RelionJobPipelineNode.from_file_path(
-                input_path_rel,
-                _type_map.get(input_path_rel, None),
-            )
-            for input_path_rel in df_in["rlnPipeLineEdgeFromNode"]
-        ]
+        if isinstance(df_in, pd.DataFrame):
+            inputs = [
+                RelionJobPipelineNode.from_file_path(
+                    input_path_rel,
+                    _type_map.get(input_path_rel, None),
+                )
+                for input_path_rel in df_in["rlnPipeLineEdgeFromNode"]
+            ]
+        else:
+            inputs = []
 
         df_out = df_all.get("pipeline_output_edges")
-        assert isinstance(df_out, pd.DataFrame)
-        outputs = [
-            RelionJobPipelineNode.from_file_path(
-                output_path_rel,
-                _type_map.get(output_path_rel, None),
-            )
-            for output_path_rel in df_out["rlnPipeLineEdgeToNode"]
-        ]
+        if isinstance(df_out, pd.DataFrame):
+            outputs = [
+                RelionJobPipelineNode.from_file_path(
+                    output_path_rel,
+                    _type_map.get(output_path_rel, None),
+                )
+                for output_path_rel in df_out["rlnPipeLineEdgeToNode"]
+            ]
+        else:
+            outputs = []
         return cls(
             df_general,
             process_name,
