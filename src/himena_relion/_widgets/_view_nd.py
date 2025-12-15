@@ -3,8 +3,10 @@ from concurrent.futures import Future, ThreadPoolExecutor
 from typing import NamedTuple
 from himena import StandardType, WidgetDataModel
 import numpy as np
+from numpy.typing import NDArray
 from qtpy import QtWidgets as QtW, QtCore
 from superqt import ensure_main_thread, QLabeledDoubleSlider
+from vispy.color import ColorArray
 from himena.qt._qlineedit import QIntLineEdit, QDoubleLineEdit
 from himena.plugins import validate_protocol
 from himena_builtins.qt.widgets._shared import labeled
@@ -20,9 +22,12 @@ from himena_relion import _utils
 
 
 class SliceResult(NamedTuple):
-    image: np.ndarray
+    image: NDArray[np.float32]
     clim: tuple[float, float]
-    points: np.ndarray
+    points: NDArray[np.float32]
+    sizes: NDArray[np.float32]
+    face_colors: NDArray[np.float32]
+    edge_colors: NDArray[np.float32]
 
 
 class QViewer(QtW.QWidget):
@@ -43,6 +48,9 @@ class Q2DViewer(QViewer):
         layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignHCenter)
         self._array_view = None
         self._points = np.empty((0, 3), dtype=np.float32)
+        self._point_size = 10.0
+        self._face_colors = np.zeros((0, 4), dtype=np.float32)
+        self._edge_colors = np.zeros((0, 4), dtype=np.float32)
         self._dims_slider = QtW.QSlider(QtCore.Qt.Orientation.Horizontal, self)
         self._dims_slider.setMaximum(0)
         self._dims_slider.setMinimumWidth(150)
@@ -82,15 +90,30 @@ class Q2DViewer(QViewer):
             self._array_view = image
         self._last_clim = clim
         num_slices = self._array_view.num_slices()
-        self._dims_slider.setRange(0, num_slices - 1)
-        self._dims_slider.setValue(num_slices // 2)
-        self._zpos_box.setRange(0, num_slices - 1)
-        self.redraw()
+        self._dims_slider.blockSignals(True)
+        try:
+            self._dims_slider.setRange(0, num_slices - 1)
+            self._dims_slider.setValue(num_slices // 2)
+            self._zpos_box.setRange(0, num_slices - 1)
+            self.redraw()
+        finally:
+            self._dims_slider.blockSignals(False)
 
-    def set_points(self, points: np.ndarray, out_of_slice: bool = True):
+    def set_points(
+        self,
+        points: np.ndarray,
+        out_of_slice: bool = True,
+        size: float | None = None,
+        face_color: NDArray[np.float32] = [0, 0, 0, 0],
+        edge_color: NDArray[np.float32] = "lime",
+    ):
         """Set the 3D points to be displayed."""
         self._points = points
         self._out_of_slice = out_of_slice
+        self._face_colors = _norm_color(face_color, len(points))
+        self._edge_colors = _norm_color(edge_color, len(points))
+        if size is not None:
+            self._point_size = size
 
     def redraw(self):
         self._on_slider_changed(self._dims_slider.value(), force_sync=True)
@@ -132,10 +155,18 @@ class Q2DViewer(QViewer):
         else:
             min_, max_ = self._last_clim
         zs = self._points[:, 0]
-        thick = 4 if self._out_of_slice else 0.1
-        mask = (slider_value - thick / 2 <= zs) & (zs <= slider_value + thick / 2)
-        points_in_slice = self._points[mask]
-        return SliceResult(slice_image, (min_, max_), points_in_slice)
+        thickness = self._point_size if self._out_of_slice else 0.01
+        zdiff = zs - slider_value
+        mask = np.abs(zdiff) < thickness / 2
+        sizes = np.sqrt((thickness / 2) ** 2 - zdiff[mask] ** 2)
+        return SliceResult(
+            slice_image,
+            (min_, max_),
+            points=self._points[mask],
+            sizes=sizes,
+            face_colors=self._face_colors[mask],
+            edge_colors=self._edge_colors[mask],
+        )
 
     @ensure_main_thread
     def _on_calc_slice_done(self, future: Future[SliceResult]):
@@ -150,9 +181,9 @@ class Q2DViewer(QViewer):
         if result.points.shape[0] > 0:
             self._canvas.markers_visual.set_data(
                 result.points[:, [2, 1]],
-                face_color=np.zeros(4),
-                edge_color="lime",
-                size=10,
+                face_color=result.face_colors,
+                edge_color=result.edge_colors,
+                size=result.sizes,
             )
             self._canvas.markers_visual.visible = True
         else:
@@ -160,7 +191,7 @@ class Q2DViewer(QViewer):
                 np.ones((1, 2), dtype=np.float32),
                 face_color=np.zeros(4),
                 edge_color=np.zeros(4),
-                size=10,
+                size=self._point_size,
             )
             self._canvas.markers_visual.visible = False
         self._canvas.update_canvas()
@@ -338,3 +369,15 @@ class Q2DFilterWidget(QtW.QWidget):
             img = _utils.lowpass_filter(img, cutoff_rel)
 
         return img
+
+
+def _norm_color(color, num: int) -> NDArray[np.float32]:
+    """Normalize color input to an array of RGBA colors."""
+    carr = ColorArray(color)
+    if len(carr) == 1:
+        carr = np.tile(carr.rgba, (num, 1))
+    else:
+        if len(carr) != num:
+            raise ValueError("Color array length does not match number of points.")
+        carr = carr.rgba
+    return carr.astype(np.float32, copy=False)

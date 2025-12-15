@@ -15,14 +15,17 @@
 :warning: `himena-relion` is actively under development. Please be cautious when using
 it for your real data processing.
 
-#### Roadmap
+## Highlights
 
-- [x] View (most of the) RELION jobs.
-- [x] Efficient 2D/3D rendering using [vispy](https://github.com/vispy/vispy) and EGL over SSH.
+- [x] View (most of the) RELION tomography jobs.
+- [x] Efficient 2D/3D rendering over SSH using [vispy](https://github.com/vispy/vispy) and EGL.
 - [x] View job flowchart, and open jobs from the flowchart.
 - [x] Drag-and-drop support for job inputs and outputs.
-- [ ] Run RELION jobs from the GUI.
-- [ ] Make implementing "external" jobs type-safer and more python-friendly.
+- [x] Make implementing "external" jobs type-safer and more python-friendly.
+
+![](images/post-process.png)
+
+![](images/inout.png)
 
 ## Installation
 
@@ -31,12 +34,18 @@ will need to install both packages into the same Python environment, and mark
 `himena-relion` as a startup plugin of your himena profile. For the detail, please refer
 to the [himena documentation](https://himena.readthedocs.io/en/latest/).
 
-```console
+```bash
 pip install himena[recommended] himena-relion  # install packages
 himena --new em  # create a new profile named "em"
 himena em --install himena-relion  # install the plugin into "em" profile
 himena em  # launch the GUI with "em" profile
 ```
+
+## Roadmap
+
+- [ ] Documentation.
+- [ ] Run RELION jobs from the GUI.
+- [ ] Support single particle analysis jobs.
 
 ## License
 

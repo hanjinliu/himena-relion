@@ -41,7 +41,7 @@ class QFindBeads3DViewer(QtW.QWidget):
         """Initialize the viewer with the job directory."""
         current_text = self._tomo_choice.currentText()
         items: list[str] = []
-        for info in self._iter_tomogram_info():
+        for info, bead_size in self._iter_tomogram_info():
             items.append(info.tomo_name)
         self._tomo_choice.clear()
         self._tomo_choice.addItems(items)
@@ -54,7 +54,7 @@ class QFindBeads3DViewer(QtW.QWidget):
 
     def _on_tomo_changed(self, text: str):
         """Update the viewer when the selected tomogram changes."""
-        for info in self._iter_tomogram_info():
+        for info, bead_size in self._iter_tomogram_info():
             if info.tomo_name == text:
                 break
         else:
@@ -69,9 +69,13 @@ class QFindBeads3DViewer(QtW.QWidget):
             self._viewer._last_clim,
         )
         mod_data = imodmodel.read(mod_path)
-        self._viewer.set_points(mod_data[["z", "y", "x"]].to_numpy())
+        point_size = bead_size / info.tomo_pixel_size * 5
+        self._viewer.set_points(
+            mod_data[["z", "y", "x"]].to_numpy(),
+            size=point_size,
+        )
 
-    def _iter_tomogram_info(self) -> Iterator[_job.TomogramInfo]:
+    def _iter_tomogram_info(self) -> Iterator[tuple[_job.TomogramInfo, float]]:
         pipe = self._job_dir.parse_job_pipeline()
         input0 = pipe.get_input_by_type("MicrographGroupMetadata")
         assert input0 is not None, (
@@ -80,7 +84,7 @@ class QFindBeads3DViewer(QtW.QWidget):
         df_tomo = starfile.read(input0.path)
         assert isinstance(df_tomo, pd.DataFrame), type(df_tomo)
         for _, row in df_tomo.iterrows():
-            yield _job.TomogramInfo.from_series(row)
+            yield _job.TomogramInfo.from_series(row), row["TomoBeadSize"]
 
 
 class QEraseGoldViewer(QtW.QWidget):
@@ -103,7 +107,7 @@ class QEraseGoldViewer(QtW.QWidget):
 
     def on_job_updated(self, job_dir: _job.ExternalJobDirectory, path: str):
         """Handle changes to the job directory."""
-        if Path(path).suffix == ".mrc":
+        if Path(path).suffix == ".star":
             self._process_update(job_dir)
             _LOGGER.debug("%s Updated", job_dir.job_id)
 
