@@ -144,6 +144,12 @@ class JobDirectory:
         )
 
 
+class ExternalJobDirectory(JobDirectory):
+    """External job directories in RELION."""
+
+    _job_type = "relion.external"
+
+
 @dataclass
 class TiltSeriesInfo:
     tomo_name: str

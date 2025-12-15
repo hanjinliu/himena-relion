@@ -6,9 +6,10 @@ import mrcfile
 import pandas as pd
 import numpy as np
 from numpy.typing import NDArray
-from rich.console import Console
 import starfile
 from himena_relion import _job, _utils
+from himena_relion.external import RelionExternalJob
+from .widgets import QFindBeads3DViewer
 
 
 def _xf_to_array(xf: str | Path) -> NDArray[np.floating]:
@@ -116,84 +117,104 @@ MIC_ODD = "rlnMicrographNameOdd"
 MIC_EVEN = "rlnMicrographNameEven"
 
 
-def run_find_beads_3d(
-    in_mics: str,  # path
-    out_job_dir: _job.JobDirectory,
-    gold_nm: float = 10.0,
-    findbeads3d_exe: str = "findbeads3d",
-):
-    """Run findbeads and store all the model files."""
-    df_tomo = starfile.read(in_mics)
-    assert isinstance(df_tomo, pd.DataFrame)
-    console = Console(record=True)
-    models_dir = out_job_dir.path.joinpath("models")
-    models_dir.mkdir(exist_ok=True, parents=True)
+class FindBeads3D(RelionExternalJob):
+    def output_nodes(self):
+        return [("tomograms.star", "TomogramGroupMetadata.star")]
 
-    output_node_path = out_job_dir.path.joinpath("tomograms.star")
-    with out_job_dir.edit_job_pipeline() as pipeline:
-        pipeline.append_output(output_node_path, "TomogramGroupMetadata.star")
+    def run(
+        self,
+        in_mics: str,  # path
+        gold_nm: float = 10.0,
+        findbeads3d_exe: str = "findbeads3d",
+    ):
+        df_tomo = starfile.read(in_mics)
+        assert isinstance(df_tomo, pd.DataFrame)
+        out_job_dir = self.output_job_dir
+        models_dir = out_job_dir.path.joinpath("models")
+        models_dir.mkdir(exist_ok=True, parents=True)
 
-    model_paths = []
-    for _, row in df_tomo.iterrows():
-        info = _job.TomogramInfo.from_series(row)
-        path_star = info.tilt_series_star_file
-        tomo_path = info.reconstructed_tomogram[0]
-        size_pix = gold_nm / info.tomo_pixel_size * 10
-        tilt_star_df = starfile.read(path_star)
-        angrange = tilt_star_df[TILT_ANGLE].min(), tilt_star_df[TILT_ANGLE].max()
-        model_path = models_dir / f"{info.tomo_name}.mod"
-        model_paths.append(model_path.relative_to(out_job_dir.relion_project_dir))
-        console.log(f"Running findbeads3d for tomogram {info.tomo_name}")
-        _findbeads3d_wrapped(findbeads3d_exe, tomo_path, model_path, size_pix, angrange)
-        yield
+        model_paths = []
+        for _, row in df_tomo.iterrows():
+            info = _job.TomogramInfo.from_series(row)
+            path_star = info.tilt_series_star_file
+            tomo_path = info.reconstructed_tomogram[0]
+            size_pix = gold_nm / info.tomo_pixel_size * 10
+            tilt_star_df = starfile.read(path_star)
+            angrange = tilt_star_df[TILT_ANGLE].min(), tilt_star_df[TILT_ANGLE].max()
+            model_path = models_dir / f"{info.tomo_name}.mod"
+            model_paths.append(model_path.relative_to(out_job_dir.relion_project_dir))
+            self.console.log(f"Running findbeads3d for tomogram {info.tomo_name}")
+            _findbeads3d_wrapped(
+                findbeads3d_exe, tomo_path, model_path, size_pix, angrange
+            )
+            yield
 
-    df_tomo["TomoBeadModel"] = model_paths
-    df_tomo["TomoBeadSize"] = gold_nm
-    starfile.write(df_tomo, output_node_path)
-    console.log(
-        f"findbeads3d jobs finished successfully, output saved to {output_node_path}"
-    )
+        df_tomo["TomoBeadModel"] = model_paths
+        df_tomo["TomoBeadSize"] = gold_nm
+        output_node_path = out_job_dir.path / "tomograms.star"
+        starfile.write(df_tomo, output_node_path)
+        self.console.log(
+            f"findbeads3d jobs finished successfully, output saved to {output_node_path}"
+        )
+
+    def provide_widget(self, job_dir) -> QFindBeads3DViewer:
+        return QFindBeads3DViewer(job_dir)
 
 
-def run_erase_gold(
-    in_mics: str,  # path
-    out_job_dir: _job.JobDirectory,
-    seed: int = 1427,
-    mask_expand_factor: float = 1.2,
-):
-    """Erase gold fiducials from tilt series using the output model files."""
-    console = Console(record=True)
-    df_tomo = starfile.read(in_mics)
-    assert isinstance(df_tomo, pd.DataFrame)
+class EraseGold(RelionExternalJob):
+    def output_nodes(self):
+        return [("tilt_series.star", "TomogramGroupMetadata.star")]
 
-    tilt_save_dir = out_job_dir.path / "tilt_series"
-    tilt_save_dir.mkdir(exist_ok=True, parents=True)
-    frame_save_dir = out_job_dir.path / "frames"
-    frame_save_dir.mkdir(exist_ok=True, parents=True)
-    rln_dir = out_job_dir.relion_project_dir
+    def run_erase_gold(
+        self,
+        in_mics: str,  # path
+        seed: int = 1427,
+        mask_expand_factor: float = 1.2,
+        process_halves: bool = False,
+    ):
+        """Erase gold fiducials from tilt series using the output model files."""
+        df_tomo = starfile.read(in_mics)
+        assert isinstance(df_tomo, pd.DataFrame)
+        out_job_dir = self.output_job_dir
 
-    for _, row in df_tomo.iterrows():
-        info = _job.TomogramInfo.from_series(row)
-        model_path = rln_dir / str(row["TomoBeadModel"])
-        edf_path = rln_dir / str(row[ETOMO_FILE])
-        gold_nm = row["TomoBeadSize"]
-        tilt_star_df = starfile.read(info.tomo_tilt_series_star_file)
-        assert isinstance(tilt_star_df, pd.DataFrame)
-        tomo_center = (np.array(info.tomo_shape, dtype=np.float32) - 1) / 2
-        rng = np.random.default_rng(seed)
-        mic_paths = tilt_star_df[MIC_NAME]
-        with mrcfile.open(mic_paths[0], header_only=True) as mrc:
-            tilt_shape = (mrc.header.ny, mrc.header.nx)
-        tilt_center = (np.array(tilt_shape, dtype=np.float32) - 1) / 2
-        fid = imodmodel.read(model_path)[["z", "y", "x"]].to_numpy(np.float32)
-        fid *= info.tomogram_binning
-        deg = tilt_star_df[TILT_ANGLE].to_numpy(dtype=np.float32)
-        xf = _xf_to_array(edf_path.with_suffix(".xf"))
-        console.log(f"{fid.shape[0]} fiducials found for tomogram {info.tomo_name}")
-        fid_tr = project_fiducials(fid, tomo_center, deg, xf, tilt_center)
-        yield
-        for col in [MIC_NAME, MIC_ODD, MIC_EVEN]:
-            if col in tilt_star_df.columns:
+        tilt_save_dir = out_job_dir.path / "tilt_series"
+        tilt_save_dir.mkdir(exist_ok=True, parents=True)
+        frame_save_dir = out_job_dir.path / "frames"
+        frame_save_dir.mkdir(exist_ok=True, parents=True)
+        rln_dir = out_job_dir.relion_project_dir
+
+        output_node_path = out_job_dir.path.joinpath("tilt_series.star")
+        for _, row in df_tomo.iterrows():
+            info = _job.TomogramInfo.from_series(row)
+            model_path = rln_dir / str(row["TomoBeadModel"])
+            edf_path = rln_dir / str(row[ETOMO_FILE])
+            gold_nm = row["TomoBeadSize"]
+            tilt_star_df = starfile.read(info.tomo_tilt_series_star_file)
+            assert isinstance(tilt_star_df, pd.DataFrame)
+            tomo_center = (np.array(info.tomo_shape, dtype=np.float32) - 1) / 2
+            rng = np.random.default_rng(seed)
+            mic_paths = tilt_star_df[MIC_NAME]
+            with mrcfile.open(mic_paths[0], header_only=True) as mrc:
+                tilt_shape = (mrc.header.ny, mrc.header.nx)
+            tilt_center = (np.array(tilt_shape, dtype=np.float32) - 1) / 2
+            fid = imodmodel.read(model_path)[["z", "y", "x"]].to_numpy(np.float32)
+            fid *= info.tomogram_binning
+            deg = tilt_star_df[TILT_ANGLE].to_numpy(dtype=np.float32)
+            xf = _xf_to_array(edf_path.with_suffix(".xf"))
+            self.console.log(
+                f"{fid.shape[0]} fiducials found for tomogram {info.tomo_name}"
+            )
+            fid_tr = project_fiducials(fid, tomo_center, deg, xf, tilt_center)
+            yield
+            if process_halves:
+                col_list = [MIC_NAME, MIC_ODD, MIC_EVEN]
+            else:
+                col_list = [MIC_NAME]
+            for col in col_list:
+                if col not in tilt_star_df.columns:
+                    self.console.log(
+                        f"Column {col} not found in {info.tomo_name}, skipping."
+                    )
                 _to_update = []
                 for ith, mic_path in enumerate(mic_paths):
                     mic_path = Path(mic_path)
@@ -220,13 +241,14 @@ def run_erase_gold(
                     yield
                 tilt_star_df[col] = _to_update
 
-        star_save_path = tilt_save_dir / info.tomo_tilt_series_star_file.name
-        starfile.write(tilt_star_df, star_save_path)
-        console.log(f"Erased tilt series starfile saved to {star_save_path}")
+            star_save_path = tilt_save_dir / info.tomo_tilt_series_star_file.name
+            starfile.write(tilt_star_df, star_save_path)
+            self.console.log(f"Erased tilt series starfile saved to {star_save_path}")
+            yield
 
-    df_tomo[TILT_STAR] = [
-        tilt_save_dir.relative_to(rln_dir)
-        / f"{_job.TomogramInfo.from_series(row).tomo_name}.star"
-        for _, row in df_tomo.iterrows()
-    ]
-    starfile.write(df_tomo, out_job_dir.path.joinpath("tilt_series.star"))
+        df_tomo[TILT_STAR] = [
+            tilt_save_dir.relative_to(rln_dir)
+            / f"{_job.TomogramInfo.from_series(row).tomo_name}.star"
+            for _, row in df_tomo.iterrows()
+        ]
+        starfile.write(df_tomo, output_node_path)

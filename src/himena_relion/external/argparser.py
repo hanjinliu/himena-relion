@@ -4,16 +4,17 @@ from pathlib import Path
 import subprocess
 import sys
 import argparse
-from typing import Any, Callable, Annotated
+from typing import Any, Annotated
 import inspect
 from enum import IntEnum
 
 import starfile
 
 from himena_relion.consts import FileNames
-from himena_relion._job import JobDirectory
+from himena_relion._job import ExternalJobDirectory
 from himena_relion.external.typemap import parse_string
 from himena_relion.external.writers import prep_job_star
+from himena_relion.external.job_class import RelionExternalJob
 
 
 class RelionExternalArgParser(argparse.ArgumentParser):
@@ -40,7 +41,7 @@ class RelionExternalArgParser(argparse.ArgumentParser):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.add_argument("function_id", type=str)
+        self.add_argument("class_id", type=str)
         self.add_argument("--o", type=str)
         self.add_argument("--j", type=int, default=1)
         self.add_argument("--prep_job_star_for_pipeliner")
@@ -77,23 +78,23 @@ def parse_argv(argv: list[str] | None = None) -> dict[str, Any]:
     return result
 
 
-def pick_function(function_id: str) -> Callable:
-    """Pick the function to execute based on function_id."""
+def pick_job_class(class_id: str) -> type[RelionExternalJob]:
+    """Pick the function to execute based on class_id."""
     from importlib import import_module
     from runpy import run_path
 
-    if function_id.endswith(".py"):
-        ns = run_path(function_id)
-        func = ns["main"]
-    elif "." in function_id:
-        module_name, function_name = function_id.rsplit(".", 1)
-        module = import_module(module_name)
-        func = getattr(module, function_name)
+    if class_id.count(":") != 1:
+        raise ValueError(f"Invalid class_id: {class_id}")
+    class_file_path, class_name = class_id.split(":", 1)
+    if class_file_path.endswith(".py"):
+        ns = run_path(class_file_path)
+        job_cls = ns[class_name]
     else:
-        raise ValueError(f"Invalid function_id: {function_id}")
-    if not callable(func):
-        raise TypeError(f"Function {function_id} is not callable")
-    return func
+        module = import_module(class_file_path)
+        job_cls = getattr(module, class_name)
+    if not issubclass(job_cls, RelionExternalJob):
+        raise TypeError(f"Function {class_id} is not callable")
+    return job_cls
 
 
 def _unwrapped_annotated(annot: Any) -> Any:
@@ -109,15 +110,16 @@ def _unwrapped_annotated(annot: Any) -> Any:
 def run_function(argv: list[str] | None = None) -> None:
     """Run the selected function with parsed arguments."""
     args = parse_argv(argv)
-    function_id = str(args.pop("function_id"))
-    func = pick_function(function_id)
+    class_id = str(args.pop("class_id"))
+    job_cls = pick_job_class(class_id)
     prep_job_star_enum = PrepJobStarEnum(args.pop("prep_job_star_for_pipeliner", 0))
 
     if args.get("o", None) is None:
         raise ValueError("Output directory (--o) is required but not given.")
     o_dir = Path(args["o"])
 
-    sig = inspect.signature(func)
+    job = job_cls(ExternalJobDirectory(o_dir))
+    sig = inspect.signature(job.run)
     func_args = {}
     for param in sig.parameters.values():
         if param.name in args:
@@ -125,22 +127,19 @@ def run_function(argv: list[str] | None = None) -> None:
             annot = _unwrapped_annotated(param.annotation)
             arg_parsed = parse_string(arg, annot)
             func_args[param.name] = arg_parsed
-        elif param.annotation is JobDirectory:
-            job_dir = JobDirectory(o_dir)
-            func_args[param.name] = job_dir
         elif param.default is param.empty:
             raise ValueError(f"Missing required argument: {param.name}")
 
     # check if undefined arguments remain
     if unknown := set(args.keys()) - {"o", "j"}:
-        func_name = function_id.rsplit(".", 1)[-1]
+        func_name = class_id.rsplit(".", 1)[-1]
         raise ValueError(
             f"Unknown arguments for {func_name}: {unknown}. Function signature is "
             f"{func_name}{sig}."
         )
 
     if prep_job_star_enum > 0:
-        df = prep_job_star(f"himena-relion {function_id}", **func_args)
+        df = prep_job_star(f"himena-relion {class_id}", **func_args)
         starfile.write(df, o_dir / "job.star")
         if prep_job_star_enum is PrepJobStarEnum.PREP_ONLY:
             pass
@@ -151,10 +150,18 @@ def run_function(argv: list[str] | None = None) -> None:
             )
         return
 
+    # prepare output nodes in pipeline
+    root_rel = job.output_job_dir.path.relative_to(
+        job.output_job_dir.relion_project_dir
+    )
+    with job.output_job_dir.edit_job_pipeline() as pipeline:
+        for file_path_rel, label in job.output_job_dir:
+            pipeline.append_output(root_rel / file_path_rel, label)
+
     # Run the function
-    is_generator = inspect.isgeneratorfunction(func)
+    is_generator = inspect.isgeneratorfunction(job.run)
     if is_generator:
-        iterator = func(**func_args)
+        iterator = job.run(**func_args)
         while True:
             try:
                 next(iterator)
@@ -167,7 +174,7 @@ def run_function(argv: list[str] | None = None) -> None:
                 raise RuntimeError("Job aborted by user.")
     else:
         try:
-            func(**func_args)
+            job.run(**func_args)
         except Exception:
             o_dir.joinpath(FileNames.EXIT_FAILURE).touch()
     if o_dir.exists():
