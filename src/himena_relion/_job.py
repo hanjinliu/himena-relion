@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
+import inspect
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -11,11 +12,17 @@ import pandas as pd
 import starfile
 import mrcfile
 from himena_relion._image_readers._array import ArrayFilteredView
-from himena_relion.consts import RelionJobState, JOB_ID_MAP
+from himena_relion.consts import (
+    ARG_NAME_REMAP,
+    JOB_IMPORT_PATH_FILE,
+    RelionJobState,
+    JOB_ID_MAP,
+)
 from himena_relion._pipeline import RelionPipeline, RelionOptimisationSet
 
 if TYPE_CHECKING:
     from typing import Self
+    from himena_relion.external.job_class import RelionExternalJob
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -118,6 +125,10 @@ class JobDirectory:
         yield pipeline
         pipeline.write_star(self.job_pipeline())
 
+    def to_bound_arguments(job_dir: JobDirectory) -> inspect.BoundArguments:
+        """Convert to a pre-defined signature based on the job type label."""
+        raise NotImplementedError
+
     def state(self) -> RelionJobState:
         """Return the state of the job based on the existence of certain files."""
         if self.path.joinpath("RELION_JOB_EXIT_SUCCESS").exists():
@@ -132,10 +143,12 @@ class JobDirectory:
             return RelionJobState.RUNNING
 
     def get_job_param(self, param: str) -> str:
+        return self.get_job_params_as_dict()[param]
+
+    def get_job_params_as_dict(self) -> dict[str, str]:
         dfs = starfile.read(self.job_star(), always_dict=True)
         df: pd.DataFrame = dfs["joboptions_values"]
-        sl = df["rlnJobOptionVariable"] == param
-        return df[sl]["rlnJobOptionValue"].iloc[0]
+        return dict(zip(df["rlnJobOptionVariable"], df["rlnJobOptionValue"]))
 
     def iter_tilt_series(self) -> Iterator[TiltSeriesInfo]:
         """Iterate over all tilt series info."""
@@ -148,6 +161,56 @@ class ExternalJobDirectory(JobDirectory):
     """External job directories in RELION."""
 
     _job_type = "relion.external"
+
+    def _to_job_class(self) -> RelionExternalJob | None:
+        from himena_relion.external.job_class import pick_job_class
+
+        if import_path := self.job_import_path():
+            job_cls = pick_job_class(import_path)
+            return job_cls(self)
+        return None
+
+    @property
+    def job_type_repr(self) -> str:
+        if job := self._to_job_class():
+            return job.job_title()
+        return super().job_type_repr
+
+    def to_bound_arguments(self) -> inspect.BoundArguments:
+        if job := self._to_job_class():
+            params = self.get_job_params_as_dict()
+            for before, after in ARG_NAME_REMAP:
+                if after in params:
+                    params[before] = params.pop(after)
+            args = job._parse_args(params)
+            sig = job._signature()
+            return sig.bind_partial(**args)
+        raise ValueError("External job does not have a valid import path.")
+
+    def job_import_path(self) -> str | None:
+        if (f := self.path.joinpath(JOB_IMPORT_PATH_FILE)).exists():
+            return f.read_text(encoding="utf-8").strip()
+        fn_exe = self.get_job_param("fn_exe")
+        if fn_exe.startswith("himena-relion "):
+            import_path = fn_exe[len("himena-relion ") :].strip()
+            return import_path
+        return None
+
+    def get_job_params_as_dict(self) -> dict[str, str]:
+        param_dict = super().get_job_params_as_dict()
+        out = {}
+        for k in [
+            "fn_exe", "do_queue", "in_3dref", "in_coords", "in_mask", "in_mic",
+            "in_mov", "in_part", "min_dedicated", "nr_threads", "other_args",
+        ]:  # fmt: skip
+            if k in param_dict:
+                out[k] = param_dict[k]
+        for ith in range(1, 11):
+            label_key = f"param{ith}_label"
+            value_key = f"param{ith}_value"
+            if label_key in param_dict and value_key in param_dict:
+                out[param_dict[label_key]] = param_dict[value_key]
+        return out
 
 
 @dataclass

@@ -1,9 +1,11 @@
 from __future__ import annotations
 from pathlib import Path
+from typing import Annotated, Any
 
 import numpy as np
 from numpy.typing import NDArray
 from functools import lru_cache
+import starfile
 
 
 def bin_image(img: np.ndarray, nbin: int) -> np.ndarray:
@@ -70,3 +72,19 @@ def make_tilt_projection_mat(deg: float) -> NDArray[np.float32]:
     cos = np.cos(rad)
     sin = np.sin(rad)
     return np.array([[cos, 0, -sin], [0, 1, 0], [sin, 0, cos]], dtype=np.float32)
+
+
+def last_job_directory() -> str:
+    df = starfile.read("default_pipeline.star")
+    path_last = df["pipeline_processes"]["rlnPipeLineProcessName"].iloc[-1]
+    return path_last
+
+
+def unwrapped_annotated(annot: Any) -> Any:
+    origin = getattr(annot, "__origin__", None)
+    if origin is Annotated:
+        args = annot.__args__
+        base_type = args[0]
+        return base_type
+    else:
+        return annot

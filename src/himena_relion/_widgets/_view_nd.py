@@ -42,6 +42,7 @@ class Q2DViewer(QViewer):
         self._last_future: Future[SliceResult] | None = None
         self._last_clim: tuple[float, float] | None = None
         self._canvas = Vispy2DViewer(self)
+        self._canvas.native.setMinimumSize(200, 200)
         layout = QtW.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self._canvas.native)
@@ -158,7 +159,7 @@ class Q2DViewer(QViewer):
         thickness = self._point_size if self._out_of_slice else 0.01
         zdiff = zs - slider_value
         mask = np.abs(zdiff) < thickness / 2
-        sizes = np.sqrt((thickness / 2) ** 2 - zdiff[mask] ** 2)
+        sizes = np.sqrt((thickness) ** 2 - (zdiff[mask] * 2) ** 2)
         return SliceResult(
             slice_image,
             (min_, max_),
@@ -183,6 +184,7 @@ class Q2DViewer(QViewer):
                 result.points[:, [2, 1]],
                 face_color=result.face_colors,
                 edge_color=result.edge_colors,
+                edge_width=0.5,
                 size=result.sizes,
             )
             self._canvas.markers_visual.visible = True
@@ -243,6 +245,7 @@ class Q3DViewer(QViewer):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._canvas = Vispy3DViewer(self)
+        self._canvas.native.setMinimumSize(180, 180)
         layout = QtW.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignHCenter)

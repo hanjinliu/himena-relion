@@ -1,4 +1,4 @@
-from himena_relion.relion5_tomo.extensions.erase_gold.functions import (
+from himena_relion.relion5_tomo.extensions.erase_gold.jobs import (
     FindBeads3D,
     EraseGold,
 )

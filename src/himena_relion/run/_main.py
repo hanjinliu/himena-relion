@@ -6,7 +6,7 @@ from typing import Any, Callable
 
 from qtpy import QtWidgets as QtW
 
-import starfile
+from himena_relion._utils import last_job_directory
 
 
 class QJobRunner(QtW.QWidget):
@@ -85,9 +85,3 @@ def run_job(job_directory: str):
         ["relion_pipeliner", "--RunJobs", job_directory],
         check=True,
     )
-
-
-def last_job_directory() -> str:
-    df = starfile.read("default_pipeline.star")
-    path_last = df["pipeline_processes"]["rlnPipeLineProcessName"].iloc[-1]
-    return path_last

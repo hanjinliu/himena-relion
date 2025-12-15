@@ -1,7 +1,9 @@
 from __future__ import annotations
+from pathlib import Path
 
 import pandas as pd
 from himena_relion import _job
+from himena_relion.consts import ARG_NAME_REMAP
 
 # https://deepwiki.com/3dem/relion/3.3-scheduling-and-automation
 
@@ -51,30 +53,36 @@ def prep_job_star(
         "queuename": "openmpi",
     }
     current_param_index = 1
+
+    arg_map = dict(ARG_NAME_REMAP)
     for key, value in kwargs.items():
+        if isinstance(value, Path):
+            value = str(value)
         if isinstance(value, _job.JobDirectory):
             pass  # this is himena-relion internal use only
-        elif key == "in_mics":
-            params["in_mic"] = str(value)
-        elif key == "in_movies":
-            params["in_mov"] = str(value)
-        elif key == "in_parts":
-            params["in_part"] = str(value)
-        elif key == "in_3dref":
-            params["in_3dref"] = str(value)
-        elif key == "in_coords":
-            params["in_coords"] = str(value)
-        elif key == "in_mask":
-            params["in_mask"] = str(value)
+        elif key in [
+            "in_mics",
+            "in_movies",
+            "in_parts",
+            "in_3dref",
+            "in_coords",
+            "in_mask",
+        ]:
+            remapped_key = arg_map.get(key, key)
+            params[remapped_key] = str(value)
         elif key == "o":
             pass  # output job dir
         elif key == "j":
             params["nr_threads"] = value
         else:
+            if current_param_index > 10:
+                raise ValueError("Maximum of 10 additional parameters supported.")
             param_label_key = f"param{current_param_index}_label"
             param_value_key = f"param{current_param_index}_value"
             params[param_label_key] = key
-            params[param_value_key] = str(value)
+            if isinstance(value, bool):
+                value = "Yes" if value else "No"
+            params[param_value_key] = value
             current_param_index += 1
 
     variables = []

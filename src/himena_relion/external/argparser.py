@@ -4,15 +4,15 @@ from pathlib import Path
 import subprocess
 import sys
 import argparse
-from typing import Any, Annotated
+from typing import Any
 import inspect
 from enum import IntEnum
 
 import starfile
 
-from himena_relion.consts import FileNames
+from himena_relion._utils import last_job_directory
+from himena_relion.consts import JOB_IMPORT_PATH_FILE, FileNames
 from himena_relion._job import ExternalJobDirectory
-from himena_relion.external.typemap import parse_string
 from himena_relion.external.writers import prep_job_star
 from himena_relion.external.job_class import pick_job_class
 
@@ -80,16 +80,6 @@ def parse_argv(argv: list[str] | None = None) -> dict[str, Any]:
     return result
 
 
-def _unwrapped_annotated(annot: Any) -> Any:
-    origin = getattr(annot, "__origin__", None)
-    if origin is Annotated:
-        args = annot.__args__
-        base_type = args[0]
-        return base_type
-    else:
-        return annot
-
-
 def run_function(argv: list[str] | None = None) -> None:
     """Run the selected function with parsed arguments."""
     args = parse_argv(argv)
@@ -102,20 +92,12 @@ def run_function(argv: list[str] | None = None) -> None:
     o_dir = Path(args["o"])
 
     job = job_cls(ExternalJobDirectory(o_dir))
-    sig = inspect.signature(job.run)
-    func_args = {}
-    for param in sig.parameters.values():
-        if param.name in args:
-            arg = args.pop(param.name)
-            annot = _unwrapped_annotated(param.annotation)
-            arg_parsed = parse_string(arg, annot)
-            func_args[param.name] = arg_parsed
-        elif param.default is param.empty:
-            raise ValueError(f"Missing required argument: {param.name}")
+    func_args = job._parse_args(args)
 
     # check if undefined arguments remain
     if unknown := set(args.keys()) - {"o", "j"}:
         func_name = class_id.rsplit(".", 1)[-1]
+        sig = job._signature()
         raise ValueError(
             f"Unknown arguments for {func_name}: {unknown}. Function signature is "
             f"{func_name}{sig}."
@@ -123,13 +105,18 @@ def run_function(argv: list[str] | None = None) -> None:
 
     if prep_job_star_enum > 0:
         df = prep_job_star(f"himena-relion {class_id}", **func_args)
-        starfile.write(df, o_dir / "job.star")
+        tempstar = "temp-job.star"
+        starfile.write(df, o_dir / tempstar)
         if prep_job_star_enum is PrepJobStarEnum.PREP_ONLY:
             pass
         elif prep_job_star_enum is PrepJobStarEnum.PREP_AND_ADD:
             subprocess.run(
-                ["relion_pipeliner", "--addJobFromStar", str(o_dir / "job.star")],
+                ["relion_pipeliner", "--addJobFromStar", str(o_dir / tempstar)],
                 check=True,
+            )
+            job_dir = last_job_directory()
+            Path(job_dir).joinpath(JOB_IMPORT_PATH_FILE).write_text(
+                f"{job.import_path()}\n", encoding="utf-8"
             )
         return
 

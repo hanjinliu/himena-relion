@@ -8,6 +8,8 @@ from importlib import import_module
 from runpy import run_path
 
 from himena_relion import _job
+from himena_relion._utils import unwrapped_annotated
+from himena_relion.external.typemap import parse_string
 
 
 def pick_job_class(class_id: str) -> type[RelionExternalJob]:
@@ -51,10 +53,9 @@ class RelionExternalJob(ABC):
         else:
             return f"{cls.__module__}:{cls.__name__}"
 
-    @classmethod
-    def job_title(cls) -> str:
+    def job_title(self) -> str:
         """Get the job title."""
-        return cls.__name__
+        return type(self).__name__
 
     @abstractmethod
     def output_nodes(self) -> list[tuple[str, str]]:
@@ -76,3 +77,21 @@ class RelionExternalJob(ABC):
     def provide_widget(self, job_dir: _job.ExternalJobDirectory) -> Any:
         """Provide a Qt widget for displaying the job results."""
         return NotImplemented
+
+    def _parse_args(self, args: dict[str, Any]) -> dict[str, Any]:
+        sig = inspect.signature(self.run)
+        func_args = {}
+        for param in sig.parameters.values():
+            if param.name in args:
+                arg = args.pop(param.name)
+                annot = unwrapped_annotated(param.annotation)
+                arg_parsed = parse_string(arg, annot)
+                func_args[param.name] = arg_parsed
+            elif param.default is param.empty:
+                raise ValueError(f"Missing required argument: {param.name}")
+            else:
+                func_args[param.name] = param.default
+        return func_args
+
+    def _signature(self) -> inspect.Signature:
+        return inspect.signature(self.run)

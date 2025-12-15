@@ -17,7 +17,7 @@ class QExternalJobView(QtW.QScrollArea, JobWidgetBase):
         """Handle changes to the job directory."""
         if widget := self.widget():
             if hasattr(widget, "on_job_updated"):
-                widget.on_job_updated(self, job_dir, path)
+                widget.on_job_updated(job_dir, path)
 
     def initialize(self, job_dir: _job.ExternalJobDirectory):
         """Initialize the viewer with the job directory."""
@@ -26,6 +26,7 @@ class QExternalJobView(QtW.QScrollArea, JobWidgetBase):
             import_path = fn_exe[len("himena-relion ") :].strip()
             if job_cls := pick_job_class(import_path):
                 external_job = job_cls(job_dir)
+                # set widget
                 widget = external_job.provide_widget(job_dir)
                 if widget is not NotImplemented:
                     self.setWidget(widget)

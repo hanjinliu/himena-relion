@@ -55,3 +55,12 @@ JOB_ID_MAP = {
     "relion.ctfrefinetomo": "CTF Refine",
     "modelangelo": "ModelAngelo",
 }
+
+JOB_IMPORT_PATH_FILE = "JOB_IMPORT_PATH.txt"
+
+ARG_NAME_REMAP = [
+    ("in_mics", "in_mic"),
+    ("in_movies", "in_mov"),
+    ("in_parts", "in_part"),
+    ("j", "nr_threads"),
+]

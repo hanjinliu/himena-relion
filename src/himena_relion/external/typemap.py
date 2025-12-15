@@ -22,9 +22,9 @@ def parse_string(s: str, typ: Any) -> Any:
     elif typ is float:
         return float(s)
     elif typ is bool:
-        if s == "0":
+        if s in ["0", "False", "false", "No"]:
             return False
-        elif s == "1":
+        elif s in ["1", "True", "true", "Yes"]:
             return True
         else:
             raise ValueError(f"Cannot parse boolean from string: {s}")

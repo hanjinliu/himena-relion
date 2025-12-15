@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from contextlib import suppress
 from pathlib import Path
 from typing import Iterator
 from qtpy import QtWidgets as QtW, QtGui, QtCore
@@ -85,11 +86,12 @@ class QRunOutLog(QLogWatcher):
 
     def initialize(self, job_dir: _job.JobDirectory):
         lines: list[str] = []
-        with open(job_dir.run_out(), encoding="utf-8", newline="\n") as f:
-            for line in f:
-                # run.out use "\r" to overwrite lines. Keep only the last part.
-                lines.append(line.split("\r")[-1])
-        self.setText("".join(lines))
+        with suppress(Exception):
+            with open(job_dir.run_out(), encoding="utf-8", newline="\n") as f:
+                for line in f:
+                    # run.out use "\r" to overwrite lines. Keep only the last part.
+                    lines.append(line.split("\r")[-1])
+            self.setText("".join(lines))
 
     def tab_title(self) -> str:
         return "run.out"
@@ -102,7 +104,8 @@ class QRunErrLog(QLogWatcher):
             self.initialize(job_dir)
 
     def initialize(self, job_dir: _job.JobDirectory):
-        self.setText(job_dir.run_err().read_text(encoding="utf-8"))
+        with suppress(Exception):
+            self.setText(job_dir.run_err().read_text(encoding="utf-8"))
 
     def tab_title(self) -> str:
         return "run.err"
@@ -122,7 +125,8 @@ class QNoteLog(QLogWatcher):
 
     def initialize(self, job_dir: _job.JobDirectory):
         self._job_dir = job_dir
-        self.setText(job_dir.note().read_text(encoding="utf-8"))
+        with suppress(Exception):
+            self.setText(job_dir.note().read_text(encoding="utf-8"))
 
     def tab_title(self) -> str:
         return "note.txt"

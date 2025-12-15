@@ -260,6 +260,9 @@ class EraseGold(RelionExternalJob):
             for _, row in df_tomo.iterrows()
         ]
         starfile.write(df_tomo, output_node_path)
+        self.console.log(
+            f"EraseGold jobs finished successfully, output saved to {output_node_path}"
+        )
 
     def provide_widget(self, job_dir):
         return QEraseGoldViewer(job_dir)
