@@ -14,7 +14,7 @@ from himena_relion.consts import FileNames
 from himena_relion._job import ExternalJobDirectory
 from himena_relion.external.typemap import parse_string
 from himena_relion.external.writers import prep_job_star
-from himena_relion.external.job_class import RelionExternalJob
+from himena_relion.external.job_class import pick_job_class
 
 
 class RelionExternalArgParser(argparse.ArgumentParser):
@@ -44,7 +44,9 @@ class RelionExternalArgParser(argparse.ArgumentParser):
         self.add_argument("class_id", type=str)
         self.add_argument("--o", type=str)
         self.add_argument("--j", type=int, default=1)
-        self.add_argument("--prep_job_star_for_pipeliner")
+        self.add_argument(
+            "--prep_job_star_for_pipeliner", type=int, choices=[0, 1, 2], default=0
+        )
 
 
 def parse_argv(argv: list[str] | None = None) -> dict[str, Any]:
@@ -76,25 +78,6 @@ def parse_argv(argv: list[str] | None = None) -> dict[str, Any]:
     result = vars(args)
     result.update(additional_args)
     return result
-
-
-def pick_job_class(class_id: str) -> type[RelionExternalJob]:
-    """Pick the function to execute based on class_id."""
-    from importlib import import_module
-    from runpy import run_path
-
-    if class_id.count(":") != 1:
-        raise ValueError(f"Invalid class_id: {class_id}")
-    class_file_path, class_name = class_id.split(":", 1)
-    if class_file_path.endswith(".py"):
-        ns = run_path(class_file_path)
-        job_cls = ns[class_name]
-    else:
-        module = import_module(class_file_path)
-        job_cls = getattr(module, class_name)
-    if not issubclass(job_cls, RelionExternalJob):
-        raise TypeError(f"Function {class_id} is not callable")
-    return job_cls
 
 
 def _unwrapped_annotated(annot: Any) -> Any:
@@ -155,7 +138,7 @@ def run_function(argv: list[str] | None = None) -> None:
         job.output_job_dir.relion_project_dir
     )
     with job.output_job_dir.edit_job_pipeline() as pipeline:
-        for file_path_rel, label in job.output_job_dir:
+        for file_path_rel, label in job.output_nodes():
             pipeline.append_output(root_rel / file_path_rel, label)
 
     # Run the function

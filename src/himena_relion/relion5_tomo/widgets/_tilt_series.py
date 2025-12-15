@@ -24,7 +24,7 @@ class QMotionCorrViewer(QJobScrollArea):
         self._filter_widget = Q2DFilterWidget()
         self._ts_choice = QtW.QComboBox()
         self._ts_choice.currentTextChanged.connect(self._ts_choice_changed)
-        layout.addWidget(QtW.QLabel("<b>Motion corrected tilt series</b>"))
+        layout.addWidget(QtW.QLabel("<b>Motion-corrected tilt series</b>"))
         layout.addWidget(self._filter_widget)
         layout.addWidget(self._ts_choice)
         layout.addWidget(self._viewer)

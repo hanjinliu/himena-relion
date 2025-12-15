@@ -4,32 +4,33 @@ from abc import ABC, abstractmethod
 import inspect
 from typing import Any, Generator
 from rich.console import Console
+from importlib import import_module
+from runpy import run_path
 
 from himena_relion import _job
 
 
-class RelionExternalJobRegistry:
-    def __init__(self):
-        self._reg = {}
+def pick_job_class(class_id: str) -> type[RelionExternalJob]:
+    """Pick the function to execute based on class_id."""
 
-    def register(self, job_cls: type[RelionExternalJob]) -> None:
-        self._reg[job_cls.import_path()] = job_cls
-
-    def pick(self, import_path: str) -> type[RelionExternalJob] | None:
-        return self._reg.get(import_path, None)
-
-
-REGISTRY = RelionExternalJobRegistry()
+    if class_id.count(":") != 1:
+        raise ValueError(f"Invalid class_id: {class_id}")
+    class_file_path, class_name = class_id.split(":", 1)
+    if class_file_path.endswith(".py"):
+        ns = run_path(class_file_path)
+        job_cls = ns[class_name]
+    else:
+        module = import_module(class_file_path)
+        job_cls = getattr(module, class_name)
+    if not issubclass(job_cls, RelionExternalJob):
+        raise TypeError(f"Function {class_id} is not callable")
+    return job_cls
 
 
 class RelionExternalJob(ABC):
     def __init__(self, output_job_dir: _job.ExternalJobDirectory):
         self._output_job_dir = output_job_dir
         self._console = Console(record=True)
-
-    def __init_subclass__(cls):
-        REGISTRY.register(cls)
-        return super().__init_subclass__()
 
     @property
     def output_job_dir(self) -> _job.ExternalJobDirectory:

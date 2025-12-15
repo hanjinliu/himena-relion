@@ -137,7 +137,7 @@ class RelionPipeline:
     def get_input_by_type(self, type_label: str) -> RelionJobPipelineNode | None:
         """Get input nodes by type label."""
         for node in self.inputs:
-            if node.type_label == type_label:
+            if node.type_label.startswith(type_label):
                 return node
         return None
 

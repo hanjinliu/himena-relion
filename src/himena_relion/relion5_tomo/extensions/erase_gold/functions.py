@@ -9,7 +9,7 @@ from numpy.typing import NDArray
 import starfile
 from himena_relion import _job, _utils
 from himena_relion.external import RelionExternalJob
-from .widgets import QFindBeads3DViewer
+from .widgets import QFindBeads3DViewer, QEraseGoldViewer
 
 
 def _xf_to_array(xf: str | Path) -> NDArray[np.floating]:
@@ -121,6 +121,10 @@ class FindBeads3D(RelionExternalJob):
     def output_nodes(self):
         return [("tomograms.star", "TomogramGroupMetadata.star")]
 
+    @classmethod
+    def import_path(cls):
+        return ".".join(cls.__module__.split(".")[:-1]) + f":{cls.__name__}"
+
     def run(
         self,
         in_mics: str,  # path
@@ -163,9 +167,13 @@ class FindBeads3D(RelionExternalJob):
 
 class EraseGold(RelionExternalJob):
     def output_nodes(self):
-        return [("tilt_series.star", "TomogramGroupMetadata.star")]
+        return [("tilt_series.star", "MicrographGroupMetadata.star")]
 
-    def run_erase_gold(
+    @classmethod
+    def import_path(cls):
+        return ".".join(cls.__module__.split(".")[:-1]) + f":{cls.__name__}"
+
+    def run(
         self,
         in_mics: str,  # path
         seed: int = 1427,
@@ -252,3 +260,6 @@ class EraseGold(RelionExternalJob):
             for _, row in df_tomo.iterrows()
         ]
         starfile.write(df_tomo, output_node_path)
+
+    def provide_widget(self, job_dir):
+        return QEraseGoldViewer(job_dir)

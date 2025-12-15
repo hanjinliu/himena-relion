@@ -1,14 +1,14 @@
 from __future__ import annotations
 import logging
 from qtpy import QtWidgets as QtW
-from himena_relion._widgets import register_job
+from himena_relion._widgets._job_widgets import JobWidgetBase
 from himena_relion import _job
+from himena_relion.external import pick_job_class
 
 _LOGGER = logging.getLogger(__name__)
 
 
-@register_job(_job.ExternalJobDirectory)
-class QExternalJobView(QtW.QScrollArea):
+class QExternalJobView(QtW.QScrollArea, JobWidgetBase):
     def __init__(self):
         super().__init__()
         self.setWidgetResizable(True)
@@ -21,12 +21,10 @@ class QExternalJobView(QtW.QScrollArea):
 
     def initialize(self, job_dir: _job.ExternalJobDirectory):
         """Initialize the viewer with the job directory."""
-        from himena_relion.external.job_class import REGISTRY
-
         fn_exe = job_dir.get_job_param("fn_exe")
         if fn_exe.startswith("himena-relion "):
             import_path = fn_exe[len("himena-relion ") :].strip()
-            if job_cls := REGISTRY.pick(import_path):
+            if job_cls := pick_job_class(import_path):
                 external_job = job_cls(job_dir)
                 widget = external_job.provide_widget(job_dir)
                 if widget is not NotImplemented:
