@@ -1,4 +1,5 @@
 from enum import Enum
+from himena.plugins import configure_submenu
 
 
 class Type:
@@ -70,3 +71,6 @@ ARG_NAME_REMAP = [
     ("in_parts", "in_part"),
     ("j", "nr_threads"),
 ]
+
+configure_submenu(MenuId.RELION, "RELION")
+configure_submenu(MenuId.RELION_NEW_JOB, "New Job")

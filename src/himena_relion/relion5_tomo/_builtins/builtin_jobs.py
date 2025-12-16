@@ -12,7 +12,7 @@ from himena_relion._job_class import RelionJob, connect_jobs, to_string
 from himena_relion._utils import last_job_directory
 from himena_relion import _configs
 
-TILTSERIES_TYPE = Annotated[str, {"label": "Tilt series"}]
+TILTSERIES_TYPE = Annotated[str, {"label": "Tilt series", "group": "I/O"}]
 
 MPI_TYPE = Annotated[
     int,

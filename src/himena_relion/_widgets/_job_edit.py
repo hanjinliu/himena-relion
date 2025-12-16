@@ -27,7 +27,11 @@ class QJobScheduler(QtW.QWidget):
         self._schedule_btn = QtW.QPushButton("Schedule Job")
         layout.addWidget(self._schedule_btn)
         self._current_job_cls: type[RelionJob] | None = None
+        self._mgui_widgets: list[ValueWidget] = []
         self._schedule_btn.clicked.connect(self.schedule_current_job)
+
+    def sizeHint(self) -> QtCore.QSize:
+        return QtCore.QSize(320, 600)
 
     def update_by_job(self, job_cls: type[RelionJob]):
         """Update the widget based on the job directory."""
@@ -38,6 +42,7 @@ class QJobScheduler(QtW.QWidget):
         for groupbox in self._param_layout.children():
             self._param_layout.removeWidget(groupbox)
             groupbox.deleteLater()
+        self._mgui_widgets.clear()
 
         sig = job_cls._signature()
         typemap = get_type_map()
@@ -55,6 +60,7 @@ class QJobScheduler(QtW.QWidget):
             for widget in widgets:
                 gb_layout.addWidget(QtW.QLabel(f"<b>{widget.label}</b>"))
                 gb_layout.addWidget(widget.native)
+                self._mgui_widgets.append(widget)
             self._param_layout.addWidget(gb)
 
     def get_parameters(self) -> dict[str, Any]:
@@ -62,10 +68,8 @@ class QJobScheduler(QtW.QWidget):
         if self._current_job_cls is None:
             raise RuntimeError("No job class selected.")
         params = {}
-        for groupbox in self._param_layout.children():
-            for widget in groupbox.children():
-                if isinstance(widget, ValueWidget):
-                    params[widget.name] = widget.value
+        for widget in self._mgui_widgets:
+            params[widget.name] = widget.value
         return params
 
     def schedule_current_job(self):

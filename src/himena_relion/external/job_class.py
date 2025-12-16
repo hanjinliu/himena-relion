@@ -74,18 +74,16 @@ class RelionExternalJob(RelionJob):
         return cls.__name__
 
     @classmethod
-    def create_and_run_job(
-        cls,
-        *args,
-        **kwargs,
-    ) -> str:
+    def create_and_run_job(cls, **kwargs) -> str:
         import_path = cls.import_path()
         sig = cls._signature()
-        bound = sig.bind(*args, **kwargs)  # Validate arguments
+        bound = sig.bind(**kwargs)
         with tempfile.TemporaryDirectory() as tmpdir:
             tmpdir = Path(tmpdir)
             job_star_path = str(tmpdir / f"{uuid4()}.star")
-            job_star_df = prep_job_star(import_path, **bound.arguments)
+            job_star_df = prep_job_star(
+                fn_exe=f"himena-relion {import_path}", **bound.arguments
+            )
             starfile.write(job_star_df, job_star_path)
             subprocess.run(
                 [

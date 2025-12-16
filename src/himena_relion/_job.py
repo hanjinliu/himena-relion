@@ -177,7 +177,7 @@ class ExternalJobDirectory(JobDirectory):
         """Get the job title (human readable name of this job)."""
         if job_cls := self._to_job_class():
             return job_cls.job_title()
-        return super().job_title
+        return super().job_title()
 
     def himena_model_type(self) -> str:
         """Model type string specific to this job."""

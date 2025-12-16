@@ -147,10 +147,8 @@ class QJobInOut(QtW.QWidget, JobWidgetBase):
         super().__init__()
         layout = QtW.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        self._list_widget_in = QtW.QListWidget()
-        self._list_widget_in.setAcceptDrops(False)
-        self._list_widget_out = QtW.QListWidget()
-        self._list_widget_in.setAcceptDrops(False)
+        self._list_widget_in = QRelionNodeList()
+        self._list_widget_out = QRelionNodeList()
         layout.addWidget(QtW.QLabel("<b>Inputs</b>"))
         layout.addWidget(self._list_widget_in)
         layout.addWidget(QtW.QLabel("<b>Outputs</b>"))
@@ -212,6 +210,12 @@ class QJobInOut(QtW.QWidget, JobWidgetBase):
         return "In/Out"
 
 
+class QRelionNodeList(QtW.QListWidget):
+    def __init__(self):
+        super().__init__()
+        self.setAcceptDrops(False)
+
+
 class QRelionNodeItem(QtW.QWidget):
     def __init__(
         self,
@@ -259,6 +263,7 @@ class QRelionNodeItem(QtW.QWidget):
         self.setToolTip(f"{self._filepath_rel.as_posix()}\nType: {self._filetype}")
 
         layout.addWidget(widget_file)
+        self._press_pos = QtCore.QPoint()
 
     def file_type_category(self) -> str | None:
         if self._filetype is None:
@@ -435,9 +440,9 @@ class QFileLabel(QtW.QWidget):
 
     def _make_context_menu(self):
         menu = QtW.QMenu()
-        menu.addAction("Copy full path to clipboard", self._copy_path_to_clipboard)
+        menu.addAction("Copy Path To Clipboard", self._copy_path_to_clipboard)
         menu.addAction(
-            "Copy relative path to clipboard", self._copy_relative_path_to_clipboard
+            "Copy Relative Path To Clipboard", self._copy_relative_path_to_clipboard
         )
         return menu
 
