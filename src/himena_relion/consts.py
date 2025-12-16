@@ -6,6 +6,12 @@ class Type:
     RELION_PIPELINE = "relion_pipeline"
 
 
+class MenuId:
+    RELION = "tools/relion"
+    RELION_NEW_JOB = "tools/relion/new"
+    RELION_UTILS = "tools/relion/utils"
+
+
 class RelionJobState(Enum):
     EXIT_SUCCESS = "exit_success"
     EXIT_FAILURE = "exit_failure"

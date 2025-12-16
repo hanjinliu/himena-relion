@@ -19,7 +19,7 @@ from himena_relion._widgets._job_widgets import (
     QNoteLog,
     QJobInOut,
 )
-from himena_relion.consts import Type, FileNames
+from himena_relion.consts import FileNames
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -81,7 +81,7 @@ class QRelionJobWidget(QtW.QWidget):
             raise RuntimeError("Job directory is not set.")
         return WidgetDataModel(
             value=self._job_dir,
-            type=Type.RELION_JOB,
+            type=self._job_dir.himena_model_type(),
         )
 
     @validate_protocol

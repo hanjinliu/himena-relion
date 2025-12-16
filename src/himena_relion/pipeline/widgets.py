@@ -164,7 +164,7 @@ class RelionJobNodeItem(BaseNodeItem):
         if jobxxx.startswith("job"):
             jobxxx = jobxxx[3:]
         if self._job.type_label == "relion.external":
-            title = ExternalJobDirectory(self._job.path).job_type_repr
+            title = ExternalJobDirectory(self._job.path).job_title()
         else:
             title = JOB_ID_MAP.get(self._job.type_label, self._job.type_label)
         if alias := self._job.alias:

@@ -1,16 +1,11 @@
 from __future__ import annotations
 
 from pathlib import Path
-import subprocess
-from typing import TYPE_CHECKING
 import numpy as np
-from himena import StandardType, WidgetDataModel, create_image_model, create_text_model
+from himena import StandardType, WidgetDataModel, create_image_model
 from himena.standards.model_meta import DimAxis
-from himena.plugins import register_reader_plugin, register_function
+from himena.plugins import register_reader_plugin
 from himena_relion.consts import Type
-
-if TYPE_CHECKING:
-    from himena_relion._job import JobDirectory
 
 
 @register_reader_plugin(priority=0)
@@ -43,9 +38,10 @@ def read_relion_job(path: Path) -> WidgetDataModel:
     if job_star := _get_job_star(path):
         from himena_relion._job import JobDirectory
 
+        job_dir = JobDirectory.from_job_star(job_star)
         return WidgetDataModel(
-            value=JobDirectory.from_job_star(job_star),
-            type=Type.RELION_JOB,
+            value=job_dir,
+            type=job_dir.himena_model_type(),
             title=job_star.parent.name,
         ).use_tab()
     raise ValueError(f"Expected an existing job.star file, got {path}")
@@ -76,64 +72,6 @@ def _(path: Path):
     if _get_default_pipeline_star(path) is not None:
         return Type.RELION_PIPELINE
     return None
-
-
-### Converter functions
-@register_function(
-    menus=[],
-    types=[Type.RELION_JOB],
-    title="Open job.star as text",
-    command_id="himena-relion:open-job-star",
-)
-def open_relion_job_star(model: WidgetDataModel) -> WidgetDataModel:
-    job_dir = assert_job(model)
-    job_star_path = job_dir.job_star()
-    return create_text_model(
-        job_star_path.read_text(),
-        title=f"{job_dir.path.stem}/{job_star_path.name}",
-        extension_default=".star",
-    )
-
-
-@register_function(
-    menus=[],
-    types=[Type.RELION_JOB],
-    title="Open job_pipeline.star as text",
-    command_id="himena-relion:open-job-pipeline-star",
-)
-def open_relion_job_pipeline_star(model: WidgetDataModel) -> WidgetDataModel:
-    job_dir = assert_job(model)
-    job_star_path = job_dir.job_pipeline()
-    return create_text_model(
-        job_star_path.read_text(),
-        title=f"{job_dir.path.stem}/{job_star_path.name}",
-        extension_default=".star",
-    )
-
-
-@register_function(
-    menus=[],
-    types=[Type.RELION_JOB],
-    title="Clone this job",
-    command_id="himena-relion:clone-job",
-)
-def clone_relion_job(model: WidgetDataModel) -> WidgetDataModel:
-    """Clone this RELION job."""
-    job_dir = assert_job(model)
-    subprocess.run(
-        ["relion_pipeliner", "--addJobFromStar", job_dir.job_star().as_posix()],
-        check=True,
-    )
-
-
-### Helper functions
-def assert_job(model: WidgetDataModel) -> JobDirectory:
-    from himena_relion._job import JobDirectory
-
-    value = model.value
-    if not isinstance(value, JobDirectory):
-        raise TypeError(f"Expected JobDirectory object, got {type(value)}")
-    return value
 
 
 def _get_job_star(path: Path) -> Path | None:

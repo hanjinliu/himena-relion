@@ -344,7 +344,7 @@ class QJobStateLabel(QtW.QWidget, JobWidgetBase):
         self._on_job_updated(job_dir)
         self._job_desc.setText(
             f"<b><span style='color: gray;'>{job_dir.job_id}: </span> "
-            f"{job_dir.job_type_repr}</b>"
+            f"{job_dir.job_title()}</b>"
         )
 
     def _on_job_updated(self, job_dir: _job.JobDirectory):

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
-import inspect
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -13,10 +12,10 @@ import starfile
 import mrcfile
 from himena_relion._image_readers._array import ArrayFilteredView
 from himena_relion.consts import (
-    ARG_NAME_REMAP,
     JOB_IMPORT_PATH_FILE,
     RelionJobState,
     JOB_ID_MAP,
+    Type,
 )
 from himena_relion._pipeline import RelionPipeline, RelionOptimisationSet
 
@@ -64,11 +63,19 @@ class JobDirectory:
             return _id[3:]
         return _id
 
-    @property
-    def job_type_repr(self) -> str:
+    def job_title(self) -> str:
+        """Get the job title (human readable name of this job)."""
         if label := getattr(self, "_job_type", None):
             return JOB_ID_MAP.get(label, label)
         return "Unknown"
+
+    def himena_model_type(self) -> str:
+        """Model type string specific to this job."""
+        if label := getattr(self, "_job_type", None):
+            subtype = label
+        else:
+            subtype = "unknown"
+        return Type.RELION_JOB + "." + subtype
 
     @property
     def relion_project_dir(self) -> Path:
@@ -125,10 +132,6 @@ class JobDirectory:
         yield pipeline
         pipeline.write_star(self.job_pipeline())
 
-    def to_bound_arguments(job_dir: JobDirectory) -> inspect.BoundArguments:
-        """Convert to a pre-defined signature based on the job type label."""
-        raise NotImplementedError
-
     def state(self) -> RelionJobState:
         """Return the state of the job based on the existence of certain files."""
         if self.path.joinpath("RELION_JOB_EXIT_SUCCESS").exists():
@@ -162,32 +165,30 @@ class ExternalJobDirectory(JobDirectory):
 
     _job_type = "relion.external"
 
-    def _to_job_class(self) -> RelionExternalJob | None:
+    def _to_job_class(self) -> type[RelionExternalJob] | None:
         from himena_relion.external.job_class import pick_job_class
 
         if import_path := self.job_import_path():
             job_cls = pick_job_class(import_path)
-            return job_cls(self)
+            return job_cls
         return None
 
-    @property
-    def job_type_repr(self) -> str:
-        if job := self._to_job_class():
-            return job.job_title()
-        return super().job_type_repr
+    def job_title(self) -> str:
+        """Get the job title (human readable name of this job)."""
+        if job_cls := self._to_job_class():
+            return job_cls.job_title()
+        return super().job_title
 
-    def to_bound_arguments(self) -> inspect.BoundArguments:
-        if job := self._to_job_class():
-            params = self.get_job_params_as_dict()
-            for before, after in ARG_NAME_REMAP:
-                if after in params:
-                    params[before] = params.pop(after)
-            args = job._parse_args(params)
-            sig = job._signature()
-            return sig.bind_partial(**args)
-        raise ValueError("External job does not have a valid import path.")
+    def himena_model_type(self) -> str:
+        """Model type string specific to this job."""
+        if import_path := self.job_import_path():
+            subtype = import_path.replace(".", "-").replace("/", "-").replace(":", "-")
+        else:
+            subtype = "unknown"
+        return Type.RELION_JOB + "." + subtype
 
     def job_import_path(self) -> str | None:
+        """Import path for the external job class object."""
         if (f := self.path.joinpath(JOB_IMPORT_PATH_FILE)).exists():
             return f.read_text(encoding="utf-8").strip()
         fn_exe = self.get_job_param("fn_exe")

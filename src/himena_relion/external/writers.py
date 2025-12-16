@@ -1,15 +1,11 @@
 from __future__ import annotations
-from pathlib import Path
 
 import pandas as pd
 from himena_relion import _job
+from himena_relion._job_class import to_string
 from himena_relion.consts import ARG_NAME_REMAP
 
 # https://deepwiki.com/3dem/relion/3.3-scheduling-and-automation
-
-# mkdir External/job015
-# relion_pipeliner --addJobFromStar External/job015/job.star
-# relion_pipeliner --RunJobs "External/job015/"
 
 
 def prep_job_star(
@@ -56,8 +52,7 @@ def prep_job_star(
 
     arg_map = dict(ARG_NAME_REMAP)
     for key, value in kwargs.items():
-        if isinstance(value, Path):
-            value = str(value)
+        value = to_string(value)
         if isinstance(value, _job.JobDirectory):
             pass  # this is himena-relion internal use only
         elif key in [
@@ -80,8 +75,6 @@ def prep_job_star(
             param_label_key = f"param{current_param_index}_label"
             param_value_key = f"param{current_param_index}_value"
             params[param_label_key] = key
-            if isinstance(value, bool):
-                value = "Yes" if value else "No"
             params[param_value_key] = value
             current_param_index += 1
 

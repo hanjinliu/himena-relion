@@ -9,6 +9,8 @@ from numpy.typing import NDArray
 import starfile
 from himena_relion import _job, _utils
 from himena_relion.external import RelionExternalJob
+from himena_relion.relion5_tomo._builtins.builtin_jobs import ReconstructTomogramJob
+from himena_relion._job_class import connect_jobs
 from .widgets import QFindBeads3DViewer, QEraseGoldViewer
 
 
@@ -123,7 +125,11 @@ class FindBeads3D(RelionExternalJob):
 
     @classmethod
     def import_path(cls):
-        return ".".join(cls.__module__.split(".")[:-1]) + f":{cls.__name__}"
+        return f"himena_relion.relion5_tomo:{cls.__name__}"
+
+    @classmethod
+    def job_title(cls):
+        return "Find Beads 3D"
 
     def run(
         self,
@@ -171,7 +177,11 @@ class EraseGold(RelionExternalJob):
 
     @classmethod
     def import_path(cls):
-        return ".".join(cls.__module__.split(".")[:-1]) + f":{cls.__name__}"
+        return f"himena_relion.relion5_tomo:{cls.__name__}"
+
+    @classmethod
+    def job_title(cls):
+        return "Erase Gold"
 
     def run(
         self,
@@ -266,3 +276,21 @@ class EraseGold(RelionExternalJob):
 
     def provide_widget(self, job_dir):
         return QEraseGoldViewer(job_dir)
+
+
+connect_jobs(
+    ReconstructTomogramJob,
+    FindBeads3D,
+    node_mapping={"tomograms.star": "in_mics"},
+)
+
+connect_jobs(
+    FindBeads3D,
+    EraseGold,
+    node_mapping={"tomograms.star": "in_mics"},
+)
+connect_jobs(
+    EraseGold,
+    ReconstructTomogramJob,
+    node_mapping={"tilt_series.star": "in_mics"},
+)
