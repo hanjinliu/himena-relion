@@ -121,11 +121,11 @@ class Q2DViewer(QViewer):
 
     def _on_zpos_box_changed(self, value: int):
         """Update the slider when the z position box changes."""
-        self._dims_slider.blockSignals(True)
+        self._zpos_box.blockSignals(True)
         try:
             self._dims_slider.setValue(value)
         finally:
-            self._dims_slider.blockSignals(False)
+            self._zpos_box.blockSignals(False)
 
     def _on_slider_changed(self, value: int, *, force_sync: bool = False):
         """Update the displayed slice based on the slider value."""

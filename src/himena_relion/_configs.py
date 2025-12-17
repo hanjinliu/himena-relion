@@ -24,6 +24,16 @@ class RelionConfig:
         label="AreTomo2 Executable",
         tooltip="Path to the AreTomo2 executable",
     )
+    cryocare: str = config_field(
+        default="/public/EM/cryoCARE",
+        label="cryoCARE Directory",
+        tooltip="Path to the cryoCARE directory",
+    )
+    scratch_dir: str = config_field(
+        default="",
+        label="Scratch Directory",
+        tooltip="Path to the scratch directory",
+    )
     queuename: str = config_field(
         default="openmpi",
         label="Queue Name",
@@ -59,8 +69,16 @@ def get_aretomo2_exe() -> str:
     return _get_himena_relion_config().aretomo2
 
 
+def get_cryocare_dir() -> str:
+    return _get_himena_relion_config().cryocare
+
+
 def get_qsubscript() -> str:
     return _get_himena_relion_config().qsubscript
+
+
+def get_scratch_dir() -> str:
+    return _get_himena_relion_config().scratch_dir
 
 
 def get_queue_dict() -> dict[str, str]:

@@ -87,7 +87,7 @@ class QRunOutLog(QLogWatcher):
     def initialize(self, job_dir: _job.JobDirectory):
         lines: list[str] = []
         with suppress(Exception):
-            with open(job_dir.run_out(), encoding="utf-8", newline="\n") as f:
+            with open(job_dir.path / "run.out", encoding="utf-8", newline="\n") as f:
                 for line in f:
                     # run.out use "\r" to overwrite lines. Keep only the last part.
                     lines.append(line.split("\r")[-1])
@@ -105,7 +105,7 @@ class QRunErrLog(QLogWatcher):
 
     def initialize(self, job_dir: _job.JobDirectory):
         with suppress(Exception):
-            self.setText(job_dir.run_err().read_text(encoding="utf-8"))
+            self.setText(job_dir.path.joinpath("run.err").read_text(encoding="utf-8"))
 
     def tab_title(self) -> str:
         return "run.err"
@@ -126,7 +126,7 @@ class QNoteLog(QLogWatcher):
     def initialize(self, job_dir: _job.JobDirectory):
         self._job_dir = job_dir
         with suppress(Exception):
-            self.setText(job_dir.note().read_text(encoding="utf-8"))
+            self.setText(job_dir.path.joinpath("note.txt").read_text(encoding="utf-8"))
 
     def tab_title(self) -> str:
         return "note.txt"
@@ -136,9 +136,9 @@ class QNoteLog(QLogWatcher):
         """Autosave the note.txt file when the text changes."""
         if self._job_dir is None:
             return
-        note_path = self._job_dir.note()
+        note_path = self._job_dir.path / "note.txt"
         text = self.toPlainText()
-        if note_path.read_text(encoding="utf-8") != text:
+        if note_path.read_text(encoding="utf-8") != text or not note_path.exists():
             note_path.write_text(text)
 
 

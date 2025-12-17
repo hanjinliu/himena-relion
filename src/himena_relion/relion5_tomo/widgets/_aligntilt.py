@@ -50,6 +50,7 @@ class QAlignTiltSeriesViewer(QJobScrollArea):
             self._ts_choice.setCurrentText(text)
         elif choices == []:
             self._viewer.clear()
+            self._viewer.redraw()
 
     def _ts_choice_changed(self, text: str):
         """Update the viewer when the selected tomogram changes."""

@@ -24,12 +24,7 @@ class RelionDefaultPipeline(Sequence["RelionJobInfo"]):
     def from_pipeline_star(cls, star_path: Path) -> RelionDefaultPipeline:
         dfs = starfile.read(star_path, always_dict=True)
 
-        # |rlnPipeLineProcessName|rlnPipeLineProcessAlias|rlnPipeLineProcessTypeLabel|rlnPipeLineProcessStatusLabel
-        # |       Import/job001/ |                  None |         relion.importtomo | Succeeded
         processes: pd.DataFrame = dfs["pipeline_processes"]
-
-        # |        rlnPipeLineEdgeFromNode | rlnPipeLineEdgeProcess |
-        # | Import/job001/tilt_series.star | MotionCorr/job004/     |
         mappers: pd.DataFrame = dfs["pipeline_input_edges"]
 
         nodes: dict[Path, RelionJobInfo] = {}

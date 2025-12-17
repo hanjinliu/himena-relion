@@ -61,6 +61,7 @@ class QTomogramViewer(QJobScrollArea):
         self._tomo_choice.addItems(items)
         if len(items) == 0:
             self._viewer.clear()
+            self._viewer.redraw()
         if current_text in items:
             self._tomo_choice.setCurrentText(current_text)
         self._on_tomo_changed(self._tomo_choice.currentText())
@@ -119,6 +120,7 @@ class QDenoiseTomogramViewer(QJobScrollArea):
         self._tomo_choice.addItems(items)
         if len(items) == 0:
             self._viewer.clear()
+            self._viewer.redraw()
         if current_text in items:
             self._tomo_choice.setCurrentText(current_text)
         self._on_tomo_changed(self._tomo_choice.currentText())
@@ -168,6 +170,7 @@ class PickViewer(QJobScrollArea):
         self._tomo_choice.addItems(items)
         if len(items) == 0:
             self._viewer.clear()
+            self._viewer.redraw()
         if current_text in items:
             self._tomo_choice.setCurrentText(current_text)
         self._on_tomo_changed(self._tomo_choice.currentText())

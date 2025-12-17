@@ -6,7 +6,7 @@ from qtpy import QtGui, QtWidgets as QtW, QtCore
 from cmap import Color
 from superqt import ensure_main_thread
 from superqt.utils import thread_worker, GeneratorWorker
-from watchfiles import watch
+from watchfiles import watch, Change
 from himena import MainWindow, WidgetDataModel
 from himena.qt._qflowchart import QFlowChartWidget, BaseNodeItem
 from himena.plugins import validate_protocol
@@ -92,13 +92,20 @@ class QRelionPipelineFlowChart(QtW.QWidget):
             if self._watcher is None:
                 return  # stopped
             for change, fp in changes:
+                if change == Change.deleted:
+                    continue
                 _LOGGER.info("default_pipeline.star updated.")
-                model = WidgetDataModel(
-                    value=RelionDefaultPipeline.from_pipeline_star(path),
-                    type=Type.RELION_PIPELINE,
-                    title="RELION Pipeline",
-                )
-                self._on_pipeline_updated(model)
+                try:
+                    pipeline = RelionDefaultPipeline.from_pipeline_star(path)
+                except Exception as e:
+                    _LOGGER.warning("Failed to read default_pipeline.star: %s", e)
+                else:
+                    model = WidgetDataModel(
+                        value=pipeline,
+                        type=Type.RELION_PIPELINE,
+                        title="RELION Pipeline",
+                    )
+                    self._on_pipeline_updated(model)
             yield
 
 

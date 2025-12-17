@@ -1,17 +1,12 @@
 from abc import abstractmethod
 import inspect
 from pathlib import Path
-import subprocess
-import tempfile
 from typing import Any, Generator
-from uuid import uuid4
 from rich.console import Console
 from importlib import import_module
 from runpy import run_path
-import starfile
 
 from himena_relion import _job
-from himena_relion._utils import last_job_directory
 from himena_relion._job_class import RelionJob
 from himena_relion.external.writers import prep_job_star
 
@@ -45,14 +40,13 @@ class RelionExternalJob(RelionJob):
             )
 
     @property
-    def output_job_dir(self) -> _job.ExternalJobDirectory:
-        """Get the output job directory object."""
-        return self._output_job_dir
-
-    @property
     def console(self) -> Console:
         """Get the console object for logging."""
         return self._console
+
+    @classmethod
+    def type_label(cls) -> str:
+        return "relion.external"
 
     @classmethod
     def import_path(cls) -> str:
@@ -74,27 +68,11 @@ class RelionExternalJob(RelionJob):
         return cls.__name__
 
     @classmethod
-    def create_and_run_job(cls, **kwargs) -> str:
+    def prep_job_star(cls, **kwargs):
         import_path = cls.import_path()
         sig = cls._signature()
         bound = sig.bind(**kwargs)
-        with tempfile.TemporaryDirectory() as tmpdir:
-            tmpdir = Path(tmpdir)
-            job_star_path = str(tmpdir / f"{uuid4()}.star")
-            job_star_df = prep_job_star(
-                fn_exe=f"himena-relion {import_path}", **bound.arguments
-            )
-            starfile.write(job_star_df, job_star_path)
-            subprocess.run(
-                [
-                    "relion_pipeliner",
-                    "--addJobFromStar",
-                    job_star_path,
-                ]
-            )
-        d = last_job_directory()
-        subprocess.Popen(["relion_pipeliner", "--RunJobs", d])
-        return d
+        return prep_job_star(fn_exe=f"himena-relion {import_path}", **bound.arguments)
 
     @abstractmethod
     def output_nodes(self) -> list[tuple[str, str]]:

@@ -8,7 +8,7 @@ from himena.plugins import register_reader_plugin
 from himena_relion.consts import Type
 
 
-@register_reader_plugin(priority=0)
+@register_reader_plugin(priority=0, module="himena_relion.io")
 def read_density_map(path: Path) -> WidgetDataModel:
     import mrcfile
 
@@ -33,7 +33,7 @@ def _(path: Path):
     return StandardType.IMAGE
 
 
-@register_reader_plugin(priority=500)
+@register_reader_plugin(priority=500, module="himena_relion.io")
 def read_relion_job(path: Path) -> WidgetDataModel:
     if job_star := _get_job_star(path):
         from himena_relion._job import JobDirectory
@@ -54,7 +54,7 @@ def _(path: Path):
     return None
 
 
-@register_reader_plugin(priority=500)
+@register_reader_plugin(priority=500, module="himena_relion.io")
 def read_relion_pipeline(path: Path) -> WidgetDataModel:
     if pipeline_star := _get_default_pipeline_star(path):
         from himena_relion.pipeline import RelionDefaultPipeline

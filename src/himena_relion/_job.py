@@ -21,7 +21,7 @@ from himena_relion._pipeline import RelionPipeline, RelionOptimisationSet
 
 if TYPE_CHECKING:
     from typing import Self
-    from himena_relion.external.job_class import RelionExternalJob
+    from himena_relion.external.job_class import RelionExternalJob, RelionJob
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -95,14 +95,6 @@ class JobDirectory:
         """Return the path to the job.star file."""
         return self.path / "job.star"
 
-    def run_out(self) -> Path:
-        """Return the path to the job's run output log file."""
-        return self.path / "run.out"
-
-    def run_err(self) -> Path:
-        """Return the path to the job's run error log file."""
-        return self.path / "run.err"
-
     def job_pipeline(self) -> Path:
         """Return the path to the job's pipeline control file."""
         return self.path / "job_pipeline.star"
@@ -110,13 +102,16 @@ class JobDirectory:
     def parse_job_pipeline(self) -> RelionPipeline:
         return RelionPipeline.from_star(self.job_pipeline())
 
-    def default_pipeline(self) -> Path:
-        """Return the default pipeline control file."""
-        return self.path / "default_pipeline.star"
+    def _to_job_class(self) -> type[RelionJob] | None:
+        from himena_relion._job_class import iter_relion_jobs
 
-    def note(self) -> Path:
-        """Return the path to the job's note file."""
-        return self.path / "note.txt"
+        fp = self.job_star()
+        job_type = starfile.read(fp)["job"]["rlnJobTypeLabel"]
+
+        for subcls in iter_relion_jobs():
+            if subcls.type_label() == job_type:
+                return subcls
+        return None
 
     @contextmanager
     def edit_job_pipeline(self):
@@ -143,6 +138,7 @@ class JobDirectory:
         elif self.path.joinpath("RELION_JOB_ABORT_NOW").exists():
             return RelionJobState.ABORT_NOW
         else:
+            # TODO: how to deal with preparing state?
             return RelionJobState.RUNNING
 
     def get_job_param(self, param: str) -> str:

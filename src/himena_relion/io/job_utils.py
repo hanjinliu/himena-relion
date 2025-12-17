@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-import subprocess
 from typing import TYPE_CHECKING
-from himena import WidgetDataModel, create_text_model
+from himena import MainWindow, WidgetDataModel, create_text_model
 from himena.plugins import register_function
 from himena_relion.consts import Type, MenuId
 
@@ -48,13 +47,16 @@ def open_relion_job_pipeline_star(model: WidgetDataModel) -> WidgetDataModel:
     title="Clone this job",
     command_id="himena-relion:clone-job",
 )
-def clone_relion_job(model: WidgetDataModel) -> WidgetDataModel:
+def clone_relion_job(ui: MainWindow, model: WidgetDataModel):
     """Clone this RELION job."""
     job_dir = assert_job(model)
-    subprocess.run(
-        ["relion_pipeliner", "--addJobFromStar", job_dir.job_star().as_posix()],
-        check=True,
-    )
+    job_cls = job_dir._to_job_class()
+    if job_cls is None:
+        raise RuntimeError("Cannot determine job class.")
+    scheduler = job_cls._show_scheduler_widget(ui, {})
+    scheduler.update_by_job(job_cls)
+    scheduler.set_parameters(job_dir.get_job_params_as_dict())
+    scheduler.set_edit_mode(job_dir)
 
 
 def assert_job(model: WidgetDataModel) -> JobDirectory:
