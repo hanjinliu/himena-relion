@@ -38,6 +38,7 @@ class QJobScheduler(QtW.QWidget):
         layout.addWidget(self._exec_btn)
         self._current_job_cls: type[RelionJob] | None = None
         self._mgui_widgets: list[ValueWidget] = []
+        self._groupboxes: list[QtW.QGroupBox] = []
         self._exec_btn.clicked.connect(self._exec_action)
         self._mode: Mode = ScheduleMode()
 
@@ -47,10 +48,11 @@ class QJobScheduler(QtW.QWidget):
     def _set_content(self, job_cls: type[RelionJob] | None, title: str):
         self._current_job_cls = job_cls
         self._title_label.setText(f"<b><span style='color: gray;'>{title}</span></b>")
-        for groupbox in self._param_layout.children():
+        for groupbox in self._groupboxes:
             self._param_layout.removeWidget(groupbox)
             groupbox.deleteLater()
         self._mgui_widgets.clear()
+        self._groupboxes.clear()
 
     def clear_content(self):
         self._set_content(None, "No job selected")
@@ -77,13 +79,14 @@ class QJobScheduler(QtW.QWidget):
                 param_label = QtW.QLabel(f"<b>{widget.label}</b>")
                 gb_layout.addWidget(param_label)
                 if isinstance(widget, _mgui.ToggleSwitch):
-                    widget.label = ""
+                    widget.text = ""
                 elif isinstance(widget, (_mgui.IntEdit, _mgui.FloatEdit)):
                     widget.max_width = 160
                 gb_layout.addWidget(widget.native)
                 param_label.setToolTip(widget.tooltip)
                 self._mgui_widgets.append(widget)
             self._param_layout.addWidget(gb)
+            self._groupboxes.append(gb)
 
     def set_parameters(self, params: dict):
         params = params.copy()
