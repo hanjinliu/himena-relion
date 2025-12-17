@@ -9,7 +9,7 @@ from numpy.typing import NDArray
 import starfile
 from himena_relion import _job, _utils
 from himena_relion.external import RelionExternalJob
-from himena_relion.relion5_tomo._builtins.builtin_jobs import ReconstructTomogramJob
+from himena_relion.relion5_tomo._builtins import ReconstructTomogramJob
 from himena_relion._job_class import connect_jobs
 from .widgets import QFindBeads3DViewer, QEraseGoldViewer
 

@@ -73,6 +73,7 @@ exclude_lines = [
 ]
 
 [project.entry-points."himena.plugin"]
+"RELION 5" = "himena_relion.relion5"
 "RELION 5 Tomo" = "himena_relion.relion5_tomo"
 "RELION Job IO" = "himena_relion.io"
 "RELION pipeline" = "himena_relion.pipeline"
