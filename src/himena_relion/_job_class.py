@@ -158,6 +158,7 @@ class _RelionBuiltinJob(RelionJob):
         for key in _configs.get_queue_dict().keys():
             kwargs.pop(key, None)
         kwargs.pop("scratch_dir", None)
+        kwargs.pop("other_args", None)
         return kwargs
 
     @classmethod

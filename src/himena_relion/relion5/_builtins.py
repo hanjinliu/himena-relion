@@ -44,7 +44,8 @@ class _MotionCorrJobBase(_RelionBuiltinJob):
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
         kwargs["fn_motioncor2_exe"] = _configs.get_motioncor2_exe()
-        kwargs["patch_x"], kwargs["patch_y"] = kwargs["patch"]
+        if "patch" in kwargs:
+            kwargs["patch_x"], kwargs["patch_y"] = kwargs.pop("patch")
         return super().normalize_kwargs(**kwargs)
 
     @classmethod
@@ -233,24 +234,26 @@ class CtfEstimationJob(_RelionBuiltinJob):
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
         kwargs["fn_ctffind_exe"] = _configs.get_ctffind4_exe()
-        kwargs["phase_min"], kwargs["phase_max"], kwargs["phase_step"] = kwargs.pop(
-            "phase_range"
-        )
-        kwargs["dfmin"], kwargs["dfmax"], kwargs["dfstep"] = kwargs.pop("dfrange")
+        if "phase_range" in kwargs:
+            kwargs["phase_min"], kwargs["phase_max"], kwargs["phase_step"] = kwargs.pop(
+                "phase_range"
+            )
+        if "dfrange" in kwargs:
+            kwargs["dfmin"], kwargs["dfmax"], kwargs["dfstep"] = kwargs.pop("dfrange")
         return super().normalize_kwargs(**kwargs)
 
     @classmethod
     def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
         kwargs.pop("fn_ctffind_exe", None)
         kwargs["phase_range"] = (
-            kwargs.pop("phase_min"),
-            kwargs.pop("phase_max"),
-            kwargs.pop("phase_step"),
+            kwargs.pop("phase_min", 0),
+            kwargs.pop("phase_max", 180),
+            kwargs.pop("phase_step", 10),
         )
         kwargs["dfrange"] = (
-            kwargs.pop("dfmin"),
-            kwargs.pop("dfmax"),
-            kwargs.pop("dfstep"),
+            kwargs.pop("dfmin", 5000),
+            kwargs.pop("dfmax", 50000),
+            kwargs.pop("dfstep", 500),
         )
         return super().normalize_kwargs_inv(**kwargs)
 

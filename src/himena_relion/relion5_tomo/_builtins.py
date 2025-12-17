@@ -172,16 +172,17 @@ class ReconstructTomogramJob(_RelionBuiltinJob):
     @classmethod
     def normalize_kwargs(cls, **kwargs):
         # kwargs["tomo_name"] = " ".join(kwargs["tomo_name"]) ???
-        xdim, ydim, zdim = kwargs.pop("dims")
-        kwargs["xdim"] = xdim
-        kwargs["ydim"] = ydim
-        kwargs["zdim"] = zdim
+        if "dims" in kwargs:
+            xdim, ydim, zdim = kwargs.pop("dims")
+            kwargs["xdim"] = xdim
+            kwargs["ydim"] = ydim
+            kwargs["zdim"] = zdim
         return super().normalize_kwargs(**kwargs)
 
     @classmethod
     def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
         kwargs = super().normalize_kwargs_inv(**kwargs)
-        kwargs["dims"] = kwargs["xdim"], kwargs["ydim"], kwargs["zdim"]
+        kwargs["dims"] = kwargs.pop("xdim"), kwargs.pop("ydim"), kwargs.pop("zdim")
 
         return kwargs
 
@@ -357,10 +358,11 @@ class DenoisePredict(_DenoiseJobBase):
         kwargs["tomograms_for_training"] = ""
         kwargs["number_training_subvolumes"] = 1200
         kwargs["subvolume_dimensions"] = 72
-        ntile_x, ntile_y, ntile_z = kwargs.pop("ntiles")
-        kwargs["ntiles_x"] = ntile_x
-        kwargs["ntiles_y"] = ntile_y
-        kwargs["ntiles_z"] = ntile_z
+        if "ntiles" in kwargs:
+            ntile_x, ntile_y, ntile_z = kwargs.pop("ntiles")
+            kwargs["ntiles_x"] = ntile_x
+            kwargs["ntiles_y"] = ntile_y
+            kwargs["ntiles_z"] = ntile_z
         return super().normalize_kwargs(**kwargs)
 
     @classmethod
