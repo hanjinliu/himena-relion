@@ -1,8 +1,6 @@
 from typing import Annotated, Any
 
-import pandas as pd
-from himena_relion.consts import JOB_ID_MAP
-from himena_relion._job_class import RelionJob, connect_jobs, to_string
+from himena_relion._job_class import _RelionBuiltinJob, connect_jobs
 from himena_relion import _configs
 
 # I/O
@@ -42,61 +40,18 @@ MIN_DEDICATED_TYPE = Annotated[
 ]
 
 
-class _RelionBuiltinJob(RelionJob):
-    @classmethod
-    def command_id(cls) -> str:
-        return cls.type_label()
-
-    @classmethod
-    def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
-        """Normalize the keyword arguments for this job."""
-        kwargs.update(_configs.get_queue_dict())
-        return kwargs
-
-    @classmethod
-    def job_title(cls) -> str:
-        return JOB_ID_MAP.get(cls.type_label(), "Unknown")
-
-    @classmethod
-    def himena_model_type(cls):
-        return cls.type_label()
-
-    @classmethod
-    def prep_job_star(cls, **kwargs):
-        return prep_builtin_job_star(
-            type_label=cls.type_label(),
-            kwargs=cls.normalize_kwargs(**kwargs),
-        )
-
-
-def prep_builtin_job_star(
-    type_label: str, is_tomo: int = 0, kwargs: dict[str, Any] = {}
-):
-    job = {
-        "rlnJobTypeLabel": type_label,
-        "rlnJobIsContinue": 0,
-        "rlnJobIsTomo": is_tomo,
-    }
-    _var = []
-    _val = []
-    for k, v in kwargs.items():
-        _var.append(k)
-        _val.append(to_string(v))
-    joboptions_values = {
-        "rlnJobOptionVariable": _var,
-        "rlnJobOptionValue": _val,
-    }
-    return {
-        "job": job,
-        "joboptions_values": pd.DataFrame(joboptions_values),
-    }
-
-
 class _MotionCorrJobBase(_RelionBuiltinJob):
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
         kwargs["fn_motioncor2_exe"] = _configs.get_motioncor2_exe()
+        kwargs["patch_x"], kwargs["patch_y"] = kwargs["patch"]
         return super().normalize_kwargs(**kwargs)
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
+        kwargs.pop("fn_motioncor2_exe", None)
+        kwargs["patch"] = (kwargs.pop("patch_x", 1), kwargs.pop("patch_y", 1))
+        return super().normalize_kwargs_inv(**kwargs)
 
 
 class MotionCorr2Job(_MotionCorrJobBase):
@@ -109,6 +64,13 @@ class MotionCorr2Job(_MotionCorrJobBase):
         kwargs["do_own_motioncor"] = False
         kwargs["do_save_ps"] = False
         return super().normalize_kwargs(**kwargs)
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs):
+        kwargs = super().normalize_kwargs_inv(**kwargs)
+        kwargs.pop("do_own_motioncor", None)
+        kwargs.pop("do_save_ps", None)
+        return kwargs
 
     def run(
         self,
@@ -162,13 +124,12 @@ class MotionCorr2Job(_MotionCorrJobBase):
         other_motioncor2_args: Annotated[
             str, {"label": "Other MotionCor2 arguments", "group": "Motion Correction"}
         ] = "",
-        patch_x: Annotated[
-            int, {"label": "Number of patches X", "group": "Motion Correction"}
-        ] = 1,
-        patch_y: Annotated[
-            int, {"label": "Number of patches Y", "group": "Motion Correction"}
-        ] = 1,
+        patch: Annotated[
+            tuple[int, int],
+            {"label": "Number of patches (X, Y)", "group": "Motion Correction"},
+        ] = (1, 1),
         gpu_ids: GPU_IDS_TYPE = "0",
+        # Running
         min_dedicated: MIN_DEDICATED_TYPE = 1,
         nr_mpi: MPI_TYPE = 1,
         nr_threads: THREAD_TYPE = 1,
@@ -186,6 +147,13 @@ class MotionCorrOwnJob(_MotionCorrJobBase):
         kwargs["do_own_motioncor"] = True
         kwargs["other_motioncor2_args"] = ""
         return super().normalize_kwargs(**kwargs)
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs):
+        kwargs = super().normalize_kwargs_inv(**kwargs)
+        kwargs.pop("do_own_motioncor", None)
+        kwargs.pop("other_motioncor2_args", None)
+        return kwargs
 
     def run(
         self,
@@ -245,12 +213,11 @@ class MotionCorrOwnJob(_MotionCorrJobBase):
                 "group": "Motion Correction",
             },
         ] = "No flipping (0)",
-        patch_x: Annotated[
-            int, {"label": "Number of patches X", "group": "Motion Correction"}
-        ] = 1,
-        patch_y: Annotated[
-            int, {"label": "Number of patches Y", "group": "Motion Correction"}
-        ] = 1,
+        patch: Annotated[
+            tuple[int, int],
+            {"label": "Number of patches (X, Y)", "group": "Motion Correction"},
+        ] = (1, 1),
+        # Running
         min_dedicated: MIN_DEDICATED_TYPE = 1,
         nr_mpi: MPI_TYPE = 1,
         nr_threads: THREAD_TYPE = 1,
@@ -266,7 +233,26 @@ class CtfEstimationJob(_RelionBuiltinJob):
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
         kwargs["fn_ctffind_exe"] = _configs.get_ctffind4_exe()
+        kwargs["phase_min"], kwargs["phase_max"], kwargs["phase_step"] = kwargs.pop(
+            "phase_range"
+        )
+        kwargs["dfmin"], kwargs["dfmax"], kwargs["dfstep"] = kwargs.pop("dfrange")
         return super().normalize_kwargs(**kwargs)
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
+        kwargs.pop("fn_ctffind_exe", None)
+        kwargs["phase_range"] = (
+            kwargs.pop("phase_min"),
+            kwargs.pop("phase_max"),
+            kwargs.pop("phase_step"),
+        )
+        kwargs["dfrange"] = (
+            kwargs.pop("dfmin"),
+            kwargs.pop("dfmax"),
+            kwargs.pop("dfstep"),
+        )
+        return super().normalize_kwargs_inv(**kwargs)
 
     def run(
         self,
@@ -274,15 +260,10 @@ class CtfEstimationJob(_RelionBuiltinJob):
         do_phaseshift: Annotated[
             bool, {"label": "Estimate phase shifts", "group": "I/O"}
         ] = False,
-        phase_min: Annotated[
-            float, {"label": "Phase shift min (deg)", "group": "I/O"}
-        ] = 0,
-        phase_max: Annotated[
-            float, {"label": "Phase shift max (deg)", "group": "I/O"}
-        ] = 180,
-        phase_step: Annotated[
-            float, {"label": "Phase shift step (deg)", "group": "I/O"}
-        ] = 10,
+        phase_range: Annotated[
+            tuple[float, float, float],
+            {"label": "Phase shift min/max/step (deg)", "group": "I/O"},
+        ] = (0, 180, 10),
         dast: Annotated[
             float, {"label": "Amount of astigmatism (A)", "group": "I/O"}
         ] = 100,
@@ -302,9 +283,10 @@ class CtfEstimationJob(_RelionBuiltinJob):
         resmin: Annotated[
             float, {"label": "Resolution min (A)", "group": "CTFFIND"}
         ] = 30,
-        dfmin: Annotated[int, {"label": "Defocus min (A)", "group": "CTFFIND"}] = 5000,
-        dfmax: Annotated[int, {"label": "Defocus max (A)", "group": "CTFFIND"}] = 50000,
-        dfstep: Annotated[int, {"label": "Defocus step (A)", "group": "CTFFIND"}] = 500,
+        dfrange: Annotated[
+            tuple[float, float, float],
+            {"label": "Defocus search range min/max/step (A)", "group": "CTFFIND"},
+        ] = (5000, 50000, 500),
         localsearch_nominal_defocus: Annotated[
             float, {"label": "Nominal defocus search range", "group": "CTFFIND"}
         ] = 10000,

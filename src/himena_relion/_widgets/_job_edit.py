@@ -9,7 +9,7 @@ from himena import MainWindow
 from qtpy import QtWidgets as QtW, QtCore
 from himena.qt import magicgui as _mgui
 from himena_relion import _job
-from himena_relion._job_class import RelionJob, parse_string
+from himena_relion._job_class import RelionJob, parse_string, _RelionBuiltinJob
 from magicgui.widgets.bases import ValueWidget
 from magicgui.signature import MagicParameter
 
@@ -87,6 +87,10 @@ class QJobScheduler(QtW.QWidget):
 
     def set_parameters(self, params: dict):
         params = params.copy()
+        if (job_cls := self._current_job_cls) is None:
+            raise RuntimeError("No job class selected.")
+        if issubclass(job_cls, _RelionBuiltinJob):
+            params = job_cls.normalize_kwargs_inv(**params)
         for widget in self._mgui_widgets:
             if widget.name in params:
                 new_value = params.pop(widget.name)

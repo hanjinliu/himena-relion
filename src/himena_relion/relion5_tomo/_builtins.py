@@ -1,6 +1,6 @@
 from typing import Annotated, Any
 
-from himena_relion._job_class import connect_jobs
+from himena_relion._job_class import connect_jobs, _RelionBuiltinJob
 from himena_relion import _configs
 from himena_relion.relion5._builtins import (
     CONTINUE_TYPE,
@@ -17,7 +17,6 @@ from himena_relion.relion5._builtins import (
     MIN_DEDICATED_TYPE,
     THREAD_TYPE,
     GPU_IDS_TYPE,
-    _RelionBuiltinJob,
 )
 
 IN_TILT_TYPE = Annotated[str, {"label": "Tilt series", "group": "I/O"}]
@@ -37,6 +36,12 @@ class _AlignTiltSeriesJobBase(_RelionBuiltinJob):
         kwargs["fn_batchtomo_exe"] = _configs.get_batchruntomo_exe()
         return super().normalize_kwargs(**kwargs)
 
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
+        kwargs.pop("fn_aretomo_exe", None)
+        kwargs.pop("fn_batchtomo_exe", None)
+        return super().normalize_kwargs_inv(**kwargs)
+
 
 class AlignTiltSeriesImodFiducial(_AlignTiltSeriesJobBase):
     @classmethod
@@ -52,8 +57,17 @@ class AlignTiltSeriesImodFiducial(_AlignTiltSeriesJobBase):
         kwargs["do_imod_fiducials"] = True
         kwargs["do_aretomo2"] = False
         kwargs["do_imod_patchtrack"] = False
-        kwargs["gui_ids"] = ""
+        kwargs["gpu_ids"] = ""
         return super().normalize_kwargs(**kwargs)
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
+        kwargs = super().normalize_kwargs_inv(**kwargs)
+        kwargs.pop("do_imod_fiducials", None)
+        kwargs.pop("do_aretomo2", None)
+        kwargs.pop("do_imod_patchtrack", None)
+        kwargs.pop("gpu_ids", None)
+        return kwargs
 
     def run(
         self,
@@ -80,8 +94,17 @@ class AlignTiltSeriesImodPatch(_AlignTiltSeriesJobBase):
         kwargs["do_imod_fiducials"] = False
         kwargs["do_aretomo2"] = False
         kwargs["do_imod_patchtrack"] = True
-        kwargs["gui_ids"] = ""
+        kwargs["gpu_ids"] = ""
         return super().normalize_kwargs(**kwargs)
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
+        kwargs = super().normalize_kwargs_inv(**kwargs)
+        kwargs.pop("do_imod_fiducials", None)
+        kwargs.pop("do_aretomo2", None)
+        kwargs.pop("do_imod_patchtrack", None)
+        kwargs.pop("gpu_ids", None)
+        return kwargs
 
     def run(
         self,
@@ -113,6 +136,14 @@ class AlignTiltSeriesAreTomo2(_AlignTiltSeriesJobBase):
         kwargs["do_imod_patchtrack"] = False
         return super().normalize_kwargs(**kwargs)
 
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
+        kwargs = super().normalize_kwargs_inv(**kwargs)
+        kwargs.pop("do_imod_fiducials", None)
+        kwargs.pop("do_aretomo2", None)
+        kwargs.pop("do_imod_patchtrack", None)
+        return kwargs
+
     def run(
         self,
         in_tiltseries: IN_TILT_TYPE = "",
@@ -141,7 +172,18 @@ class ReconstructTomogramJob(_RelionBuiltinJob):
     @classmethod
     def normalize_kwargs(cls, **kwargs):
         # kwargs["tomo_name"] = " ".join(kwargs["tomo_name"]) ???
+        xdim, ydim, zdim = kwargs.pop("dims")
+        kwargs["xdim"] = xdim
+        kwargs["ydim"] = ydim
+        kwargs["zdim"] = zdim
         return super().normalize_kwargs(**kwargs)
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
+        kwargs = super().normalize_kwargs_inv(**kwargs)
+        kwargs["dims"] = kwargs["xdim"], kwargs["ydim"], kwargs["zdim"]
+
+        return kwargs
 
     def run(
         self,
@@ -160,15 +202,10 @@ class ReconstructTomogramJob(_RelionBuiltinJob):
             int, {"label": "Number of Z-slices (binned pix)", "group": "I/O"}
         ] = 10,
         # Tab 2: Reconstruct
-        xdim: Annotated[
-            int, {"label": "Tomogram X size (unbinned pix)", "group": "Reconstruct"}
-        ] = 4000,
-        ydim: Annotated[
-            int, {"label": "Tomogram Y size (unbinned pix)", "group": "Reconstruct"}
-        ] = 4000,
-        zdim: Annotated[
-            int, {"label": "Tomogram Z size (unbinned pix)", "group": "Reconstruct"}
-        ] = 2000,
+        dims: Annotated[
+            tuple[int, int, int],
+            {"label": "Tomogram X, Y, Z size (unbinned pix)", "group": "Reconstruct"},
+        ] = (4000, 4000, 2000),
         binned_angpix: Annotated[
             float, {"label": "Pixel size (A)", "group": "Reconstruct"}
         ] = 10.0,
@@ -271,6 +308,18 @@ class DenoiseTrain(_DenoiseJobBase):
         kwargs["denoising_tomo_name"] = ""
         return super().normalize_kwargs(**kwargs)
 
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
+        kwargs = super().normalize_kwargs_inv(**kwargs)
+        kwargs.pop("do_cryocare_predict", None)
+        kwargs.pop("do_cryocare_train", None)
+        kwargs.pop("care_denoising_model", None)
+        kwargs.pop("ntiles_x", None)
+        kwargs.pop("ntiles_y", None)
+        kwargs.pop("ntiles_z", None)
+        kwargs.pop("denoising_tomo_name", None)
+        return kwargs
+
     def run(
         self,
         in_tomoset: Annotated[str, {"label": "Tomogram sets", "group": "I/O"}] = "",
@@ -308,7 +357,26 @@ class DenoisePredict(_DenoiseJobBase):
         kwargs["tomograms_for_training"] = ""
         kwargs["number_training_subvolumes"] = 1200
         kwargs["subvolume_dimensions"] = 72
+        ntile_x, ntile_y, ntile_z = kwargs.pop("ntiles")
+        kwargs["ntiles_x"] = ntile_x
+        kwargs["ntiles_y"] = ntile_y
+        kwargs["ntiles_z"] = ntile_z
         return super().normalize_kwargs(**kwargs)
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
+        kwargs = super().normalize_kwargs_inv(**kwargs)
+        kwargs.pop("do_cryocare_predict", None)
+        kwargs.pop("do_cryocare_train", None)
+        kwargs.pop("tomograms_for_training", None)
+        kwargs.pop("number_training_subvolumes", None)
+        kwargs.pop("subvolume_dimensions", None)
+        kwargs["ntiles"] = (
+            kwargs.pop("ntiles_x", 2),
+            kwargs.pop("ntiles_y", 2),
+            kwargs.pop("ntiles_z", 2),
+        )
+        return kwargs
 
     def run(
         self,
@@ -316,15 +384,10 @@ class DenoisePredict(_DenoiseJobBase):
         care_denoising_model: Annotated[
             str, {"label": "Denoising model", "group": "I/O"}
         ] = "",
-        ntiles_x: Annotated[
-            int, {"label": "Number of tiles X", "group": "Predict"}
-        ] = 2,
-        ntiles_y: Annotated[
-            int, {"label": "Number of tiles Y", "group": "Predict"}
-        ] = 2,
-        ntiles_z: Annotated[
-            int, {"label": "Number of tiles Z", "group": "Predict"}
-        ] = 2,
+        ntiles: Annotated[
+            tuple[int, int, int],
+            {"label": "Number of tiles (X, Y, Z)", "group": "Predict"},
+        ] = (2, 2, 2),
         denoising_tomo_name: Annotated[
             str, {"label": "Reconstruct only this tomogram"}
         ] = "",

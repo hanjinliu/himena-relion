@@ -14,8 +14,8 @@ from himena.widgets import MainWindow
 from himena.plugins import when_reader_used, register_function
 import pandas as pd
 import starfile
-from himena_relion import _job
-from himena_relion.consts import Type, MenuId
+from himena_relion import _job, _configs
+from himena_relion.consts import Type, MenuId, JOB_ID_MAP
 from himena_relion._utils import last_job_directory, unwrapped_annotated
 
 
@@ -140,6 +140,65 @@ class RelionJob(ABC):
         return scheduler
 
 
+class _RelionBuiltinJob(RelionJob):
+    @classmethod
+    def command_id(cls) -> str:
+        return cls.type_label()
+
+    @classmethod
+    def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
+        """Normalize the keyword arguments for this job."""
+        # This is used to convert python to job.star
+        kwargs.update(_configs.get_queue_dict())
+        return kwargs
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
+        # This is used to convert job.star to python, such as editing existing jobs
+        for key in _configs.get_queue_dict().keys():
+            kwargs.pop(key, None)
+        kwargs.pop("scratch_dir", None)
+        return kwargs
+
+    @classmethod
+    def job_title(cls) -> str:
+        return JOB_ID_MAP.get(cls.type_label(), "Unknown")
+
+    @classmethod
+    def himena_model_type(cls):
+        return cls.type_label()
+
+    @classmethod
+    def prep_job_star(cls, **kwargs):
+        return prep_builtin_job_star(
+            type_label=cls.type_label(),
+            kwargs=cls.normalize_kwargs(**kwargs),
+        )
+
+
+def prep_builtin_job_star(
+    type_label: str, is_tomo: int = 0, kwargs: dict[str, Any] = {}
+):
+    job = {
+        "rlnJobTypeLabel": type_label,
+        "rlnJobIsContinue": 0,
+        "rlnJobIsTomo": is_tomo,
+    }
+    _var = []
+    _val = []
+    for k, v in kwargs.items():
+        _var.append(k)
+        _val.append(to_string(v))
+    joboptions_values = {
+        "rlnJobOptionVariable": _var,
+        "rlnJobOptionValue": _val,
+    }
+    return {
+        "job": job,
+        "joboptions_values": pd.DataFrame(joboptions_values),
+    }
+
+
 @dataclass
 class RelionJobExecution:
     process: subprocess.Popen
@@ -173,7 +232,7 @@ def _split_list_and_arg(typ: Any) -> tuple[Any, Any]:
         return typ, str
 
 
-def parse_string(s: str, typ: Any) -> Any:
+def parse_string(s: Any, typ: Any) -> Any:
     if isinstance(typ, str):
         raise TypeError("Type annotation cannot be a string instance")
     if typ is str:
@@ -193,7 +252,22 @@ def parse_string(s: str, typ: Any) -> Any:
         return Path(s)
     elif get_origin(typ) is list:
         _, elem = _split_list_and_arg(typ)
-        return [parse_string(part, elem) for part in s.split(",")]
+        if isinstance(s, str):
+            parts = s.split(",")
+        else:
+            parts = s
+        return [parse_string(part, elem) for part in parts]
+    elif get_origin(typ) is tuple:
+        args = typ.__args__
+        if isinstance(s, str):
+            parts = s.split(",")
+        else:
+            parts = s
+        if len(parts) != len(args):
+            raise ValueError(
+                f"Cannot parse tuple from string: {s}, expected {len(args)} elements"
+            )
+        return tuple(parse_string(part, arg) for part, arg in zip(parts, args))
     else:
         raise TypeError(f"Unsupported type for parsing: {typ}")
 
