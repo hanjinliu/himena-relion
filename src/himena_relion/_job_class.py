@@ -3,6 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 import inspect
+import logging
 import subprocess
 import tempfile
 from typing import Any, Generator, get_origin
@@ -15,8 +16,11 @@ from himena.plugins import when_reader_used, register_function
 import pandas as pd
 import starfile
 from himena_relion import _job, _configs
+from himena_relion._pipeline import RelionPipeline
 from himena_relion.consts import Type, MenuId, JOB_ID_MAP
 from himena_relion._utils import last_job_directory, unwrapped_annotated
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class RelionJob(ABC):
@@ -75,6 +79,11 @@ class RelionJob(ABC):
     def __init_subclass__(cls):
         if cls.__name__.startswith("_") or cls.__name__ == "RelionExternalJob":
             return
+        _LOGGER.info(
+            "Registering RELION job %s with command ID %s",
+            cls.job_title(),
+            cls.command_id(),
+        )
         register_function(
             cls._show_scheduler_widget,
             menus=[MenuId.RELION_NEW_JOB],
@@ -83,7 +92,7 @@ class RelionJob(ABC):
         )
 
     @classmethod
-    def create_and_run_job(cls, **kwargs) -> RelionJobExecution:
+    def create_and_run_job(cls, **kwargs) -> RelionJobExecution | None:
         with tempfile.TemporaryDirectory() as tmpdir:
             tmpdir = Path(tmpdir)
             job_star_path = str(tmpdir / "job.star")
@@ -98,29 +107,38 @@ class RelionJob(ABC):
                 check=True,
             )
         d = last_job_directory()
-        proc = subprocess.Popen(
-            ["relion_pipeliner", "--RunJobs", d],
-            start_new_session=True,
-        )
-        return RelionJobExecution(proc, _job.JobDirectory(Path(d).resolve()))
+        # check if all the input is ready
+        pipeline = RelionPipeline.from_star(Path(d) / "job_pipeline.star")
+        inputs_ready = all(input_.path.exists() for input_ in pipeline.inputs)
+
+        if inputs_ready:
+            # run the job
+            proc = subprocess.Popen(
+                ["relion_pipeliner", "--RunJobs", d],
+                start_new_session=True,
+            )
+            return RelionJobExecution(proc, _job.JobDirectory(Path(d).resolve()))
 
     @classmethod
     @abstractmethod
     def prep_job_star(cls, **kwargs) -> pd.DataFrame:
         """Prepare job star data with given parameters."""
 
-    def edit_and_run_job(self, **kwargs) -> RelionJobExecution:
+    def edit_and_run_job(self, **kwargs) -> RelionJobExecution | None:
         job_dir = self.output_job_dir
         job_star_df = self.prep_job_star(**kwargs)
         starfile.write(job_star_df, job_dir.job_star())
         to_run = str(job_dir.path.relative_to(job_dir.relion_project_dir))
         if not to_run.endswith("/"):
             to_run += "/"
-        proc = subprocess.Popen(
-            ["relion_pipeliner", "--RunJobs", to_run],
-            start_new_session=True,
-        )
-        return RelionJobExecution(proc, job_dir)
+        pipeline = RelionPipeline.from_star(Path(to_run, "job_pipeline.star"))
+        inputs_ready = all(input_.path.exists() for input_ in pipeline.inputs)
+        if inputs_ready:
+            proc = subprocess.Popen(
+                ["relion_pipeliner", "--RunJobs", to_run],
+                start_new_session=True,
+            )
+            return RelionJobExecution(proc, job_dir)
 
     @classmethod
     def _show_scheduler_widget(cls, ui: MainWindow, context: AnyContext):

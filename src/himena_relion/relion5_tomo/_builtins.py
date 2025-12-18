@@ -2,24 +2,88 @@ from typing import Annotated, Any
 
 from himena_relion._job_class import connect_jobs, _RelionBuiltinJob
 from himena_relion import _configs
+from himena_relion._widgets._magicgui import OptimisationSetEdit
+from himena_relion._widgets._path_input import PathDrop
 from himena_relion.relion5._builtins import (
+    ANG_SAMPLING_TYPE,
     CONTINUE_TYPE,
-    IN_OPT_TYPE,
-    IN_TRAJ_TYPE,
-    IN_PARTS_TYPE,
-    IN_TOMO_TYPE,
+    DO_APPLY_HELICAL_SYMMETRY_TYPE,
+    DO_BLUSH_TYPE,
+    DO_COMBINE_THRU_DISC_TYPE,
+    DO_CTF_TYPE,
+    DO_HELIX_TYPE,
+    DO_LOCAL_SEARCH_HELICAL_SYMMETRY_TYPE,
+    DO_PREREAD_TYPE,
+    HELICAL_NR_ASU_TYPE,
+    HELICAL_RANGE_DIST_TYPE,
+    HELICAL_RISE_INITIAL_TYPE,
+    HELICAL_RISE_RANGE_TYPE,
+    HELICAL_TUBE_DIAMETER_RANGE_TYPE,
+    HELICAL_TWIST_INITIAL_TYPE,
+    HELICAL_TWIST_RANGE_TYPE,
+    HELICAL_Z_PERCENTAGE_TYPE,
+    IGNORE_CTF_TYPE,
+    INITIAL_LOWPASS_TYPE,
+    KEEP_TILT_PRIOR_FIXED_TYPE,
+    LOC_ANG_SAMPLING_TYPE,
+    MASK_DIAMETER_TYPE,
     MASK_TYPE,
+    MASK_WITH_ZEROS_TYPE,
+    NUM_CLASS_TYPE,
+    NUM_ITER_TYPE,
+    NUM_POOL_TYPE,
+    OFFSET_RANGE_STEP_TYPE,
+    REF_CORRECT_GRAY_TYPE,
+    REF_SYMMETRY_TYPE,
     REF_TYPE,
-    USE_DIRECT_TYPE,
+    RELAX_SYMMETRY_TYPE,
+    ROT_TILT_PSI_RANGE_TYPE,
+    SIGMA_TILT_TYPE,
+    T_TYPE,
+    TRUST_REF_SIZE_TYPE,
     USE_GPU_TYPE,
     MPI_TYPE,
     DO_QUEUE_TYPE,
     MIN_DEDICATED_TYPE,
     THREAD_TYPE,
     GPU_IDS_TYPE,
+    USE_PARALLEL_DISC_IO_TYPE,
 )
 
-IN_TILT_TYPE = Annotated[str, {"label": "Tilt series", "group": "I/O"}]
+IN_TILT_TYPE = Annotated[
+    str,
+    {
+        "label": "Input tilt series",
+        "widget_type": PathDrop,
+        "type_label": "TomographGroupMeta",
+        "group": "I/O",
+    },
+]
+IN_OPTIM = Annotated[
+    dict,
+    {"label": "Input particles", "group": "I/O", "widget_type": OptimisationSetEdit},
+]
+
+
+def norm_optim(**kwargs):
+    kwargs["in_optim"] = {
+        "in_optimisation": kwargs.pop("in_optimisation", ""),
+        "use_direct_entries": kwargs.pop("use_direct_entries", False),
+        "in_particles": kwargs.pop("in_particles", ""),
+        "in_tomograms": kwargs.pop("in_tomograms", ""),
+        "in_trajectories": kwargs.pop("in_trajectories", ""),
+    }
+    return kwargs
+
+
+def norm_optim_inv(**kwargs):
+    optim = kwargs.pop("in_optim", {})
+    kwargs["in_optimisation"] = optim.get("in_optimisation", "")
+    kwargs["use_direct_entries"] = optim.get("use_direct_entries", False)
+    kwargs["in_particles"] = optim.get("in_particles", "")
+    kwargs["in_tomograms"] = optim.get("in_tomograms", "")
+    kwargs["in_trajectories"] = optim.get("in_trajectories", "")
+    return kwargs
 
 
 # TODO: class ExcludeTiltJob(_RelionBuiltinJob):
@@ -220,9 +284,7 @@ class ReconstructTomogramJob(_RelionBuiltinJob):
             bool,
             {"label": "Fourier-inversion with odd/even frames", "group": "Reconstruct"},
         ] = True,
-        ctf_intact_first_peak: Annotated[
-            bool, {"label": "Ignore CTFs until first peaks", "group": "Reconstruct"}
-        ] = True,
+        ctf_intact_first_peak: IGNORE_CTF_TYPE = True,
         # Tab 3: Running
         nr_mpi: MPI_TYPE = 1,
         nr_threads: THREAD_TYPE = 1,
@@ -240,13 +302,17 @@ class ExtractParticlesTomoJob(_RelionBuiltinJob):
     def type_label(cls) -> str:
         return "relion.pseudosubtomo"
 
+    @classmethod
+    def normalize_kwargs(cls, **kwargs):
+        return norm_optim(**super().normalize_kwargs(**kwargs))
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
+        return norm_optim_inv(**super().normalize_kwargs_inv(**kwargs))
+
     def run(
         self,
-        in_optimisation: IN_OPT_TYPE = "",
-        use_direct_entries: USE_DIRECT_TYPE = False,
-        in_particles: IN_PARTS_TYPE = "",
-        in_tomograms: IN_TOMO_TYPE = "",
-        in_trajectories: IN_TRAJ_TYPE = "",
+        in_optim: IN_OPTIM = None,
         # Reconstruct
         binning: Annotated[
             int, {"label": "Binning factor", "min": 1, "group": "Reconstruct"}
@@ -410,36 +476,24 @@ class InitialModel3DJob(_RelionBuiltinJob):
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
         kwargs["scratch_dir"] = _configs.get_scratch_dir()
-        return super().normalize_kwargs(**kwargs)
+        return norm_optim(**super().normalize_kwargs(**kwargs))
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
+        return norm_optim_inv(**super().normalize_kwargs_inv(**kwargs))
 
     def run(
         self,
-        in_optimisation: IN_OPT_TYPE = "",
-        use_direct_entries: USE_DIRECT_TYPE = False,
-        in_particles: IN_PARTS_TYPE = "",
-        in_tomograms: IN_TOMO_TYPE = "",
-        in_trajectories: IN_TRAJ_TYPE = "",
+        in_optim: IN_OPTIM = None,
         fn_cont: CONTINUE_TYPE = "",
         # CTF
-        do_ctf_correction: Annotated[
-            bool, {"label": "Do CTF correction", "group": "CTF"}
-        ] = True,
-        ctf_intact_first_peak: Annotated[
-            bool, {"label": "Ignore CTFs until first peak", "group": "CTF"}
-        ] = False,
+        do_ctf_correction: DO_CTF_TYPE = True,
+        ctf_intact_first_peak: IGNORE_CTF_TYPE = False,
         # Optimisation
-        nr_iter: Annotated[
-            int, {"label": "Number of iterations", "min": 1, "group": "Optimisation"}
-        ] = 200,
-        tau_fudge: Annotated[
-            float, {"label": "Regularisation parameter T", "group": "Optimisation"}
-        ] = 4,
-        nr_classes: Annotated[
-            int, {"label": "Number of classes", "min": 1, "group": "Optimisation"}
-        ] = 1,
-        particle_diameter: Annotated[
-            float, {"label": "Mask diameter (A)", "group": "Optimisation"}
-        ] = 200,
+        nr_iter: NUM_ITER_TYPE = 200,
+        tau_fudge: T_TYPE = 4,
+        nr_classes: NUM_CLASS_TYPE = 1,
+        particle_diameter: MASK_DIAMETER_TYPE = 200,
         do_solvent: Annotated[
             bool,
             {
@@ -452,22 +506,12 @@ class InitialModel3DJob(_RelionBuiltinJob):
             bool,
             {"label": "Run in C1 and apply symmetry later", "group": "Optimisation"},
         ] = True,
-        sigma_tilt: Annotated[
-            float, {"label": "Prior width on tilt angle", "group": "Optimisation"}
-        ] = -1,
+        sigma_tilt: SIGMA_TILT_TYPE = -1,
         # Compute
-        use_parallel_disc_io: Annotated[
-            bool, {"label": "Use parallel disc I/O", "group": "Running"}
-        ] = True,
-        nr_pool: Annotated[
-            int, {"label": "Number of pooled particles", "min": 1, "group": "Running"}
-        ] = 3,
-        do_preread_images: Annotated[
-            bool, {"label": "Pre-read particles into RAM", "group": "Running"}
-        ] = False,
-        do_combine_thru_disc: Annotated[
-            bool, {"label": "Combine through disc", "group": "Running"}
-        ] = False,
+        use_parallel_disc_io: USE_PARALLEL_DISC_IO_TYPE = True,
+        nr_pool: NUM_POOL_TYPE = 3,
+        do_preread_images: DO_PREREAD_TYPE = False,
+        do_combine_thru_disc: DO_COMBINE_THRU_DISC_TYPE = False,
         # Running
         use_gpu: USE_GPU_TYPE = True,
         gpu_ids: GPU_IDS_TYPE = "",
@@ -484,70 +528,96 @@ class Class3DJob(_RelionBuiltinJob):
         return "relion.class3d"
 
     @classmethod
+    def command_id(cls):
+        return super().command_id() + "-tomo"
+
+    @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
         kwargs["scratch_dir"] = _configs.get_scratch_dir()
-        return super().normalize_kwargs(**kwargs)
+        kwargs["helical_twist_range"] = (
+            kwargs.pop("helical_twist_min", 0),
+            kwargs.pop("helical_twist_max", 0),
+            kwargs.pop("helical_twist_inistep", 0),
+        )
+        kwargs["helical_rise_range"] = (
+            kwargs.pop("helical_rise_min", 0),
+            kwargs.pop("helical_rise_max", 0),
+            kwargs.pop("helical_rise_inistep", 0),
+        )
+        kwargs["rot_tilt_psi_range"] = (
+            kwargs.pop("rot_range", -1),
+            kwargs.pop("tilt_range", 15),
+            kwargs.pop("psi_range", 10),
+        )
+        kwargs["helical_tube_diameter_range"] = (
+            kwargs.pop("helical_tube_inner_diameter", -1),
+            kwargs.pop("helical_tube_outer_diameter", -1),
+        )
+        kwargs["offset_range_step"] = (
+            kwargs.pop("offset_range", 5),
+            kwargs.pop("offset_step", 1),
+        )
+        return norm_optim(**super().normalize_kwargs(**kwargs))
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
+        if "helical_twist_range" in kwargs:
+            (
+                kwargs["helical_twist_min"],
+                kwargs["helical_twist_max"],
+                kwargs["helical_twist_inistep"],
+            ) = kwargs.pop("helical_twist_range")
+        if "helical_rise_range" in kwargs:
+            (
+                kwargs["helical_rise_min"],
+                kwargs["helical_rise_max"],
+                kwargs["helical_rise_inistep"],
+            ) = kwargs.pop("helical_rise_range")
+        if "rot_tilt_psi_range" in kwargs:
+            kwargs["rot_range"], kwargs["tilt_range"], kwargs["psi_range"] = kwargs.pop(
+                "rot_tilt_psi_range"
+            )
+        if "helical_tube_diameter_range" in kwargs:
+            (
+                kwargs["helical_tube_inner_diameter"],
+                kwargs["helical_tube_outer_diameter"],
+            ) = kwargs.pop("helical_tube_diameter_range")
+        if "offset_range_step" in kwargs:
+            kwargs["offset_range"], kwargs["offset_step"] = kwargs.pop(
+                "offset_range_step"
+            )
+        return norm_optim_inv(**super().normalize_kwargs_inv(**kwargs))
 
     def run(
         self,
-        in_optimisation: IN_OPT_TYPE = "",
-        use_direct_entries: USE_DIRECT_TYPE = False,
-        in_particles: IN_PARTS_TYPE = "",
-        in_tomograms: IN_TOMO_TYPE = "",
-        in_trajectories: IN_TRAJ_TYPE = "",
+        in_optim: IN_OPTIM = None,
         fn_ref: REF_TYPE = "",
         fn_mask: MASK_TYPE = "",
         fn_cont: CONTINUE_TYPE = "",
         # Reference
-        ref_correct_greyscale: Annotated[
-            bool, {"label": "Correct reference greyscale", "group": "Reference"}
-        ] = False,
-        trust_ref_size: Annotated[
-            bool, {"label": "Trust reference size", "group": "Reference"}
-        ] = True,
-        ini_high: Annotated[
-            float, {"label": "Initial low-pass filter (A)", "group": "Reference"}
-        ] = 60,
-        sym_name: Annotated[str, {"label": "Symmetry", "group": "Reference"}] = "C1",
+        ref_correct_greyscale: REF_CORRECT_GRAY_TYPE = False,
+        trust_ref_size: TRUST_REF_SIZE_TYPE = True,
+        ini_high: INITIAL_LOWPASS_TYPE = 60,
+        sym_name: REF_SYMMETRY_TYPE = "C1",
         # CTF
-        do_ctf_correction: Annotated[
-            bool, {"label": "Do CTF correction", "group": "CTF"}
-        ] = True,
-        ctf_intact_first_peak: Annotated[
-            bool, {"label": "Ignore CTFs until first peak", "group": "CTF"}
-        ] = False,
+        do_ctf_correction: DO_CTF_TYPE = True,
+        ctf_intact_first_peak: IGNORE_CTF_TYPE = False,
         # Optimisation
-        nr_classes: Annotated[
-            int, {"label": "Number of classes", "min": 1, "group": "Optimisation"}
-        ] = 1,
-        nr_iter: Annotated[
-            int, {"label": "Number of iterations", "min": 1, "group": "Optimisation"}
-        ] = 25,
-        tau_fudge: Annotated[
-            float, {"label": "Regularisation parameter T", "group": "Optimisation"}
-        ] = 1,
-        particle_diameter: Annotated[
-            float, {"label": "Mask diameter (A)", "group": "Optimisation"}
-        ] = 200,
-        do_zero_mask: Annotated[
-            bool, {"label": "Mask particles with zeros", "group": "Optimisation"}
-        ] = True,
+        nr_classes: NUM_CLASS_TYPE = 1,
+        nr_iter: NUM_ITER_TYPE = 25,
+        tau_fudge: T_TYPE = 1,
+        particle_diameter: MASK_DIAMETER_TYPE = 200,
+        do_zero_mask: MASK_WITH_ZEROS_TYPE = True,
         highres_limit: Annotated[
             float, {"label": "High-resolution limit (A)", "group": "Optimisation"}
         ] = -1,
+        do_blush: DO_BLUSH_TYPE = False,
         # Sampling
         dont_skip_align: Annotated[
             bool, {"label": "Perform image alignment", "group": "Sampling"}
         ] = True,
-        sampling: Annotated[
-            str, {"label": "Angular sampling interval", "group": "Sampling"}
-        ] = "7.5 degrees",
-        offset_range: Annotated[
-            float, {"label": "Offset search range (pix)", "group": "Sampling"}
-        ] = 5,
-        offset_step: Annotated[
-            float, {"label": "Offset search step (pix)", "group": "Sampling"}
-        ] = 1,
+        sampling: ANG_SAMPLING_TYPE = "7.5 degrees",
+        offset_range_step: OFFSET_RANGE_STEP_TYPE = (5, 1),
         allow_coarser: Annotated[
             bool, {"label": "Allow coarser sampling", "group": "Sampling"}
         ] = False,
@@ -557,93 +627,31 @@ class Class3DJob(_RelionBuiltinJob):
         sigma_angles: Annotated[
             float, {"label": "Local angular search range", "group": "Sampling"}
         ] = 5,
-        relax_sym: Annotated[
-            str, {"label": "Relax symmetry", "group": "Sampling"}
-        ] = "",
-        sigma_tilt: Annotated[
-            float, {"label": "Prior width on tilt angle", "group": "Sampling"}
-        ] = -1,
-        keep_tilt_prior_fixed: Annotated[
-            bool, {"label": "Keep tilt-prior fixed", "group": "Sampling"}
-        ] = True,
+        relax_sym: RELAX_SYMMETRY_TYPE = "",
+        sigma_tilt: SIGMA_TILT_TYPE = -1,
+        keep_tilt_prior_fixed: KEEP_TILT_PRIOR_FIXED_TYPE = True,
         # Helix
-        do_helix: Annotated[
-            bool, {"label": "Do helical reconstruction", "group": "Helix"}
-        ] = False,
-        do_apply_helical_symmetry: Annotated[
-            bool, {"label": "Apply helical symmetry", "group": "Helix"}
-        ] = True,
-        helical_nr_asu: Annotated[
-            int, {"label": "Number of asymmetrical units", "group": "Helix"}
-        ] = 1,
-        helical_twist_initial: Annotated[
-            float, {"label": "Initial helical twist (deg)", "group": "Helix"}
-        ] = 0,
-        helical_rise_initial: Annotated[
-            float, {"label": "Initial helical rise (A)", "group": "Helix"}
-        ] = 0,
-        helical_z_percentage: Annotated[
-            float, {"label": "Central Z length (%)", "group": "Helix"}
-        ] = 30,
-        helical_tube_inner_diameter: Annotated[
-            float, {"label": "Inner tube diameter (A)", "group": "Helix"}
-        ] = -1,
-        helical_tube_outer_diameter: Annotated[
-            float, {"label": "Outer tube diameter (A)", "group": "Helix"}
-        ] = -1,
-        range_rot: Annotated[
-            float, {"label": "Range for rot angle (deg)", "group": "Helix"}
-        ] = -1,
-        range_tilt: Annotated[
-            float, {"label": "Range for tilt angle (deg)", "group": "Helix"}
-        ] = 15,
-        range_psi: Annotated[
-            float, {"label": "Range for psi angle (deg)", "group": "Helix"}
-        ] = 10,
-        do_local_search_helical_symmetry: Annotated[
-            bool, {"label": "Do local searches of symmetry", "group": "Helix"}
-        ] = False,
-        helical_twist_min: Annotated[
-            float, {"label": "Helical twist min (deg)", "group": "Helix"}
-        ] = 0,
-        helical_twist_max: Annotated[
-            float, {"label": "Helical twist max (deg)", "group": "Helix"}
-        ] = 0,
-        helical_twist_inistep: Annotated[
-            float, {"label": "Helical twist initial step (deg)", "group": "Helix"}
-        ] = 0,
-        helical_rise_min: Annotated[
-            float, {"label": "Helical rise min (A)", "group": "Helix"}
-        ] = 0,
-        helical_rise_max: Annotated[
-            float, {"label": "Helical rise max (A)", "group": "Helix"}
-        ] = 0,
-        helical_rise_inistep: Annotated[
-            float, {"label": "Helical rise initial step (A)", "group": "Helix"}
-        ] = 0,
-        helical_range_distance: Annotated[
-            float, {"label": "Range factor of local averaging", "group": "Helix"}
-        ] = -1,
+        do_helix: DO_HELIX_TYPE = False,
+        helical_tube_diameter_range: HELICAL_TUBE_DIAMETER_RANGE_TYPE = (-1, -1),
+        rot_tilt_psi_range: ROT_TILT_PSI_RANGE_TYPE = (-1, 15, 10),
+        do_apply_helical_symmetry: DO_APPLY_HELICAL_SYMMETRY_TYPE = True,
+        do_local_search_helical_symmetry: DO_LOCAL_SEARCH_HELICAL_SYMMETRY_TYPE = False,
+        helical_range_distance: HELICAL_RANGE_DIST_TYPE = -1,
+        helical_twist_initial: HELICAL_TWIST_INITIAL_TYPE = 0,
+        helical_twist_range: HELICAL_TWIST_RANGE_TYPE = (0, 0, 0),
+        helical_rise_initial: HELICAL_RISE_INITIAL_TYPE = 0,
+        helical_rise_range: HELICAL_RISE_RANGE_TYPE = (0, 0, 0),
+        helical_nr_asu: HELICAL_NR_ASU_TYPE = 1,
+        helical_z_percentage: HELICAL_Z_PERCENTAGE_TYPE = 30,
         # Compute
-        do_blush: Annotated[
-            bool, {"label": "Use B-factor sharpening", "group": "Compute"}
-        ] = False,
         do_fast_subsets: Annotated[
             bool, {"label": "Use fast subsets", "group": "Compute"}
         ] = False,
-        do_parallel_discio: Annotated[
-            bool, {"label": "Use parallel disc I/O", "group": "Compute"}
-        ] = True,
-        nr_pool: Annotated[
-            int, {"label": "Number of pooled particles", "group": "Compute"}
-        ] = 3,
+        do_parallel_discio: USE_PARALLEL_DISC_IO_TYPE = True,
+        nr_pool: NUM_POOL_TYPE = 3,
         do_pad1: Annotated[bool, {"label": "Skip padding", "group": "Compute"}] = False,
-        do_preread_images: Annotated[
-            bool, {"label": "Pre-read all particles into RAM", "group": "Compute"}
-        ] = False,
-        do_combine_thru_disc: Annotated[
-            bool, {"label": "Combine iterations through disc", "group": "Compute"}
-        ] = False,
+        do_preread_images: DO_PREREAD_TYPE = False,
+        do_combine_thru_disc: DO_COMBINE_THRU_DISC_TYPE = False,
         use_gpu: USE_GPU_TYPE = False,
         gpu_ids: GPU_IDS_TYPE = "",
         # Running
@@ -655,7 +663,7 @@ class Class3DJob(_RelionBuiltinJob):
         raise NotImplementedError("This is a builtin job placeholder.")
 
 
-class Refine3DJob(_RelionBuiltinJob):
+class Refine3DTomoJob(_RelionBuiltinJob):
     @classmethod
     def type_label(cls) -> str:
         return "relion.refine3d.tomo"
@@ -663,143 +671,107 @@ class Refine3DJob(_RelionBuiltinJob):
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
         kwargs["scratch_dir"] = _configs.get_scratch_dir()
-        return super().normalize_kwargs(**kwargs)
+        kwargs["helical_twist_range"] = (
+            kwargs.pop("helical_twist_min", 0),
+            kwargs.pop("helical_twist_max", 0),
+            kwargs.pop("helical_twist_inistep", 0),
+        )
+        kwargs["helical_rise_range"] = (
+            kwargs.pop("helical_rise_min", 0),
+            kwargs.pop("helical_rise_max", 0),
+            kwargs.pop("helical_rise_inistep", 0),
+        )
+        kwargs["rot_tilt_psi_range"] = (
+            kwargs.pop("rot_range", -1),
+            kwargs.pop("tilt_range", 15),
+            kwargs.pop("psi_range", 10),
+        )
+        kwargs["helical_tube_diameter_range"] = (
+            kwargs.pop("helical_tube_inner_diameter", -1),
+            kwargs.pop("helical_tube_outer_diameter", -1),
+        )
+        kwargs["offset_range_step"] = (
+            kwargs.pop("offset_range", 5),
+            kwargs.pop("offset_step", 1),
+        )
+        return norm_optim(**super().normalize_kwargs(**kwargs))
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
+        if "helical_twist_range" in kwargs:
+            (
+                kwargs["helical_twist_min"],
+                kwargs["helical_twist_max"],
+                kwargs["helical_twist_inistep"],
+            ) = kwargs.pop("helical_twist_range")
+        if "helical_rise_range" in kwargs:
+            (
+                kwargs["helical_rise_min"],
+                kwargs["helical_rise_max"],
+                kwargs["helical_rise_inistep"],
+            ) = kwargs.pop("helical_rise_range")
+        if "rot_tilt_psi_range" in kwargs:
+            kwargs["rot_range"], kwargs["tilt_range"], kwargs["psi_range"] = kwargs.pop(
+                "rot_tilt_psi_range"
+            )
+        if "helical_tube_diameter_range" in kwargs:
+            (
+                kwargs["helical_tube_inner_diameter"],
+                kwargs["helical_tube_outer_diameter"],
+            ) = kwargs.pop("helical_tube_diameter_range")
+        if "offset_range_step" in kwargs:
+            kwargs["offset_range"], kwargs["offset_step"] = kwargs.pop(
+                "offset_range_step"
+            )
+        return norm_optim_inv(**super().normalize_kwargs_inv(**kwargs))
 
     def run(
         self,
-        in_optimisation: IN_OPT_TYPE = "",
-        use_direct_entries: USE_DIRECT_TYPE = False,
-        in_particles: IN_PARTS_TYPE = "",
-        in_tomograms: IN_TOMO_TYPE = "",
-        in_trajectories: IN_TRAJ_TYPE = "",
+        in_optim: IN_OPTIM = None,
         fn_ref: REF_TYPE = "",
         fn_mask: MASK_TYPE = "",
         fn_cont: CONTINUE_TYPE = "",
         # Reference
-        ref_correct_greyscale: Annotated[
-            bool, {"label": "Correct reference greyscale", "group": "Compute"}
-        ] = False,
-        trust_ref_size: Annotated[
-            bool, {"label": "Trust reference size", "group": "Compute"}
-        ] = True,
-        ini_high: Annotated[
-            float, {"label": "Initial low-pass filter (A)", "group": "Reference"}
-        ] = 60,
-        sym_name: Annotated[str, {"label": "Symmetry", "group": "Reference"}] = "C1",
+        ref_correct_greyscale: REF_CORRECT_GRAY_TYPE = False,
+        trust_ref_size: TRUST_REF_SIZE_TYPE = True,
+        ini_high: INITIAL_LOWPASS_TYPE = 60,
+        sym_name: REF_SYMMETRY_TYPE = "C1",
         # CTF
-        do_ctf_correction: Annotated[
-            bool, {"label": "Do CTF correction", "group": "CTF"}
-        ] = True,
-        ctf_intact_first_peak: Annotated[
-            bool, {"label": "Ignore CTFs until first peak", "group": "CTF"}
-        ] = False,
+        do_ctf_correction: DO_CTF_TYPE = True,
+        ctf_intact_first_peak: IGNORE_CTF_TYPE = False,
         # Optimisation
-        particle_diameter: Annotated[
-            float, {"label": "Mask diameter (A)", "group": "Optimisation"}
-        ] = 200,
-        do_zero_mask: Annotated[
-            bool, {"label": "Mask particles with zeros", "group": "Optimisation"}
-        ] = True,
+        particle_diameter: MASK_DIAMETER_TYPE = 200,
+        do_zero_mask: MASK_WITH_ZEROS_TYPE = True,
         do_solvent_fsc: Annotated[
-            bool, {"label": "Use solvent-corrected FSCs", "group": "Compute"}
+            bool, {"label": "Use solvent-flattened FSCs", "group": "Compute"}
         ] = False,
-        do_blush: Annotated[
-            bool, {"label": "Use B-factor sharpening", "group": "Compute"}
-        ] = False,
-        # Auto-sampling
-        sampling: Annotated[
-            str, {"label": "Angular sampling interval", "group": "Auto-sampling"}
-        ] = "7.5 degrees",
-        offset_range: Annotated[
-            float, {"label": "Offset search range (pix)", "group": "Auto-sampling"}
-        ] = 5,
-        offset_step: Annotated[
-            float, {"label": "Offset search step (pix)", "group": "Auto-sampling"}
-        ] = 1,
-        auto_local_sampling: Annotated[
-            str, {"label": "Local angular sampling", "group": "Auto-sampling"}
-        ] = "1.8 degrees",
-        relax_sym: Annotated[
-            str, {"label": "Relax symmetry", "group": "Auto-sampling"}
-        ] = "",
-        sigma_tilt: Annotated[
-            float, {"label": "Prior width on tilt angle", "group": "Auto-sampling"}
-        ] = -1,
-        keep_tilt_prior_fixed: Annotated[
-            bool, {"label": "Keep tilt-prior fixed", "group": "Auto-sampling"}
-        ] = True,
+        do_blush: DO_BLUSH_TYPE = False,
+        # Sampling
+        sampling: ANG_SAMPLING_TYPE = "7.5 degrees",
+        offset_range_step: OFFSET_RANGE_STEP_TYPE = (5, 1),
+        auto_local_sampling: LOC_ANG_SAMPLING_TYPE = "1.8 degrees",
+        relax_sym: RELAX_SYMMETRY_TYPE = "",
+        sigma_tilt: SIGMA_TILT_TYPE = -1,
+        keep_tilt_prior_fixed: KEEP_TILT_PRIOR_FIXED_TYPE = True,
         # Helix
-        do_helix: Annotated[
-            bool, {"label": "Do helical reconstruction", "group": "Helix"}
-        ] = False,
-        do_apply_helical_symmetry: Annotated[
-            bool, {"label": "Apply helical symmetry", "group": "Helix"}
-        ] = True,
-        helical_nr_asu: Annotated[
-            int, {"label": "Number of asymmetrical units", "group": "Helix"}
-        ] = 1,
-        helical_twist_initial: Annotated[
-            float, {"label": "Initial helical twist (deg)", "group": "Helix"}
-        ] = 0,
-        helical_rise_initial: Annotated[
-            float, {"label": "Initial helical rise (A)", "group": "Helix"}
-        ] = 0,
-        helical_z_percentage: Annotated[
-            float, {"label": "Central Z length (%)", "group": "Helix"}
-        ] = 30,
-        helical_tube_inner_diameter: Annotated[
-            float, {"label": "Inner tube diameter (A)", "group": "Helix"}
-        ] = -1,
-        helical_tube_outer_diameter: Annotated[
-            float, {"label": "Outer tube diameter (A)", "group": "Helix"}
-        ] = -1,
-        range_rot: Annotated[
-            float, {"label": "Range for rot angle (deg)", "group": "Helix"}
-        ] = -1,
-        range_tilt: Annotated[
-            float, {"label": "Range for tilt angle (deg)", "group": "Helix"}
-        ] = 15,
-        range_psi: Annotated[
-            float, {"label": "Range for psi angle (deg)", "group": "Helix"}
-        ] = 10,
-        do_local_search_helical_symmetry: Annotated[
-            bool, {"label": "Do local searches of symmetry", "group": "Helix"}
-        ] = False,
-        helical_twist_min: Annotated[
-            float, {"label": "Helical twist min (deg)", "group": "Helix"}
-        ] = 0,
-        helical_twist_max: Annotated[
-            float, {"label": "Helical twist max (deg)", "group": "Helix"}
-        ] = 0,
-        helical_twist_inistep: Annotated[
-            float, {"label": "Helical twist initial step (deg)", "group": "Helix"}
-        ] = 0,
-        helical_rise_min: Annotated[
-            float, {"label": "Helical rise min (A)", "group": "Helix"}
-        ] = 0,
-        helical_rise_max: Annotated[
-            float, {"label": "Helical rise max (A)", "group": "Helix"}
-        ] = 0,
-        helical_rise_inistep: Annotated[
-            float, {"label": "Helical rise initial step (A)", "group": "Helix"}
-        ] = 0,
-        helical_range_distance: Annotated[
-            float, {"label": "Range factor of local averaging", "group": "Helix"}
-        ] = -1,
+        do_helix: DO_HELIX_TYPE = False,
+        do_apply_helical_symmetry: DO_APPLY_HELICAL_SYMMETRY_TYPE = True,
+        helical_nr_asu: HELICAL_NR_ASU_TYPE = 1,
+        helical_twist_initial: HELICAL_TWIST_INITIAL_TYPE = 0,
+        helical_rise_initial: HELICAL_RISE_INITIAL_TYPE = 0,
+        helical_z_percentage: HELICAL_Z_PERCENTAGE_TYPE = 30,
+        helical_tube_diameter_range: HELICAL_TUBE_DIAMETER_RANGE_TYPE = (-1, -1),
+        rot_tilt_psi_range: ROT_TILT_PSI_RANGE_TYPE = (-1, 15, 10),
+        do_local_search_helical_symmetry: DO_LOCAL_SEARCH_HELICAL_SYMMETRY_TYPE = False,
+        helical_twist_range: HELICAL_TWIST_RANGE_TYPE = (0, 0, 0),
+        helical_rise_range: HELICAL_RISE_RANGE_TYPE = (0, 0, 0),
+        helical_range_distance: HELICAL_RANGE_DIST_TYPE = -1,
         # Compute
-        do_parallel_discio: Annotated[
-            bool, {"label": "Use parallel disc I/O", "group": "Compute"}
-        ] = True,
-        nr_pool: Annotated[
-            int, {"label": "Number of pooled particles", "group": "Compute"}
-        ] = 3,
+        do_parallel_discio: USE_PARALLEL_DISC_IO_TYPE = True,
+        nr_pool: NUM_POOL_TYPE = 3,
         do_pad1: Annotated[bool, {"label": "Skip padding", "group": "Compute"}] = False,
-        do_preread_images: Annotated[
-            bool, {"label": "Pre-read all particles into RAM", "group": "Compute"}
-        ] = False,
-        do_combine_thru_disc: Annotated[
-            bool, {"label": "Combine iterations through disc", "group": "Compute"}
-        ] = False,
+        do_preread_images: DO_PREREAD_TYPE = False,
+        do_combine_thru_disc: DO_COMBINE_THRU_DISC_TYPE = False,
         use_gpu: USE_GPU_TYPE = False,
         gpu_ids: GPU_IDS_TYPE = "",
         # Running
@@ -816,13 +788,17 @@ class ReconstructParticlesJob(_RelionBuiltinJob):
     def type_label(cls) -> str:
         return "relion.reconstructparticletomo"
 
+    @classmethod
+    def normalize_kwargs(cls, **kwargs):
+        return norm_optim(**super().normalize_kwargs(**kwargs))
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
+        return norm_optim_inv(**super().normalize_kwargs_inv(**kwargs))
+
     def run(
         self,
-        in_optimisation: IN_OPT_TYPE = "",
-        use_direct_entries: USE_DIRECT_TYPE = False,
-        in_particles: IN_PARTS_TYPE = "",
-        in_tomograms: IN_TOMO_TYPE = "",
-        in_trajectories: IN_TRAJ_TYPE = "",
+        in_optim: IN_OPTIM = None,
         # Average
         binning: Annotated[
             int, {"label": "Binning factor", "min": 1, "group": "Average"}
@@ -836,17 +812,8 @@ class ReconstructParticlesJob(_RelionBuiltinJob):
         snr: Annotated[float, {"label": "SNR", "group": "Average"}] = 0,
         sym_name: Annotated[str, {"label": "Symmetry", "group": "Average"}] = "C1",
         # Helix
-        do_helix: Annotated[
-            bool, {"label": "Apply helical symmetry", "group": "Helix"}
-        ] = False,
-        helical_nr_asu: Annotated[
-            int,
-            {
-                "label": "Number of unique asymmetrical units",
-                "min": 1,
-                "group": "Helix",
-            },
-        ] = 1,
+        do_helix: DO_HELIX_TYPE = False,
+        helical_nr_asu: HELICAL_NR_ASU_TYPE = 1,
         helical_twist: Annotated[
             float, {"label": "Helical twist (deg)", "group": "Helix"}
         ] = -1,
@@ -856,10 +823,7 @@ class ReconstructParticlesJob(_RelionBuiltinJob):
         helical_tube_outer_diameter: Annotated[
             float, {"label": "Outer helical diameter (A)", "group": "Helix"}
         ] = 200,
-        helical_z_percentage: Annotated[
-            float,
-            {"label": "Central Z length (%)", "min": 0, "max": 100, "group": "Helix"},
-        ] = 20,
+        helical_z_percentage: HELICAL_Z_PERCENTAGE_TYPE = 20,
         # Running
         nr_mpi: MPI_TYPE = 1,
         nr_threads: THREAD_TYPE = 1,
@@ -892,4 +856,28 @@ connect_jobs(
     ExtractParticlesTomoJob,
     ReconstructParticlesJob,
     node_mapping={"optimisation_set.star": "in_optimisation"},
+)
+connect_jobs(
+    InitialModel3DJob,
+    Class3DJob,
+    node_mapping={
+        "optimisation_set.mrc": "in_optimisation",
+        "initial_model.mrc": "fn_ref",
+    },
+)
+connect_jobs(
+    InitialModel3DJob,
+    Refine3DTomoJob,
+    node_mapping={
+        "optimisation_set.mrc": "in_optimisation",
+        "initial_model.mrc": "fn_ref",
+    },
+)
+connect_jobs(
+    ReconstructParticlesJob,
+    Refine3DTomoJob,
+    node_mapping={
+        "optimisation_set.mrc": "in_optimisation",
+        "merged.mrc": "fn_ref",
+    },
 )

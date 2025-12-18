@@ -12,7 +12,7 @@ from himena_relion import _job
 from himena.consts import MonospaceFontFamily
 from himena.widgets import current_instance
 from himena.qt import drag_files, QColoredSVGIcon
-from himena_relion._utils import read_icon_svg
+from himena_relion._utils import read_icon_svg, read_icon_svg_for_type
 from himena_relion._pipeline import RelionPipeline
 
 
@@ -231,7 +231,7 @@ class QRelionNodeItem(QtW.QWidget):
         layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
         self.draggable_widgets: list[QFileLabel] = []
         if show_dir:
-            if self._filepath.parent.stem.startswith("job"):
+            if filepath.parent.stem.startswith("job"):
                 self._filepath_rel = Path(*filepath.parts[-3:])
                 widget_dir = QFileLabel(
                     self,
@@ -281,19 +281,8 @@ class QRelionNodeItem(QtW.QWidget):
         return qiconlabel
 
     def _icon_for_filetype(self) -> QtGui.QIcon:
-        match self.file_type_category():
-            case "DensityMap":
-                return QColoredSVGIcon(read_icon_svg("density"), color="gray")
-            case "Mask3D":
-                return QColoredSVGIcon(read_icon_svg("mask"), color="gray")
-            case "TomoOptimisationSet":
-                return QColoredSVGIcon(read_icon_svg("star"), color="gray")
-            case "TomogramGroupMetadata":
-                return QColoredSVGIcon(read_icon_svg("tomograms"), color="gray")
-            case "ParticleGroupMetadata":
-                return QColoredSVGIcon(read_icon_svg("particles"), color="gray")
-            case _:
-                return QColoredSVGIcon(read_icon_svg("file"), color="gray")
+        svg = read_icon_svg_for_type(self.file_type_category())
+        return QColoredSVGIcon(svg, color="gray")
 
     def _drag_dir_event(self):
         drag_files(

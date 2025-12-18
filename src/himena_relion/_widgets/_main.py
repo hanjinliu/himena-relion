@@ -1,6 +1,5 @@
 from __future__ import annotations
 from pathlib import Path
-import subprocess
 from typing import Callable, Iterator, TypeVar
 import logging
 import weakref
@@ -11,7 +10,6 @@ from watchfiles import watch
 
 from himena import MainWindow, WidgetDataModel
 from himena.plugins import validate_protocol
-from himena_builtins.qt.widgets._shared import spacer_widget
 from himena_relion import _job
 from himena_relion._widgets._job_widgets import (
     JobWidgetBase,
@@ -21,7 +19,6 @@ from himena_relion._widgets._job_widgets import (
     QNoteLog,
     QJobInOut,
 )
-from himena_relion.consts import FileNames
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -42,7 +39,6 @@ class QRelionJobWidget(QtW.QWidget):
         layout.addWidget(self._tab_widget)
         self._watcher: GeneratorWorker | None = None
         self.job_updated.connect(self._on_job_updated)
-        self._control: QRelionJobControl | None = None
         self._instances.add(self)
 
     @validate_protocol
@@ -74,8 +70,6 @@ class QRelionJobWidget(QtW.QWidget):
                 wdt.initialize(job_dir)
             except Exception as e:
                 _LOGGER.error(f"Failed to initialize job widget {wdt!r}: {e!r}")
-        if control := self._control:
-            control._set_abort_enabled(job_dir.can_abort())
 
     @validate_protocol
     def to_model(self) -> WidgetDataModel:
@@ -94,15 +88,6 @@ class QRelionJobWidget(QtW.QWidget):
     @validate_protocol
     def size_hint(self):
         return 420, 540
-
-    @validate_protocol
-    def control_widget(self) -> QRelionJobControl | None:
-        """Return the control widget for the job."""
-        if self._control is None:
-            self._control = QRelionJobControl(self)
-            if self._job_dir is not None:
-                self._control._set_abort_enabled(self._job_dir.can_abort())
-        return self._control
 
     @validate_protocol
     def widget_closed_callback(self):
@@ -132,8 +117,6 @@ class QRelionJobWidget(QtW.QWidget):
             return
         if path.stem.startswith("RELION_JOB_"):
             self._state_widget.on_job_updated(self._job_dir, path)
-            if control := self._control:
-                control._set_abort_enabled(self._job_dir.can_abort())
         else:
             for wdt in self._iter_job_widgets():
                 wdt.on_job_updated(self._job_dir, Path(path))
@@ -192,53 +175,3 @@ def register_job(job_type: type[_job.JobDirectory]) -> Callable[[_T], _T]:
         return widget_cls
 
     return inner
-
-
-class QRelionJobControl(QtW.QWidget):
-    """Control widget for QRelionJobWidget."""
-
-    def __init__(self, job_widget: QRelionJobWidget):
-        super().__init__()
-        self._job_widget = job_widget
-        layout = QtW.QHBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        self._clear_button = QtW.QPushButton("Clear Job")
-        self._edit_button = QtW.QPushButton("Edit Job")
-        self._abort_button = QtW.QPushButton("Abort Job")
-
-        self._clear_button.clicked.connect(self._on_clear_clicked)
-        self._edit_button.clicked.connect(self.on_edit_clicked)
-        self._abort_button.clicked.connect(self._on_abort_clicked)
-
-        layout.addWidget(spacer_widget())
-        layout.addWidget(self._clear_button)
-        layout.addWidget(self._edit_button)
-        layout.addWidget(self._abort_button)
-
-    def _on_abort_clicked(self):
-        if job_dir := self._job_widget._job_dir:
-            if job_dir.state() == _job.RelionJobState.EXIT_SUCCESS:
-                raise RuntimeError("Cannot abort a finished job.")
-            job_dir.path.joinpath(FileNames.ABORT_NOW).touch()
-
-    def _set_abort_enabled(self, enabled: bool):
-        self._abort_button.setEnabled(enabled)
-
-    def on_edit_clicked(self):
-        if job_dir := self._job_widget._job_dir:
-            for state_file in job_dir.path.glob("RELION_JOB_*"):
-                if state_file.exists():
-                    state_file.unlink()
-            if ui := self._job_widget._ui_ref():
-                job_cls = job_dir._to_job_class()
-                if job_cls is None:
-                    raise RuntimeError("Cannot determine job class.")
-                scheduler = job_cls._show_scheduler_widget(ui, {})
-                scheduler.set_edit_mode(job_dir)
-                scheduler.set_parameters(job_dir.get_job_params_as_dict())
-
-    def _on_clear_clicked(self):
-        if job_dir := self._job_widget._job_dir:
-            subprocess.run(
-                ["relion_pipeliner", "--harsh_clean", str(int(job_dir.job_id))]
-            )

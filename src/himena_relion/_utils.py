@@ -67,6 +67,36 @@ def read_icon_svg(name: str) -> str:
     return path.read_text(encoding="utf-8")
 
 
+def read_icon_svg_for_type(type_label: str) -> str:
+    match type_label:
+        case "DensityMap":
+            return read_icon_svg("density")
+        case "Mask3D":
+            return read_icon_svg("mask")
+        case "TomoOptimisationSet":
+            return read_icon_svg("star")
+        case "TomogramGroupMetadata":
+            return read_icon_svg("tomograms")
+        case "ParticleGroupMetadata":
+            return read_icon_svg("particles")
+        case "ParticlesData":
+            return read_icon_svg("particles")
+        case "MicrographMoviesData":
+            return read_icon_svg("movies")
+        case "MicrographMoviesGroupMeta":
+            return read_icon_svg("movies")
+        case "MicrographsData":
+            return read_icon_svg("micrographs")
+        case "MicrographsCoords":
+            return read_icon_svg("coords")
+        case "ProcessData":
+            return read_icon_svg("process")
+        case "TomoTrajectoryData":
+            return read_icon_svg("trajectories")
+        case _:
+            return read_icon_svg("file")
+
+
 def make_tilt_projection_mat(deg: float) -> NDArray[np.float32]:
     rad = np.deg2rad(deg)
     cos = np.cos(rad)

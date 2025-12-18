@@ -4,6 +4,7 @@ from contextlib import contextmanager
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
+import shutil
 from typing import Callable, Iterator, Literal, TYPE_CHECKING
 import numpy as np
 from numpy.typing import NDArray
@@ -154,6 +155,17 @@ class JobDirectory:
         raise NotImplementedError(
             f"iter_tilt_series not implemented for {self.__class__.__name__}"
         )
+
+    def clear_job(self):
+        for item in self.path.iterdir():
+            if item.is_file():
+                if item.name not in MINIMUM_FILES_TO_KEEP:
+                    item.unlink()
+            else:
+                shutil.rmtree(item)
+
+
+MINIMUM_FILES_TO_KEEP = ["job.star", "job_pipeline.star", "note.txt"]
 
 
 class ExternalJobDirectory(JobDirectory):

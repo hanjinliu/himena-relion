@@ -1,4 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
-	<rect width="256" height="256" fill="none" />
-	<path fill="currentColor" d="M216 40H72a16 16 0 0 0-16 16v16H40a16 16 0 0 0-16 16v112a16 16 0 0 0 16 16h144a16 16 0 0 0 16-16v-16h16a16 16 0 0 0 16-16V56a16 16 0 0 0-16-16m-44 32a12 12 0 1 1-12 12a12 12 0 0 1 12-12m12 128H40V88h16v80a16 16 0 0 0 16 16h112Zm32-32H72v-47.31l30.34-30.35a8 8 0 0 1 11.32 0L163.31 140L189 114.34a8 8 0 0 1 11.31 0L216 130.07z" />
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+	<rect width="16" height="16" fill="none" />
+	<path fill="none" stroke="currentColor" d="m7.76.63l-6 3.23c-.16.09-.26.25-.26.44v7.4c0 .18.1.35.26.44l6 3.23c.15.08.33.08.47 0l6-3.23c.16-.09.26-.26.26-.44V4.3c0-.18-.1-.35-.26-.44l-6-3.23a.49.49 0 0 0-.47 0zM1.5 4L8 7.5L14.5 4M8 7.5V15" stroke-width="1" />
+	<circle cx="7" cy="9" r="3.3" fill="currentColor" opacity="0.6" />
+	<circle cx="10" cy="6" r="2.1" fill="currentColor" opacity="0.4" />
 </svg>

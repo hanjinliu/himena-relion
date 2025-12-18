@@ -1,19 +1,204 @@
 from typing import Annotated, Any
 
 from himena_relion._job_class import _RelionBuiltinJob, connect_jobs
+from himena_relion._widgets._path_input import PathDrop
 from himena_relion import _configs
 
+
 # I/O
+IN_MOVIES = Annotated[
+    str,
+    {
+        "label": "Input movies",
+        "widget_type": PathDrop,
+        "type_label": "MicrographMoviesData",
+        "group": "I/O",
+    },
+]
+IN_MICROGRAPHS = Annotated[
+    str,
+    {
+        "label": "Input micrographs",
+        "widget_type": PathDrop,
+        "type_label": "MicrographsData",
+        "group": "I/O",
+    },
+]
+IMG_TYPE = Annotated[
+    str,
+    {
+        "label": "Input images",
+        "widget_type": PathDrop,
+        "type_label": "ParticlesData",
+        "group": "I/O",
+    },
+]
+REF_TYPE = Annotated[
+    str,
+    {
+        "label": "Reference map",
+        "widget_type": PathDrop,
+        "type_label": "DensityMap",
+        "group": "I/O",
+    },
+]
+MASK_TYPE = Annotated[
+    str,
+    {
+        "label": "Reference mask",
+        "widget_type": PathDrop,
+        "type_label": "Mask3D",
+        "group": "I/O",
+    },
+]
+CONTINUE_TYPE = Annotated[
+    str,
+    {
+        "label": "Continue from here",
+        "widget_type": PathDrop,
+        "type_label": "ProcessData",
+        "group": "I/O",
+    },
+]
 
-IN_OPT_TYPE = Annotated[str, {"label": "3D Refinement", "group": "I/O"}]
-USE_DIRECT_TYPE = Annotated[bool, {"label": "Use direct entries", "group": "I/O"}]
-IN_PARTS_TYPE = Annotated[str, {"label": "Particles", "group": "I/O"}]
-IN_TOMO_TYPE = Annotated[str, {"label": "Tomograms", "group": "I/O"}]
-IN_TRAJ_TYPE = Annotated[str, {"label": "Trajectories", "group": "I/O"}]
-REF_TYPE = Annotated[str, {"label": "Reference map", "group": "I/O"}]
-MASK_TYPE = Annotated[str, {"label": "Reference mask", "group": "I/O"}]
-CONTINUE_TYPE = Annotated[str, {"label": "Continue from here", "group": "I/O"}]
+# CTF
+DO_CTF_TYPE = Annotated[bool, {"label": "Do CTF correction", "group": "CTF"}]
+IGNORE_CTF_TYPE = Annotated[
+    bool, {"label": "Ignore CTFs until first peak", "group": "CTF"}
+]
+# Reference
+REF_SYMMETRY_TYPE = Annotated[str, {"label": "Symmetry", "group": "Reference"}]
+REF_CORRECT_GRAY_TYPE = Annotated[
+    bool, {"label": "Reference is on absolute grayscale", "group": "Reference"}
+]
+INITIAL_LOWPASS_TYPE = Annotated[
+    float, {"label": "Initial low-pass filter (A)", "group": "Reference"}
+]
+TRUST_REF_SIZE_TYPE = Annotated[
+    bool, {"label": "Resize reference if needed", "group": "Compute"}
+]
+# Optimisation
+T_TYPE = Annotated[
+    float, {"label": "Regularisation parameter T", "min": 0.1, "group": "Optimisation"}
+]
+NUM_ITER_TYPE = Annotated[
+    int, {"label": "Number of iterations", "min": 1, "group": "Optimisation"}
+]
+NUM_CLASS_TYPE = Annotated[
+    int, {"label": "Number of classes", "min": 1, "group": "Optimisation"}
+]
+MASK_DIAMETER_TYPE = Annotated[
+    float, {"label": "Mask diameter (A)", "group": "Optimisation"}
+]
+MASK_WITH_ZEROS_TYPE = Annotated[
+    bool, {"label": "Mask individual particles with zeros", "group": "Optimisation"}
+]
+SIGMA_TILT_TYPE = Annotated[
+    float, {"label": "Prior width on tilt angle", "group": "Optimisation"}
+]
+DO_BLUSH_TYPE = Annotated[
+    bool, {"label": "Use Blush regularisation", "group": "Optimisation"}
+]
+# Sampling
+ANG_SAMPLING_TYPE = Annotated[
+    str,
+    {
+        "label": "Angular sampling interval",
+        "choices": [
+            "30 degrees",
+            "15 degrees",
+            "7.5 degrees",
+            "3.7 degrees",
+            "1.8 degrees",
+            "0.9 degrees",
+            "0.5 degrees",
+            "0.2 degrees",
+            "0.1 degrees",
+        ],  # fmt: skip
+        "group": "Sampling",
+    },
+]
+OFFSET_RANGE_STEP_TYPE = Annotated[
+    tuple[float, float],
+    {"label": "Offset search range/step (pix)", "group": "Sampling"},
+]
+RELAX_SYMMETRY_TYPE = Annotated[str, {"label": "Relax symmetry", "group": "Sampling"}]
+KEEP_TILT_PRIOR_FIXED_TYPE = Annotated[
+    bool, {"label": "Keep tilt-prior fixed", "group": "Sampling"}
+]
+LOC_ANG_SAMPLING_TYPE = Annotated[
+    str,
+    {
+        "label": "Local angular sampling interval",
+        "choices": [
+            "30 degrees",
+            "15 degrees",
+            "7.5 degrees",
+            "3.7 degrees",
+            "1.8 degrees",
+            "0.9 degrees",
+            "0.5 degrees",
+            "0.2 degrees",
+            "0.1 degrees",
+        ],  # fmt: skip
+        "group": "Sampling",
+    },
+]
+# Helix
+DO_HELIX_TYPE = Annotated[
+    bool, {"label": "Do helical reconstruction", "group": "Helix"}
+]
+HELICAL_TUBE_DIAMETER_RANGE_TYPE = Annotated[
+    tuple[float, float],
+    {"label": "Inner/Outer tube diameter (A)", "group": "Helix"},
+]
+ROT_TILT_PSI_RANGE_TYPE = Annotated[
+    tuple[float, float, float],
+    {"label": "Angular search ranges (rot, tilt, psi) (deg)", "group": "Helix"},
+]
+DO_APPLY_HELICAL_SYMMETRY_TYPE = Annotated[
+    bool, {"label": "Apply helical symmetry", "group": "Helix"}
+]
+DO_LOCAL_SEARCH_HELICAL_SYMMETRY_TYPE = Annotated[
+    bool, {"label": "Do local searches of symmetry", "group": "Helix"}
+]
+HELICAL_RANGE_DIST_TYPE = Annotated[
+    float, {"label": "Range factor of local averaging", "group": "Helix"}
+]
+HELICAL_TWIST_INITIAL_TYPE = Annotated[
+    float, {"label": "Initial helical twist (deg)", "group": "Helix"}
+]
+HELICAL_TWIST_RANGE_TYPE = Annotated[
+    tuple[float, float, float],
+    {"label": "Helical twist min/max/step (deg)", "group": "Helix"},
+]
+HELICAL_RISE_INITIAL_TYPE = Annotated[
+    float, {"label": "Initial helical rise (A)", "group": "Helix"}
+]
+HELICAL_RISE_RANGE_TYPE = Annotated[
+    tuple[float, float, float],
+    {"label": "Helical rise min/max/step (A)", "group": "Helix"},
+]
+HELICAL_NR_ASU_TYPE = Annotated[
+    int, {"label": "Number of asymmetrical units", "group": "Helix"}
+]
+HELICAL_Z_PERCENTAGE_TYPE = Annotated[
+    float, {"label": "Central Z length (%)", "group": "Helix"}
+]
 
+# Compute
+USE_PARALLEL_DISC_IO_TYPE = Annotated[
+    bool, {"label": "Use parallel disc I/O", "group": "Running"}
+]
+NUM_POOL_TYPE = Annotated[
+    int, {"label": "Number of pooled particles", "min": 1, "group": "Running"}
+]
+DO_PREREAD_TYPE = Annotated[
+    bool, {"label": "Pre-read all particles into RAM", "group": "Compute"}
+]
+DO_COMBINE_THRU_DISC_TYPE = Annotated[
+    bool, {"label": "Combine iterations through disc", "group": "Running"}
+]
 # others
 USE_GPU_TYPE = Annotated[bool, {"label": "Use GPU acceleration", "group": "Compute"}]
 GPU_IDS_TYPE = Annotated[str, {"label": "GPU IDs", "group": "Compute"}]
@@ -61,6 +246,10 @@ class MotionCorr2Job(_MotionCorrJobBase):
         return "relion.motioncorr.motioncor2"
 
     @classmethod
+    def job_title(cls):
+        return "Motion Correction (MotionCor2)"
+
+    @classmethod
     def normalize_kwargs(cls, **kwargs):
         kwargs["do_own_motioncor"] = False
         kwargs["do_save_ps"] = False
@@ -75,7 +264,7 @@ class MotionCorr2Job(_MotionCorrJobBase):
 
     def run(
         self,
-        input_star_mics: Annotated[str, {"label": "Micrographs", "group": "I/O"}] = "",
+        input_star_mics: IN_MOVIES = "",
         eer_grouping: Annotated[
             int, {"label": "EER fractionation", "min": 1, "group": "I/O"}
         ] = 32,
@@ -144,6 +333,10 @@ class MotionCorrOwnJob(_MotionCorrJobBase):
         return "relion.motioncorr.own"
 
     @classmethod
+    def job_title(cls):
+        return "Motion Correction (RELION Implementation)"
+
+    @classmethod
     def normalize_kwargs(cls, **kwargs):
         kwargs["do_own_motioncor"] = True
         kwargs["other_motioncor2_args"] = ""
@@ -158,7 +351,7 @@ class MotionCorrOwnJob(_MotionCorrJobBase):
 
     def run(
         self,
-        input_star_mics: Annotated[str, {"label": "Micrographs", "group": "I/O"}] = "",
+        input_star_mics: IN_MOVIES = "",
         do_even_odd_split: Annotated[
             bool, {"label": "Save images for denoising", "group": "I/O"}
         ] = False,
@@ -259,7 +452,7 @@ class CtfEstimationJob(_RelionBuiltinJob):
 
     def run(
         self,
-        input_star_mics: Annotated[str, {"label": "Micrographs", "group": "I/O"}] = "",
+        input_star_mics: IN_MICROGRAPHS = "",
         do_phaseshift: Annotated[
             bool, {"label": "Estimate phase shifts", "group": "I/O"}
         ] = False,
@@ -300,6 +493,263 @@ class CtfEstimationJob(_RelionBuiltinJob):
         min_dedicated: MIN_DEDICATED_TYPE = 1,
         nr_mpi: MPI_TYPE = 1,
         nr_threads: THREAD_TYPE = 1,
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")
+
+
+class Class3DJob(_RelionBuiltinJob):
+    @classmethod
+    def type_label(cls) -> str:
+        return "relion.class3d"
+
+    @classmethod
+    def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
+        kwargs["scratch_dir"] = _configs.get_scratch_dir()
+        kwargs["helical_twist_range"] = (
+            kwargs.pop("helical_twist_min", 0),
+            kwargs.pop("helical_twist_max", 0),
+            kwargs.pop("helical_twist_inistep", 0),
+        )
+        kwargs["helical_rise_range"] = (
+            kwargs.pop("helical_rise_min", 0),
+            kwargs.pop("helical_rise_max", 0),
+            kwargs.pop("helical_rise_inistep", 0),
+        )
+        kwargs["rot_tilt_psi_range"] = (
+            kwargs.pop("rot_range", -1),
+            kwargs.pop("tilt_range", 15),
+            kwargs.pop("psi_range", 10),
+        )
+        kwargs["helical_tube_diameter_range"] = (
+            kwargs.pop("helical_tube_inner_diameter", -1),
+            kwargs.pop("helical_tube_outer_diameter", -1),
+        )
+        kwargs["offset_range_step"] = (
+            kwargs.pop("offset_range", 5),
+            kwargs.pop("offset_step", 1),
+        )
+        return super().normalize_kwargs(**kwargs)
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
+        if "helical_twist_range" in kwargs:
+            (
+                kwargs["helical_twist_min"],
+                kwargs["helical_twist_max"],
+                kwargs["helical_twist_inistep"],
+            ) = kwargs.pop("helical_twist_range")
+        if "helical_rise_range" in kwargs:
+            (
+                kwargs["helical_rise_min"],
+                kwargs["helical_rise_max"],
+                kwargs["helical_rise_inistep"],
+            ) = kwargs.pop("helical_rise_range")
+        if "rot_tilt_psi_range" in kwargs:
+            kwargs["rot_range"], kwargs["tilt_range"], kwargs["psi_range"] = kwargs.pop(
+                "rot_tilt_psi_range"
+            )
+        if "helical_tube_diameter_range" in kwargs:
+            (
+                kwargs["helical_tube_inner_diameter"],
+                kwargs["helical_tube_outer_diameter"],
+            ) = kwargs.pop("helical_tube_diameter_range")
+        if "offset_range_step" in kwargs:
+            kwargs["offset_range"], kwargs["offset_step"] = kwargs.pop(
+                "offset_range_step"
+            )
+        return super().normalize_kwargs_inv(**kwargs)
+
+    def run(
+        self,
+        fn_img: IMG_TYPE = "",
+        fn_ref: REF_TYPE = "",
+        fn_mask: MASK_TYPE = "",
+        fn_cont: CONTINUE_TYPE = "",
+        # Reference
+        ref_correct_greyscale: REF_CORRECT_GRAY_TYPE = False,
+        trust_ref_size: TRUST_REF_SIZE_TYPE = True,
+        ini_high: INITIAL_LOWPASS_TYPE = 60,
+        sym_name: REF_SYMMETRY_TYPE = "C1",
+        # CTF
+        do_ctf_correction: DO_CTF_TYPE = True,
+        ctf_intact_first_peak: IGNORE_CTF_TYPE = False,
+        # Optimisation
+        nr_classes: NUM_CLASS_TYPE = 1,
+        nr_iter: NUM_ITER_TYPE = 25,
+        tau_fudge: T_TYPE = 1,
+        particle_diameter: MASK_DIAMETER_TYPE = 200,
+        do_zero_mask: MASK_WITH_ZEROS_TYPE = True,
+        highres_limit: Annotated[
+            float, {"label": "High-resolution limit (A)", "group": "Optimisation"}
+        ] = -1,
+        do_blush: DO_BLUSH_TYPE = False,
+        # Sampling
+        dont_skip_align: Annotated[
+            bool, {"label": "Perform image alignment", "group": "Sampling"}
+        ] = True,
+        sampling: ANG_SAMPLING_TYPE = "7.5 degrees",
+        offset_range_step: OFFSET_RANGE_STEP_TYPE = (5, 1),
+        allow_coarser: Annotated[
+            bool, {"label": "Allow coarser sampling", "group": "Sampling"}
+        ] = False,
+        do_local_ang_searches: Annotated[
+            bool, {"label": "Perform local angular searches", "group": "Sampling"}
+        ] = False,
+        sigma_angles: Annotated[
+            float, {"label": "Local angular search range", "group": "Sampling"}
+        ] = 5,
+        relax_sym: RELAX_SYMMETRY_TYPE = "",
+        sigma_tilt: SIGMA_TILT_TYPE = -1,
+        keep_tilt_prior_fixed: KEEP_TILT_PRIOR_FIXED_TYPE = True,
+        # Helix
+        do_helix: DO_HELIX_TYPE = False,
+        helical_tube_diameter_range: HELICAL_TUBE_DIAMETER_RANGE_TYPE = (-1, -1),
+        rot_tilt_psi_range: ROT_TILT_PSI_RANGE_TYPE = (-1, 15, 10),
+        do_apply_helical_symmetry: DO_APPLY_HELICAL_SYMMETRY_TYPE = True,
+        do_local_search_helical_symmetry: DO_LOCAL_SEARCH_HELICAL_SYMMETRY_TYPE = False,
+        helical_range_distance: HELICAL_RANGE_DIST_TYPE = -1,
+        helical_twist_initial: HELICAL_TWIST_INITIAL_TYPE = 0,
+        helical_twist_range: HELICAL_TWIST_RANGE_TYPE = (0, 0, 0),
+        helical_rise_initial: HELICAL_RISE_INITIAL_TYPE = 0,
+        helical_rise_range: HELICAL_RISE_RANGE_TYPE = (0, 0, 0),
+        helical_nr_asu: HELICAL_NR_ASU_TYPE = 1,
+        helical_z_percentage: HELICAL_Z_PERCENTAGE_TYPE = 30,
+        # Compute
+        do_fast_subsets: Annotated[
+            bool, {"label": "Use fast subsets", "group": "Compute"}
+        ] = False,
+        do_parallel_discio: USE_PARALLEL_DISC_IO_TYPE = True,
+        nr_pool: NUM_POOL_TYPE = 3,
+        do_pad1: Annotated[bool, {"label": "Skip padding", "group": "Compute"}] = False,
+        do_preread_images: DO_PREREAD_TYPE = False,
+        do_combine_thru_disc: DO_COMBINE_THRU_DISC_TYPE = False,
+        use_gpu: USE_GPU_TYPE = False,
+        gpu_ids: GPU_IDS_TYPE = "",
+        # Running
+        nr_mpi: MPI_TYPE = 1,
+        nr_threads: THREAD_TYPE = 1,
+        do_queue: DO_QUEUE_TYPE = False,
+        min_dedicated: MIN_DEDICATED_TYPE = 1,
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")
+
+
+class Refine3DJob(_RelionBuiltinJob):
+    @classmethod
+    def type_label(cls) -> str:
+        return "relion.refine3d"
+
+    @classmethod
+    def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
+        kwargs["scratch_dir"] = _configs.get_scratch_dir()
+        kwargs["helical_twist_range"] = (
+            kwargs.pop("helical_twist_min", 0),
+            kwargs.pop("helical_twist_max", 0),
+            kwargs.pop("helical_twist_inistep", 0),
+        )
+        kwargs["helical_rise_range"] = (
+            kwargs.pop("helical_rise_min", 0),
+            kwargs.pop("helical_rise_max", 0),
+            kwargs.pop("helical_rise_inistep", 0),
+        )
+        kwargs["rot_tilt_psi_range"] = (
+            kwargs.pop("rot_range", -1),
+            kwargs.pop("tilt_range", 15),
+            kwargs.pop("psi_range", 10),
+        )
+        kwargs["helical_tube_diameter_range"] = (
+            kwargs.pop("helical_tube_inner_diameter", -1),
+            kwargs.pop("helical_tube_outer_diameter", -1),
+        )
+        kwargs["offset_range_step"] = (
+            kwargs.pop("offset_range", 5),
+            kwargs.pop("offset_step", 1),
+        )
+        return super().normalize_kwargs(**kwargs)
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
+        if "helical_twist_range" in kwargs:
+            (
+                kwargs["helical_twist_min"],
+                kwargs["helical_twist_max"],
+                kwargs["helical_twist_inistep"],
+            ) = kwargs.pop("helical_twist_range")
+        if "helical_rise_range" in kwargs:
+            (
+                kwargs["helical_rise_min"],
+                kwargs["helical_rise_max"],
+                kwargs["helical_rise_inistep"],
+            ) = kwargs.pop("helical_rise_range")
+        if "rot_tilt_psi_range" in kwargs:
+            kwargs["rot_range"], kwargs["tilt_range"], kwargs["psi_range"] = kwargs.pop(
+                "rot_tilt_psi_range"
+            )
+        if "helical_tube_diameter_range" in kwargs:
+            (
+                kwargs["helical_tube_inner_diameter"],
+                kwargs["helical_tube_outer_diameter"],
+            ) = kwargs.pop("helical_tube_diameter_range")
+        if "offset_range_step" in kwargs:
+            kwargs["offset_range"], kwargs["offset_step"] = kwargs.pop(
+                "offset_range_step"
+            )
+        return super().normalize_kwargs_inv(**kwargs)
+
+    def run(
+        self,
+        fn_img: IMG_TYPE = "",
+        fn_ref: REF_TYPE = "",
+        fn_mask: MASK_TYPE = "",
+        fn_cont: CONTINUE_TYPE = "",
+        # Reference
+        ref_correct_greyscale: REF_CORRECT_GRAY_TYPE = False,
+        trust_ref_size: TRUST_REF_SIZE_TYPE = True,
+        ini_high: INITIAL_LOWPASS_TYPE = 60,
+        sym_name: REF_SYMMETRY_TYPE = "C1",
+        # CTF
+        do_ctf_correction: DO_CTF_TYPE = True,
+        ctf_intact_first_peak: IGNORE_CTF_TYPE = False,
+        # Optimisation
+        particle_diameter: MASK_DIAMETER_TYPE = 200,
+        do_zero_mask: MASK_WITH_ZEROS_TYPE = True,
+        do_solvent_fsc: Annotated[
+            bool, {"label": "Use solvent-flattened FSCs", "group": "Compute"}
+        ] = False,
+        do_blush: DO_BLUSH_TYPE = False,
+        # Sampling
+        sampling: ANG_SAMPLING_TYPE = "7.5 degrees",
+        offset_range_step: OFFSET_RANGE_STEP_TYPE = (5, 1),
+        auto_local_sampling: LOC_ANG_SAMPLING_TYPE = "1.8 degrees",
+        relax_sym: RELAX_SYMMETRY_TYPE = "",
+        sigma_tilt: SIGMA_TILT_TYPE = -1,
+        keep_tilt_prior_fixed: KEEP_TILT_PRIOR_FIXED_TYPE = True,
+        # Helix
+        do_helix: DO_HELIX_TYPE = False,
+        do_apply_helical_symmetry: DO_APPLY_HELICAL_SYMMETRY_TYPE = True,
+        helical_nr_asu: HELICAL_NR_ASU_TYPE = 1,
+        helical_twist_initial: HELICAL_TWIST_INITIAL_TYPE = 0,
+        helical_rise_initial: HELICAL_RISE_INITIAL_TYPE = 0,
+        helical_z_percentage: HELICAL_Z_PERCENTAGE_TYPE = 30,
+        helical_tube_diameter_range: HELICAL_TUBE_DIAMETER_RANGE_TYPE = (-1, -1),
+        rot_tilt_psi_range: ROT_TILT_PSI_RANGE_TYPE = (-1, 15, 10),
+        do_local_search_helical_symmetry: DO_LOCAL_SEARCH_HELICAL_SYMMETRY_TYPE = False,
+        helical_twist_range: HELICAL_TWIST_RANGE_TYPE = (0, 0, 0),
+        helical_rise_range: HELICAL_RISE_RANGE_TYPE = (0, 0, 0),
+        helical_range_distance: HELICAL_RANGE_DIST_TYPE = -1,
+        # Compute
+        do_parallel_discio: USE_PARALLEL_DISC_IO_TYPE = True,
+        nr_pool: NUM_POOL_TYPE = 3,
+        do_pad1: Annotated[bool, {"label": "Skip padding", "group": "Compute"}] = False,
+        do_preread_images: DO_PREREAD_TYPE = False,
+        do_combine_thru_disc: DO_COMBINE_THRU_DISC_TYPE = False,
+        use_gpu: USE_GPU_TYPE = False,
+        gpu_ids: GPU_IDS_TYPE = "",
+        # Running
+        nr_mpi: MPI_TYPE = 1,
+        nr_threads: THREAD_TYPE = 1,
+        do_queue: DO_QUEUE_TYPE = False,
+        min_dedicated: MIN_DEDICATED_TYPE = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 

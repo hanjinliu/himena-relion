@@ -1,7 +1,6 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections import defaultdict
-import shutil
 import logging
 from typing import Any
 
@@ -9,7 +8,12 @@ from himena import MainWindow
 from qtpy import QtWidgets as QtW, QtCore
 from himena.qt import magicgui as _mgui
 from himena_relion import _job
-from himena_relion._job_class import RelionJob, parse_string, _RelionBuiltinJob
+from himena_relion._job_class import (
+    RelionJob,
+    RelionJobExecution,
+    parse_string,
+    _RelionBuiltinJob,
+)
 from magicgui.widgets.bases import ValueWidget
 from magicgui.signature import MagicParameter
 
@@ -143,7 +147,8 @@ class ScheduleMode(Mode):
         params = widget.get_parameters()
         proc = widget._current_job_cls.create_and_run_job(**params)
         widget.clear_content()
-        widget._ui.read_file(proc.job_directory)
+        if isinstance(proc, RelionJobExecution):
+            widget._ui.read_file(proc.job_directory)
 
     def button_text(self) -> str:
         return "Run Job"
@@ -157,21 +162,13 @@ class EditMode(Mode):
         if widget._current_job_cls is None:
             raise RuntimeError("No job class selected.")
         job_cls = widget._current_job_cls
+        job = job_cls(self.job_dir)
         # Delete all the non needed files
-        for item in self.job_dir.path.iterdir():
-            if item.is_file():
-                if item.name not in MINIMUM_FILES_TO_KEEP:
-                    item.unlink()
-            else:
-                shutil.rmtree(item)
-
+        self.job_dir.clear_job()
         # Update the scheduler widget with the parameters used to run this job
         params = widget.get_parameters()
-        job_cls(self.job_dir).edit_and_run_job(**params)
+        job.edit_and_run_job(**params)
         widget.clear_content()
 
     def button_text(self) -> str:
         return "Overwrite And Run"
-
-
-MINIMUM_FILES_TO_KEEP = ["job.star", "job_pipeline.star", "note.txt"]
