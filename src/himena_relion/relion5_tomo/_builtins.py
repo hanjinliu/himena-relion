@@ -52,6 +52,8 @@ from himena_relion.relion5._builtins import (
     GPU_IDS_TYPE,
     USE_PARALLEL_DISC_IO_TYPE,
     CtfEstimationJob,
+    MotionCorr2Job,
+    MotionCorrOwnJob,
     PostProcessingJob,
 )
 
@@ -118,7 +120,7 @@ class _ImportTomoJob(_Relion5TomoJob):
 class ImportTomoJob(_ImportTomoJob):
     @classmethod
     def command_id(cls):
-        return super().command_id() + "-tomo"
+        return super().command_id() + ".tomo"
 
     @classmethod
     def job_title(cls) -> str:
@@ -188,7 +190,7 @@ class ImportTomoJob(_ImportTomoJob):
 class ImportCoordinatesJob(_ImportTomoJob):
     @classmethod
     def command_id(cls):
-        return super().command_id() + "-coords"
+        return super().command_id() + ".coords"
 
     @classmethod
     def job_title(cls) -> str:
@@ -279,7 +281,7 @@ class _AlignTiltSeriesJobBase(_Relion5TomoJob):
 class AlignTiltSeriesImodFiducial(_AlignTiltSeriesJobBase):
     @classmethod
     def command_id(cls):
-        return super().command_id() + "-imodfiducial"
+        return super().command_id() + ".imodfiducial"
 
     @classmethod
     def job_title(cls) -> str:
@@ -324,7 +326,7 @@ class AlignTiltSeriesImodFiducial(_AlignTiltSeriesJobBase):
 class AlignTiltSeriesImodPatch(_AlignTiltSeriesJobBase):
     @classmethod
     def command_id(cls):
-        return super().command_id() + "-imodpatch"
+        return super().command_id() + ".imodpatch"
 
     @classmethod
     def job_title(cls) -> str:
@@ -370,7 +372,7 @@ class AlignTiltSeriesImodPatch(_AlignTiltSeriesJobBase):
 class AlignTiltSeriesAreTomo2(_AlignTiltSeriesJobBase):
     @classmethod
     def command_id(cls):
-        return super().command_id() + "-aretomo2"
+        return super().command_id() + ".aretomo2"
 
     @classmethod
     def job_title(cls) -> str:
@@ -1114,21 +1116,47 @@ class CtfRefineTomoJob(_Relion5TomoJob):
 
 # class FrameAlignTomoJob(_Relion5TomoJob):
 
+for _MotionCorJob in [MotionCorr2Job, MotionCorrOwnJob]:
+    connect_jobs(
+        ImportTomoJob,
+        _MotionCorJob,
+        node_mapping={"tilt_series.star": "in_movies"},
+    )
 connect_jobs(
     CtfEstimationJob,
     ExcludeTiltJob,
     node_mapping={"tilt_series_ctf.star": "in_tiltseries"},
 )
-connect_jobs(
-    ExcludeTiltJob,
+for _AlignJob in [
     AlignTiltSeriesImodFiducial,
-    node_mapping={"selected_tilt_series.star": "in_tiltseries"},
-)
+    AlignTiltSeriesImodPatch,
+    AlignTiltSeriesAreTomo2,
+]:
+    connect_jobs(
+        CtfEstimationJob,
+        _AlignJob,
+        node_mapping={"tilt_series_ctf.star": "in_tiltseries"},
+    )
+    connect_jobs(
+        ExcludeTiltJob,
+        _AlignJob,
+        node_mapping={"selected_tilt_series.star": "in_tiltseries"},
+    )
 connect_jobs(
     AlignTiltSeriesImodFiducial,
     ReconstructTomogramJob,
     node_mapping={"aligned_tilt_series.star": "in_tiltseries"},
 )
+# connect_jobs(
+#     AlignTiltSeriesImodPatch,
+#     ReconstructTomogramJob,
+#     node_mapping={"aligned_tilt_series.star": "in_tiltseries"},
+# )
+# connect_jobs(
+#     AlignTiltSeriesAreTomo2,
+#     ReconstructTomogramJob,
+#     node_mapping={"aligned_tilt_series.star": "in_tiltseries"},
+# )
 connect_jobs(
     ReconstructTomogramJob,
     DenoiseTrain,
@@ -1201,4 +1229,14 @@ connect_jobs(
     PostProcessingJob,
     CtfRefineTomoJob,
     node_mapping={"postprocess.star": "in_post"},
+)
+connect_jobs(
+    CtfRefineTomoJob,
+    ReconstructParticlesJob,
+    node_mapping={"optimisation_set.star": "in_optim.in_optimisation"},
+)
+connect_jobs(
+    CtfRefineTomoJob,
+    Refine3DTomoJob,
+    node_mapping={"optimisation_set.star": "in_optim.in_optimisation"},
 )
