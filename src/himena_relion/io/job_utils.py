@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 from himena import MainWindow, WidgetDataModel, create_text_model
+from himena.exceptions import Cancelled
 from himena.plugins import register_function
 from himena_relion.consts import Type, MenuId, RelionJobState, FileNames
 
@@ -122,6 +123,20 @@ def edit_relion_job(ui: MainWindow, model: WidgetDataModel):
     scheduler = job_cls._show_scheduler_widget(ui, {})
     scheduler.set_edit_mode(job_dir)
     scheduler.set_parameters(job_dir.get_job_params_as_dict())
+
+
+@register_function(
+    menus=[MenuId.RELION_UTILS],
+    title="Initialize Project Directory",
+    command_id="himena-relion:initialize-project-directory",
+    group="11-others",
+)
+def initialize_project_directory(ui: MainWindow):
+    text = "\n\ndata_pipeline_general\n\n_rlnPipeLineJobCounter\n"
+    if path := ui.exec_file_dialog("d", caption="Select Project Directory"):
+        path.write_text(text)
+        return
+    raise Cancelled
 
 
 def assert_job(model: WidgetDataModel) -> JobDirectory:

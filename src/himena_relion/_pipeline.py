@@ -27,6 +27,8 @@ class RelionDefaultPipeline(Sequence["RelionJobInfo"]):
     def from_pipeline_star(cls, star_path: Path) -> RelionDefaultPipeline:
         dfs = starfile.read(star_path, always_dict=True)
 
+        if "pipeline_processes" not in dfs or "pipeline_input_edges" not in dfs:
+            return cls([])  # project without any jobs
         processes: pd.DataFrame = dfs["pipeline_processes"]
         mappers: pd.DataFrame = dfs["pipeline_input_edges"]
 
