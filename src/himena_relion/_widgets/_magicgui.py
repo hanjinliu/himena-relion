@@ -64,7 +64,6 @@ class OptimisationSetEdit(ValuedContainerWidget):
                 )
                 val = value.get("use_direct_entries", use_direct)
                 self._toggle_switch.value = parse_string(val, bool)
-                self._toggle_switch.value = val
             else:
                 raise ValueError("Value must be a dict or Undefined.")
         self.changed.emit(self.get_value())

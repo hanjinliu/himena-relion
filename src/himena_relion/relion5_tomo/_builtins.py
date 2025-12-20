@@ -1,6 +1,6 @@
 from typing import Annotated, Any
 
-from himena_relion._job_class import connect_jobs, _RelionBuiltinJob
+from himena_relion._job_class import connect_jobs, _RelionBuiltinJob, parse_string
 from himena_relion import _configs
 from himena_relion._widgets._magicgui import OptimisationSetEdit
 from himena_relion._widgets._path_input import PathDrop
@@ -81,7 +81,9 @@ IN_OPTIM = Annotated[
 def norm_optim(**kwargs):
     optim = kwargs.pop("in_optim", {})
     kwargs["in_optimisation"] = optim.get("in_optimisation", "")
-    kwargs["use_direct_entries"] = optim.get("use_direct_entries", False)
+    kwargs["use_direct_entries"] = parse_string(
+        optim.get("use_direct_entries", False), bool
+    )
     kwargs["in_particles"] = optim.get("in_particles", "")
     kwargs["in_tomograms"] = optim.get("in_tomograms", "")
     kwargs["in_trajectories"] = optim.get("in_trajectories", "")
@@ -172,6 +174,14 @@ class AlignTiltSeriesImodFiducial(_AlignTiltSeriesJobBase):
         kwargs.pop("do_aretomo2", None)
         kwargs.pop("do_imod_patchtrack", None)
         kwargs.pop("gpu_ids", None)
+        # remove parameters from other methods
+        kwargs.pop("patch_size", None)
+        kwargs.pop("patch_overlap", None)
+        kwargs.pop("do_aretomo_tiltcorrect", None)
+        kwargs.pop("aretomo_tiltcorrect_angle", None)
+        kwargs.pop("do_aretomo_ctf", None)
+        kwargs.pop("do_aretomo_phaseshift", None)
+        kwargs.pop("other_aretomo_args", None)
         return kwargs
 
     def run(
@@ -209,6 +219,12 @@ class AlignTiltSeriesImodPatch(_AlignTiltSeriesJobBase):
         kwargs.pop("do_aretomo2", None)
         kwargs.pop("do_imod_patchtrack", None)
         kwargs.pop("gpu_ids", None)
+        kwargs.pop("fiducial_diameter", None)
+        kwargs.pop("do_aretomo_tiltcorrect", None)
+        kwargs.pop("aretomo_tiltcorrect_angle", None)
+        kwargs.pop("do_aretomo_ctf", None)
+        kwargs.pop("do_aretomo_phaseshift", None)
+        kwargs.pop("other_aretomo_args", None)
         return kwargs
 
     def run(
@@ -244,6 +260,9 @@ class AlignTiltSeriesAreTomo2(_AlignTiltSeriesJobBase):
     @classmethod
     def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
         kwargs = super().normalize_kwargs_inv(**kwargs)
+        kwargs.pop("fiducial_diameter", None)
+        kwargs.pop("patch_size", None)
+        kwargs.pop("patch_overlap", None)
         kwargs.pop("do_imod_fiducials", None)
         kwargs.pop("do_aretomo2", None)
         kwargs.pop("do_imod_patchtrack", None)
@@ -420,6 +439,11 @@ class _DenoiseJobBase(_Relion5TomoJob):
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
         kwargs["cryocare_path"] = _configs.get_cryocare_dir()
         return super().normalize_kwargs(**kwargs)
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
+        kwargs.pop("cryocare_path", None)
+        return super().normalize_kwargs_inv(**kwargs)
 
 
 class DenoiseTrain(_DenoiseJobBase):
@@ -601,33 +625,6 @@ class Class3DJob(_Relion5TomoJob):
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
         kwargs["scratch_dir"] = _configs.get_scratch_dir()
-        kwargs["helical_twist_range"] = (
-            kwargs.pop("helical_twist_min", 0),
-            kwargs.pop("helical_twist_max", 0),
-            kwargs.pop("helical_twist_inistep", 0),
-        )
-        kwargs["helical_rise_range"] = (
-            kwargs.pop("helical_rise_min", 0),
-            kwargs.pop("helical_rise_max", 0),
-            kwargs.pop("helical_rise_inistep", 0),
-        )
-        kwargs["rot_tilt_psi_range"] = (
-            kwargs.pop("rot_range", -1),
-            kwargs.pop("tilt_range", 15),
-            kwargs.pop("psi_range", 10),
-        )
-        kwargs["helical_tube_diameter_range"] = (
-            kwargs.pop("helical_tube_inner_diameter", -1),
-            kwargs.pop("helical_tube_outer_diameter", -1),
-        )
-        kwargs["offset_range_step"] = (
-            kwargs.pop("offset_range", 5),
-            kwargs.pop("offset_step", 1),
-        )
-        return norm_optim(**super().normalize_kwargs(**kwargs))
-
-    @classmethod
-    def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
         if "helical_twist_range" in kwargs:
             (
                 kwargs["helical_twist_min"],
@@ -641,7 +638,7 @@ class Class3DJob(_Relion5TomoJob):
                 kwargs["helical_rise_inistep"],
             ) = kwargs.pop("helical_rise_range")
         if "rot_tilt_psi_range" in kwargs:
-            kwargs["rot_range"], kwargs["tilt_range"], kwargs["psi_range"] = kwargs.pop(
+            kwargs["range_rot"], kwargs["range_tilt"], kwargs["range_psi"] = kwargs.pop(
                 "rot_tilt_psi_range"
             )
         if "helical_tube_diameter_range" in kwargs:
@@ -653,6 +650,33 @@ class Class3DJob(_Relion5TomoJob):
             kwargs["offset_range"], kwargs["offset_step"] = kwargs.pop(
                 "offset_range_step"
             )
+        return norm_optim(**super().normalize_kwargs(**kwargs))
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
+        kwargs["helical_twist_range"] = (
+            kwargs.pop("helical_twist_min", 0),
+            kwargs.pop("helical_twist_max", 0),
+            kwargs.pop("helical_twist_inistep", 0),
+        )
+        kwargs["helical_rise_range"] = (
+            kwargs.pop("helical_rise_min", 0),
+            kwargs.pop("helical_rise_max", 0),
+            kwargs.pop("helical_rise_inistep", 0),
+        )
+        kwargs["rot_tilt_psi_range"] = (
+            kwargs.pop("range_rot", -1),
+            kwargs.pop("range_tilt", 15),
+            kwargs.pop("range_psi", 10),
+        )
+        kwargs["helical_tube_diameter_range"] = (
+            kwargs.pop("helical_tube_inner_diameter", -1),
+            kwargs.pop("helical_tube_outer_diameter", -1),
+        )
+        kwargs["offset_range_step"] = (
+            kwargs.pop("offset_range", 5),
+            kwargs.pop("offset_step", 1),
+        )
         return norm_optim_inv(**super().normalize_kwargs_inv(**kwargs))
 
     def run(
@@ -738,33 +762,6 @@ class Refine3DTomoJob(_Relion5TomoJob):
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
         kwargs["scratch_dir"] = _configs.get_scratch_dir()
-        kwargs["helical_twist_range"] = (
-            kwargs.pop("helical_twist_min", 0),
-            kwargs.pop("helical_twist_max", 0),
-            kwargs.pop("helical_twist_inistep", 0),
-        )
-        kwargs["helical_rise_range"] = (
-            kwargs.pop("helical_rise_min", 0),
-            kwargs.pop("helical_rise_max", 0),
-            kwargs.pop("helical_rise_inistep", 0),
-        )
-        kwargs["rot_tilt_psi_range"] = (
-            kwargs.pop("rot_range", -1),
-            kwargs.pop("tilt_range", 15),
-            kwargs.pop("psi_range", 10),
-        )
-        kwargs["helical_tube_diameter_range"] = (
-            kwargs.pop("helical_tube_inner_diameter", -1),
-            kwargs.pop("helical_tube_outer_diameter", -1),
-        )
-        kwargs["offset_range_step"] = (
-            kwargs.pop("offset_range", 5),
-            kwargs.pop("offset_step", 1),
-        )
-        return norm_optim(**super().normalize_kwargs(**kwargs))
-
-    @classmethod
-    def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
         if "helical_twist_range" in kwargs:
             (
                 kwargs["helical_twist_min"],
@@ -778,7 +775,7 @@ class Refine3DTomoJob(_Relion5TomoJob):
                 kwargs["helical_rise_inistep"],
             ) = kwargs.pop("helical_rise_range")
         if "rot_tilt_psi_range" in kwargs:
-            kwargs["rot_range"], kwargs["tilt_range"], kwargs["psi_range"] = kwargs.pop(
+            kwargs["range_rot"], kwargs["range_tilt"], kwargs["range_psi"] = kwargs.pop(
                 "rot_tilt_psi_range"
             )
         if "helical_tube_diameter_range" in kwargs:
@@ -790,6 +787,33 @@ class Refine3DTomoJob(_Relion5TomoJob):
             kwargs["offset_range"], kwargs["offset_step"] = kwargs.pop(
                 "offset_range_step"
             )
+        return norm_optim(**super().normalize_kwargs(**kwargs))
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
+        kwargs["helical_twist_range"] = (
+            kwargs.pop("helical_twist_min", 0),
+            kwargs.pop("helical_twist_max", 0),
+            kwargs.pop("helical_twist_inistep", 0),
+        )
+        kwargs["helical_rise_range"] = (
+            kwargs.pop("helical_rise_min", 0),
+            kwargs.pop("helical_rise_max", 0),
+            kwargs.pop("helical_rise_inistep", 0),
+        )
+        kwargs["rot_tilt_psi_range"] = (
+            kwargs.pop("range_rot", -1),
+            kwargs.pop("range_tilt", 15),
+            kwargs.pop("range_psi", 10),
+        )
+        kwargs["helical_tube_diameter_range"] = (
+            kwargs.pop("helical_tube_inner_diameter", -1),
+            kwargs.pop("helical_tube_outer_diameter", -1),
+        )
+        kwargs["offset_range_step"] = (
+            kwargs.pop("offset_range", 5),
+            kwargs.pop("offset_step", 1),
+        )
         return norm_optim_inv(**super().normalize_kwargs_inv(**kwargs))
 
     def run(
@@ -818,12 +842,15 @@ class Refine3DTomoJob(_Relion5TomoJob):
         offset_range_step: OFFSET_RANGE_STEP_TYPE = (5, 1),
         auto_local_sampling: LOC_ANG_SAMPLING_TYPE = "1.8 degrees",
         relax_sym: RELAX_SYMMETRY_TYPE = "",
+        auto_faster: Annotated[
+            bool, {"label": "Use finer angular sampling faster", "group": "Sampling"}
+        ] = False,
         sigma_tilt: SIGMA_TILT_TYPE = -1,
-        keep_tilt_prior_fixed: KEEP_TILT_PRIOR_FIXED_TYPE = True,
         # Helix
         do_helix: DO_HELIX_TYPE = False,
         do_apply_helical_symmetry: DO_APPLY_HELICAL_SYMMETRY_TYPE = True,
         helical_nr_asu: HELICAL_NR_ASU_TYPE = 1,
+        keep_tilt_prior_fixed: KEEP_TILT_PRIOR_FIXED_TYPE = True,
         helical_twist_initial: HELICAL_TWIST_INITIAL_TYPE = 0,
         helical_rise_initial: HELICAL_RISE_INITIAL_TYPE = 0,
         helical_z_percentage: HELICAL_Z_PERCENTAGE_TYPE = 30,
@@ -894,6 +921,7 @@ class ReconstructParticlesJob(_Relion5TomoJob):
         # Running
         nr_mpi: MPI_TYPE = 1,
         nr_threads: THREAD_TYPE = 1,
+        do_queue: DO_QUEUE_TYPE = False,
         min_dedicated: MIN_DEDICATED_TYPE = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")

@@ -231,20 +231,20 @@ class RelionJobExecution:
 
 
 def iter_relion_jobs() -> Generator[type[RelionJob], None, None]:
-    for cls in RelionJob.__subclasses__():
-        if not (
+    yield from _iter_subclasses_recursive(RelionJob)
+
+
+def _iter_subclasses_recursive(cls: type) -> Generator[type, None, None]:
+    for cls in cls.__subclasses__():
+        if (
             cls.__name__.startswith("_")
             or cls.__name__ == "RelionExternalJob"
             or cls is RelionJob
         ):
+            pass  # these classes are abstract or internal
+        else:
             yield cls
         yield from _iter_subclasses_recursive(cls)
-
-
-def _iter_subclasses_recursive(cls: type) -> Generator[type, None, None]:
-    for subclass in cls.__subclasses__():
-        yield subclass
-        yield from _iter_subclasses_recursive(subclass)
 
 
 def _split_list_and_arg(typ: Any) -> tuple[Any, Any]:
@@ -272,7 +272,7 @@ def parse_string(s: Any, typ: Any) -> Any:
         elif s in ["1", "True", "true", "Yes"]:
             return True
         else:
-            raise ValueError(f"Cannot parse boolean from string: {s}")
+            return bool(s)
     elif typ is Path:
         return Path(s)
     elif get_origin(typ) is list:

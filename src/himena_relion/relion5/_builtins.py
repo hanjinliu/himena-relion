@@ -1,6 +1,6 @@
 from typing import Annotated, Any
 
-from himena_relion._job_class import _RelionBuiltinJob, connect_jobs
+from himena_relion._job_class import _RelionBuiltinJob, connect_jobs, parse_string
 from himena_relion._widgets._magicgui import PathDrop, BfactorEdit
 from himena_relion import _configs
 
@@ -382,6 +382,7 @@ class MotionCorrOwnJob(_MotionCorrJobBase):
     def normalize_kwargs(cls, **kwargs):
         kwargs["do_own_motioncor"] = True
         kwargs["other_motioncor2_args"] = ""
+        kwargs["gpu_ids"] = ""
         return super().normalize_kwargs(**kwargs)
 
     @classmethod
@@ -389,6 +390,7 @@ class MotionCorrOwnJob(_MotionCorrJobBase):
         kwargs = super().normalize_kwargs_inv(**kwargs)
         kwargs.pop("do_own_motioncor", None)
         kwargs.pop("other_motioncor2_args", None)
+        kwargs.pop("gpu_ids", None)
         return kwargs
 
     def run(
@@ -407,7 +409,7 @@ class MotionCorrOwnJob(_MotionCorrJobBase):
             bool, {"label": "Save sum of power spectra", "group": "I/O"}
         ] = True,
         group_for_ps: Annotated[
-            int, {"label": "... every n frames", "group": "I/O"}
+            int, {"label": "Save power spectra every n frames", "group": "I/O"}
         ] = 4,
         bfactor: Annotated[
             float, {"label": "Bfactor", "group": "Motion Correction"}
@@ -454,9 +456,10 @@ class MotionCorrOwnJob(_MotionCorrJobBase):
             {"label": "Number of patches (X, Y)", "group": "Motion Correction"},
         ] = (1, 1),
         # Running
-        min_dedicated: MIN_DEDICATED_TYPE = 1,
         nr_mpi: MPI_TYPE = 1,
         nr_threads: THREAD_TYPE = 1,
+        do_queue: DO_QUEUE_TYPE = False,
+        min_dedicated: MIN_DEDICATED_TYPE = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -532,9 +535,10 @@ class CtfEstimationJob(_Relion5Job):
             float,
             {"label": "Dose-dependent Thon ring fading (e/A^2)", "group": "CTFFIND"},
         ] = 100,
-        min_dedicated: MIN_DEDICATED_TYPE = 1,
         nr_mpi: MPI_TYPE = 1,
         nr_threads: THREAD_TYPE = 1,
+        do_queue: DO_QUEUE_TYPE = False,
+        min_dedicated: MIN_DEDICATED_TYPE = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -855,10 +859,10 @@ class PostProcessingJob(_Relion5Job):
         do_adhoc_bfac = kwargs.pop("do_adhoc_bfac", False)
         adhoc_bfac = kwargs.pop("adhoc_bfac", -1000)
         kwargs["b_factor"] = {
-            "do_auto_bfac": do_auto_bfac,
-            "autob_lowres": autob_lowres,
-            "do_adhoc_bfac": do_adhoc_bfac,
-            "adhoc_bfac": adhoc_bfac,
+            "do_auto_bfac": parse_string(do_auto_bfac, bool),
+            "autob_lowres": parse_string(autob_lowres, float),
+            "do_adhoc_bfac": parse_string(do_adhoc_bfac, bool),
+            "adhoc_bfac": parse_string(adhoc_bfac, float),
         }
         return kwargs
 
