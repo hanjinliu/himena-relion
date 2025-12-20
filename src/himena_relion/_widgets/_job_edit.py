@@ -34,7 +34,16 @@ class QJobScheduler(QtW.QWidget):
         self._exec_btn = QtW.QPushButton("Run Job")  # TODO: support scheduling
         self._exec_btn.clicked.connect(self._exec_action)
         self._mode: Mode = ScheduleMode()
+
+        # TODO: preview button. Visibility of this button needs to be controlled based
+        # on whether job edit mode is active.
+        # button_layout = QtW.QHBoxLayout()
+        # btn = QtW.QPushButton("Preview job.star")
+        # btn.setFixedWidth(90)
+        # btn.clicked.connect(self.preview_job_star)
+        # button_layout.addWidget(btn, alignment=QtCore.Qt.AlignmentFlag.AlignRight)
         layout.addWidget(self._title_label)
+        # layout.addLayout(button_layout)
         layout.addWidget(self._job_param_widget)
         layout.addWidget(self._exec_btn)
 
@@ -51,7 +60,8 @@ class QJobScheduler(QtW.QWidget):
 
     def update_by_job(self, job_cls: type[RelionJob]):
         """Update the widget based on the job directory."""
-        self._set_content(job_cls, job_cls.job_title())
+        prefix = "Job: "
+        self._set_content(job_cls, prefix + job_cls.job_title())
         self._job_param_widget.update_by_job(job_cls)
 
     def set_parameters(self, params: dict):
@@ -72,6 +82,16 @@ class QJobScheduler(QtW.QWidget):
 
     def set_edit_mode(self, job_dir: _job.JobDirectory):
         self._set_mode(EditMode(job_dir))
+
+    # def preview_job_star(self):
+    #     """Preview the job star file based on current parameters."""
+    #     if self._current_job_cls is None:
+    #         raise RuntimeError("No job class selected.")
+    #     params = self.get_parameters()
+    #     job_star_df = self._current_job_cls.prep_job_star(**params)
+    #     buf = StringIO()
+    #     starfile.write(job_star_df, buf)
+    #     self._ui.add_object(buf.getvalue(), type="text", title="Preview job.star")
 
     def _set_mode(self, mode: Mode):
         self._mode = mode

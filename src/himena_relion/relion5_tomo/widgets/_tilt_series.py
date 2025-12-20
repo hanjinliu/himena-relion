@@ -132,8 +132,11 @@ class QExcludeTiltViewer(QJobScrollArea):
         job_dir = self._job_dir
         if job_dir is None:
             return
-
-        info = job_dir.selected_tilt_series(text)
+        for info in job_dir.iter_tilt_series():
+            if info.tomo_tilt_series_star_file.stem == text:
+                break
+        else:
+            return
         self._filter_widget.set_image_scale(info.tomo_tilt_series_pixel_size)
         ts_view = info.read_tilt_series(job_dir.relion_project_dir)
         self._viewer.set_array_view(ts_view.with_filter(self._filter_widget.apply))

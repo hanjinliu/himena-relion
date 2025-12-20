@@ -423,22 +423,12 @@ class ExcludeTiltSeriesJobDirectory(HasTiltSeriesJobDirectory):
 
     def iter_tilt_series(self) -> Iterator[SelectedTiltSeriesInfo]:
         """Iterate over all excluded tilt series info."""
-        star = starfile.read(self.selected_tilt_series_star())
-        if not isinstance(star, pd.DataFrame):
-            raise TypeError(f"Expected a DataFrame, got {type(star)}")
-        for _, row in star.iterrows():
-            yield SelectedTiltSeriesInfo.from_series(row)
-
-    def selected_tilt_series(self, tomoname: str) -> SelectedTiltSeriesInfo:
-        """Return the first corrected tilt series info."""
-        star = starfile.read(self.selected_tilt_series_star())
-        if not isinstance(star, pd.DataFrame):
-            raise TypeError(f"Expected a DataFrame, got {type(star)}")
-        star_filt = star[star["rlnTomoName"] == tomoname]
-        if len(star_filt) == 0:
-            raise ValueError(f"Tilt series {tomoname} not found in star file.")
-        row = star_filt.iloc[0]
-        return SelectedTiltSeriesInfo.from_series(row)
+        if (path := self.selected_tilt_series_star()).exists():
+            star = starfile.read(path)
+            if not isinstance(star, pd.DataFrame):
+                raise TypeError(f"Expected a DataFrame, got {type(star)}")
+            for _, row in star.iterrows():
+                yield SelectedTiltSeriesInfo.from_series(row)
 
 
 @dataclass
@@ -1033,14 +1023,14 @@ class MaskCreateJobDirectory(JobDirectory):
 
     _job_type = "relion.maskcreate"
 
-    def mask_mrc(self) -> NDArray[np.floating]:
+    def mask_mrc(self) -> NDArray[np.floating] | None:
         """Return the mask MRC file."""
         mask_path = self.path / "mask.mrc"
-        if not mask_path.exists():
-            raise FileNotFoundError(f"Mask file {mask_path} does not exist.")
-
-        with mrcfile.open(mask_path, mode="r") as mrc:
-            return mrc.data
+        try:
+            with mrcfile.open(mask_path, mode="r") as mrc:
+                return mrc.data
+        except Exception:
+            return None
 
 
 class PostProcessJobDirectory(JobDirectory):

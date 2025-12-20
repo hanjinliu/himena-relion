@@ -28,6 +28,15 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class RelionJob(ABC):
+    """Class that describes a RELION job.
+
+    Each RELION job directory is represented as instantiation of a subclass of this
+    class. That's why most of the methods are classmethods.
+
+    Running a job is defined by the `run` method, although it does not necesarrily
+    implement the actual running of the job (because RELION runs jobs externally).
+    """
+
     def __init__(self, output_job_dir: _job.JobDirectory):
         self._output_job_dir = output_job_dir
 
@@ -85,6 +94,10 @@ class RelionJob(ABC):
         return func_args
 
     def __init_subclass__(cls):
+        """This is called when a subclass is defined.
+
+        All the RELION external jobs defined this way will be automatically registered.
+        """
         if cls.__name__.startswith("_") or cls.__name__ == "RelionExternalJob":
             return
         _LOGGER.info(
@@ -106,6 +119,10 @@ class RelionJob(ABC):
             job_star_path = str(tmpdir / "job.star")
             job_star_df = cls.prep_job_star(**kwargs)
             starfile.write(job_star_df, job_star_path)
+            # $ relion_pipeliner --addJobFromStar <job.star>
+            # This reformats the input job.star and creates a new job directory.
+            # The new job is scheduled but NOT run yet. To run the job, we need to
+            # call relion_pipeliner --RunJobs <job_dir>
             subprocess.run(
                 [
                     "relion_pipeliner",
@@ -120,7 +137,7 @@ class RelionJob(ABC):
         inputs_ready = all(input_.path.exists() for input_ in pipeline.inputs)
 
         if inputs_ready:
-            # run the job
+            # Run the job. Note that the job path must be in "Class3D/job012/" format.
             proc = subprocess.Popen(
                 ["relion_pipeliner", "--RunJobs", d],
                 start_new_session=True,
@@ -129,10 +146,11 @@ class RelionJob(ABC):
 
     @classmethod
     @abstractmethod
-    def prep_job_star(cls, **kwargs) -> pd.DataFrame:
+    def prep_job_star(cls, **kwargs) -> dict[str, Any]:
         """Prepare job star data with given parameters."""
 
     def edit_and_run_job(self, **kwargs) -> RelionJobExecution | None:
+        """Edit the existing job directory and run it."""
         job_dir = self.output_job_dir
         job_star_df = self.prep_job_star(**kwargs)
         starfile.write(job_star_df, job_dir.job_star())

@@ -87,8 +87,10 @@ class Q2DViewer(QViewer):
         """Set the 3D image to be displayed."""
         if isinstance(image, np.ndarray):
             self._array_view = ArrayFilteredView.from_array(image)
-        else:
+        elif isinstance(image, ArrayFilteredView):
             self._array_view = image
+        else:
+            raise TypeError("image must be a numpy array or ArrayFilteredView.")
         self._last_clim = clim
         num_slices = self._array_view.num_slices()
         self._dims_slider.blockSignals(True)

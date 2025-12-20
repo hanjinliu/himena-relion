@@ -33,7 +33,7 @@ class QPlotCanvas(QModelMatplotlibCanvas):
             fig.plot(tilt_angle, defocus_v_um, name="V", width=1)
             fig.x.label = "Nominal stage tilt angle (°)"
             fig.y.label = "Defocus (µm)"
-            fig.set_legend(font_size=9.0)
+            fig.set_legend(font_size=9.0, location="top_right")
             self.update_model(WidgetDataModel(value=fig, type=StandardType.PLOT))
             self.tight_layout()
 

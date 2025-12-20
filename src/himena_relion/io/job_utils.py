@@ -76,7 +76,12 @@ def mark_as_failed(model: WidgetDataModel):
     group="07-job-operation",
 )
 def clone_relion_job(ui: MainWindow, model: WidgetDataModel):
-    """Clone this RELION job."""
+    """Clone this RELION job.
+
+    This will not immediately make a copy of the job directory, so it is different from
+    the clone operation in cryoSPARC. Parameters from this job will be copied to the
+    job runner widget to facilitate creating a new job with the same parameters.
+    """
     job_dir = assert_job(model)
     job_cls = job_dir._to_job_class()
     if job_cls is None:
@@ -95,6 +100,7 @@ def clone_relion_job(ui: MainWindow, model: WidgetDataModel):
     group="07-job-operation",
 )
 def abort_relion_job(ui: MainWindow, model: WidgetDataModel):
+    """Abort this RELION job."""
     job_dir = assert_job(model)
     if job_dir.state() == RelionJobState.EXIT_SUCCESS:
         raise RuntimeError("Cannot abort a finished job.")
@@ -127,14 +133,22 @@ def edit_relion_job(ui: MainWindow, model: WidgetDataModel):
 
 @register_function(
     menus=[MenuId.RELION_UTILS],
-    title="Initialize Project Directory",
-    command_id="himena-relion:initialize-project-directory",
+    title="Start New RELION Project",
+    command_id="himena-relion:start-new-project",
     group="11-others",
 )
-def initialize_project_directory(ui: MainWindow):
+def start_new_project(ui: MainWindow):
+    """Start a new RELION project under the selected directory."""
     text = "\n\ndata_pipeline_general\n\n_rlnPipeLineJobCounter       1\n"
-    if path := ui.exec_file_dialog("d", caption="Select Project Directory"):
-        path.write_text(text)
+    if path_dir := ui.exec_file_dialog("d", caption="Select Project Directory"):
+        path = path_dir / "default_pipeline.star"
+        if path.exists():
+            ui.show_notification(
+                "Selected directory is already a RELION project. Opening existing file."
+            )
+        else:
+            path.write_text(text)
+        ui.read_file(path)
         return
     raise Cancelled
 
