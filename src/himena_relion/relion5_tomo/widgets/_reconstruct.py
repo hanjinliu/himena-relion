@@ -30,6 +30,6 @@ class QReconstructViewer(QJobScrollArea):
     def initialize(self, job_dir: _job.ReconstructParticlesJobDirectory):
         """Initialize the viewer with the job directory."""
         img = job_dir.merged_mrc()
-        self._viewer.set_image(img)
-        self._viewer.auto_threshold()
+        self._viewer.set_image(img, update_now=False)
+        self._viewer.auto_threshold(update_now=False)
         self._viewer.auto_fit()

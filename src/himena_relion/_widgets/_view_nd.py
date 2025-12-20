@@ -260,7 +260,7 @@ class Q3DViewer(QViewer):
         layout.addWidget(self._canvas.native)
         layout.addWidget(labeled("Threshold", self._iso_slider))
 
-    def set_image(self, image: np.ndarray | None):
+    def set_image(self, image: np.ndarray | None, update_now: bool = True):
         """Set the 3D image to be displayed."""
         if image is None:
             self._canvas.image = np.zeros((2, 2, 2))
@@ -271,9 +271,10 @@ class Q3DViewer(QViewer):
             self._canvas.image_visual.visible = True
             self._has_image = True
         self._canvas.set_iso_threshold(self._iso_slider.value())
-        self._canvas.update_canvas()
+        if update_now:
+            self._canvas.update_canvas()
 
-    def auto_threshold(self, thresh: float | None = None):
+    def auto_threshold(self, thresh: float | None = None, update_now: bool = True):
         """Automatically set the threshold based on the image data."""
         img = self._canvas.image
         if self._canvas.image_visual.visible:
@@ -281,15 +282,17 @@ class Q3DViewer(QViewer):
                 thresh = _utils.threshold_yen(img)
             self._iso_slider.setValue(thresh)
             self._iso_slider.setRange(*self._canvas._lims)
-        self._canvas.update_canvas()
+        if update_now:
+            self._canvas.update_canvas()
 
-    def auto_fit(self):
+    def auto_fit(self, update_now: bool = True):
         """Automatically fit the camera to the image."""
         img = self._canvas.image
         self._canvas.camera.center = np.array(img.shape) / 2
         self._canvas.camera.scale_factor = max(img.shape)
         self._canvas.camera.update()
-        self._canvas.update_canvas()
+        if update_now:
+            self._canvas.update_canvas()
 
     def set_text_overlay(self, text: str, color: str = "white", size: int = 20):
         """Set a text overlay on the viewer."""
@@ -305,10 +308,11 @@ class Q3DViewer(QViewer):
         if arr.ndim != 3:
             raise ValueError("Input array must be 3D.")
         had_image = self._has_image
-        self.set_image(arr)
+        self.set_image(arr, update_now=False)
         if not had_image:
-            self.auto_threshold()
-            self.auto_fit()
+            self.auto_threshold(update_now=False)
+            self.auto_fit(update_now=False)
+        self._canvas.update_canvas()
 
     @validate_protocol
     def model_type(self) -> str:

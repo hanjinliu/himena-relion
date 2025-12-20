@@ -30,6 +30,6 @@ class QMaskCreateViewer(QJobScrollArea):
     def initialize(self, job_dir: _job.MaskCreateJobDirectory):
         """Initialize the viewer with the job directory."""
         mask = job_dir.mask_mrc()
-        self._viewer.set_image(mask)
-        self._viewer.auto_threshold(0.5)
+        self._viewer.set_image(mask, update_now=False)
+        self._viewer.auto_threshold(0.5, update_now=False)
         self._viewer.auto_fit()

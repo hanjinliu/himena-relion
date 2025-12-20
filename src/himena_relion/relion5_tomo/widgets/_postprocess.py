@@ -41,8 +41,8 @@ class QPostProcessViewer(QJobScrollArea):
         self._job_dir = job_dir
         img = job_dir.map_mrc(masked=self._use_mask.isChecked())
         if img is not None:
-            self._viewer.set_image(img)
-            self._viewer.auto_threshold()
+            self._viewer.set_image(img, update_now=False)
+            self._viewer.auto_threshold(update_now=False)
             self._viewer.auto_fit()
 
         df_fsc = job_dir.fsc_dataframe()

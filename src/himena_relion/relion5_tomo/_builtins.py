@@ -14,6 +14,7 @@ from himena_relion.relion5._builtins import (
     DO_HELIX_TYPE,
     DO_LOCAL_SEARCH_HELICAL_SYMMETRY_TYPE,
     DO_PREREAD_TYPE,
+    HALFMAP_TYPE,
     HELICAL_NR_ASU_TYPE,
     HELICAL_RANGE_DIST_TYPE,
     HELICAL_RISE_INITIAL_TYPE,
@@ -33,6 +34,7 @@ from himena_relion.relion5._builtins import (
     NUM_ITER_TYPE,
     NUM_POOL_TYPE,
     OFFSET_RANGE_STEP_TYPE,
+    PROCESS_TYPE,
     REF_CORRECT_GRAY_TYPE,
     REF_SYMMETRY_TYPE,
     REF_TYPE,
@@ -48,6 +50,8 @@ from himena_relion.relion5._builtins import (
     THREAD_TYPE,
     GPU_IDS_TYPE,
     USE_PARALLEL_DISC_IO_TYPE,
+    CtfEstimationJob,
+    PostProcessingJob,
 )
 
 IN_TILT_TYPE = Annotated[
@@ -55,7 +59,16 @@ IN_TILT_TYPE = Annotated[
     {
         "label": "Input tilt series",
         "widget_type": PathDrop,
-        "type_label": "TomographGroupMeta",
+        "type_label": "TomogramGroupMetadata",
+        "group": "I/O",
+    },
+]
+IN_PARTICLES = Annotated[
+    str,
+    {
+        "label": "Input particles (optional)",
+        "widget_type": PathDrop,
+        "type_label": "ParticleGroupMetadata",
         "group": "I/O",
     },
 ]
@@ -66,17 +79,6 @@ IN_OPTIM = Annotated[
 
 
 def norm_optim(**kwargs):
-    kwargs["in_optim"] = {
-        "in_optimisation": kwargs.pop("in_optimisation", ""),
-        "use_direct_entries": kwargs.pop("use_direct_entries", False),
-        "in_particles": kwargs.pop("in_particles", ""),
-        "in_tomograms": kwargs.pop("in_tomograms", ""),
-        "in_trajectories": kwargs.pop("in_trajectories", ""),
-    }
-    return kwargs
-
-
-def norm_optim_inv(**kwargs):
     optim = kwargs.pop("in_optim", {})
     kwargs["in_optimisation"] = optim.get("in_optimisation", "")
     kwargs["use_direct_entries"] = optim.get("use_direct_entries", False)
@@ -86,10 +88,49 @@ def norm_optim_inv(**kwargs):
     return kwargs
 
 
-# TODO: class ExcludeTiltJob(_RelionBuiltinJob):
+def norm_optim_inv(**kwargs):
+    if "in_optim" not in kwargs:
+        kwargs["in_optim"] = {
+            "in_optimisation": kwargs.pop("in_optimisation", ""),
+            "use_direct_entries": kwargs.pop("use_direct_entries", False),
+            "in_particles": kwargs.pop("in_particles", ""),
+            "in_tomograms": kwargs.pop("in_tomograms", ""),
+            "in_trajectories": kwargs.pop("in_trajectories", ""),
+        }
+    return kwargs
 
 
-class _AlignTiltSeriesJobBase(_RelionBuiltinJob):
+class _Relion5TomoJob(_RelionBuiltinJob):
+    @classmethod
+    def command_palette_title_prefix(cls):
+        return "RELION 5 Tomo:"
+
+
+class ExcludeTiltJob(_Relion5TomoJob):
+    @classmethod
+    def type_label(cls) -> str:
+        return "relion.excludetilts"
+
+    def run(
+        self,
+        in_tiltseries: IN_TILT_TYPE = "",
+        cache_size: Annotated[
+            int,
+            {
+                "label": "Number of cached tilt series",
+                "min": 1,
+                "max": 10,
+                "group": "I/O",
+            },
+        ] = 5,
+        nr_mpi: MPI_TYPE = 1,
+        do_queue: DO_QUEUE_TYPE = False,
+        min_dedicated: MIN_DEDICATED_TYPE = 1,
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")
+
+
+class _AlignTiltSeriesJobBase(_Relion5TomoJob):
     @classmethod
     def type_label(cls) -> str:
         return "relion.aligntiltseries"
@@ -228,7 +269,7 @@ class AlignTiltSeriesAreTomo2(_AlignTiltSeriesJobBase):
         raise NotImplementedError("This is a builtin job placeholder.")
 
 
-class ReconstructTomogramJob(_RelionBuiltinJob):
+class ReconstructTomogramJob(_Relion5TomoJob):
     @classmethod
     def type_label(cls) -> str:
         return "relion.reconstructtomograms"
@@ -246,8 +287,11 @@ class ReconstructTomogramJob(_RelionBuiltinJob):
     @classmethod
     def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
         kwargs = super().normalize_kwargs_inv(**kwargs)
-        kwargs["dims"] = kwargs.pop("xdim"), kwargs.pop("ydim"), kwargs.pop("zdim")
-
+        kwargs["dims"] = (
+            kwargs.pop("xdim", 4000),
+            kwargs.pop("ydim", 4000),
+            kwargs.pop("zdim", 2000),
+        )
         return kwargs
 
     def run(
@@ -294,10 +338,33 @@ class ReconstructTomogramJob(_RelionBuiltinJob):
         raise NotImplementedError("This is a builtin job placeholder.")
 
 
-# TODO: class PickJob(_RelionBuiltinJob):
+class PickJob(_Relion5TomoJob):
+    @classmethod
+    def type_label(cls) -> str:
+        return "relion.picktomo"
+
+    def run(
+        self,
+        in_tomoset: IN_TILT_TYPE = "",
+        in_star_file: IN_PARTICLES = "",
+        pick_mode: Annotated[
+            str,
+            {
+                "label": "Picking mode",
+                "choices": ["particles", "spheres", "surfaces", "filaments"],
+                "group": "I/O",
+            },
+        ] = "particles",
+        particle_spacing: Annotated[
+            float, {"label": "Particle spacing (A)", "group": "I/O"}
+        ] = -1,
+        do_queue: DO_QUEUE_TYPE = False,
+        min_dedicated: MIN_DEDICATED_TYPE = 1,
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")
 
 
-class ExtractParticlesTomoJob(_RelionBuiltinJob):
+class ExtractParticlesTomoJob(_Relion5TomoJob):
     @classmethod
     def type_label(cls) -> str:
         return "relion.pseudosubtomo"
@@ -344,7 +411,7 @@ class ExtractParticlesTomoJob(_RelionBuiltinJob):
         raise NotImplementedError("This is a builtin job placeholder.")
 
 
-class _DenoiseJobBase(_RelionBuiltinJob):
+class _DenoiseJobBase(_Relion5TomoJob):
     @classmethod
     def type_label(cls) -> str:
         return "relion.denoisetomo"
@@ -468,7 +535,7 @@ class DenoisePredict(_DenoiseJobBase):
         raise NotImplementedError("This is a builtin job placeholder.")
 
 
-class InitialModel3DJob(_RelionBuiltinJob):
+class InitialModel3DJob(_Relion5TomoJob):
     @classmethod
     def type_label(cls) -> str:
         return "relion.initialmodel.tomo"
@@ -522,7 +589,7 @@ class InitialModel3DJob(_RelionBuiltinJob):
         raise NotImplementedError("This is a builtin job placeholder.")
 
 
-class Class3DJob(_RelionBuiltinJob):
+class Class3DJob(_Relion5TomoJob):
     @classmethod
     def type_label(cls) -> str:
         return "relion.class3d"
@@ -663,7 +730,7 @@ class Class3DJob(_RelionBuiltinJob):
         raise NotImplementedError("This is a builtin job placeholder.")
 
 
-class Refine3DTomoJob(_RelionBuiltinJob):
+class Refine3DTomoJob(_Relion5TomoJob):
     @classmethod
     def type_label(cls) -> str:
         return "relion.refine3d.tomo"
@@ -783,7 +850,7 @@ class Refine3DTomoJob(_RelionBuiltinJob):
         raise NotImplementedError("This is a builtin job placeholder.")
 
 
-class ReconstructParticlesJob(_RelionBuiltinJob):
+class ReconstructParticlesJob(_Relion5TomoJob):
     @classmethod
     def type_label(cls) -> str:
         return "relion.reconstructparticletomo"
@@ -832,6 +899,71 @@ class ReconstructParticlesJob(_RelionBuiltinJob):
         raise NotImplementedError("This is a builtin job placeholder.")
 
 
+class CtfRefineTomoJob(_Relion5TomoJob):
+    @classmethod
+    def type_label(cls) -> str:
+        return "relion.ctfrefinetomo"
+
+    @classmethod
+    def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
+        return norm_optim(**super().normalize_kwargs(**kwargs))
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
+        return norm_optim_inv(**super().normalize_kwargs_inv(**kwargs))
+
+    def run(
+        self,
+        in_optim: IN_OPTIM = None,
+        in_halfmaps: HALFMAP_TYPE = "",
+        in_refmask: MASK_TYPE = "",
+        in_post: PROCESS_TYPE = "",
+        # CTF Refinement
+        box_size: Annotated[
+            int, {"label": "Box size of estimation (pix)", "group": "Defocus"}
+        ] = 128,
+        do_defocus: Annotated[
+            bool, {"label": "Refine defocus", "group": "Defocus"}
+        ] = True,
+        focus_range: Annotated[
+            float, {"label": "Defocus search range (A)", "group": "Defocus"}
+        ] = 3000,
+        do_reg_def: Annotated[
+            bool, {"label": "Do defocus regularisation", "group": "Defocus"}
+        ] = False,
+        lambda_param: Annotated[
+            float, {"label": "Defocus regularisation lambda", "group": "Defocus"}
+        ] = 0.1,
+        do_scale: Annotated[
+            bool, {"label": "Refine contrast scale", "group": "Defocus"}
+        ] = True,
+        do_frame_scale: Annotated[
+            bool, {"label": "Refine scale per frame", "group": "Defocus"}
+        ] = True,
+        do_tomo_scale: Annotated[
+            bool, {"label": "Refine scale per tomogram", "group": "Defocus"}
+        ] = False,
+        # Running
+        nr_mpi: MPI_TYPE = 1,
+        nr_threads: THREAD_TYPE = 1,
+        do_queue: DO_QUEUE_TYPE = False,
+        min_dedicated: MIN_DEDICATED_TYPE = 1,
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")
+
+
+# class FrameAlignTomoJob(_Relion5TomoJob):
+
+connect_jobs(
+    CtfEstimationJob,
+    ExcludeTiltJob,
+    node_mapping={"tilt_series_ctf.star": "in_tiltseries"},
+)
+connect_jobs(
+    ExcludeTiltJob,
+    AlignTiltSeriesImodFiducial,
+    node_mapping={"selected_tilt_series.star": "in_tiltseries"},
+)
 connect_jobs(
     AlignTiltSeriesImodFiducial,
     ReconstructTomogramJob,
@@ -848,20 +980,35 @@ connect_jobs(
     node_mapping={"tomograms.star": "in_tomoset"},
 )
 connect_jobs(
+    ReconstructTomogramJob,
+    PickJob,
+    node_mapping={"tomograms.star": "in_tomoset"},
+)
+connect_jobs(
+    DenoisePredict,
+    PickJob,
+    node_mapping={"tomograms.star": "in_tomoset"},
+)
+connect_jobs(
+    PickJob,
+    ExtractParticlesTomoJob,
+    node_mapping={"optimisation_set.star": "in_optim.in_optimisation"},
+)
+connect_jobs(
     ExtractParticlesTomoJob,
     InitialModel3DJob,
-    node_mapping={"optimisation_set.star": "in_optimisation"},
+    node_mapping={"optimisation_set.star": "in_optim.in_optimisation"},
 )
 connect_jobs(
     ExtractParticlesTomoJob,
     ReconstructParticlesJob,
-    node_mapping={"optimisation_set.star": "in_optimisation"},
+    node_mapping={"optimisation_set.star": "in_optim.in_optimisation"},
 )
 connect_jobs(
     InitialModel3DJob,
     Class3DJob,
     node_mapping={
-        "optimisation_set.mrc": "in_optimisation",
+        "optimisation_set.star": "in_optim.in_optimisation",
         "initial_model.mrc": "fn_ref",
     },
 )
@@ -869,15 +1016,29 @@ connect_jobs(
     InitialModel3DJob,
     Refine3DTomoJob,
     node_mapping={
-        "optimisation_set.mrc": "in_optimisation",
+        "optimisation_set.star": "in_optim.in_optimisation",
         "initial_model.mrc": "fn_ref",
     },
+)
+connect_jobs(
+    Class3DJob,
+    Refine3DTomoJob,
 )
 connect_jobs(
     ReconstructParticlesJob,
     Refine3DTomoJob,
     node_mapping={
-        "optimisation_set.mrc": "in_optimisation",
+        "optimisation_set.star": "in_optim.in_optimisation",
         "merged.mrc": "fn_ref",
     },
+)
+connect_jobs(
+    ReconstructParticlesJob,
+    PostProcessingJob,
+    node_mapping={"half1.mrc": "fn_in"},
+)
+connect_jobs(
+    PostProcessingJob,
+    CtfRefineTomoJob,
+    node_mapping={"postprocess.star": "in_post"},
 )

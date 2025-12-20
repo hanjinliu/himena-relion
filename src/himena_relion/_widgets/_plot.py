@@ -23,11 +23,35 @@ class QPlotCanvas(QModelMatplotlibCanvas):
             tilt_angle = df["rlnTomoNominalStageTiltAngle"]
             defocus_u_um = df["rlnDefocusU"] / 10000
             defocus_v_um = df["rlnDefocusV"] / 10000
-            fig.plot(tilt_angle, defocus_u_um, name="U")
-            fig.plot(tilt_angle, defocus_v_um, name="V")
+            fig.plot(tilt_angle, defocus_u_um, name="U", width=1)
+            fig.plot(tilt_angle, defocus_v_um, name="V", width=1)
             fig.x.label = "Nominal stage tilt angle (°)"
             fig.y.label = "Defocus (µm)"
             fig.set_legend(font_size=9.0)
+            self.update_model(WidgetDataModel(value=fig, type=StandardType.PLOT))
+            self.tight_layout()
+
+    def plot_ctf_scale(self, df: pd.DataFrame):
+        return self._plot_single(df, "rlnCtfScalefactor", "Scale")
+
+    def plot_ctf_astigmatism(self, df: pd.DataFrame):
+        return self._plot_single(df, "rlnCtfAstigmatism", "Astigmatism (A)")
+
+    def plot_ctf_defocus_angle(self, df: pd.DataFrame):
+        return self._plot_single(df, "rlnDefocusAngle", "Angle (°)")
+
+    def plot_ctf_max_resolution(self, df: pd.DataFrame):
+        return self._plot_single(df, "rlnCtfMaxResolution", "Resolution (Å)")
+
+    def _plot_single(self, df: pd.DataFrame, ycol: str, ylabel: str):
+        with self._plot_style():
+            fig = hplt.figure()
+
+            tilt_angle = df["rlnTomoNominalStageTiltAngle"]
+            yvals = df[ycol]
+            fig.plot(tilt_angle, yvals, width=1)
+            fig.x.label = "Nominal stage tilt angle (°)"
+            fig.y.label = ylabel
             self.update_model(WidgetDataModel(value=fig, type=StandardType.PLOT))
             self.tight_layout()
 

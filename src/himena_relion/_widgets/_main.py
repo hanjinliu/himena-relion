@@ -7,7 +7,7 @@ import weakref
 from qtpy import QtWidgets as QtW, QtCore
 from superqt.utils import thread_worker, GeneratorWorker
 from watchfiles import watch
-
+from timeit import default_timer
 from himena import MainWindow, WidgetDataModel
 from himena.plugins import validate_protocol
 from himena_relion import _job
@@ -17,7 +17,7 @@ from himena_relion._widgets._job_widgets import (
     QRunErrLog,
     QRunOutLog,
     QNoteLog,
-    QJobInOut,
+    QJobPipelineViewer,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -57,7 +57,7 @@ class QRelionJobWidget(QtW.QWidget):
             wdt = wcls()
             self.add_job_widget(wdt)
 
-        self.add_job_widget(QJobInOut())
+        self.add_job_widget(QJobPipelineViewer())
         self.add_job_widget(QRunOutLog())
         self.add_job_widget(QRunErrLog())
         self.add_job_widget(QNoteLog())
@@ -67,9 +67,15 @@ class QRelionJobWidget(QtW.QWidget):
             _LOGGER.error(f"Failed to initialize job state widget: {e!r}")
         for wdt in self._iter_job_widgets():
             try:
+                t0 = default_timer()
                 wdt.initialize(job_dir)
             except Exception as e:
                 _LOGGER.error(f"Failed to initialize job widget {wdt!r}: {e!r}")
+            else:
+                t1 = default_timer()
+                _LOGGER.info(
+                    f"Initialization of {type(wdt).__name__} took {t1 - t0:.3f} seconds"
+                )
 
     @validate_protocol
     def to_model(self) -> WidgetDataModel:

@@ -44,14 +44,14 @@ class QJobScrollArea(QtW.QScrollArea, JobWidgetBase):
         self._layout = layout
 
 
-class QLogWatcher(QtW.QWidget, JobWidgetBase):
+class QTextEditBase(QtW.QWidget, JobWidgetBase):
     def __init__(self, parent=None):
         super().__init__(parent)
         layout = QtW.QVBoxLayout(self)
         self._wordwrap_checkbox = QToggleSwitch("Word wrap")
         self._wordwrap_checkbox.setChecked(False)
         self._wordwrap_checkbox.toggled.connect(self._on_wordwrap_changed)
-        self._text_edit = QtW.QTextEdit()
+        self._text_edit = QtW.QPlainTextEdit()
         self.setFont(QtGui.QFont(MonospaceFontFamily, 8))
         self._text_edit.setReadOnly(True)
         self._text_edit.setWordWrapMode(QtGui.QTextOption.WrapMode.NoWrap)
@@ -78,7 +78,7 @@ class QLogWatcher(QtW.QWidget, JobWidgetBase):
         self._text_edit.setReadOnly(readonly)
 
 
-class QRunOutLog(QLogWatcher):
+class QRunOutLog(QTextEditBase):
     def on_job_updated(self, job_dir: _job.JobDirectory, fp: Path):
         """Update the log text when run.out is updated."""
         if fp.name == "run.out":
@@ -97,7 +97,7 @@ class QRunOutLog(QLogWatcher):
         return "run.out"
 
 
-class QRunErrLog(QLogWatcher):
+class QRunErrLog(QTextEditBase):
     def on_job_updated(self, job_dir: _job.JobDirectory, fp: Path):
         """Update the log text when run.err is updated."""
         if fp.name == "run.err":
@@ -111,7 +111,7 @@ class QRunErrLog(QLogWatcher):
         return "run.err"
 
 
-class QNoteLog(QLogWatcher):
+class QNoteLog(QTextEditBase):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setReadOnly(False)
@@ -142,7 +142,7 @@ class QNoteLog(QLogWatcher):
             note_path.write_text(text)
 
 
-class QJobInOut(QtW.QWidget, JobWidgetBase):
+class QJobPipelineViewer(QtW.QWidget, JobWidgetBase):
     def __init__(self):
         super().__init__()
         layout = QtW.QVBoxLayout(self)
@@ -163,10 +163,13 @@ class QJobInOut(QtW.QWidget, JobWidgetBase):
         elif fp.suffix in [".mrc", ".star"]:
             self.update_item_colors(job_dir)
 
-    def initialize(self, job_dir):
-        path = job_dir.job_pipeline()
+    def clear_in_out(self):
         self._list_widget_in.clear()
         self._list_widget_out.clear()
+
+    def initialize(self, job_dir):
+        path = job_dir.job_pipeline()
+        self.clear_in_out()
         if not path.exists():
             return
         rln_dir = job_dir.relion_project_dir
@@ -190,6 +193,7 @@ class QJobInOut(QtW.QWidget, JobWidgetBase):
             self._list_widget_out.setItemWidget(list_item, item)
 
     def update_item_colors(self, job_dir: _job.JobDirectory):
+        """Update the colors based on whether the files exist."""
         rln_dir = job_dir.relion_project_dir
         text_color = self.palette().text().color().name()
         for item_widget in self._iter_output_node_items():
@@ -207,7 +211,7 @@ class QJobInOut(QtW.QWidget, JobWidgetBase):
                 yield item_widget
 
     def tab_title(self) -> str:
-        return "In/Out"
+        return "Pipeline"
 
 
 class QRelionNodeList(QtW.QListWidget):

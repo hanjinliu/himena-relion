@@ -18,8 +18,9 @@ class QPathDropWidget(QtW.QWidget):
         self._type_label = ""
         self._icon_label = QtW.QLabel()
         self._path_line_edit = QtW.QLineEdit()
-        self._btn = QtW.QPushButton("Browse")
-        self._btn.setFixedWidth(60)
+        self._btn = QtW.QPushButton("...")
+        self._btn.setToolTip("Browse in file dialog")
+        self._btn.setFixedWidth(24)
         layout = QtW.QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self._icon_label)

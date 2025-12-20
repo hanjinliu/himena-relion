@@ -58,7 +58,7 @@ class QRefine3DViewer(QJobScrollArea):
         self._iter_choice.setMaximum(max(niters - 1, 0))
         self._iter_choice.setValue(self._iter_choice.maximum())
         self._on_iter_changed(self._iter_choice.value())
-        self._viewer.auto_threshold()
+        self._viewer.auto_threshold(update_now=False)
         self._viewer.auto_fit()
 
     def _on_iter_changed(self, value: int):

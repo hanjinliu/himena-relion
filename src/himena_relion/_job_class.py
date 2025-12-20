@@ -33,6 +33,10 @@ class RelionJob(ABC):
         return self._output_job_dir
 
     @classmethod
+    def command_palette_title_prefix(cls) -> str:
+        return "RELION:"
+
+    @classmethod
     @abstractmethod
     def type_label(cls) -> str:
         """Get the type label for this builtin job."""
@@ -87,7 +91,7 @@ class RelionJob(ABC):
         register_function(
             cls._show_scheduler_widget,
             menus=[MenuId.RELION_NEW_JOB],
-            title=cls.job_title(),
+            title=f"{cls.command_palette_title_prefix()} {cls.job_title()}",
             command_id=cls.command_id(),
         )
 
@@ -165,8 +169,10 @@ class _RelionBuiltinJob(RelionJob):
 
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
-        """Normalize the keyword arguments for this job."""
-        # This is used to convert python to job.star
+        """Normalize the keyword arguments for this job.
+
+        This is used to convert python objects to job.star.
+        """
         kwargs.update(_configs.get_queue_dict())
         return kwargs
 
@@ -287,6 +293,8 @@ def parse_string(s: Any, typ: Any) -> Any:
                 f"Cannot parse tuple from string: {s}, expected {len(args)} elements"
             )
         return tuple(parse_string(part, arg) for part, arg in zip(parts, args))
+    elif get_origin(typ) is dict or typ is dict:
+        return dict(s)
     else:
         raise TypeError(f"Unsupported type for parsing: {typ}")
 
@@ -302,13 +310,17 @@ def to_string(value) -> str:
 def connect_jobs(
     pre: type[RelionJob],
     post: type[RelionJob],
-    node_mapping: dict[str, str],
+    node_mapping: dict[str, str] | None = None,
 ):
     type_pre = Type.RELION_JOB + "." + pre.himena_model_type()
     when = when_reader_used(type_pre, "himena_relion.io.read_relion_job")
+    if node_mapping is None:
+        user_context = None
+    else:
+        user_context = _node_mapping_to_context(node_mapping)
     when.add_command_suggestion(
         post.command_id(),
-        user_context=_node_mapping_to_context(node_mapping),
+        user_context=user_context,
     )
 
 
@@ -325,7 +337,14 @@ def _node_mapping_to_context(node_mapping: dict[str, str]):
         rln_dir = val.relion_project_dir
         for from_, to_ in node_mapping.items():
             file_path = val.path.joinpath(from_)
-            out[to_] = file_path.relative_to(rln_dir).as_posix()
+            file_path_rel = file_path.relative_to(rln_dir).as_posix()
+            if "." in to_:  # dict valule
+                to_, subkey = to_.split(".", 1)
+                if to_ not in out:
+                    out[to_] = {}
+                out[to_][subkey] = file_path_rel
+            else:
+                out[to_] = file_path_rel
         return out
 
     return _func

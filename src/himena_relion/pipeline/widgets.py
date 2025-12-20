@@ -4,13 +4,16 @@ from pathlib import Path
 import logging
 from qtpy import QtGui, QtWidgets as QtW, QtCore
 from cmap import Color
-from superqt import ensure_main_thread
+from superqt import ensure_main_thread, QSearchableComboBox
 from superqt.utils import thread_worker, GeneratorWorker
 from watchfiles import watch, Change
+
 from himena import MainWindow, WidgetDataModel
-from himena.qt._qflowchart import QFlowChartWidget, BaseNodeItem
+from himena.types import is_subtype
+from himena.qt._qflowchart import QFlowChartView, BaseNodeItem
 from himena.plugins import validate_protocol
 from himena.style import Theme
+from himena_relion._widgets._job_widgets import QJobPipelineViewer
 from himena_relion.consts import Type, JOB_ID_MAP
 from himena_relion._pipeline import RelionDefaultPipeline, RelionJobInfo, NodeStatus
 from himena_relion._job import ExternalJobDirectory, JobDirectory
@@ -21,15 +24,40 @@ _LOGGER = logging.getLogger(__name__)
 class QRelionPipelineFlowChart(QtW.QWidget):
     def __init__(self, ui: MainWindow):
         super().__init__()
-        layout = QtW.QVBoxLayout(self)
         self._directory_label = QtW.QLabel("RELION Pipeline Flow Chart", self)
-        self._flow_chart = QRelionPipelineFlowChartView(ui)
+        self._scene = QtW.QGraphicsScene()
+
+        self._flow_chart = QRelionPipelineFlowChartView(ui, self._scene)
+        self._finder = QSearchableComboBox(self)
+        self._footer = QJobPipelineViewer()
         self._watcher: GeneratorWorker | None = None
+        layout = QtW.QVBoxLayout(self)
+        splitter = QtW.QSplitter(QtCore.Qt.Orientation.Vertical)
+        splitter.addWidget(self._flow_chart)
+        splitter.addWidget(self._footer)
+
         layout.addWidget(self._directory_label)
-        layout.addWidget(self._flow_chart)
+        layout.addWidget(self._finder)
+        layout.addWidget(splitter)
+
+        self._finder.activated.connect(self._move_to_job)
+        self._finder.lineEdit().setPlaceholderText("Find job...")
+
+        self._flow_chart.item_left_clicked.connect(self._on_item_left_clicked)
+        self._flow_chart.background_left_clicked.connect(
+            self._on_background_left_clicked
+        )
 
     def sizeHint(self):
-        return QtCore.QSize(320, 400)
+        return QtCore.QSize(350, 600)
+
+    def _on_item_left_clicked(self, item: RelionJobNodeItem):
+        job_dir = item.job_dir(self._flow_chart._relion_project_dir)
+        self._footer.initialize(job_dir)
+        self._footer.update_item_colors(job_dir)
+
+    def _on_background_left_clicked(self):
+        self._footer.clear_in_out()
 
     @validate_protocol
     def update_model(self, model: WidgetDataModel) -> None:
@@ -44,23 +72,17 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         else:
             self._directory_label.setText(f"{parts[-2]}/")
         self._watcher = self._watch_default_pipeline_star(src)
+        self._update_finder()
+        self._finder.setCurrentText("")
 
     @ensure_main_thread
     def _on_pipeline_updated(self, model: WidgetDataModel) -> None:
-        hbar = self._flow_chart.view.horizontalScrollBar()
-        vbar = self._flow_chart.view.verticalScrollBar()
-        hpos = hbar.value()
-        vpos = vbar.value()
+        current_center_pos = self._flow_chart.mapToScene(
+            self._flow_chart.viewport().rect().center()
+        )
         self._flow_chart.clear_all()
         self._flow_chart.add_pipeline(model.value)
-        hbar.setValue(min(hpos, hbar.maximum()))
-        vbar.setValue(min(vpos, vbar.maximum()))
-
-    @validate_protocol
-    def to_model(self) -> WidgetDataModel:
-        return WidgetDataModel(
-            value=self._flow_chart._pipeline, type=Type.RELION_PIPELINE
-        )
+        self._flow_chart.centerOn(current_center_pos)
 
     @validate_protocol
     def model_type(self) -> str:
@@ -84,6 +106,29 @@ class QRelionPipelineFlowChart(QtW.QWidget):
     def closeEvent(self, a0):
         self.widget_closed_callback()
         return super().closeEvent(a0)
+
+    def _update_finder(self):
+        self._finder.clear()
+        pipeline = self._flow_chart._pipeline
+        for info in pipeline.iter_nodes():
+            jobxxx = info.path.stem
+            if jobxxx.startswith("job"):
+                jobxxx = jobxxx[3:]
+            display_text = (
+                f"{jobxxx}: {JOB_ID_MAP.get(info.type_label, info.type_label)}"
+            )
+            self._finder.addItem(display_text, info)  # text, userData
+        self._finder.setCurrentText("")
+        self._finder_initialized = True
+
+    def _move_to_job(self, index: int):
+        if isinstance(info := self._finder.itemData(index), RelionJobInfo):
+            for node in self._flow_chart._node_map.values():
+                item = node.item()
+                assert isinstance(item, RelionJobNodeItem)
+                if item._job == info:
+                    self._flow_chart.center_on_item(item)
+                    return
 
     @thread_worker(start_thread=True)
     def _watch_default_pipeline_star(self, path):
@@ -109,35 +154,37 @@ class QRelionPipelineFlowChart(QtW.QWidget):
             yield
 
 
-class QRelionPipelineFlowChartView(QFlowChartWidget):
-    def __init__(self, ui: MainWindow):
-        super().__init__()
+class QRelionPipelineFlowChartView(QFlowChartView):
+    def __init__(self, ui: MainWindow, scene):
+        super().__init__(scene)
         # self.view.item_right_clicked.connect(self._on_right_clicked)
         self._ui = ui
         self._pipeline = RelionDefaultPipeline([])
         self._relion_project_dir: Path = Path.cwd()
-        self.view.item_left_double_clicked.connect(self._on_item_double_clicked)
+        self.item_left_double_clicked.connect(self._on_item_double_clicked)
 
     def add_pipeline(self, pipeline: RelionDefaultPipeline) -> None:
+        if not isinstance(pipeline, RelionDefaultPipeline):
+            raise TypeError("Model value must be a RelionDefaultPipeline.")
         self._pipeline = pipeline
         for info in pipeline._nodes:
-            if info.path not in self.view._node_map:
+            if info.path not in self._node_map:
                 self._add_job_node_item(info)
 
     def clear_all(self) -> None:
-        self.scene.clear()
-        self.view._node_map.clear()
+        self.scene().clear()
+        self._node_map.clear()
 
     def _add_job_node_item(self, info: RelionJobInfo) -> None:
         parents: list[Path] = []
         for parent in info.parents:
             parent_info = parent.node
-            if parent_info.path not in self.view._node_map:
+            if parent_info.path not in self._node_map:
                 self._add_job_node_item(parent_info)
             if parent_info.path not in parents:
                 parents.append(parent_info.path)
         item = RelionJobNodeItem(info)
-        self.view.add_child(item, parents=parents)
+        self.add_child(item, parents=parents)
 
     def _on_item_double_clicked(self, item: RelionJobNodeItem):
         # open the item
@@ -146,7 +193,7 @@ class QRelionPipelineFlowChartView(QFlowChartWidget):
             # if already opened, switch to it
             for i_tab, tab in self._ui.tabs.enumerate():
                 for i_window, window in tab.enumerate():
-                    if window.model_type() != Type.RELION_JOB:
+                    if is_subtype(window.model_type(), Type.RELION_JOB):
                         continue
                     try:
                         val = window.value
@@ -159,6 +206,12 @@ class QRelionPipelineFlowChartView(QFlowChartWidget):
             self._ui.read_file(path)
         else:
             raise FileNotFoundError(f"File {path} does not exist.")
+
+    def center_on_item(self, item: RelionJobNodeItem):
+        if node := self._node_map.get(item.id()):
+            center = node.center()
+            self.centerOn(center)
+            node.setSelected(True)
 
 
 class RelionJobNodeItem(BaseNodeItem):
@@ -205,3 +258,7 @@ class RelionJobNodeItem(BaseNodeItem):
     def content(self) -> str:
         """Return the content of the node, default is the text"""
         return self.text()
+
+    def job_dir(self, relion_dir: Path) -> JobDirectory:
+        """Return the job directory"""
+        return JobDirectory(relion_dir / self._job.path)

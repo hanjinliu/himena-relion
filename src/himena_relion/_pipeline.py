@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Sequence
+from typing import Iterator, Sequence
 from enum import Enum
 from pathlib import Path
 from dataclasses import dataclass, field
@@ -19,6 +19,9 @@ class RelionDefaultPipeline(Sequence["RelionJobInfo"]):
 
     def __iter__(self):
         return iter(self._nodes)
+
+    def iter_nodes(self) -> Iterator[RelionJobInfo]:
+        yield from self._nodes
 
     @classmethod
     def from_pipeline_star(cls, star_path: Path) -> RelionDefaultPipeline:
@@ -72,7 +75,7 @@ class NodeStatus(Enum):
 
 @dataclass
 class RelionJobInfo:
-    path: Path
+    path: Path  # The relative path
     type_label: str
     alias: str | None
     parents: list[RelionOutputFile]

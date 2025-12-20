@@ -331,25 +331,6 @@ class MotionCorrectionJobDirectory(JobDirectory):
         return CorrectedTiltSeriesInfo.from_series(row)
 
 
-# _rlnTomoTiltMovieFrameCount #1
-# _rlnTomoNominalStageTiltAngle #2
-# _rlnTomoNominalTiltAxisAngle #3
-# _rlnMicrographPreExposure #4
-# _rlnTomoNominalDefocus #5
-# _rlnCtfPowerSpectrum #6
-# _rlnMicrographNameEven #7
-# _rlnMicrographNameOdd #8
-# _rlnMicrographMetadata #9
-# _rlnAccumMotionTotal #10
-# _rlnAccumMotionEarly #11
-# _rlnAccumMotionLate #12
-# _rlnCtfImage #13
-# _rlnDefocusU #14
-# _rlnDefocusV #15
-# _rlnCtfAstigmatism #16
-# _rlnDefocusAngle #17
-# _rlnCtfFigureOfMerit #18
-# _rlnCtfMaxResolution #19
 class CtfCorrectedTiltSeriesInfo(CorrectedTiltSeriesInfo):
     """Data class for CTF-corrected tilt series information."""
 
@@ -1115,6 +1096,23 @@ class RemoveDuplicatesJobDirectory(JobDirectory):
     def particles_removed_star(self) -> Path:
         """Return the path to the particles_removed star file."""
         return self.path / "particles_removed.star"
+
+
+class CtfRefineTomoJobDirectory(JobDirectory):
+    """Class for handling CTF refinement job directories in RELION."""
+
+    _job_type = "relion.ctfrefinetomo"
+
+    def iter_tilt_series_path(self) -> Iterator[Path]:
+        """Iterate over all motion correction info as DataFrames."""
+        ts_dir = self.path / "tilt_series"
+        yield from ts_dir.glob("*.star")
+
+
+class FrameAlignTomoJobDirectory(JobDirectory):
+    """Class for handling frame alignment job directories in RELION."""
+
+    _job_type = "relion.framealigntomo"
 
 
 # class JoinStarJobDirectory(JobDirectory):

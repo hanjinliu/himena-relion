@@ -1,7 +1,7 @@
 from typing import Annotated, Any
 
 from himena_relion._job_class import _RelionBuiltinJob, connect_jobs
-from himena_relion._widgets._path_input import PathDrop
+from himena_relion._widgets._magicgui import PathDrop, BfactorEdit
 from himena_relion import _configs
 
 
@@ -42,12 +42,39 @@ REF_TYPE = Annotated[
         "group": "I/O",
     },
 ]
+MAP_TYPE = Annotated[
+    str,
+    {
+        "label": "Input 3D map",
+        "widget_type": PathDrop,
+        "type_label": "DensityMap",
+        "group": "I/O",
+    },
+]
+HALFMAP_TYPE = Annotated[
+    str,
+    {
+        "label": "One of the half-maps",
+        "widget_type": PathDrop,
+        "type_label": "DensityMap.mrc.halfmap",
+        "group": "I/O",
+    },
+]
 MASK_TYPE = Annotated[
     str,
     {
-        "label": "Reference mask",
+        "label": "Reference mask (optional)",
         "widget_type": PathDrop,
         "type_label": "Mask3D",
+        "group": "I/O",
+    },
+]
+PROCESS_TYPE = Annotated[
+    str,
+    {
+        "label": "Input postprocess STAR",
+        "widget_type": PathDrop,
+        "type_label": "ProcessData",
         "group": "I/O",
     },
 ]
@@ -114,7 +141,7 @@ ANG_SAMPLING_TYPE = Annotated[
             "0.5 degrees",
             "0.2 degrees",
             "0.1 degrees",
-        ],  # fmt: skip
+        ],
         "group": "Sampling",
     },
 ]
@@ -140,7 +167,7 @@ LOC_ANG_SAMPLING_TYPE = Annotated[
             "0.5 degrees",
             "0.2 degrees",
             "0.1 degrees",
-        ],  # fmt: skip
+        ],
         "group": "Sampling",
     },
 ]
@@ -199,9 +226,18 @@ DO_PREREAD_TYPE = Annotated[
 DO_COMBINE_THRU_DISC_TYPE = Annotated[
     bool, {"label": "Combine iterations through disc", "group": "Running"}
 ]
-# others
 USE_GPU_TYPE = Annotated[bool, {"label": "Use GPU acceleration", "group": "Compute"}]
 GPU_IDS_TYPE = Annotated[str, {"label": "GPU IDs", "group": "Compute"}]
+# sharpen
+B_FACTOR_TYPE = Annotated[
+    dict,
+    {
+        "label": "B-factor",
+        "widget_type": BfactorEdit,
+        "group": "Sharpen",
+    },
+]
+# running
 MPI_TYPE = Annotated[
     int,
     {"label": "Number of MPI processes", "min": 1, "max": 64, "group": "Running"},
@@ -225,7 +261,13 @@ MIN_DEDICATED_TYPE = Annotated[
 ]
 
 
-class _MotionCorrJobBase(_RelionBuiltinJob):
+class _Relion5Job(_RelionBuiltinJob):
+    @classmethod
+    def command_palette_title_prefix(cls):
+        return "RELION 5:"
+
+
+class _MotionCorrJobBase(_Relion5Job):
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
         kwargs["fn_motioncor2_exe"] = _configs.get_motioncor2_exe()
@@ -419,7 +461,7 @@ class MotionCorrOwnJob(_MotionCorrJobBase):
         raise NotImplementedError("This is a builtin job placeholder.")
 
 
-class CtfEstimationJob(_RelionBuiltinJob):
+class CtfEstimationJob(_Relion5Job):
     @classmethod
     def type_label(cls) -> str:
         return "relion.ctffind.ctffind4"
@@ -497,7 +539,7 @@ class CtfEstimationJob(_RelionBuiltinJob):
         raise NotImplementedError("This is a builtin job placeholder.")
 
 
-class Class3DJob(_RelionBuiltinJob):
+class Class3DJob(_Relion5Job):
     @classmethod
     def type_label(cls) -> str:
         return "relion.class3d"
@@ -634,7 +676,7 @@ class Class3DJob(_RelionBuiltinJob):
         raise NotImplementedError("This is a builtin job placeholder.")
 
 
-class Refine3DJob(_RelionBuiltinJob):
+class Refine3DJob(_Relion5Job):
     @classmethod
     def type_label(cls) -> str:
         return "relion.refine3d"
@@ -754,8 +796,113 @@ class Refine3DJob(_RelionBuiltinJob):
         raise NotImplementedError("This is a builtin job placeholder.")
 
 
+# TODO: SelectInteractive
+# TODO: SelectRemoveDuplicates
+
+
+class MaskCreationJob(_Relion5Job):
+    @classmethod
+    def type_label(cls) -> str:
+        return "relion.maskcreate"
+
+    def run(
+        self,
+        fn_in: MAP_TYPE = "",
+        lowpass_filter: Annotated[
+            float, {"label": "Lowpass filter (A)", "group": "Mask"}
+        ] = 15,
+        angpix: Annotated[float, {"label": "Pixel size (A)", "group": "Mask"}] = -1,
+        inimask_threshold: Annotated[
+            float, {"label": "Initial binarisation threshold", "group": "Mask"}
+        ] = 0.02,
+        extend_inimask: Annotated[
+            int, {"label": "Extend binary map (pixels)", "group": "Mask"}
+        ] = 3,
+        width_mask_edge: Annotated[
+            int, {"label": "Soft edge (pixels)", "group": "Mask"}
+        ] = 3,
+        do_helix: DO_HELIX_TYPE = False,
+        helical_z_percentage: HELICAL_Z_PERCENTAGE_TYPE = 30,
+        # Running
+        nr_threads: THREAD_TYPE = 1,
+        do_queue: DO_QUEUE_TYPE = False,
+        min_dedicated: MIN_DEDICATED_TYPE = 1,
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")
+
+
+class PostProcessingJob(_Relion5Job):
+    @classmethod
+    def type_label(cls) -> str:
+        return "relion.postprocess"
+
+    @classmethod
+    def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
+        kwargs = super().normalize_kwargs(**kwargs)
+        b_factor = kwargs.get("b_factor", {})
+        assert isinstance(b_factor, dict), f"b_factor must be a dict, got {b_factor!r}"
+        kwargs["do_auto_bfac"] = b_factor.get("do_auto_bfac", True)
+        kwargs["autob_lowres"] = b_factor.get("autob_lowres", 10)
+        kwargs["do_adhoc_bfac"] = b_factor.get("do_adhoc_bfac", False)
+        kwargs["adhoc_bfac"] = b_factor.get("adhoc_bfac", -1000)
+        return kwargs
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
+        kwargs = super().normalize_kwargs_inv(**kwargs)
+        do_auto_bfac = kwargs.pop("do_auto_bfac", True)
+        autob_lowres = kwargs.pop("autob_lowres", 10)
+        do_adhoc_bfac = kwargs.pop("do_adhoc_bfac", False)
+        adhoc_bfac = kwargs.pop("adhoc_bfac", -1000)
+        kwargs["b_factor"] = {
+            "do_auto_bfac": do_auto_bfac,
+            "autob_lowres": autob_lowres,
+            "do_adhoc_bfac": do_adhoc_bfac,
+            "adhoc_bfac": adhoc_bfac,
+        }
+        return kwargs
+
+    def run(
+        self,
+        # I/O
+        fn_in: HALFMAP_TYPE = "",
+        fn_mask: MASK_TYPE = "",
+        angpix: Annotated[
+            float, {"label": "Calibrated pixel size (A)", "group": "I/O"}
+        ] = -1,
+        # Sharpen
+        b_factor: B_FACTOR_TYPE = None,
+        do_skip_fsc_weighting: Annotated[
+            bool, {"label": "Skip FSC-weighting", "group": "Sharpen"}
+        ] = False,
+        low_pass: Annotated[
+            float, {"label": "Low-pass filter (A)", "group": "Sharpen"}
+        ] = 5,
+        fn_mtf: Annotated[
+            str, {"label": "MTF of the detector", "group": "Sharpen"}
+        ] = "",
+        mtf_angpix: Annotated[
+            float, {"label": "MTF pixel size (A)", "group": "Sharpen"}
+        ] = 1,
+        # Running
+        do_queue: DO_QUEUE_TYPE = False,
+        min_dedicated: MIN_DEDICATED_TYPE = 1,
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")
+
+
 connect_jobs(
     MotionCorr2Job,
     CtfEstimationJob,
     node_mapping={"corrected_micrographs.star": "input_star_mics"},
+)
+connect_jobs(
+    Refine3DJob,
+    MaskCreationJob,
+    node_mapping={"run_class001.mrc": "fn_in"},
+)
+connect_jobs(
+    Refine3DJob,
+    PostProcessingJob,
+    node_mapping={"run_half1_class001_unfil.mrc": "fn_in"},
 )
