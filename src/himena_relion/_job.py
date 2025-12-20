@@ -116,10 +116,12 @@ class JobDirectory:
         from himena_relion._job_class import iter_relion_jobs
 
         fp = self.job_star()
-        job_type = starfile.read(fp)["job"]["rlnJobTypeLabel"]
+        job_block = starfile.read(fp, read_n_blocks=1)
+        job_type = job_block["rlnJobTypeLabel"]
+        is_tomo = bool(int(job_block["rlnJobIsTomo"]))
 
         for subcls in iter_relion_jobs():
-            if subcls.type_label() == job_type:
+            if subcls.type_label() == job_type and subcls.job_is_tomo() == is_tomo:
                 return subcls
         return None
 

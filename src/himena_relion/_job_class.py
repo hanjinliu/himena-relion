@@ -165,6 +165,13 @@ class RelionJob(ABC):
         scheduler.set_schedule_mode()
         return scheduler
 
+    @classmethod
+    def job_is_tomo(cls) -> bool:
+        """Return whether this job is a tomogram job."""
+        # Jobs defined in relion --tomo gui does NOT mean that they are always tomo
+        # jobs.
+        return False
+
 
 class _RelionBuiltinJob(RelionJob):
     @classmethod
@@ -214,10 +221,6 @@ class _RelionBuiltinJob(RelionJob):
             kwargs=cls.normalize_kwargs(**kwargs),
             is_tomo=int(cls.job_is_tomo()),
         )
-
-    @classmethod
-    def job_is_tomo(cls) -> bool:
-        return False
 
 
 def prep_builtin_job_star(

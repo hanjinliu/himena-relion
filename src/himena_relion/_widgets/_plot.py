@@ -16,6 +16,12 @@ class QPlotCanvas(QModelMatplotlibCanvas):
         self.setParent(parent)
         self.setMaximumSize(400, 280)
 
+    def clear(self):
+        """Clear the plot."""
+        with self._plot_style():
+            fig = hplt.figure()
+            self.update_model(WidgetDataModel(value=fig, type=StandardType.PLOT))
+
     def plot_defocus(self, df: pd.DataFrame):
         with self._plot_style():
             fig = hplt.figure()

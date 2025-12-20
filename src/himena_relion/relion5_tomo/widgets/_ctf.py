@@ -68,6 +68,13 @@ class QCtfFindViewer(QJobScrollArea):
             self._ts_choice.setCurrentIndex(
                 min(index if index >= 0 else 0, len(choices) - 1)
             )
+        else:
+            # clear everything
+            self._defocus_canvas.clear()
+            self._astigmatism_canvas.clear()
+            self._defocus_angle_canvas.clear()
+            self._max_resolution_canvas.clear()
+            self._viewer.set_array_view(None)
 
     def _ts_choice_changed(self, text: str):
         """Update the viewer when the selected tomogram changes."""
