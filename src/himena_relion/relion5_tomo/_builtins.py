@@ -906,11 +906,17 @@ class CtfRefineTomoJob(_Relion5TomoJob):
 
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
-        return norm_optim(**super().normalize_kwargs(**kwargs))
+        kwargs = norm_optim(**super().normalize_kwargs(**kwargs))
+        if "lambda" not in kwargs:
+            kwargs["lambda"] = kwargs.pop("lambda_param", 0.1)
+        return kwargs
 
     @classmethod
     def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
-        return norm_optim_inv(**super().normalize_kwargs_inv(**kwargs))
+        kwargs = norm_optim_inv(**super().normalize_kwargs_inv(**kwargs))
+        if "lambda" in kwargs:
+            kwargs["lambda_param"] = kwargs.pop("lambda")
+        return kwargs
 
     def run(
         self,

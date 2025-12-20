@@ -3,7 +3,9 @@ from __future__ import annotations
 from magicgui.widgets.bases import ValuedContainerWidget
 from magicgui.types import Undefined
 from himena.qt.magicgui import ToggleSwitch, FloatEdit
-from ._path_input import PathDrop
+
+from himena_relion._job_class import parse_string
+from himena_relion._widgets._path_input import PathDrop
 
 
 class OptimisationSetEdit(ValuedContainerWidget):
@@ -11,10 +13,10 @@ class OptimisationSetEdit(ValuedContainerWidget):
 
     def __init__(self, **kwargs):
         self._toggle_switch = ToggleSwitch(text="Use direct entries", value=False)
-        self._in_opt = PathDrop("", "TomoOptimisationSet")
-        self._in_particles = PathDrop("", "ParticleGroupMetadata")
-        self._in_tomograms = PathDrop("", "TomogramGroupMetadata")
-        self._in_trajectories = PathDrop("", "TomoTrajectoryData")
+        self._in_opt = PathDrop("", type_label="TomoOptimisationSet")
+        self._in_particles = PathDrop("", type_label="ParticleGroupMetadata")
+        self._in_tomograms = PathDrop("", type_label="TomogramGroupMetadata")
+        self._in_trajectories = PathDrop("", type_label="TomoTrajectoryData")
         widgets = [
             self._toggle_switch,
             self._in_opt,
@@ -60,7 +62,9 @@ class OptimisationSetEdit(ValuedContainerWidget):
                     or "in_tomograms" in value
                     or "in_trajectories" in value
                 )
-                self._toggle_switch.value = value.get("use_direct_entries", use_direct)
+                val = value.get("use_direct_entries", use_direct)
+                self._toggle_switch.value = parse_string(val, bool)
+                self._toggle_switch.value = val
             else:
                 raise ValueError("Value must be a dict or Undefined.")
         self.changed.emit(self.get_value())
@@ -106,7 +110,7 @@ class BfactorEdit(ValuedContainerWidget):
                 self._user_bfactor.value = -1000.0
             elif isinstance(value, dict):
                 do_auto = value.get("do_auto_bfac", True)
-                self._toggle_switch.value = not do_auto
+                self._toggle_switch.value = not parse_string(do_auto, bool)
                 self._auto_lowres.value = value.get("autob_lowres", 10.0)
                 self._user_bfactor.value = value.get("adhoc_bfac", -1000.0)
             else:

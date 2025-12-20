@@ -18,6 +18,7 @@ from himena_relion._widgets._job_widgets import (
     QRunOutLog,
     QNoteLog,
     QJobPipelineViewer,
+    QJobParameterView,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -58,6 +59,7 @@ class QRelionJobWidget(QtW.QWidget):
             self.add_job_widget(wdt)
 
         self.add_job_widget(QJobPipelineViewer())
+        self.add_job_widget(QJobParameterView())
         self.add_job_widget(QRunOutLog())
         self.add_job_widget(QRunErrLog())
         self.add_job_widget(QNoteLog())

@@ -8,12 +8,13 @@ from typing import Iterator
 from qtpy import QtWidgets as QtW, QtGui, QtCore
 from superqt import QToggleSwitch
 from superqt.utils import qthrottled
-from himena_relion import _job
 from himena.consts import MonospaceFontFamily
 from himena.widgets import current_instance
 from himena.qt import drag_files, QColoredSVGIcon
+from himena_relion import _job, _job_class
 from himena_relion._utils import read_icon_svg, read_icon_svg_for_type
 from himena_relion._pipeline import RelionPipeline
+from himena_relion._widgets._job_edit import QJobParameter
 
 
 class JobWidgetBase:
@@ -143,6 +144,8 @@ class QNoteLog(QTextEditBase):
 
 
 class QJobPipelineViewer(QtW.QWidget, JobWidgetBase):
+    """Widget to view the input and output nodes of a RELION job."""
+
     def __init__(self):
         super().__init__()
         layout = QtW.QVBoxLayout(self)
@@ -211,7 +214,22 @@ class QJobPipelineViewer(QtW.QWidget, JobWidgetBase):
                 yield item_widget
 
     def tab_title(self) -> str:
-        return "Pipeline"
+        return "In/Out"
+
+
+class QJobParameterView(QJobParameter, JobWidgetBase):
+    def initialize(self, job_dir: _job.JobDirectory):
+        self.clear_content()
+        if job_cls := job_dir._to_job_class():
+            self.update_by_job(job_cls)
+            if issubclass(job_cls, _job_class._RelionBuiltinJob):
+                self.set_parameters(
+                    job_cls.normalize_kwargs_inv(**job_dir.get_job_params_as_dict()),
+                    enabled=False,
+                )
+
+    def tab_title(self) -> str:
+        return "Parameters"
 
 
 class QRelionNodeList(QtW.QListWidget):
@@ -267,6 +285,9 @@ class QRelionNodeItem(QtW.QWidget):
         self.setToolTip(f"{self._filepath_rel.as_posix()}\nType: {self._filetype}")
 
         layout.addWidget(widget_file)
+        widget_file.setSizePolicy(
+            QtW.QSizePolicy.Policy.Expanding, QtW.QSizePolicy.Policy.Preferred
+        )
         self._press_pos = QtCore.QPoint()
 
     def file_type_category(self) -> str | None:

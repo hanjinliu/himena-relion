@@ -31,18 +31,8 @@ class QJobScheduler(QtW.QWidget):
         font.setPointSize(font.pointSize() + 3)
         self._title_label.setFont(font)
         layout.addWidget(self._title_label)
-        self._scroll_area = QtW.QScrollArea()
-        self._scroll_area.setWidgetResizable(True)
-        layout.addWidget(self._scroll_area)
-        self._scroll_area_inner = QtW.QWidget()
-        self._scroll_area.setWidget(self._scroll_area_inner)
-        self._param_layout = QtW.QVBoxLayout(self._scroll_area_inner)
-        self._param_layout.setContentsMargins(0, 0, 0, 0)
+        self._job_param_widget = QJobParameter()
         self._exec_btn = QtW.QPushButton("Run Job")  # TODO: support scheduling
-        layout.addWidget(self._exec_btn)
-        self._current_job_cls: type[RelionJob] | None = None
-        self._mgui_widgets: list[ValueWidget] = []
-        self._groupboxes: list[QtW.QGroupBox] = []
         self._exec_btn.clicked.connect(self._exec_action)
         self._mode: Mode = ScheduleMode()
 
@@ -52,11 +42,7 @@ class QJobScheduler(QtW.QWidget):
     def _set_content(self, job_cls: type[RelionJob] | None, title: str):
         self._current_job_cls = job_cls
         self._title_label.setText(f"<b><span style='color: gray;'>{title}</span></b>")
-        for groupbox in self._groupboxes:
-            self._param_layout.removeWidget(groupbox)
-            groupbox.deleteLater()
-        self._mgui_widgets.clear()
-        self._groupboxes.clear()
+        self._job_param_widget.clear_content()
 
     def clear_content(self):
         self._set_content(None, "No job selected")
@@ -64,6 +50,56 @@ class QJobScheduler(QtW.QWidget):
     def update_by_job(self, job_cls: type[RelionJob]):
         """Update the widget based on the job directory."""
         self._set_content(job_cls, job_cls.job_title())
+        self._job_param_widget.update_by_job(job_cls)
+
+    def set_parameters(self, params: dict):
+        if (job_cls := self._current_job_cls) is None:
+            raise RuntimeError("No job class selected.")
+        if issubclass(job_cls, _RelionBuiltinJob):
+            params = job_cls.normalize_kwargs_inv(**params)
+        self._job_param_widget.set_parameters(params)
+
+    def get_parameters(self) -> dict[str, Any]:
+        """Get the parameters from the widgets."""
+        if self._current_job_cls is None:
+            raise RuntimeError("No job class selected.")
+        return self._job_param_widget.get_parameters()
+
+    def set_schedule_mode(self):
+        self._set_mode(ScheduleMode())
+
+    def set_edit_mode(self, job_dir: _job.JobDirectory):
+        self._set_mode(EditMode(job_dir))
+
+    def _set_mode(self, mode: Mode):
+        self._mode = mode
+        self._exec_btn.setText(mode.button_text())
+
+    def _exec_action(self):
+        self._mode.exec(self)
+
+
+class QJobParameter(QtW.QScrollArea):
+    def __init__(self):
+        super().__init__()
+        self.setWidgetResizable(True)
+        self._scroll_area_inner = QtW.QWidget()
+        self.setWidget(self._scroll_area_inner)
+        self._param_layout = QtW.QVBoxLayout(self._scroll_area_inner)
+        self._param_layout.setContentsMargins(0, 0, 0, 0)
+        self._mgui_widgets: list[ValueWidget] = []
+        self._groupboxes: list[QtW.QGroupBox] = []
+
+    def clear_content(self):
+        for groupbox in self._groupboxes:
+            self._param_layout.removeWidget(groupbox)
+            groupbox.deleteLater()
+        self._mgui_widgets.clear()
+        self._groupboxes.clear()
+
+    def update_by_job(self, job_cls: type[RelionJob]):
+        """Update the widget based on the job directory."""
+        self.clear_content()
 
         sig = job_cls._signature()
         typemap = _mgui.get_type_map()
@@ -92,16 +128,14 @@ class QJobScheduler(QtW.QWidget):
             self._param_layout.addWidget(gb)
             self._groupboxes.append(gb)
 
-    def set_parameters(self, params: dict):
+    def set_parameters(self, params: dict, enabled: bool = True):
+        # NOTE: params must be normalized already
         params = params.copy()
-        if (job_cls := self._current_job_cls) is None:
-            raise RuntimeError("No job class selected.")
-        if issubclass(job_cls, _RelionBuiltinJob):
-            params = job_cls.normalize_kwargs_inv(**params)
         for widget in self._mgui_widgets:
             if widget.name in params:
                 new_value = params.pop(widget.name)
                 widget.value = parse_string(new_value, widget.annotation)
+            widget.enabled = enabled
         if params:
             _LOGGER.warning(
                 f"Parameters not found in job directory: {list(params.keys())}"
@@ -109,25 +143,10 @@ class QJobScheduler(QtW.QWidget):
 
     def get_parameters(self) -> dict[str, Any]:
         """Get the parameters from the widgets."""
-        if self._current_job_cls is None:
-            raise RuntimeError("No job class selected.")
         params = {}
         for widget in self._mgui_widgets:
             params[widget.name] = widget.value
         return params
-
-    def set_schedule_mode(self):
-        self._set_mode(ScheduleMode())
-
-    def set_edit_mode(self, job_dir: _job.JobDirectory):
-        self._set_mode(EditMode(job_dir))
-
-    def _set_mode(self, mode: Mode):
-        self._mode = mode
-        self._exec_btn.setText(mode.button_text())
-
-    def _exec_action(self):
-        self._mode.exec(self)
 
 
 class Mode(ABC):
@@ -142,13 +161,14 @@ class Mode(ABC):
 
 class ScheduleMode(Mode):
     def exec(self, widget: QJobScheduler):
-        if widget._current_job_cls is None:
+        if (job_cls := widget._current_job_cls) is None:
             raise RuntimeError("No job class selected.")
         params = widget.get_parameters()
-        proc = widget._current_job_cls.create_and_run_job(**params)
+        proc = job_cls.create_and_run_job(**params)
         widget.clear_content()
         if isinstance(proc, RelionJobExecution):
             widget._ui.read_file(proc.job_directory)
+            widget._ui.show_notification(f"Job '{job_cls.job_title()}' launched.")
 
     def button_text(self) -> str:
         return "Run Job"
@@ -169,6 +189,7 @@ class EditMode(Mode):
         params = widget.get_parameters()
         job.edit_and_run_job(**params)
         widget.clear_content()
+        widget._ui.show_notification(f"Job '{job_cls.job_title()}' edited and rerun.")
 
     def button_text(self) -> str:
         return "Overwrite And Run"

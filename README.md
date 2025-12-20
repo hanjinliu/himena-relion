@@ -17,10 +17,10 @@ it for your real data processing.
 
 ## Highlights
 
-- [x] View (most of the) RELION tomography jobs.
+- [x] View RELION SPA (WIP) and tomography jobs.
 - [x] Efficient 2D/3D rendering over SSH using [vispy](https://github.com/vispy/vispy) and EGL.
 - [x] View job flowchart, and open jobs from the flowchart.
-- [x] Drag-and-drop support for job inputs and outputs.
+- [x] Run RELION jobs from the GUI. Drag-and-drop support for job inputs from outputs.
 - [x] Make implementing "external" jobs type-safer and more python-friendly.
 
 ![](images/post-process.png)
@@ -40,12 +40,6 @@ himena --new em  # create a new profile named "em"
 himena em --install himena-relion  # install the plugin into "em" profile
 himena em  # launch the GUI with "em" profile
 ```
-
-## Roadmap
-
-- [ ] Documentation.
-- [ ] Run RELION jobs from the GUI.
-- [ ] Support single particle analysis jobs.
 
 ## License
 
