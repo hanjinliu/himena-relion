@@ -1,8 +1,11 @@
 from __future__ import annotations
 from pathlib import Path
 import logging
+import numpy as np
+import pandas as pd
 from qtpy import QtWidgets as QtW
 import starfile
+from himena_relion._image_readers._array import ArrayFilteredView
 from himena_relion._widgets import (
     QJobScrollArea,
     Q2DViewer,
@@ -47,7 +50,7 @@ class QCtfFindViewer(QJobScrollArea):
     def on_job_updated(self, job_dir: _job.CtfCorrectionJobDirectory, path: str):
         """Handle changes to the job directory."""
         if Path(path).suffix == ".ctf":
-            self._process_update(job_dir)
+            self._process_update()
             _LOGGER.debug("%s Updated", self._job_dir.job_id)
 
     def initialize(self, job_dir: _job.CtfCorrectionJobDirectory):
@@ -57,9 +60,7 @@ class QCtfFindViewer(QJobScrollArea):
         self._viewer.auto_fit()
 
     def _process_update(self):
-        choices = [
-            p.tomo_tilt_series_star_file.stem for p in self._job_dir.iter_tilt_series()
-        ]
+        choices = [p.stem for p in self._job_dir.iter_tilt_series_path()]
         index = self._ts_choice.currentIndex()
         self._ts_choice.clear()
         self._ts_choice.addItems(choices)
@@ -73,16 +74,26 @@ class QCtfFindViewer(QJobScrollArea):
         job_dir = self._job_dir
         if job_dir is None:
             return
-        for info in job_dir.iter_tilt_series():
-            if info.tomo_tilt_series_star_file.stem == text:
+        for path in job_dir.iter_tilt_series_path():
+            if path.stem == text:
                 break
         else:
             return
-        ts_view = info.read_ctf_series(job_dir.relion_project_dir)
-        self._defocus_canvas.plot_defocus(ts_view.dataframe)
-        self._astigmatism_canvas.plot_ctf_astigmatism(ts_view.dataframe)
-        self._defocus_angle_canvas.plot_ctf_defocus_angle(ts_view.dataframe)
-        self._max_resolution_canvas.plot_ctf_max_resolution(ts_view.dataframe)
+        df = starfile.read(path)
+        assert isinstance(df, pd.DataFrame)
+        rln_dir = job_dir.relion_project_dir
+        paths = [rln_dir / p for p in df["rlnCtfImage"]]
+        if "rlnTomoNominalStageTiltAngle" in df:
+            tilt_angles = df["rlnTomoNominalStageTiltAngle"]
+            order = np.argsort(tilt_angles)
+            paths = [paths[i] for i in order]
+            df = df.iloc[order].reset_index(drop=True)
+        ts_view = ArrayFilteredView.from_mrcs(paths)
+
+        self._defocus_canvas.plot_defocus(df)
+        self._astigmatism_canvas.plot_ctf_astigmatism(df)
+        self._defocus_angle_canvas.plot_ctf_defocus_angle(df)
+        self._max_resolution_canvas.plot_ctf_max_resolution(df)
         self._viewer.set_array_view(ts_view)
 
 

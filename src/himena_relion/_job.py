@@ -174,6 +174,27 @@ class JobDirectory:
                 shutil.rmtree(item)
 
 
+class HasFrameJobDirectory(JobDirectory):
+    def iter_frames(self, pattern: str) -> Iterator[Path]:
+        """Iterate over all motion correction info as DataFrames."""
+        frames_dir = self.path / "frames"
+        yield from frames_dir.glob(pattern)
+
+
+class HasTiltSeriesJobDirectory(JobDirectory):
+    def iter_tilt_series_path(self) -> Iterator[Path]:
+        """Iterate over all motion correction info as DataFrames."""
+        ts_dir = self.path / "tilt_series"
+        yield from ts_dir.glob("*.star")
+
+
+class HasTomogramsJobDirectory(JobDirectory):
+    def iter_tomograms(self) -> Iterator[Path]:
+        """Iterate over all tomogram info as DataFrames."""
+        tomo_dir = self.path / "tomograms"
+        yield from tomo_dir.glob("*.mrc")
+
+
 MINIMUM_FILES_TO_KEEP = ["job.star", "job_pipeline.star", "note.txt"]
 
 
@@ -283,7 +304,7 @@ class TiltSeriesInfo:
         return view
 
 
-class ImportJobDirectory(JobDirectory):
+class ImportJobDirectory(HasFrameJobDirectory):
     """Class for handling import job directories in RELION."""
 
     _job_type = "relion.importtomo"
@@ -311,7 +332,7 @@ class CorrectedTiltSeriesInfo(TiltSeriesInfo):
         return out
 
 
-class MotionCorrectionJobDirectory(JobDirectory):
+class MotionCorrectionJobDirectory(HasFrameJobDirectory):
     """Class for handling motion correction job directories in RELION."""
 
     _job_type = "relion.motioncorr.own"
@@ -359,7 +380,7 @@ class CtfCorrectedTiltSeriesInfo(CorrectedTiltSeriesInfo):
         return self._read_image_series(rln_dir, "rlnCtfImage")
 
 
-class CtfCorrectionJobDirectory(JobDirectory):
+class CtfCorrectionJobDirectory(HasTiltSeriesJobDirectory):
     """Class for handling CTF correction job directories in RELION."""
 
     _job_type = "relion.ctffind.ctffind4"
@@ -389,7 +410,7 @@ class SelectedTiltSeriesInfo(CorrectedTiltSeriesInfo):
         return out
 
 
-class ExcludeTiltSeriesJobDirectory(JobDirectory):
+class ExcludeTiltSeriesJobDirectory(HasTiltSeriesJobDirectory):
     """Class for handling exclude tilt series job directories in RELION."""
 
     _job_type = "relion.excludetilts"
@@ -438,7 +459,7 @@ class AlignedTiltSeriesInfo(SelectedTiltSeriesInfo):
         return out
 
 
-class AlignTiltSeriesJobDirectory(JobDirectory):
+class AlignTiltSeriesJobDirectory(HasTiltSeriesJobDirectory):
     """Class for handling align tilt series job directories in RELION."""
 
     _job_type = "relion.aligntiltseries"
@@ -568,7 +589,7 @@ class TomogramInfo(AlignedTiltSeriesInfo):
             return ArrayFilteredView.from_mrc(rln_dir / self.reconstructed_tomogram[0])
 
 
-class TomogramJobDirectory(JobDirectory):
+class TomogramJobDirectory(HasTomogramsJobDirectory):
     """Class for handling reconstructed tomogram job directories in RELION."""
 
     _job_type = "relion.reconstructtomograms"
@@ -577,7 +598,7 @@ class TomogramJobDirectory(JobDirectory):
         """Return the path to the tomograms star file."""
         return self.path / "tomograms.star"
 
-    def iter_tomogram(self) -> Iterator[TomogramInfo]:
+    def iter_tomogram_info(self) -> Iterator[TomogramInfo]:
         """Iterate over all tilt series info."""
         star = _read_star_as_df(self.tomograms_star())
         for _, row in star.iterrows():
@@ -1107,15 +1128,10 @@ class RemoveDuplicatesJobDirectory(JobDirectory):
         return self.path / "particles_removed.star"
 
 
-class CtfRefineTomoJobDirectory(JobDirectory):
+class CtfRefineTomoJobDirectory(HasTiltSeriesJobDirectory):
     """Class for handling CTF refinement job directories in RELION."""
 
     _job_type = "relion.ctfrefinetomo"
-
-    def iter_tilt_series_path(self) -> Iterator[Path]:
-        """Iterate over all motion correction info as DataFrames."""
-        ts_dir = self.path / "tilt_series"
-        yield from ts_dir.glob("*.star")
 
 
 class FrameAlignTomoJobDirectory(JobDirectory):
