@@ -18,7 +18,11 @@ import starfile
 from himena_relion import _job, _configs
 from himena_relion._pipeline import RelionPipeline
 from himena_relion.consts import Type, MenuId, JOB_ID_MAP
-from himena_relion._utils import last_job_directory, unwrapped_annotated
+from himena_relion._utils import (
+    last_job_directory,
+    unwrapped_annotated,
+    change_name_for_tomo,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -187,18 +191,33 @@ class _RelionBuiltinJob(RelionJob):
 
     @classmethod
     def job_title(cls) -> str:
-        return JOB_ID_MAP.get(cls.type_label(), "Unknown")
+        out = JOB_ID_MAP.get(cls.type_label(), "Unknown")
+        return out
 
     @classmethod
-    def himena_model_type(cls):
-        return cls.type_label()
+    def himena_model_type(cls) -> str:
+        out = cls.type_label()
+        if cls.job_is_tomo():
+            # NOTE: Unfortunately, some relion job uses the "rlnJobIsTomo" flag to
+            # switch what to do, instead of defining a separate job type.
+            # This implementation appends "_tomo" to the job type to distinguish them.
+            # e.g. "relion.motioncor2" -> "relion.motioncor2_tomo"
+            # e.g. "relion.motioncor2.own" -> "relion.motioncor2_tomo.own"
+            # e.g. "relion.importtomo" -> "relion.importtomo"  (no change)
+            out = change_name_for_tomo(out)
+        return out
 
     @classmethod
     def prep_job_star(cls, **kwargs):
         return prep_builtin_job_star(
             type_label=cls.type_label(),
             kwargs=cls.normalize_kwargs(**kwargs),
+            is_tomo=int(cls.job_is_tomo()),
         )
+
+    @classmethod
+    def job_is_tomo(cls) -> bool:
+        return False
 
 
 def prep_builtin_job_star(

@@ -906,6 +906,11 @@ connect_jobs(
     node_mapping={"corrected_micrographs.star": "input_star_mics"},
 )
 connect_jobs(
+    Class3DJob,
+    Refine3DJob,
+    node_mapping={"run_class001.mrc": "fn_ref"},
+)
+connect_jobs(
     Refine3DJob,
     MaskCreationJob,
     node_mapping={"run_class001.mrc": "fn_in"},

@@ -132,7 +132,7 @@ def edit_relion_job(ui: MainWindow, model: WidgetDataModel):
     group="11-others",
 )
 def initialize_project_directory(ui: MainWindow):
-    text = "\n\ndata_pipeline_general\n\n_rlnPipeLineJobCounter\n"
+    text = "\n\ndata_pipeline_general\n\n_rlnPipeLineJobCounter       1\n"
     if path := ui.exec_file_dialog("d", caption="Select Project Directory"):
         path.write_text(text)
         return

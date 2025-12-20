@@ -120,3 +120,14 @@ def unwrapped_annotated(annot: Any) -> Any:
         return base_type
     else:
         return annot
+
+
+def change_name_for_tomo(type_label: str) -> str:
+    _relion, _jobname, *_others = type_label.split(".")
+    if not _jobname.endswith("tomo"):
+        if _others:
+            _others = ".".join(_others)
+            type_label = f"{_relion}.{_jobname}_tomo.{_others}"
+        else:
+            type_label = f"{_relion}.{_jobname}_tomo"
+    return type_label

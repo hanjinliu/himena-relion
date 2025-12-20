@@ -12,6 +12,7 @@ import pandas as pd
 import starfile
 import mrcfile
 from himena_relion._image_readers._array import ArrayFilteredView
+from himena_relion._utils import change_name_for_tomo
 from himena_relion.consts import (
     JOB_IMPORT_PATH_FILE,
     RelionJobState,
@@ -51,10 +52,16 @@ class JobDirectory:
         fp = Path(path)
         if fp.name != "job.star" or not fp.exists():
             raise ValueError(f"Expected an existing job.star file, got {fp}")
-        job_type = starfile.read(fp)["job"]["rlnJobTypeLabel"]
+        job_block = starfile.read(fp, read_n_blocks=1)
+        job_type = job_block["rlnJobTypeLabel"]
         cls = JobDirectory._type_map.get(job_type, JobDirectory)
         job_dir = fp.parent
         return cls(job_dir)
+
+    def is_tomo(self) -> bool:
+        """Return whether this job is a tomography job."""
+        job_block = starfile.read(self.job_star(), read_n_blocks=1)
+        return bool(int(job_block["rlnJobIsTomo"]))
 
     @property
     def job_id(self) -> str:
@@ -76,6 +83,8 @@ class JobDirectory:
             subtype = label
         else:
             subtype = "unknown"
+        if self.is_tomo():
+            subtype = change_name_for_tomo(subtype)
         return Type.RELION_JOB + "." + subtype
 
     @property

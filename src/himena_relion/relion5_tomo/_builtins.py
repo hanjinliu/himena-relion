@@ -52,6 +52,7 @@ from himena_relion.relion5._builtins import (
     GPU_IDS_TYPE,
     USE_PARALLEL_DISC_IO_TYPE,
     CtfEstimationJob,
+    Class3DJob,
     MotionCorr2Job,
     MotionCorrOwnJob,
     PostProcessingJob,
@@ -110,17 +111,29 @@ class _Relion5TomoJob(_RelionBuiltinJob):
     def command_palette_title_prefix(cls):
         return "RELION 5 Tomo:"
 
+    @classmethod
+    def command_id(cls):
+        return super().command_id() + ".tomo"
+
+    @classmethod
+    def job_is_tomo(cls) -> bool:
+        return True
+
 
 class _ImportTomoJob(_Relion5TomoJob):
     @classmethod
     def type_label(cls) -> str:
         return "relion.importtomo"
 
+    @classmethod
+    def job_is_tomo(cls):
+        return False
+
 
 class ImportTomoJob(_ImportTomoJob):
     @classmethod
     def command_id(cls):
-        return super().command_id() + ".tomo"
+        return super().command_id()
 
     @classmethod
     def job_title(cls) -> str:
@@ -131,8 +144,8 @@ class ImportTomoJob(_ImportTomoJob):
         kwargs = super().normalize_kwargs(**kwargs)
         kwargs["do_coords"] = False
         dose = kwargs.pop("dose_rate_value", {})
-        kwargs["dose_rate"] = dose.pop("do_rate", None)
-        kwargs["dose_is_per_movie_frame"] = dose.pop("dose_is_per_movie_frame")
+        kwargs["dose_rate"] = dose.pop("dose_rate", 5.0)
+        kwargs["dose_is_per_movie_frame"] = dose.pop("dose_is_per_movie_frame", False)
         return kwargs
 
     @classmethod
@@ -236,10 +249,26 @@ class ImportCoordinatesJob(_ImportTomoJob):
         raise NotImplementedError("This is a builtin job placeholder.")
 
 
+class MotionCorr2TomoJob(_Relion5TomoJob, MotionCorr2Job):
+    pass
+
+
+class MotionCorrOwnTomoJob(_Relion5TomoJob, MotionCorrOwnJob):
+    pass
+
+
+class CtfEstimationTomoJob(_Relion5TomoJob, CtfEstimationJob):
+    pass
+
+
 class ExcludeTiltJob(_Relion5TomoJob):
     @classmethod
     def type_label(cls) -> str:
         return "relion.excludetilts"
+
+    @classmethod
+    def job_is_tomo(cls):
+        return False
 
     def run(
         self,
@@ -264,6 +293,10 @@ class _AlignTiltSeriesJobBase(_Relion5TomoJob):
     @classmethod
     def type_label(cls) -> str:
         return "relion.aligntiltseries"
+
+    @classmethod
+    def job_is_tomo(cls):
+        return False
 
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
@@ -422,6 +455,10 @@ class ReconstructTomogramJob(_Relion5TomoJob):
         return "relion.reconstructtomograms"
 
     @classmethod
+    def job_is_tomo(cls):
+        return False
+
+    @classmethod
     def normalize_kwargs(cls, **kwargs):
         # kwargs["tomo_name"] = " ".join(kwargs["tomo_name"]) ???
         if "dims" in kwargs:
@@ -490,6 +527,10 @@ class PickJob(_Relion5TomoJob):
     def type_label(cls) -> str:
         return "relion.picktomo"
 
+    @classmethod
+    def job_is_tomo(cls):
+        return False
+
     def run(
         self,
         in_tomoset: IN_TILT_TYPE = "",
@@ -515,6 +556,10 @@ class ExtractParticlesTomoJob(_Relion5TomoJob):
     @classmethod
     def type_label(cls) -> str:
         return "relion.pseudosubtomo"
+
+    @classmethod
+    def job_is_tomo(cls):
+        return False
 
     @classmethod
     def normalize_kwargs(cls, **kwargs):
@@ -562,6 +607,10 @@ class _DenoiseJobBase(_Relion5TomoJob):
     @classmethod
     def type_label(cls) -> str:
         return "relion.denoisetomo"
+
+    @classmethod
+    def job_is_tomo(cls):
+        return False
 
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
@@ -687,7 +736,7 @@ class DenoisePredict(_DenoiseJobBase):
         raise NotImplementedError("This is a builtin job placeholder.")
 
 
-class InitialModel3DJob(_Relion5TomoJob):
+class InitialModelTomoJob(_Relion5TomoJob):
     @classmethod
     def type_label(cls) -> str:
         return "relion.initialmodel.tomo"
@@ -741,7 +790,7 @@ class InitialModel3DJob(_Relion5TomoJob):
         raise NotImplementedError("This is a builtin job placeholder.")
 
 
-class Class3DJob(_Relion5TomoJob):
+class Class3DTomoJob(_Relion5TomoJob, Class3DJob):
     @classmethod
     def type_label(cls) -> str:
         return "relion.class3d"
@@ -1116,14 +1165,24 @@ class CtfRefineTomoJob(_Relion5TomoJob):
 
 # class FrameAlignTomoJob(_Relion5TomoJob):
 
-for _MotionCorJob in [MotionCorr2Job, MotionCorrOwnJob]:
+for _MotionCorJob in [MotionCorr2TomoJob, MotionCorrOwnTomoJob]:
     connect_jobs(
         ImportTomoJob,
         _MotionCorJob,
         node_mapping={"tilt_series.star": "in_movies"},
     )
 connect_jobs(
-    CtfEstimationJob,
+    MotionCorr2TomoJob,
+    CtfEstimationTomoJob,
+    node_mapping={"corrected_tilt_series.star": "input_star_mics"},
+)
+connect_jobs(
+    MotionCorrOwnTomoJob,
+    CtfEstimationTomoJob,
+    node_mapping={"corrected_tilt_series.star": "input_star_mics"},
+)
+connect_jobs(
+    CtfEstimationTomoJob,
     ExcludeTiltJob,
     node_mapping={"tilt_series_ctf.star": "in_tiltseries"},
 )
@@ -1133,7 +1192,7 @@ for _AlignJob in [
     AlignTiltSeriesAreTomo2,
 ]:
     connect_jobs(
-        CtfEstimationJob,
+        CtfEstimationTomoJob,
         _AlignJob,
         node_mapping={"tilt_series_ctf.star": "in_tiltseries"},
     )
@@ -1184,7 +1243,7 @@ connect_jobs(
 )
 connect_jobs(
     ExtractParticlesTomoJob,
-    InitialModel3DJob,
+    InitialModelTomoJob,
     node_mapping={"optimisation_set.star": "in_optim.in_optimisation"},
 )
 connect_jobs(
@@ -1193,15 +1252,15 @@ connect_jobs(
     node_mapping={"optimisation_set.star": "in_optim.in_optimisation"},
 )
 connect_jobs(
-    InitialModel3DJob,
-    Class3DJob,
+    InitialModelTomoJob,
+    Class3DTomoJob,
     node_mapping={
         "optimisation_set.star": "in_optim.in_optimisation",
         "initial_model.mrc": "fn_ref",
     },
 )
 connect_jobs(
-    InitialModel3DJob,
+    InitialModelTomoJob,
     Refine3DTomoJob,
     node_mapping={
         "optimisation_set.star": "in_optim.in_optimisation",
@@ -1209,7 +1268,7 @@ connect_jobs(
     },
 )
 connect_jobs(
-    Class3DJob,
+    Class3DTomoJob,
     Refine3DTomoJob,
 )
 connect_jobs(
