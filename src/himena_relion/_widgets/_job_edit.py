@@ -30,11 +30,13 @@ class QJobScheduler(QtW.QWidget):
         font = self._title_label.font()
         font.setPointSize(font.pointSize() + 3)
         self._title_label.setFont(font)
-        layout.addWidget(self._title_label)
         self._job_param_widget = QJobParameter()
         self._exec_btn = QtW.QPushButton("Run Job")  # TODO: support scheduling
         self._exec_btn.clicked.connect(self._exec_action)
         self._mode: Mode = ScheduleMode()
+        layout.addWidget(self._title_label)
+        layout.addWidget(self._job_param_widget)
+        layout.addWidget(self._exec_btn)
 
     def sizeHint(self) -> QtCore.QSize:
         return QtCore.QSize(320, 600)

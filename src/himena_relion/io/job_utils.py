@@ -119,10 +119,6 @@ def edit_relion_job(ui: MainWindow, model: WidgetDataModel):
     if job_cls is None:
         raise RuntimeError("Cannot determine job class.")
 
-    for state_file in job_dir.path.glob("RELION_JOB_*"):
-        if state_file.exists():
-            state_file.unlink()
-
     scheduler = job_cls._show_scheduler_widget(ui, {})
     scheduler.set_edit_mode(job_dir)
     scheduler.set_parameters(job_dir.get_job_params_as_dict())

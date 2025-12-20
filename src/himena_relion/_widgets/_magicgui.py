@@ -1,11 +1,48 @@
 from __future__ import annotations
 
+from magicgui.widgets import RadioButtons
 from magicgui.widgets.bases import ValuedContainerWidget
 from magicgui.types import Undefined
 from himena.qt.magicgui import ToggleSwitch, FloatEdit
 
 from himena_relion._job_class import parse_string
 from himena_relion._widgets._path_input import PathDrop
+
+
+class DoseRateEdit(ValuedContainerWidget):
+    def __init__(self, **kwargs):
+        self._kind = RadioButtons(
+            choices=["Per tilt", "Per movie frame"],
+            value="Per tilt",
+            orientation="horizontal",
+        )
+        self._dose_rate = FloatEdit(label="", value=5.0)
+        widgets = [self._kind, self._dose_rate]
+        super().__init__(layout="vertical", labels=False, widgets=widgets, **kwargs)
+        self.margins = (0, 0, 0, 0)
+
+    def get_value(self):
+        return {
+            "dose_rate": self._dose_rate.value,
+            "dose_is_per_movie_frame": self._kind.value == "Per movie frame",
+        }
+
+    def set_value(self, value):
+        with self.changed.blocked():
+            if value == Undefined or value is None:
+                self._kind.value = "Per tilt"
+                self._dose_rate.value = 5.0
+            elif isinstance(value, dict):
+                dose_is_per_movie_frame = value.get("dose_is_per_movie_frame", False)
+                self._kind.value = (
+                    "Per movie frame"
+                    if parse_string(dose_is_per_movie_frame, bool)
+                    else "Per tilt"
+                )
+                self._dose_rate.value = float(value.get("dose_rate", 5.0))
+            else:
+                raise ValueError("Value must be a dict or Undefined.")
+        self.changed.emit(self.get_value())
 
 
 class OptimisationSetEdit(ValuedContainerWidget):

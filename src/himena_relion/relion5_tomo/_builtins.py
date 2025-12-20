@@ -1,8 +1,9 @@
+from pathlib import Path
 from typing import Annotated, Any
 
 from himena_relion._job_class import connect_jobs, _RelionBuiltinJob, parse_string
 from himena_relion import _configs
-from himena_relion._widgets._magicgui import OptimisationSetEdit
+from himena_relion._widgets._magicgui import OptimisationSetEdit, DoseRateEdit
 from himena_relion._widgets._path_input import PathDrop
 from himena_relion.relion5._builtins import (
     ANG_SAMPLING_TYPE,
@@ -106,6 +107,131 @@ class _Relion5TomoJob(_RelionBuiltinJob):
     @classmethod
     def command_palette_title_prefix(cls):
         return "RELION 5 Tomo:"
+
+
+class _ImportTomoJob(_Relion5TomoJob):
+    @classmethod
+    def type_label(cls) -> str:
+        return "relion.importtomo"
+
+
+class ImportTomoJob(_ImportTomoJob):
+    @classmethod
+    def command_id(cls):
+        return super().command_id() + "-tomo"
+
+    @classmethod
+    def job_title(cls) -> str:
+        return "Import Tomo"
+
+    @classmethod
+    def normalize_kwargs(cls, **kwargs):
+        kwargs = super().normalize_kwargs(**kwargs)
+        kwargs["do_coords"] = False
+        dose = kwargs.pop("dose_rate_value", {})
+        kwargs["dose_rate"] = dose.pop("do_rate", None)
+        kwargs["dose_is_per_movie_frame"] = dose.pop("dose_is_per_movie_frame")
+        return kwargs
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs):
+        kwargs = super().normalize_kwargs_inv(**kwargs)
+        kwargs["dose_rate_value"] = {
+            "dose_is_per_movie_frame": kwargs.pop("dose_is_per_movie_frame", False),
+            "dose_rate": kwargs.pop("dose_rate", 5.0),
+        }
+        return kwargs
+
+    def run(
+        self,
+        # General
+        movie_files: Annotated[
+            str, {"label": "Tilt image files", "group": "General"}
+        ] = "frames/*.mrc",
+        images_are_motion_corrected: Annotated[
+            bool, {"label": "Movies already motion corrected", "group": "General"}
+        ] = False,
+        mdoc_files: Annotated[
+            str, {"label": "mod files", "group": "General"}
+        ] = "mdoc/*.mdoc",
+        optics_group_name: Annotated[
+            str, {"label": "Optics group name", "group": "General"}
+        ] = "",
+        prefix: Annotated[str, {"label": "Prefix", "group": "General"}] = "",
+        angpix: Annotated[
+            float, {"label": "Pixel size (A)", "group": "General"}
+        ] = 0.675,
+        kV: Annotated[int, {"label": "Voltage (kV)", "group": "General"}] = 300,
+        Cs: Annotated[
+            float, {"label": "Spherical aberration", "group": "General"}
+        ] = 2.7,
+        Q0: Annotated[float, {"label": "Amplitude contrast", "group": "General"}] = 0.1,
+        # Tilt series
+        dose_rate_value: Annotated[
+            dict,
+            {"label": "Dose rate", "widget_type": DoseRateEdit, "group": "Tilt series"},
+        ] = None,
+        tilt_axis_angle: Annotated[
+            float, {"label": "Tilt axis angle (deg)", "group": "Tilt series"}
+        ] = 85,
+        mtf_file: Annotated[str, {"label": "MTF file", "group": "Tilt series"}] = "",
+        flip_tiltseries_hand: Annotated[
+            bool, {"label": "Invert defocus handedness", "group": "Tilt series"}
+        ] = True,
+        # Running
+        do_queue: DO_QUEUE_TYPE = False,
+        min_dedicated: MIN_DEDICATED_TYPE = 1,
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")
+
+
+class ImportCoordinatesJob(_ImportTomoJob):
+    @classmethod
+    def command_id(cls):
+        return super().command_id() + "-coords"
+
+    @classmethod
+    def job_title(cls) -> str:
+        return "Import Coordinates"
+
+    @classmethod
+    def normalize_kwargs(cls, **kwargs):
+        kwargs = super().normalize_kwargs(**kwargs)
+        kwargs["do_coords"] = True
+        return kwargs
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs):
+        kwargs = super().normalize_kwargs_inv(**kwargs)
+        kwargs.pop("do_coords", None)
+        return kwargs
+
+    def run(
+        self,
+        in_coords: Annotated[
+            Path,
+            {"filter": "STAR files (*.star);;All files (*)", "group": "Coordinates"},
+        ],
+        remove_substring: Annotated[
+            str, {"label": "Remove substring from file names", "group": "Coordinates"}
+        ] = "",
+        remove_substring2: Annotated[
+            str, {"label": "Second substring to remove", "group": "Coordinates"}
+        ] = "",
+        is_centered: Annotated[
+            bool, {"label": "Coordinates are centered", "group": "Coordinates"}
+        ] = False,
+        scale_factor: Annotated[
+            float, {"label": "Multiply coordinates with", "group": "Coordinates"}
+        ] = 1.0,
+        add_factor: Annotated[
+            float, {"label": "Add this to coordinates", "group": "Coordinates"}
+        ] = 0.0,
+        # Running
+        do_queue: DO_QUEUE_TYPE = False,
+        min_dedicated: MIN_DEDICATED_TYPE = 1,
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")
 
 
 class ExcludeTiltJob(_Relion5TomoJob):
