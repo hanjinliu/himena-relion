@@ -89,7 +89,7 @@ def clone_relion_job(ui: MainWindow, model: WidgetDataModel):
     scheduler = job_cls._show_scheduler_widget(ui, {})
     scheduler.update_by_job(job_cls)
     scheduler.set_parameters(job_dir.get_job_params_as_dict())
-    scheduler.set_edit_mode(job_dir)
+    scheduler.set_schedule_mode()
 
 
 @register_function(

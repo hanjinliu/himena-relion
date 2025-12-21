@@ -187,13 +187,16 @@ class QRelionPipelineFlowChartView(QFlowChartView):
         self.add_child(item, parents=parents)
 
     def _on_item_double_clicked(self, item: RelionJobNodeItem):
-        # open the item
-        path = self._relion_project_dir / item.id()
+        self._show_item_by_id(item.id())
+
+    def _show_item_by_id(self, item_id: Path):
+        """Open the job directory or activate the already opened one."""
+        path = self._relion_project_dir / item_id
         if path.exists():
             # if already opened, switch to it
             for i_tab, tab in self._ui.tabs.enumerate():
                 for i_window, window in tab.enumerate():
-                    if is_subtype(window.model_type(), Type.RELION_JOB):
+                    if not is_subtype(window.model_type(), Type.RELION_JOB):
                         continue
                     try:
                         val = window.value

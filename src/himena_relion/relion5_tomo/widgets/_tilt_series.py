@@ -34,7 +34,7 @@ class QMotionCorrViewer(QJobScrollArea):
     def on_job_updated(self, job_dir: _job.MotionCorrectionJobDirectory, path: str):
         """Handle changes to the job directory."""
         if Path(path).suffix == ".mrc":
-            self._process_update(job_dir)
+            self._process_update()
             _LOGGER.debug("%s Updated", job_dir.job_id)
 
     def _param_changed(self):
@@ -97,7 +97,7 @@ class QExcludeTiltViewer(QJobScrollArea):
     def on_job_updated(self, job_dir: _job.ExcludeTiltSeriesJobDirectory, path: str):
         """Handle changes to the job directory."""
         if Path(path).name == "selected_tilt_series.star":
-            self._process_update(job_dir)
+            self._process_update()
             _LOGGER.debug("%s Updated", job_dir.job_id)
 
     def _param_changed(self):

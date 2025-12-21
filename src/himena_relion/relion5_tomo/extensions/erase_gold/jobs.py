@@ -1,5 +1,6 @@
 from pathlib import Path
 import subprocess
+from typing import Annotated
 
 import imodmodel
 import mrcfile
@@ -9,9 +10,12 @@ from numpy.typing import NDArray
 import starfile
 from himena_relion import _job, _utils
 from himena_relion.external import RelionExternalJob
-from himena_relion.relion5_tomo._builtins import ReconstructTomogramJob
 from himena_relion._job_class import connect_jobs
-from .widgets import QFindBeads3DViewer, QEraseGoldViewer
+from himena_relion.relion5_tomo._builtins import ReconstructTomogramJob, IN_TILT_TYPE
+from himena_relion.relion5_tomo.extensions.erase_gold.widgets import (
+    QFindBeads3DViewer,
+    QEraseGoldViewer,
+)
 
 
 def _xf_to_array(xf: str | Path) -> NDArray[np.floating]:
@@ -133,9 +137,11 @@ class FindBeads3D(RelionExternalJob):
 
     def run(
         self,
-        in_mics: str,  # path
-        gold_nm: float = 10.0,
-        findbeads3d_exe: str = "findbeads3d",
+        in_mics: IN_TILT_TYPE,  # path
+        gold_nm: Annotated[float, {"label": "Gold diameter (nm)"}] = 10.0,
+        findbeads3d_exe: Annotated[
+            str, {"label": "findbeads3d executable"}
+        ] = "findbeads3d",
     ):
         df_tomo = starfile.read(in_mics)
         assert isinstance(df_tomo, pd.DataFrame)
@@ -173,7 +179,7 @@ class FindBeads3D(RelionExternalJob):
 
 class EraseGold(RelionExternalJob):
     def output_nodes(self):
-        return [("tilt_series.star", "MicrographGroupMetadata.star")]
+        return [("tilt_series.star", "TomogramGroupMetadata.star")]
 
     @classmethod
     def import_path(cls):
@@ -185,10 +191,12 @@ class EraseGold(RelionExternalJob):
 
     def run(
         self,
-        in_mics: str,  # path
-        seed: int = 1427,
-        mask_expand_factor: float = 1.2,
-        process_halves: bool = False,
+        in_mics: IN_TILT_TYPE,  # path
+        seed: Annotated[int, {"label": "Random seed"}] = 1427,
+        mask_expand_factor: Annotated[float, {"label": "Mask expansion factor"}] = 1.2,
+        process_halves: Annotated[
+            bool, {"label": "Also process odd/even micrographs"}
+        ] = False,
     ):
         """Erase gold fiducials from tilt series using the output model files."""
         df_tomo = starfile.read(in_mics)
@@ -292,5 +300,5 @@ connect_jobs(
 connect_jobs(
     EraseGold,
     ReconstructTomogramJob,
-    node_mapping={"tilt_series.star": "in_mics"},
+    node_mapping={"tilt_series.star": "in_tiltseries"},
 )
