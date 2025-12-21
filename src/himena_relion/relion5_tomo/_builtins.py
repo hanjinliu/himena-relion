@@ -58,6 +58,7 @@ from himena_relion.relion5._builtins import (
     PostProcessingJob,
     SelectClassesInteractiveJob,
     SelectRemoveDuplicatesJob,
+    SelectSplitJob,
 )
 
 IN_TILT_TYPE = Annotated[
@@ -1288,6 +1289,11 @@ connect_jobs(
 #     SelectRemoveDuplicatesJob,
 #     node_mapping={"particles.star": "fn_data"},
 # )
+connect_jobs(
+    PickJob,
+    SelectSplitJob,
+    node_mapping={"particles.star": "fn_data"},
+)
 connect_jobs(
     ExtractParticlesTomoJob,
     InitialModelTomoJob,

@@ -30,11 +30,11 @@ class QPathDropWidget(QtW.QWidget):
         self._btn.clicked.connect(self._on_browse_clicked)
 
     def set_type_label(self, label: str | list[str]) -> None:
-        if isinstance(label, list):
-            self._type_labels = label
-        else:
+        if isinstance(label, str):
             self._type_labels = [label]
-        svg = read_icon_svg_for_type(label[0])
+        else:
+            self._type_labels = list(label)
+        svg = read_icon_svg_for_type(self._type_labels[0])
         icon = QColoredSVGIcon(svg, color="gray")
         self._icon_label.setPixmap(icon.pixmap(20, 20))
 
