@@ -57,7 +57,6 @@ from himena_relion.relion5._builtins import (
     MotionCorrOwnJob,
     PostProcessingJob,
     SelectClassesInteractiveJob,
-    SelectParticlesJob,
     SelectRemoveDuplicatesJob,
 )
 
@@ -1283,16 +1282,12 @@ connect_jobs(
     ExtractParticlesTomoJob,
     node_mapping={"optimisation_set.star": "in_optim.in_optimisation"},
 )
-connect_jobs(
-    PickJob,
-    SelectRemoveDuplicatesJob,
-    node_mapping={"particles.star": "fn_data"},
-)
-connect_jobs(
-    PickJob,
-    SelectParticlesJob,
-    node_mapping={"particles.star": "fn_data"},
-)
+# NOTE: it seems that the output particles.star is not compatible with remove duplicates
+# connect_jobs(
+#     PickJob,
+#     SelectRemoveDuplicatesJob,
+#     node_mapping={"particles.star": "fn_data"},
+# )
 connect_jobs(
     ExtractParticlesTomoJob,
     InitialModelTomoJob,
