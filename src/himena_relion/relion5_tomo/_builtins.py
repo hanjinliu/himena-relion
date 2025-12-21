@@ -843,60 +843,11 @@ class Class3DTomoJob(_Relion5TomoJob, Class3DJob):
 
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
-        kwargs["scratch_dir"] = _configs.get_scratch_dir()
-        if "helical_twist_range" in kwargs:
-            (
-                kwargs["helical_twist_min"],
-                kwargs["helical_twist_max"],
-                kwargs["helical_twist_inistep"],
-            ) = kwargs.pop("helical_twist_range")
-        if "helical_rise_range" in kwargs:
-            (
-                kwargs["helical_rise_min"],
-                kwargs["helical_rise_max"],
-                kwargs["helical_rise_inistep"],
-            ) = kwargs.pop("helical_rise_range")
-        if "rot_tilt_psi_range" in kwargs:
-            kwargs["rot_range"], kwargs["tilt_range"], kwargs["psi_range"] = kwargs.pop(
-                "rot_tilt_psi_range"
-            )
-        if "helical_tube_diameter_range" in kwargs:
-            (
-                kwargs["helical_tube_inner_diameter"],
-                kwargs["helical_tube_outer_diameter"],
-            ) = kwargs.pop("helical_tube_diameter_range")
-        if "offset_range_step" in kwargs:
-            kwargs["offset_range"], kwargs["offset_step"] = kwargs.pop(
-                "offset_range_step"
-            )
-        return norm_optim(**super().normalize_kwargs(**kwargs))
+        return norm_optim(**Class3DJob.normalize_kwargs(**kwargs))
 
     @classmethod
     def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
-        kwargs["helical_twist_range"] = (
-            kwargs.pop("helical_twist_min", 0),
-            kwargs.pop("helical_twist_max", 0),
-            kwargs.pop("helical_twist_inistep", 0),
-        )
-        kwargs["helical_rise_range"] = (
-            kwargs.pop("helical_rise_min", 0),
-            kwargs.pop("helical_rise_max", 0),
-            kwargs.pop("helical_rise_inistep", 0),
-        )
-        kwargs["rot_tilt_psi_range"] = (
-            kwargs.pop("rot_range", -1),
-            kwargs.pop("tilt_range", 15),
-            kwargs.pop("psi_range", 10),
-        )
-        kwargs["helical_tube_diameter_range"] = (
-            kwargs.pop("helical_tube_inner_diameter", -1),
-            kwargs.pop("helical_tube_outer_diameter", -1),
-        )
-        kwargs["offset_range_step"] = (
-            kwargs.pop("offset_range", 5),
-            kwargs.pop("offset_step", 1),
-        )
-        return norm_optim_inv(**super().normalize_kwargs_inv(**kwargs))
+        return norm_optim_inv(Class3DJob.normalize_kwargs_inv(**kwargs))
 
     def run(
         self,
@@ -971,10 +922,6 @@ class Class3DTomoJob(_Relion5TomoJob, Class3DJob):
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
-    @classmethod
-    def setup_widgets(self, widgets):
-        return Class3DJob.setup_widgets(self, widgets)
-
 
 class Refine3DTomoJob(_Relion5TomoJob, Refine3DJob):
     @classmethod
@@ -983,60 +930,11 @@ class Refine3DTomoJob(_Relion5TomoJob, Refine3DJob):
 
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
-        kwargs["scratch_dir"] = _configs.get_scratch_dir()
-        if "helical_twist_range" in kwargs:
-            (
-                kwargs["helical_twist_min"],
-                kwargs["helical_twist_max"],
-                kwargs["helical_twist_inistep"],
-            ) = kwargs.pop("helical_twist_range")
-        if "helical_rise_range" in kwargs:
-            (
-                kwargs["helical_rise_min"],
-                kwargs["helical_rise_max"],
-                kwargs["helical_rise_inistep"],
-            ) = kwargs.pop("helical_rise_range")
-        if "rot_tilt_psi_range" in kwargs:
-            kwargs["range_rot"], kwargs["range_tilt"], kwargs["range_psi"] = kwargs.pop(
-                "rot_tilt_psi_range"
-            )
-        if "helical_tube_diameter_range" in kwargs:
-            (
-                kwargs["helical_tube_inner_diameter"],
-                kwargs["helical_tube_outer_diameter"],
-            ) = kwargs.pop("helical_tube_diameter_range")
-        if "offset_range_step" in kwargs:
-            kwargs["offset_range"], kwargs["offset_step"] = kwargs.pop(
-                "offset_range_step"
-            )
-        return norm_optim(**super().normalize_kwargs(**kwargs))
+        return norm_optim(**Refine3DJob.normalize_kwargs(**kwargs))
 
     @classmethod
     def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
-        kwargs["helical_twist_range"] = (
-            kwargs.pop("helical_twist_min", 0),
-            kwargs.pop("helical_twist_max", 0),
-            kwargs.pop("helical_twist_inistep", 0),
-        )
-        kwargs["helical_rise_range"] = (
-            kwargs.pop("helical_rise_min", 0),
-            kwargs.pop("helical_rise_max", 0),
-            kwargs.pop("helical_rise_inistep", 0),
-        )
-        kwargs["rot_tilt_psi_range"] = (
-            kwargs.pop("range_rot", -1),
-            kwargs.pop("range_tilt", 15),
-            kwargs.pop("range_psi", 10),
-        )
-        kwargs["helical_tube_diameter_range"] = (
-            kwargs.pop("helical_tube_inner_diameter", -1),
-            kwargs.pop("helical_tube_outer_diameter", -1),
-        )
-        kwargs["offset_range_step"] = (
-            kwargs.pop("offset_range", 5),
-            kwargs.pop("offset_step", 1),
-        )
-        return norm_optim_inv(**super().normalize_kwargs_inv(**kwargs))
+        return norm_optim_inv(**Refine3DJob.normalize_kwargs_inv(**kwargs))
 
     def run(
         self,
@@ -1096,10 +994,6 @@ class Refine3DTomoJob(_Relion5TomoJob, Refine3DJob):
         min_dedicated: MIN_DEDICATED_TYPE = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
-
-    # @classmethod
-    # def setup_widgets(self, widgets):
-    #     return Refine3DJob.setup_widgets(self, widgets)
 
 
 class ReconstructParticlesJob(_Relion5TomoJob):

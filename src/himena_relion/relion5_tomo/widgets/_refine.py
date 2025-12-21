@@ -24,19 +24,22 @@ class QRefine3DViewer(QJobScrollArea):
         super().__init__()
         layout = self._layout
         self._viewer = Q3DViewer()
-        self._viewer.setMaximumSize(400, 400)
+        max_width = 400
+        self._viewer.setMaximumSize(max_width, max_width)
         self._fsc_plot = QPlotCanvas(self)
         self._iter_choice = QIntWidget("Iteration", label_width=60)
         self._iter_choice.setMinimum(0)
         self._num_particles_label = QtW.QLabel("--- particles")
-        self._num_particles_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
         layout.addWidget(self._viewer)
-        hor_layout = QtW.QHBoxLayout()
+        _hor = QtW.QWidget()
+        _hor.setMaximumWidth(max_width)
+        hor_layout = QtW.QHBoxLayout(_hor)
+        hor_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
         hor_layout.setContentsMargins(0, 0, 0, 0)
         hor_layout.setSpacing(14)
         hor_layout.addWidget(self._iter_choice)
         hor_layout.addWidget(self._num_particles_label)
-        layout.addLayout(hor_layout)
+        layout.addWidget(_hor)
         layout.addWidget(self._fsc_plot)
         layout.addWidget(spacer_widget())
         self._index_start = 1
@@ -58,8 +61,6 @@ class QRefine3DViewer(QJobScrollArea):
         self._iter_choice.setMaximum(max(niters - 1, 0))
         self._iter_choice.setValue(self._iter_choice.maximum())
         self._on_iter_changed(self._iter_choice.value())
-        self._viewer.auto_threshold(update_now=False)
-        self._viewer.auto_fit()
 
     def _on_iter_changed(self, value: int):
         self._update_for_value(value)
@@ -86,8 +87,12 @@ class QRefine3DViewer(QJobScrollArea):
 
     def _on_items_read(self, items: tuple[np.ndarray, pd.DataFrame | None, int]):
         map_out, df_fsc, num_particles = items
+        had_image = self._viewer.has_image
         self._viewer.set_image(map_out)
         if df_fsc is not None:
             self._fsc_plot.plot_fsc_refine(df_fsc)
         self._num_particles_label.setText(f"<b>{num_particles}</b> particles")
         self._worker = None
+        if not had_image:
+            self._viewer.auto_threshold(update_now=False)
+            self._viewer.auto_fit()

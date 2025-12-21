@@ -17,11 +17,16 @@ class QIntWidget(QtW.QWidget):
         layout.addWidget(label)
         self._int_edit = QIntLineEdit()
         self._int_edit.setText("0")
-        self._int_edit.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
+        # self._int_edit.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
         self._int_edit.setFixedWidth(40)
         self._max_edit = QtW.QLabel("/0")
+        self._max_edit.setFixedWidth(40)
+        self._max_edit.setSizePolicy(
+            QtW.QSizePolicy.Policy.Minimum, QtW.QSizePolicy.Policy.Fixed
+        )
         layout.addWidget(self._int_edit)
         layout.addWidget(self._max_edit)
+        layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
         if label_width:
             label.setFixedWidth(label_width)
         self._int_edit.valueChanged.connect(self._on_value_changed)

@@ -725,33 +725,6 @@ class Refine3DJob(_Relion5Job):
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
         kwargs["scratch_dir"] = _configs.get_scratch_dir()
-        kwargs["helical_twist_range"] = (
-            kwargs.pop("helical_twist_min", 0),
-            kwargs.pop("helical_twist_max", 0),
-            kwargs.pop("helical_twist_inistep", 0),
-        )
-        kwargs["helical_rise_range"] = (
-            kwargs.pop("helical_rise_min", 0),
-            kwargs.pop("helical_rise_max", 0),
-            kwargs.pop("helical_rise_inistep", 0),
-        )
-        kwargs["rot_tilt_psi_range"] = (
-            kwargs.pop("rot_range", -1),
-            kwargs.pop("tilt_range", 15),
-            kwargs.pop("psi_range", 10),
-        )
-        kwargs["helical_tube_diameter_range"] = (
-            kwargs.pop("helical_tube_inner_diameter", -1),
-            kwargs.pop("helical_tube_outer_diameter", -1),
-        )
-        kwargs["offset_range_step"] = (
-            kwargs.pop("offset_range", 5),
-            kwargs.pop("offset_step", 1),
-        )
-        return super().normalize_kwargs(**kwargs)
-
-    @classmethod
-    def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
         if "helical_twist_range" in kwargs:
             (
                 kwargs["helical_twist_min"],
@@ -765,7 +738,7 @@ class Refine3DJob(_Relion5Job):
                 kwargs["helical_rise_inistep"],
             ) = kwargs.pop("helical_rise_range")
         if "rot_tilt_psi_range" in kwargs:
-            kwargs["rot_range"], kwargs["tilt_range"], kwargs["psi_range"] = kwargs.pop(
+            kwargs["range_rot"], kwargs["range_tilt"], kwargs["range_psi"] = kwargs.pop(
                 "rot_tilt_psi_range"
             )
         if "helical_tube_diameter_range" in kwargs:
@@ -777,6 +750,33 @@ class Refine3DJob(_Relion5Job):
             kwargs["offset_range"], kwargs["offset_step"] = kwargs.pop(
                 "offset_range_step"
             )
+        return super().normalize_kwargs(**kwargs)
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
+        kwargs["helical_twist_range"] = (
+            kwargs.pop("helical_twist_min", 0),
+            kwargs.pop("helical_twist_max", 0),
+            kwargs.pop("helical_twist_inistep", 0),
+        )
+        kwargs["helical_rise_range"] = (
+            kwargs.pop("helical_rise_min", 0),
+            kwargs.pop("helical_rise_max", 0),
+            kwargs.pop("helical_rise_inistep", 0),
+        )
+        kwargs["rot_tilt_psi_range"] = (
+            kwargs.pop("range_rot", -1),
+            kwargs.pop("range_tilt", 15),
+            kwargs.pop("range_psi", 10),
+        )
+        kwargs["helical_tube_diameter_range"] = (
+            kwargs.pop("helical_tube_inner_diameter", -1),
+            kwargs.pop("helical_tube_outer_diameter", -1),
+        )
+        kwargs["offset_range_step"] = (
+            kwargs.pop("offset_range", 5),
+            kwargs.pop("offset_step", 1),
+        )
         return super().normalize_kwargs_inv(**kwargs)
 
     def run(

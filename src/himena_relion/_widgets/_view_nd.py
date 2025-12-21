@@ -266,6 +266,10 @@ class Q3DViewer(QViewer):
         layout.addWidget(self._canvas.native)
         layout.addWidget(labeled("Threshold", self._iso_slider))
 
+    @property
+    def has_image(self) -> bool:
+        return self._has_image
+
     def set_image(self, image: np.ndarray | None, update_now: bool = True):
         """Set the 3D image to be displayed."""
         if image is None:
