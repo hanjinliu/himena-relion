@@ -1,7 +1,10 @@
 from __future__ import annotations
 from pathlib import Path
 import logging
-from qtpy import QtWidgets as QtW
+import numpy as np
+import pandas as pd
+from qtpy import QtWidgets as QtW, QtCore
+from superqt.utils import thread_worker, FunctionWorker
 from himena_relion._widgets import (
     QJobScrollArea,
     Q3DViewer,
@@ -23,23 +26,24 @@ class QRefine3DViewer(QJobScrollArea):
         self._viewer = Q3DViewer()
         self._viewer.setMaximumSize(400, 400)
         self._fsc_plot = QPlotCanvas(self)
-        # self._class_choice = QIntWidget("Class", label_width=50)
         self._iter_choice = QIntWidget("Iteration", label_width=60)
-        # self._class_choice.setMinimum(1)
         self._iter_choice.setMinimum(0)
+        self._num_particles_label = QtW.QLabel("--- particles")
+        self._num_particles_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
         layout.addWidget(self._viewer)
         hor_layout = QtW.QHBoxLayout()
-        hor_layout.addWidget(self._iter_choice)
-        # hor_layout.addWidget(self._class_choice)
         hor_layout.setContentsMargins(0, 0, 0, 0)
+        hor_layout.setSpacing(14)
+        hor_layout.addWidget(self._iter_choice)
+        hor_layout.addWidget(self._num_particles_label)
         layout.addLayout(hor_layout)
         layout.addWidget(self._fsc_plot)
         layout.addWidget(spacer_widget())
         self._index_start = 1
         self._job_dir: _job_dir.Refine3DJobDirectory | None = None
+        self._worker: FunctionWorker | None = None
 
         self._iter_choice.valueChanged.connect(self._on_iter_changed)
-        # self._class_choice.valueChanged.connect(self._on_class_changed)
 
     def on_job_updated(self, job_dir: _job_dir.Refine3DJobDirectory, path: str):
         """Handle changes to the job directory."""
@@ -61,12 +65,29 @@ class QRefine3DViewer(QJobScrollArea):
         self._update_for_value(value)
 
     def _update_for_value(self, niter: int, class_id: int = 1):
+        if self._worker is not None and self._worker.is_running:
+            self._worker.quit()
+        self._worker = None
+        self._worker = self._read_items(niter, class_id)
+        self._worker.returned.connect(self._on_items_read)
+        self._worker.start()
+
+    @thread_worker
+    def _read_items(self, niter, class_id: int = 1):
         res = self._job_dir.get_result(niter)
+
         map0, map1 = res.halfmaps(class_id - self._index_start)
         if map0 is not None and map1 is not None:
-            self._viewer.set_image(map0 + map1)
+            map_out = map0 + map1
         else:
-            self._viewer.set_image(None)
-        df_fsc = res.fsc_dataframe(class_id)
+            map_out = None
+        df_fsc, df_groups = res.model_dataframe(class_id)
+        return map_out, df_fsc, df_groups["rlnGroupNrParticles"].sum()
+
+    def _on_items_read(self, items: tuple[np.ndarray, pd.DataFrame | None, int]):
+        map_out, df_fsc, num_particles = items
+        self._viewer.set_image(map_out)
         if df_fsc is not None:
             self._fsc_plot.plot_fsc_refine(df_fsc)
+        self._num_particles_label.setText(f"<b>{num_particles}</b> particles")
+        self._worker = None

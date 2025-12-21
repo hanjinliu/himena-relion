@@ -168,11 +168,11 @@ connect_jobs(
 )
 connect_jobs(
     _tomo.ReconstructParticlesJob,
-    _spa.PostProcessingJob,
+    _tomo.PostProcessTomoJob,
     node_mapping={"half1.mrc": "fn_in"},
 )
 connect_jobs(
-    _spa.PostProcessingJob,
+    _tomo.PostProcessTomoJob,
     _tomo.CtfRefineTomoJob,
     node_mapping={"postprocess.star": "in_post"},
 )

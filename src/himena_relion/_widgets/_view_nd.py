@@ -43,6 +43,8 @@ class Q2DViewer(QViewer):
         self._last_clim: tuple[float, float] | None = None
         self._canvas = Vispy2DViewer(self)
         self._canvas.native.setMinimumSize(200, 200)
+        self._canvas._scene.bgcolor = "#242424"
+        self._canvas._viewbox.border_color = "#4A4A4A"
         layout = QtW.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self._canvas.native)
@@ -247,6 +249,8 @@ class Q3DViewer(QViewer):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._canvas = Vispy3DViewer(self)
+        self._canvas._scene.bgcolor = "#242424"
+        self._canvas._viewbox.border_color = "#4A4A4A"
         self._canvas.native.setMinimumSize(180, 180)
         layout = QtW.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)

@@ -55,6 +55,8 @@ from himena_relion.relion5._builtins import (
     Class3DJob,
     MotionCorr2Job,
     MotionCorrOwnJob,
+    PostProcessJob,
+    Refine3DJob,
 )
 
 IN_TILT_TYPE = Annotated[
@@ -937,20 +939,20 @@ class Class3DTomoJob(_Relion5TomoJob, Class3DJob):
         ] = 5,
         relax_sym: RELAX_SYMMETRY_TYPE = "",
         sigma_tilt: SIGMA_TILT_TYPE = -1,
-        keep_tilt_prior_fixed: KEEP_TILT_PRIOR_FIXED_TYPE = True,
         # Helix
         do_helix: DO_HELIX_TYPE = False,
         helical_tube_diameter_range: HELICAL_TUBE_DIAMETER_RANGE_TYPE = (-1, -1),
         rot_tilt_psi_range: ROT_TILT_PSI_RANGE_TYPE = (-1, 15, 10),
-        do_apply_helical_symmetry: DO_APPLY_HELICAL_SYMMETRY_TYPE = True,
-        do_local_search_helical_symmetry: DO_LOCAL_SEARCH_HELICAL_SYMMETRY_TYPE = False,
         helical_range_distance: HELICAL_RANGE_DIST_TYPE = -1,
+        keep_tilt_prior_fixed: KEEP_TILT_PRIOR_FIXED_TYPE = True,
+        do_apply_helical_symmetry: DO_APPLY_HELICAL_SYMMETRY_TYPE = True,
         helical_twist_initial: HELICAL_TWIST_INITIAL_TYPE = 0,
-        helical_twist_range: HELICAL_TWIST_RANGE_TYPE = (0, 0, 0),
         helical_rise_initial: HELICAL_RISE_INITIAL_TYPE = 0,
-        helical_rise_range: HELICAL_RISE_RANGE_TYPE = (0, 0, 0),
         helical_nr_asu: HELICAL_NR_ASU_TYPE = 1,
         helical_z_percentage: HELICAL_Z_PERCENTAGE_TYPE = 30,
+        do_local_search_helical_symmetry: DO_LOCAL_SEARCH_HELICAL_SYMMETRY_TYPE = False,
+        helical_twist_range: HELICAL_TWIST_RANGE_TYPE = (0, 0, 0),
+        helical_rise_range: HELICAL_RISE_RANGE_TYPE = (0, 0, 0),
         # Compute
         do_fast_subsets: Annotated[
             bool, {"label": "Use fast subsets", "group": "Compute"}
@@ -969,8 +971,12 @@ class Class3DTomoJob(_Relion5TomoJob, Class3DJob):
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
+    @classmethod
+    def setup_widgets(self, widgets):
+        return Class3DJob.setup_widgets(self, widgets)
 
-class Refine3DTomoJob(_Relion5TomoJob):
+
+class Refine3DTomoJob(_Relion5TomoJob, Refine3DJob):
     @classmethod
     def type_label(cls) -> str:
         return "relion.refine3d.tomo"
@@ -1064,18 +1070,18 @@ class Refine3DTomoJob(_Relion5TomoJob):
         sigma_tilt: SIGMA_TILT_TYPE = -1,
         # Helix
         do_helix: DO_HELIX_TYPE = False,
+        helical_tube_diameter_range: HELICAL_TUBE_DIAMETER_RANGE_TYPE = (-1, -1),
+        rot_tilt_psi_range: ROT_TILT_PSI_RANGE_TYPE = (-1, 15, 10),
+        helical_range_distance: HELICAL_RANGE_DIST_TYPE = -1,
         do_apply_helical_symmetry: DO_APPLY_HELICAL_SYMMETRY_TYPE = True,
         helical_nr_asu: HELICAL_NR_ASU_TYPE = 1,
-        keep_tilt_prior_fixed: KEEP_TILT_PRIOR_FIXED_TYPE = True,
         helical_twist_initial: HELICAL_TWIST_INITIAL_TYPE = 0,
         helical_rise_initial: HELICAL_RISE_INITIAL_TYPE = 0,
         helical_z_percentage: HELICAL_Z_PERCENTAGE_TYPE = 30,
-        helical_tube_diameter_range: HELICAL_TUBE_DIAMETER_RANGE_TYPE = (-1, -1),
-        rot_tilt_psi_range: ROT_TILT_PSI_RANGE_TYPE = (-1, 15, 10),
+        keep_tilt_prior_fixed: KEEP_TILT_PRIOR_FIXED_TYPE = True,
         do_local_search_helical_symmetry: DO_LOCAL_SEARCH_HELICAL_SYMMETRY_TYPE = False,
         helical_twist_range: HELICAL_TWIST_RANGE_TYPE = (0, 0, 0),
         helical_rise_range: HELICAL_RISE_RANGE_TYPE = (0, 0, 0),
-        helical_range_distance: HELICAL_RANGE_DIST_TYPE = -1,
         # Compute
         do_parallel_discio: USE_PARALLEL_DISC_IO_TYPE = True,
         nr_pool: NUM_POOL_TYPE = 3,
@@ -1090,6 +1096,10 @@ class Refine3DTomoJob(_Relion5TomoJob):
         min_dedicated: MIN_DEDICATED_TYPE = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
+
+    # @classmethod
+    # def setup_widgets(self, widgets):
+    #     return Refine3DJob.setup_widgets(self, widgets)
 
 
 class ReconstructParticlesJob(_Relion5TomoJob):
@@ -1199,6 +1209,10 @@ class CtfRefineTomoJob(_Relion5TomoJob):
         min_dedicated: MIN_DEDICATED_TYPE = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
+
+
+class PostProcessTomoJob(_Relion5TomoJob, PostProcessJob):
+    pass
 
 
 # class FrameAlignTomoJob(_Relion5TomoJob):

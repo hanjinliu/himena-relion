@@ -64,6 +64,7 @@ JOB_ID_MAP = {
     "relion.joinstar.micrographs": "Join Micrographs",
     "relion.framealigntomo": "Frame Align",
     "relion.ctfrefinetomo": "CTF Refine",
+    "relion.localres.resmap": "Local Resolution",
     "modelangelo": "ModelAngelo",
 }
 

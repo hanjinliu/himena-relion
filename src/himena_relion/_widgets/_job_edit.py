@@ -160,7 +160,8 @@ class QJobParameter(QtW.QScrollArea):
             if widget.name in params:
                 new_value = params.pop(widget.name)
                 widget.value = parse_string(new_value, widget.annotation)
-            widget.enabled = enabled
+            if not enabled:
+                widget.enabled = False
         if params:
             _LOGGER.warning(
                 f"Parameters not found in job directory: {list(params.keys())}"

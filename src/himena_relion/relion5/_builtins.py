@@ -170,7 +170,7 @@ OFFSET_RANGE_STEP_TYPE = Annotated[
 ]
 RELAX_SYMMETRY_TYPE = Annotated[str, {"label": "Relax symmetry", "group": "Sampling"}]
 KEEP_TILT_PRIOR_FIXED_TYPE = Annotated[
-    bool, {"label": "Keep tilt-prior fixed", "group": "Sampling"}
+    bool, {"label": "Keep tilt-prior fixed", "group": "Helix"}
 ]
 LOC_ANG_SAMPLING_TYPE = Annotated[
     str,
@@ -672,20 +672,20 @@ class Class3DJob(_Relion5Job):
         ] = 5,
         relax_sym: RELAX_SYMMETRY_TYPE = "",
         sigma_tilt: SIGMA_TILT_TYPE = -1,
-        keep_tilt_prior_fixed: KEEP_TILT_PRIOR_FIXED_TYPE = True,
         # Helix
         do_helix: DO_HELIX_TYPE = False,
         helical_tube_diameter_range: HELICAL_TUBE_DIAMETER_RANGE_TYPE = (-1, -1),
         rot_tilt_psi_range: ROT_TILT_PSI_RANGE_TYPE = (-1, 15, 10),
-        do_apply_helical_symmetry: DO_APPLY_HELICAL_SYMMETRY_TYPE = True,
-        do_local_search_helical_symmetry: DO_LOCAL_SEARCH_HELICAL_SYMMETRY_TYPE = False,
         helical_range_distance: HELICAL_RANGE_DIST_TYPE = -1,
+        keep_tilt_prior_fixed: KEEP_TILT_PRIOR_FIXED_TYPE = True,
+        do_apply_helical_symmetry: DO_APPLY_HELICAL_SYMMETRY_TYPE = True,
         helical_twist_initial: HELICAL_TWIST_INITIAL_TYPE = 0,
-        helical_twist_range: HELICAL_TWIST_RANGE_TYPE = (0, 0, 0),
         helical_rise_initial: HELICAL_RISE_INITIAL_TYPE = 0,
-        helical_rise_range: HELICAL_RISE_RANGE_TYPE = (0, 0, 0),
         helical_nr_asu: HELICAL_NR_ASU_TYPE = 1,
         helical_z_percentage: HELICAL_Z_PERCENTAGE_TYPE = 30,
+        do_local_search_helical_symmetry: DO_LOCAL_SEARCH_HELICAL_SYMMETRY_TYPE = False,
+        helical_twist_range: HELICAL_TWIST_RANGE_TYPE = (0, 0, 0),
+        helical_rise_range: HELICAL_RISE_RANGE_TYPE = (0, 0, 0),
         # Compute
         do_fast_subsets: Annotated[
             bool, {"label": "Use fast subsets", "group": "Compute"}
@@ -703,6 +703,18 @@ class Class3DJob(_Relion5Job):
         min_dedicated: MIN_DEDICATED_TYPE = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
+
+    @classmethod
+    def setup_widgets(self, widgets):
+        @widgets["do_local_ang_searches"].changed.connect
+        def _on_do_local_ang_searches_changed(value: bool):
+            widgets["sigma_angles"].enabled = value
+            widgets["relax_sym"].enabled = value
+
+        widgets["sigma_angles"].enabled = False
+        widgets["relax_sym"].enabled = False
+
+        _setup_helix_params(widgets)
 
 
 class Refine3DJob(_Relion5Job):
@@ -794,20 +806,20 @@ class Refine3DJob(_Relion5Job):
         auto_local_sampling: LOC_ANG_SAMPLING_TYPE = "1.8 degrees",
         relax_sym: RELAX_SYMMETRY_TYPE = "",
         sigma_tilt: SIGMA_TILT_TYPE = -1,
-        keep_tilt_prior_fixed: KEEP_TILT_PRIOR_FIXED_TYPE = True,
         # Helix
         do_helix: DO_HELIX_TYPE = False,
+        helical_tube_diameter_range: HELICAL_TUBE_DIAMETER_RANGE_TYPE = (-1, -1),
+        rot_tilt_psi_range: ROT_TILT_PSI_RANGE_TYPE = (-1, 15, 10),
+        helical_range_distance: HELICAL_RANGE_DIST_TYPE = -1,
         do_apply_helical_symmetry: DO_APPLY_HELICAL_SYMMETRY_TYPE = True,
         helical_nr_asu: HELICAL_NR_ASU_TYPE = 1,
         helical_twist_initial: HELICAL_TWIST_INITIAL_TYPE = 0,
         helical_rise_initial: HELICAL_RISE_INITIAL_TYPE = 0,
         helical_z_percentage: HELICAL_Z_PERCENTAGE_TYPE = 30,
-        helical_tube_diameter_range: HELICAL_TUBE_DIAMETER_RANGE_TYPE = (-1, -1),
-        rot_tilt_psi_range: ROT_TILT_PSI_RANGE_TYPE = (-1, 15, 10),
+        keep_tilt_prior_fixed: KEEP_TILT_PRIOR_FIXED_TYPE = True,
         do_local_search_helical_symmetry: DO_LOCAL_SEARCH_HELICAL_SYMMETRY_TYPE = False,
         helical_twist_range: HELICAL_TWIST_RANGE_TYPE = (0, 0, 0),
         helical_rise_range: HELICAL_RISE_RANGE_TYPE = (0, 0, 0),
-        helical_range_distance: HELICAL_RANGE_DIST_TYPE = -1,
         # Compute
         do_parallel_discio: USE_PARALLEL_DISC_IO_TYPE = True,
         nr_pool: NUM_POOL_TYPE = 3,
@@ -822,6 +834,46 @@ class Refine3DJob(_Relion5Job):
         min_dedicated: MIN_DEDICATED_TYPE = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
+
+    @classmethod
+    def setup_widgets(self, widgets):
+        _setup_helix_params(widgets)
+
+
+def _setup_helix_params(widgets: dict[str, ValueWidget]) -> None:
+    helical_names = [
+        "helical_tube_diameter_range",
+        "rot_tilt_psi_range",
+        "do_apply_helical_symmetry",
+        "do_local_search_helical_symmetry",
+        "helical_range_distance",
+        "helical_twist_initial",
+        "helical_twist_range",
+        "helical_rise_initial",
+        "helical_rise_range",
+        "helical_nr_asu",
+        "helical_z_percentage",
+        "keep_tilt_prior_fixed",
+    ]
+
+    @widgets["do_helix"].changed.connect
+    def _on_helical(value: bool):
+        for name in helical_names:
+            widgets[name].enabled = value
+        _on_do_local_search_helical_symmetry(
+            widgets["do_local_search_helical_symmetry"].value
+        )
+
+    for name in helical_names:
+        widgets[name].enabled = False
+
+    @widgets["do_local_search_helical_symmetry"].changed.connect
+    def _on_do_local_search_helical_symmetry(value: bool):
+        widgets["helical_twist_range"].enabled = value
+        widgets["helical_rise_range"].enabled = value
+
+    widgets["helical_twist_range"].enabled = False
+    widgets["helical_rise_range"].enabled = False
 
 
 class _SelectJob(_Relion5Job):
@@ -1062,7 +1114,7 @@ class MaskCreationJob(_Relion5Job):
         raise NotImplementedError("This is a builtin job placeholder.")
 
 
-class PostProcessingJob(_Relion5Job):
+class PostProcessJob(_Relion5Job):
     @classmethod
     def type_label(cls) -> str:
         return "relion.postprocess"

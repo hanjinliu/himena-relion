@@ -28,6 +28,6 @@ connect_jobs(
 )
 connect_jobs(
     _spa.Refine3DJob,
-    _spa.PostProcessingJob,
+    _spa.PostProcessJob,
     node_mapping={"run_half1_class001_unfil.mrc": "fn_in"},
 )

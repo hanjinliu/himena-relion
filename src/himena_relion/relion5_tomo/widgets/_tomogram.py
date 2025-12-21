@@ -1,8 +1,11 @@
 from __future__ import annotations
+from contextlib import suppress
 from pathlib import Path
 import logging
 import numpy as np
+import pandas as pd
 from qtpy import QtWidgets as QtW
+from superqt.utils import thread_worker
 from himena_relion._widgets import (
     QJobScrollArea,
     Q2DViewer,
@@ -36,7 +39,8 @@ class QTomogramViewer(QJobScrollArea):
 
     def on_job_updated(self, job_dir: _job_dir.TomogramJobDirectory, path: str):
         """Handle changes to the job directory."""
-        if Path(path).suffix == ".mrc":
+        fp = Path(path)
+        if fp.name.startswith("RELION_JOB_") or fp.suffix == ".mrc":
             self.initialize(job_dir)
             _LOGGER.debug("%s Updated", job_dir.job_id)
 
@@ -105,7 +109,13 @@ class QDenoiseTomogramViewer(QJobScrollArea):
 
     def on_job_updated(self, job_dir: _job_dir.DenoiseJobDirectory, path: str):
         """Handle changes to the job directory."""
-        if Path(path).suffix not in [".out", ".err", ".star"]:
+        fp = Path(path)
+        if fp.name.startswith("RELION_JOB_") or fp.suffix not in [
+            ".out",
+            ".err",
+            ".star",
+            "",
+        ]:
             self.initialize(job_dir)
             _LOGGER.debug("%s Updated", job_dir.job_id)
 
@@ -145,6 +155,8 @@ class PickViewer(QJobScrollArea):
         layout = self._layout
 
         self._viewer = Q2DViewer()
+        self._worker = None
+        self._current_info: _job_dir.TomogramInfo | None = None
         self._filter_widget = Q2DFilterWidget()
         self._filter_widget._bin_factor.setText("1")
         self._tomo_choice = QtW.QComboBox()
@@ -157,7 +169,13 @@ class PickViewer(QJobScrollArea):
 
     def on_job_updated(self, job_dir: _job_dir.PickJobDirectory, path: str):
         """Handle changes to the job directory."""
-        if Path(path).suffix not in [".out", ".err", ".star"]:
+        fp = Path(path)
+        if fp.name.startswith("RELION_JOB_") or fp.suffix not in [
+            ".out",
+            ".err",
+            ".star",
+            "",
+        ]:
             self.initialize(job_dir)
             _LOGGER.debug("%s Updated", job_dir.job_id)
 
@@ -186,12 +204,30 @@ class PickViewer(QJobScrollArea):
                 break
         else:
             return
+        if self._worker is not None and self._worker.is_running:
+            self._worker.quit()
+            self._worker = None
         tomo_view = info.read_tomogram(job_dir.relion_project_dir)
-        if getter := info.get_particles:
-            cols = [f"rlnCenteredCoordinate{x}Angst" for x in "ZYX"]
-            points = getter()[cols].to_numpy(dtype=np.float32) / info.tomo_pixel_size
-            center = (
-                np.array(info.tomo_shape, dtype=np.float32) / info.tomogram_binning - 1
-            ) / 2
-            self._viewer.set_points(points + center[np.newaxis])
+        self._viewer.set_points(
+            np.empty((0, 3), dtype=np.float32)
+        )  # first clear points
         self._viewer.set_array_view(tomo_view, self._viewer._last_clim)
+        if getter := info.get_particles:
+            self._current_info = info
+            worker = thread_worker(getter)()
+            self._worker = worker
+            worker.returned.connect(self._on_worker_returned)
+            worker.start()
+
+    def _on_worker_returned(self, point_df: pd.DataFrame):
+        self._worker = None
+        with suppress(RuntimeError):
+            info = self._current_info
+            if info is None:
+                return
+            cols = [f"rlnCenteredCoordinate{x}Angst" for x in "ZYX"]
+            points = point_df[cols].to_numpy(dtype=np.float32) / info.tomo_pixel_size
+            sizes = np.array(info.tomo_shape, dtype=np.float32) / info.tomogram_binning
+            center = (sizes - 1) / 2
+            self._viewer.set_points(points + center[np.newaxis])
+            self._viewer.redraw()

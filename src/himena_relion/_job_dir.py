@@ -660,27 +660,27 @@ class PickJobDirectory(JobDirectory):
         if tomo_star is None:
             return
         star = _read_star_as_df(tomo_star)
-        if particles_star is None:
-            df_particles = None
-        else:
-            df_particles = _read_star_as_df(particles_star)
         for _, row in star.iterrows():
             info = TomogramInfo.from_series(row)
-            if df_particles is not None:
-                getter = self._make_get_particles(df_particles, row)
-                info.get_particles = getter
+            getter = self._make_get_particles(particles_star, row)
+            info.get_particles = getter
             yield info
 
     def _make_get_particles(
         self,
-        df_particles: pd.DataFrame,
+        particles_star: Path,
         row: pd.Series,
     ) -> Callable[[], pd.DataFrame]:
         """Create a function to get particles for a given tomogram."""
 
         def get_particles() -> pd.DataFrame:
-            sl = df_particles["rlnTomoName"] == str(row["rlnTomoName"])
-            return df_particles[sl].reset_index(drop=True)
+            if particles_star is None:
+                cols = [f"rlnCenteredCoordinate{x}Angst" for x in "ZYX"]
+                return pd.DataFrame({c: [] for c in cols}, dtype=float)
+            else:
+                df_particles = _read_star_as_df(particles_star)
+                sl = df_particles["rlnTomoName"] == str(row["rlnTomoName"])
+                return df_particles[sl].reset_index(drop=True)
 
         return get_particles
 
@@ -867,25 +867,25 @@ class Refine3DResults(_3DResultsBase):
         try:
             with mrcfile.open(half1_path, mode="r") as mrc1:
                 img1 = mrc1.data
-        except Exception as e:
-            _LOGGER.warning(f"Failed to read half1 map from {half1_path}: {e}")
+        except Exception:
             img1 = None
         try:
             with mrcfile.open(half2_path, mode="r") as mrc2:
                 img2 = mrc2.data
         except Exception:
-            _LOGGER.warning(f"Failed to read half2 map from {half2_path}")
             img2 = None
         return img1, img2
 
-    def fsc_dataframe(self, class_id: int) -> pd.DataFrame | None:
+    def model_dataframe(self, class_id: int = 1) -> tuple[pd.DataFrame, pd.DataFrame]:
         starpath = self.path / f"run{self.it_str}_half1_model.star"
-        try:
-            _dict = starfile.read(starpath)
-            return _dict[f"model_class_{class_id}"]
-        except Exception as e:
-            _LOGGER.warning(f"Failed to read FSC data from {starpath}: {e}")
-            return None
+        _dict = starfile.read(starpath, read_n_blocks=4)
+        df_fsc = _dict[f"model_class_{class_id}"]
+        df_groups = _dict["model_groups"]
+        # df_groups example:
+        # rlnGroupNumber rlnGroupName  rlnGroupNrParticles  rlnGroupScaleCorrection
+        #   1             TS_01            931                 0.998775
+        #   2             TS_03            914                 1.016683
+        return df_fsc, df_groups
 
     # def angdist(self, class_id: int) -> list[np.ndarray]:
     #     """Return the angular distribution for a given class ID."""
