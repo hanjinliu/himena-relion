@@ -16,7 +16,7 @@ from himena.widgets import MainWindow
 from himena.plugins import when_reader_used, register_function
 import pandas as pd
 import starfile
-from himena_relion import _job, _configs
+from himena_relion import _configs, _job_dir
 from himena_relion._pipeline import RelionPipeline
 from himena_relion.consts import Type, MenuId, JOB_ID_MAP
 from himena_relion._utils import (
@@ -38,11 +38,11 @@ class RelionJob(ABC):
     implement the actual running of the job (because RELION runs jobs externally).
     """
 
-    def __init__(self, output_job_dir: _job.JobDirectory):
+    def __init__(self, output_job_dir: _job_dir.JobDirectory):
         self._output_job_dir = output_job_dir
 
     @property
-    def output_job_dir(self) -> _job.ExternalJobDirectory:
+    def output_job_dir(self) -> _job_dir.ExternalJobDirectory:
         """Get the output job directory object."""
         return self._output_job_dir
 
@@ -62,7 +62,7 @@ class RelionJob(ABC):
 
     @classmethod
     @abstractmethod
-    def himena_model_type(cls):
+    def himena_model_type(cls) -> str:
         """Get the himena model type for this job."""
 
     @classmethod
@@ -150,7 +150,7 @@ class RelionJob(ABC):
                 ["relion_pipeliner", "--RunJobs", d],
                 start_new_session=True,
             )
-            return RelionJobExecution(proc, _job.JobDirectory(Path(d).resolve()))
+            return RelionJobExecution(proc, _job_dir.JobDirectory(Path(d).resolve()))
 
     @classmethod
     @abstractmethod
@@ -284,7 +284,7 @@ def prep_builtin_job_star(
 @dataclass
 class RelionJobExecution:
     process: subprocess.Popen
-    job_directory: _job.JobDirectory
+    job_directory: _job_dir.JobDirectory
 
 
 def iter_relion_jobs() -> Generator[type[RelionJob], None, None]:
@@ -387,7 +387,7 @@ def _node_mapping_to_context(node_mapping: dict[str | Callable[[Path], str], str
         if win is None:
             return {}
         val = win.value
-        if not isinstance(val, _job.JobDirectory):
+        if not isinstance(val, _job_dir.JobDirectory):
             return {}
         # NOTE: the from_ file does NOT have to exist at this point.
         out = {}

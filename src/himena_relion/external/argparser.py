@@ -12,7 +12,7 @@ import starfile
 
 from himena_relion._utils import last_job_directory
 from himena_relion.consts import JOB_IMPORT_PATH_FILE, FileNames
-from himena_relion._job import ExternalJobDirectory
+from himena_relion._job_dir import ExternalJobDirectory
 from himena_relion.external.writers import prep_job_star
 from himena_relion.external.job_class import pick_job_class
 

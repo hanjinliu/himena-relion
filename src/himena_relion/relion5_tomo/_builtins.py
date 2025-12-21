@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Annotated, Any
 
-from himena_relion._job_class import connect_jobs, _RelionBuiltinJob, parse_string
+from himena_relion._job_class import _RelionBuiltinJob, parse_string
 from himena_relion import _configs
 from himena_relion._widgets._magicgui import OptimisationSetEdit, DoseRateEdit
 from himena_relion._widgets._path_input import PathDrop
@@ -55,10 +55,6 @@ from himena_relion.relion5._builtins import (
     Class3DJob,
     MotionCorr2Job,
     MotionCorrOwnJob,
-    PostProcessingJob,
-    SelectClassesInteractiveJob,
-    SelectRemoveDuplicatesJob,
-    SelectSplitJob,
 )
 
 IN_TILT_TYPE = Annotated[
@@ -1206,168 +1202,3 @@ class CtfRefineTomoJob(_Relion5TomoJob):
 
 
 # class FrameAlignTomoJob(_Relion5TomoJob):
-
-for _MotionCorJob in [MotionCorr2TomoJob, MotionCorrOwnTomoJob]:
-    connect_jobs(
-        ImportTomoJob,
-        _MotionCorJob,
-        node_mapping={"tilt_series.star": "in_movies"},
-    )
-connect_jobs(
-    MotionCorr2TomoJob,
-    CtfEstimationTomoJob,
-    node_mapping={"corrected_tilt_series.star": "input_star_mics"},
-)
-connect_jobs(
-    MotionCorrOwnTomoJob,
-    CtfEstimationTomoJob,
-    node_mapping={"corrected_tilt_series.star": "input_star_mics"},
-)
-connect_jobs(
-    CtfEstimationTomoJob,
-    ExcludeTiltJob,
-    node_mapping={"tilt_series_ctf.star": "in_tiltseries"},
-)
-for _AlignJob in [
-    AlignTiltSeriesImodFiducial,
-    AlignTiltSeriesImodPatch,
-    AlignTiltSeriesAreTomo2,
-]:
-    connect_jobs(
-        CtfEstimationTomoJob,
-        _AlignJob,
-        node_mapping={"tilt_series_ctf.star": "in_tiltseries"},
-    )
-    connect_jobs(
-        ExcludeTiltJob,
-        _AlignJob,
-        node_mapping={"selected_tilt_series.star": "in_tiltseries"},
-    )
-connect_jobs(
-    AlignTiltSeriesImodFiducial,
-    ReconstructTomogramJob,
-    node_mapping={"aligned_tilt_series.star": "in_tiltseries"},
-)
-# connect_jobs(
-#     AlignTiltSeriesImodPatch,
-#     ReconstructTomogramJob,
-#     node_mapping={"aligned_tilt_series.star": "in_tiltseries"},
-# )
-# connect_jobs(
-#     AlignTiltSeriesAreTomo2,
-#     ReconstructTomogramJob,
-#     node_mapping={"aligned_tilt_series.star": "in_tiltseries"},
-# )
-connect_jobs(
-    ReconstructTomogramJob,
-    DenoiseTrain,
-    node_mapping={"tomograms.star": "in_tomoset"},
-)
-connect_jobs(
-    DenoiseTrain,
-    DenoisePredict,
-    node_mapping={"tomograms.star": "in_tomoset"},
-)
-connect_jobs(
-    ReconstructTomogramJob,
-    PickJob,
-    node_mapping={"tomograms.star": "in_tomoset"},
-)
-connect_jobs(
-    DenoisePredict,
-    PickJob,
-    node_mapping={"tomograms.star": "in_tomoset"},
-)
-connect_jobs(
-    PickJob,
-    ExtractParticlesTomoJob,
-    node_mapping={"optimisation_set.star": "in_optim.in_optimisation"},
-)
-# NOTE: it seems that the output particles.star is not compatible with remove duplicates
-# connect_jobs(
-#     PickJob,
-#     SelectRemoveDuplicatesJob,
-#     node_mapping={"particles.star": "fn_data"},
-# )
-connect_jobs(
-    PickJob,
-    SelectSplitJob,
-    node_mapping={"particles.star": "fn_data"},
-)
-connect_jobs(
-    ExtractParticlesTomoJob,
-    InitialModelTomoJob,
-    node_mapping={"optimisation_set.star": "in_optim.in_optimisation"},
-)
-connect_jobs(
-    ExtractParticlesTomoJob,
-    ReconstructParticlesJob,
-    node_mapping={"optimisation_set.star": "in_optim.in_optimisation"},
-)
-connect_jobs(
-    InitialModelTomoJob,
-    Class3DTomoJob,
-    node_mapping={
-        "optimisation_set.star": "in_optim.in_optimisation",
-        "initial_model.mrc": "fn_ref",
-    },
-)
-connect_jobs(
-    InitialModelTomoJob,
-    Refine3DTomoJob,
-    node_mapping={
-        "optimisation_set.star": "in_optim.in_optimisation",
-        "initial_model.mrc": "fn_ref",
-    },
-)
-connect_jobs(
-    Class3DTomoJob,
-    Refine3DTomoJob,
-)
-
-connect_jobs(
-    Refine3DTomoJob,
-    SelectRemoveDuplicatesJob,
-    node_mapping={"run_data.star": "fn_data"},
-)
-
-
-def _optimiser_last_iter(path: Path) -> str:
-    files = sorted(path.glob("run_it???_optimiser.star"))
-    return str(files[-1]) if files else ""
-
-
-connect_jobs(
-    Class3DTomoJob,
-    SelectClassesInteractiveJob,
-    node_mapping={_optimiser_last_iter: "fn_model"},
-)
-
-connect_jobs(
-    ReconstructParticlesJob,
-    Refine3DTomoJob,
-    node_mapping={
-        "optimisation_set.star": "in_optim.in_optimisation",
-        "merged.mrc": "fn_ref",
-    },
-)
-connect_jobs(
-    ReconstructParticlesJob,
-    PostProcessingJob,
-    node_mapping={"half1.mrc": "fn_in"},
-)
-connect_jobs(
-    PostProcessingJob,
-    CtfRefineTomoJob,
-    node_mapping={"postprocess.star": "in_post"},
-)
-connect_jobs(
-    CtfRefineTomoJob,
-    ReconstructParticlesJob,
-    node_mapping={"optimisation_set.star": "in_optim.in_optimisation"},
-)
-connect_jobs(
-    CtfRefineTomoJob,
-    Refine3DTomoJob,
-    node_mapping={"optimisation_set.star": "in_optim.in_optimisation"},
-)

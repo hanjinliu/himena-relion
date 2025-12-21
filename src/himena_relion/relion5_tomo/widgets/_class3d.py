@@ -10,12 +10,12 @@ from himena_relion._widgets import (
     QIntWidget,
     spacer_widget,
 )
-from himena_relion import _job
+from himena_relion import _job_dir
 
 _LOGGER = logging.getLogger(__name__)
 
 
-@register_job(_job.Class3DJobDirectory)
+@register_job(_job_dir.Class3DJobDirectory)
 class QClass3DViewer(QJobScrollArea):
     def __init__(self):
         super().__init__()
@@ -39,19 +39,19 @@ class QClass3DViewer(QJobScrollArea):
         hor_layout1.setContentsMargins(0, 0, 0, 0)
         self._layout.addLayout(hor_layout1)
         self._index_start = 1
-        self._job_dir: _job.Class3DJobDirectory | None = None
+        self._job_dir: _job_dir.Class3DJobDirectory | None = None
 
         self._iter_choice.valueChanged.connect(self._on_iter_changed)
         self._class_choice.valueChanged.connect(self._on_class_changed)
         self._layout.addWidget(spacer_widget())
 
-    def on_job_updated(self, job_dir: _job.Class3DJobDirectory, path: str):
+    def on_job_updated(self, job_dir: _job_dir.Class3DJobDirectory, path: str):
         """Handle changes to the job directory."""
         if Path(path).name.endswith("_mode.star"):
             self.initialize(job_dir)
             _LOGGER.debug("%s Updated", self._job_dir.job_id)
 
-    def initialize(self, job_dir: _job.Class3DJobDirectory):
+    def initialize(self, job_dir: _job_dir.Class3DJobDirectory):
         """Initialize the viewer with the job directory."""
         self._job_dir = job_dir
         nclasses = job_dir.num_classes()

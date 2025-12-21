@@ -1,7 +1,6 @@
 from __future__ import annotations
 from contextlib import contextmanager
 
-import matplotlib.pyplot as plt
 from himena import StandardType, WidgetDataModel
 from himena.standards import plotting as hplt
 from himena_builtins.qt.plot._canvas import QModelMatplotlibCanvas
@@ -107,23 +106,7 @@ class QPlotCanvas(QModelMatplotlibCanvas):
 
     @contextmanager
     def _plot_style(self):
-        if widget := self.parentWidget():
-            background_color = widget.palette().color(widget.backgroundRole())
-        else:
-            background_color = self.palette().color(self.backgroundRole())
-        if background_color.lightness() < 128:
-            style = "dark_background"
-        else:
-            style = "default"
-        with plt.style.context(style):
-            yield
-            self.figure.set_facecolor(background_color.getRgbF())
-
-            for ax in self.figure.axes:
-                ax.set_facecolor(background_color.getRgbF())
-                tick_color = ax.xaxis.label.get_color()
-                for spine in ax.spines.values():
-                    spine.set_color(tick_color)
+        yield  # implement in the future
 
 
 def _res_to_str(res: float):

@@ -8,7 +8,7 @@ import pandas as pd
 import numpy as np
 from numpy.typing import NDArray
 import starfile
-from himena_relion import _job, _utils
+from himena_relion import _job_dir, _utils
 from himena_relion.external import RelionExternalJob
 from himena_relion._job_class import connect_jobs
 from himena_relion.relion5_tomo._builtins import ReconstructTomogramJob, IN_TILT_TYPE
@@ -151,7 +151,7 @@ class FindBeads3D(RelionExternalJob):
 
         model_paths = []
         for _, row in df_tomo.iterrows():
-            info = _job.TomogramInfo.from_series(row)
+            info = _job_dir.TomogramInfo.from_series(row)
             path_star = info.tilt_series_star_file
             tomo_path = info.reconstructed_tomogram[0]
             size_pix = gold_nm / info.tomo_pixel_size * 10
@@ -211,7 +211,7 @@ class EraseGold(RelionExternalJob):
 
         output_node_path = out_job_dir.path.joinpath("tilt_series.star")
         for _, row in df_tomo.iterrows():
-            info = _job.TomogramInfo.from_series(row)
+            info = _job_dir.TomogramInfo.from_series(row)
             model_path = rln_dir / str(row["TomoBeadModel"])
             edf_path = rln_dir / str(row[ETOMO_FILE])
             gold_nm = row["TomoBeadSize"]
@@ -274,7 +274,7 @@ class EraseGold(RelionExternalJob):
 
         df_tomo[TILT_STAR] = [
             tilt_save_dir.relative_to(rln_dir)
-            / f"{_job.TomogramInfo.from_series(row).tomo_name}.star"
+            / f"{_job_dir.TomogramInfo.from_series(row).tomo_name}.star"
             for _, row in df_tomo.iterrows()
         ]
         starfile.write(df_tomo, output_node_path)

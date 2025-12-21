@@ -10,7 +10,7 @@ from watchfiles import watch
 from timeit import default_timer
 from himena import MainWindow, WidgetDataModel
 from himena.plugins import validate_protocol
-from himena_relion import _job
+from himena_relion import _job_dir
 from himena_relion._widgets._job_widgets import (
     JobWidgetBase,
     QJobStateLabel,
@@ -31,7 +31,7 @@ class QRelionJobWidget(QtW.QWidget):
     def __init__(self, ui: MainWindow):
         super().__init__()
         self._ui_ref = weakref.ref(ui)
-        self._job_dir: _job.JobDirectory | None = None
+        self._job_dir: _job_dir.JobDirectory | None = None
         layout = QtW.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         self._state_widget = QJobStateLabel()
@@ -49,7 +49,7 @@ class QRelionJobWidget(QtW.QWidget):
         if self._watcher:
             self._watcher.quit()
         self._job_dir = job_dir = model.value
-        if not isinstance(job_dir, _job.JobDirectory):
+        if not isinstance(job_dir, _job_dir.JobDirectory):
             raise TypeError(f"Expected JobDirectory, got {type(job_dir)}")
         self._watcher = self._watch_job_directory(job_dir.path)
 
@@ -151,7 +151,7 @@ class RelionJobViewRegistry:
 
     def register(
         self,
-        job_type: type[_job.JobDirectory],
+        job_type: type[_job_dir.JobDirectory],
         widget_cls: type[JobWidgetBase],
     ):
         """Register a widget class for a specific job type."""
@@ -162,7 +162,7 @@ class RelionJobViewRegistry:
         self._registered[job_type] = widget_cls
 
     def get_widget_class(
-        self, job_type: type[_job.JobDirectory]
+        self, job_type: type[_job_dir.JobDirectory]
     ) -> type[JobWidgetBase] | None:
         """Get the widget class for a specific job type."""
         return self._registered.get(job_type, None)
@@ -171,7 +171,7 @@ class RelionJobViewRegistry:
 _T = TypeVar("_T", bound=JobWidgetBase)
 
 
-def register_job(job_type: type[_job.JobDirectory]) -> Callable[[_T], _T]:
+def register_job(job_type: type[_job_dir.JobDirectory]) -> Callable[[_T], _T]:
     """Decorator to register a widget class for a specific job type."""
 
     def inner(widget_cls: _T) -> _T:

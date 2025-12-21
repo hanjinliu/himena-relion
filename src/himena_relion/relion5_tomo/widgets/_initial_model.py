@@ -10,12 +10,12 @@ from himena_relion._widgets import (
     QIntWidget,
     spacer_widget,
 )
-from himena_relion import _job
+from himena_relion import _job_dir
 
 _LOGGER = logging.getLogger(__name__)
 
 
-@register_job(_job.InitialModel3DJobDirectory)
+@register_job(_job_dir.InitialModel3DJobDirectory)
 class QInitialModelViewer(QJobScrollArea):
     def __init__(self):
         super().__init__()
@@ -38,15 +38,15 @@ class QInitialModelViewer(QJobScrollArea):
         self._class_choice.valueChanged.connect(self._on_class_changed)
         self._index_start = 1
         self._iter_current_value = 0
-        self._job_dir: _job.InitialModel3DJobDirectory | None = None
+        self._job_dir: _job_dir.InitialModel3DJobDirectory | None = None
 
-    def on_job_updated(self, job_dir: _job.InitialModel3DJobDirectory, path: str):
+    def on_job_updated(self, job_dir: _job_dir.InitialModel3DJobDirectory, path: str):
         """Handle changes to the job directory."""
         if Path(path).suffix == ".mrc":
             self.initialize(job_dir)
             _LOGGER.debug("%s Updated", self._job_dir.job_id)
 
-    def initialize(self, job_dir: _job.InitialModel3DJobDirectory):
+    def initialize(self, job_dir: _job_dir.InitialModel3DJobDirectory):
         """Initialize the viewer with the job directory."""
         self._job_dir = job_dir
         nclasses = job_dir.num_classes()

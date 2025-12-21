@@ -7,7 +7,7 @@ from himena.plugins import register_function
 from himena_relion.consts import Type, MenuId, RelionJobState, FileNames
 
 if TYPE_CHECKING:
-    from himena_relion._job import JobDirectory
+    from himena_relion._job_dir import JobDirectory
 
 
 @register_function(
@@ -155,7 +155,7 @@ def start_new_project(ui: MainWindow):
 
 
 def assert_job(model: WidgetDataModel) -> JobDirectory:
-    from himena_relion._job import JobDirectory
+    from himena_relion._job_dir import JobDirectory
 
     value = model.value
     if not isinstance(value, JobDirectory):

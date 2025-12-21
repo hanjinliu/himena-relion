@@ -7,12 +7,12 @@ from himena_relion._widgets import (
     register_job,
     spacer_widget,
 )
-from himena_relion import _job
+from himena_relion import _job_dir
 
 _LOGGER = logging.getLogger(__name__)
 
 
-@register_job(_job.MaskCreateJobDirectory)
+@register_job(_job_dir.MaskCreateJobDirectory)
 class QMaskCreateViewer(QJobScrollArea):
     def __init__(self):
         super().__init__()
@@ -21,13 +21,13 @@ class QMaskCreateViewer(QJobScrollArea):
         self._layout.addWidget(self._viewer)
         self._layout.addWidget(spacer_widget())
 
-    def on_job_updated(self, job_dir: _job.MaskCreateJobDirectory, path: str):
+    def on_job_updated(self, job_dir: _job_dir.MaskCreateJobDirectory, path: str):
         """Handle changes to the job directory."""
         if Path(path).name == "mask.mrc":
             self.initialize(job_dir)
             _LOGGER.debug("%s Updated", job_dir.job_id)
 
-    def initialize(self, job_dir: _job.MaskCreateJobDirectory):
+    def initialize(self, job_dir: _job_dir.MaskCreateJobDirectory):
         """Initialize the viewer with the job directory."""
         mask = job_dir.mask_mrc()
         self._viewer.set_image(mask, update_now=False)

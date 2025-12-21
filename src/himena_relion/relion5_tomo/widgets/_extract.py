@@ -8,16 +8,16 @@ from himena_relion._widgets import (
     register_job,
     spacer_widget,
 )
-from himena_relion import _job
+from himena_relion import _job_dir
 
 _LOGGER = logging.getLogger(__name__)
 
 
-@register_job(_job.ExtractJobDirectory)
+@register_job(_job_dir.ExtractJobDirectory)
 class QExtractJobViewer(QJobScrollArea):
     def __init__(self):
         super().__init__()
-        self._job_dir: _job.ExtractJobDirectory | None = None
+        self._job_dir: _job_dir.ExtractJobDirectory | None = None
         self._viewer = Q2DViewer()
         self._tomo_choice = QtW.QComboBox()
         self._tomo_choice.currentTextChanged.connect(self._on_tomo_changed)
@@ -33,14 +33,14 @@ class QExtractJobViewer(QJobScrollArea):
         self._layout.addWidget(self._viewer)
         self._layout.addWidget(spacer_widget())
 
-    def on_job_updated(self, job_dir: _job.ExtractJobDirectory, path: str):
+    def on_job_updated(self, job_dir: _job_dir.ExtractJobDirectory, path: str):
         """Handle changes to the job directory."""
         _path = Path(path)
         if _path.name.endswith(("_stack2d.mrcs", "_data.mrc")):
             self.initialize(job_dir)
             _LOGGER.debug("%s Updated", self._job_dir.job_id)
 
-    def initialize(self, job_dir: _job.ExtractJobDirectory):
+    def initialize(self, job_dir: _job_dir.ExtractJobDirectory):
         """Initialize the viewer with the job directory."""
         self._job_dir = job_dir
         tomo_names = job_dir.tomo_names()

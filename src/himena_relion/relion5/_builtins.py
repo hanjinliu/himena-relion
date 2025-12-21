@@ -1,7 +1,7 @@
 from typing import Annotated, Any
 
 from magicgui.widgets.bases import ValueWidget
-from himena_relion._job_class import _RelionBuiltinJob, connect_jobs, parse_string
+from himena_relion._job_class import _RelionBuiltinJob, parse_string
 from himena_relion._widgets._magicgui import PathDrop, BfactorEdit
 from himena_relion import _configs
 
@@ -121,7 +121,7 @@ INITIAL_LOWPASS_TYPE = Annotated[
     float, {"label": "Initial low-pass filter (A)", "group": "Reference"}
 ]
 TRUST_REF_SIZE_TYPE = Annotated[
-    bool, {"label": "Resize reference if needed", "group": "Compute"}
+    bool, {"label": "Resize reference if needed", "group": "Reference"}
 ]
 # Optimisation
 T_TYPE = Annotated[
@@ -816,7 +816,7 @@ class Refine3DJob(_Relion5Job):
         do_combine_thru_disc: DO_COMBINE_THRU_DISC_TYPE = False,
         gpu_ids: GPU_IDS_TYPE = "",
         # Running
-        nr_mpi: MPI_TYPE = 1,
+        nr_mpi: MPI_TYPE = 3,
         nr_threads: THREAD_TYPE = 1,
         do_queue: DO_QUEUE_TYPE = False,
         min_dedicated: MIN_DEDICATED_TYPE = 1,
@@ -1120,35 +1120,3 @@ class PostProcessingJob(_Relion5Job):
         min_dedicated: MIN_DEDICATED_TYPE = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
-
-
-connect_jobs(
-    MotionCorr2Job,
-    CtfEstimationJob,
-    node_mapping={"corrected_micrographs.star": "input_star_mics"},
-)
-connect_jobs(
-    MotionCorrOwnJob,
-    CtfEstimationJob,
-    node_mapping={"corrected_micrographs.star": "input_star_mics"},
-)
-connect_jobs(
-    CtfEstimationJob,
-    SelectMicrographsJob,
-    node_mapping={"tilt_series_ctf.star": "fn_mic"},
-)
-connect_jobs(
-    Class3DJob,
-    Refine3DJob,
-    node_mapping={"run_class001.mrc": "fn_ref"},
-)
-connect_jobs(
-    Refine3DJob,
-    MaskCreationJob,
-    node_mapping={"run_class001.mrc": "fn_in"},
-)
-connect_jobs(
-    Refine3DJob,
-    PostProcessingJob,
-    node_mapping={"run_half1_class001_unfil.mrc": "fn_in"},
-)

@@ -6,7 +6,7 @@ from rich.console import Console
 from importlib import import_module
 from runpy import run_path
 
-from himena_relion import _job
+from himena_relion import _job_dir
 from himena_relion._job_class import RelionJob
 from himena_relion.external.writers import prep_job_star
 
@@ -29,7 +29,7 @@ def pick_job_class(class_id: str) -> "type[RelionExternalJob]":
 
 
 class RelionExternalJob(RelionJob):
-    def __init__(self, output_job_dir: _job.ExternalJobDirectory):
+    def __init__(self, output_job_dir: _job_dir.ExternalJobDirectory):
         self._output_job_dir = output_job_dir
         self._console = Console(record=True)
         cls = type(self)
@@ -97,7 +97,7 @@ class RelionExternalJob(RelionJob):
         """Get the command ID for this job."""
         return f"himena-relion:external:{cls.import_path()}"
 
-    def provide_widget(self, job_dir: _job.ExternalJobDirectory) -> Any:
+    def provide_widget(self, job_dir: _job_dir.ExternalJobDirectory) -> Any:
         """Provide a Qt widget for displaying the job results."""
         return NotImplemented
 

@@ -16,7 +16,7 @@ from himena.style import Theme
 from himena_relion._widgets._job_widgets import QJobPipelineViewer
 from himena_relion.consts import Type, JOB_ID_MAP
 from himena_relion._pipeline import RelionDefaultPipeline, RelionJobInfo, NodeStatus
-from himena_relion._job import ExternalJobDirectory, JobDirectory
+from himena_relion._job_dir import ExternalJobDirectory, JobDirectory
 
 _LOGGER = logging.getLogger(__name__)
 

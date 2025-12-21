@@ -8,16 +8,16 @@ from himena_relion._widgets import (
     Q2DFilterWidget,
     register_job,
 )
-from himena_relion import _job
+from himena_relion import _job_dir
 
 _LOGGER = logging.getLogger(__name__)
 
 
-@register_job(_job.MotionCorrectionJobDirectory)
+@register_job(_job_dir.MotionCorrectionJobDirectory)
 class QMotionCorrViewer(QJobScrollArea):
     def __init__(self):
         super().__init__()
-        self._job_dir: _job.MotionCorrectionJobDirectory = None
+        self._job_dir: _job_dir.MotionCorrectionJobDirectory = None
         layout = self._layout
 
         self._viewer = Q2DViewer(zlabel="Tilt index")
@@ -31,7 +31,7 @@ class QMotionCorrViewer(QJobScrollArea):
         self._filter_widget.value_changed.connect(self._viewer.redraw)
         self._binsize_old = -1
 
-    def on_job_updated(self, job_dir: _job.MotionCorrectionJobDirectory, path: str):
+    def on_job_updated(self, job_dir: _job_dir.MotionCorrectionJobDirectory, path: str):
         """Handle changes to the job directory."""
         if Path(path).suffix == ".mrc":
             self._process_update()
@@ -45,7 +45,7 @@ class QMotionCorrViewer(QJobScrollArea):
             self._binsize_old = new_binsize
             self._viewer.auto_fit()
 
-    def initialize(self, job_dir: _job.MotionCorrectionJobDirectory):
+    def initialize(self, job_dir: _job_dir.MotionCorrectionJobDirectory):
         """Initialize the viewer with the job directory."""
         self._job_dir = job_dir
 
@@ -76,11 +76,11 @@ class QMotionCorrViewer(QJobScrollArea):
         self._viewer.set_array_view(ts_view.with_filter(self._filter_widget.apply))
 
 
-@register_job(_job.ExcludeTiltSeriesJobDirectory)
+@register_job(_job_dir.ExcludeTiltSeriesJobDirectory)
 class QExcludeTiltViewer(QJobScrollArea):
     def __init__(self):
         super().__init__()
-        self._job_dir: _job.ExcludeTiltSeriesJobDirectory = None
+        self._job_dir: _job_dir.ExcludeTiltSeriesJobDirectory = None
         layout = self._layout
 
         self._viewer = Q2DViewer(zlabel="Tilt index")
@@ -94,7 +94,9 @@ class QExcludeTiltViewer(QJobScrollArea):
         self._filter_widget.value_changed.connect(self._viewer.redraw)
         self._binsize_old = -1
 
-    def on_job_updated(self, job_dir: _job.ExcludeTiltSeriesJobDirectory, path: str):
+    def on_job_updated(
+        self, job_dir: _job_dir.ExcludeTiltSeriesJobDirectory, path: str
+    ):
         """Handle changes to the job directory."""
         if Path(path).name == "selected_tilt_series.star":
             self._process_update()
@@ -108,7 +110,7 @@ class QExcludeTiltViewer(QJobScrollArea):
             self._binsize_old = new_binsize
             self._viewer.auto_fit()
 
-    def initialize(self, job_dir: _job.ExcludeTiltSeriesJobDirectory):
+    def initialize(self, job_dir: _job_dir.ExcludeTiltSeriesJobDirectory):
         """Initialize the viewer with the job directory."""
         self._job_dir = job_dir
 

@@ -6,16 +6,16 @@ import numpy as np
 from qtpy import QtWidgets as QtW
 import scipy.ndimage as ndi
 from himena_relion._widgets import QJobScrollArea, Q2DViewer, register_job
-from himena_relion import _job, _utils
+from himena_relion import _job_dir, _utils
 
 _LOGGER = logging.getLogger(__name__)
 
 
-@register_job(_job.AlignTiltSeriesJobDirectory)
+@register_job(_job_dir.AlignTiltSeriesJobDirectory)
 class QAlignTiltSeriesViewer(QJobScrollArea):
     def __init__(self):
         super().__init__()
-        self._job_dir: _job.AlignTiltSeriesJobDirectory | None = None
+        self._job_dir: _job_dir.AlignTiltSeriesJobDirectory | None = None
         layout = self._layout
 
         self._viewer = Q2DViewer(zlabel="Tilt index")
@@ -25,19 +25,19 @@ class QAlignTiltSeriesViewer(QJobScrollArea):
         layout.addWidget(self._ts_choice)
         layout.addWidget(self._viewer)
 
-    def on_job_updated(self, job_dir: _job.AlignTiltSeriesJobDirectory, path: str):
+    def on_job_updated(self, job_dir: _job_dir.AlignTiltSeriesJobDirectory, path: str):
         """Handle changes to the job directory."""
         if Path(path).suffix == ".xf":
             self._process_update(job_dir)
             _LOGGER.debug("%s Updated", self._job_dir.job_id)
 
-    def initialize(self, job_dir: _job.AlignTiltSeriesJobDirectory):
+    def initialize(self, job_dir: _job_dir.AlignTiltSeriesJobDirectory):
         """Initialize the viewer with the job directory."""
         self._job_dir = job_dir
         self._process_update(job_dir)
         self._viewer.auto_fit()
 
-    def _process_update(self, job_dir: _job.AlignTiltSeriesJobDirectory):
+    def _process_update(self, job_dir: _job_dir.AlignTiltSeriesJobDirectory):
         choices: list[str] = []
         for imod_dir in job_dir.path.joinpath("external").glob("*"):
             if imod_dir.joinpath(f"{imod_dir.name}.xf").exists():
@@ -67,7 +67,7 @@ class QAlignTiltSeriesViewer(QJobScrollArea):
         pipeline = job_dir.parse_job_pipeline()
         if node := pipeline.get_input_by_type("TomogramGroupMetadata.star.relion"):
             _LOGGER.debug("Found input: %s", node.path)
-            tilt_job_dir = _job.JobDirectory.from_job_star(
+            tilt_job_dir = _job_dir.JobDirectory.from_job_star(
                 job_dir.relion_project_dir / node.path_job / "job.star"
             )
             for info in tilt_job_dir.iter_tilt_series():

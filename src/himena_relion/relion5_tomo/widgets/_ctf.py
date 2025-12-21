@@ -12,16 +12,16 @@ from himena_relion._widgets import (
     QPlotCanvas,
     register_job,
 )
-from himena_relion import _job
+from himena_relion import _job_dir
 
 _LOGGER = logging.getLogger(__name__)
 
 
-@register_job(_job.CtfCorrectionJobDirectory)
+@register_job(_job_dir.CtfCorrectionJobDirectory)
 class QCtfFindViewer(QJobScrollArea):
     def __init__(self):
         super().__init__()
-        self._job_dir: _job.CtfCorrectionJobDirectory = None
+        self._job_dir: _job_dir.CtfCorrectionJobDirectory = None
         layout = self._layout
         self._defocus_canvas = QPlotCanvas(self)
         self._defocus_canvas.setFixedSize(360, 120)
@@ -47,13 +47,13 @@ class QCtfFindViewer(QJobScrollArea):
         layout.addWidget(QtW.QLabel("<b>CTF spectra</b>"))
         layout.addWidget(self._viewer)
 
-    def on_job_updated(self, job_dir: _job.CtfCorrectionJobDirectory, path: str):
+    def on_job_updated(self, job_dir: _job_dir.CtfCorrectionJobDirectory, path: str):
         """Handle changes to the job directory."""
         if Path(path).suffix == ".ctf":
             self._process_update()
             _LOGGER.debug("%s Updated", self._job_dir.job_id)
 
-    def initialize(self, job_dir: _job.CtfCorrectionJobDirectory):
+    def initialize(self, job_dir: _job_dir.CtfCorrectionJobDirectory):
         """Initialize the viewer with the job directory."""
         self._job_dir = job_dir
         self._process_update()
@@ -104,11 +104,11 @@ class QCtfFindViewer(QJobScrollArea):
         self._viewer.set_array_view(ts_view)
 
 
-@register_job(_job.CtfRefineTomoJobDirectory)
+@register_job(_job_dir.CtfRefineTomoJobDirectory)
 class QCtfRefineTomoViewer(QJobScrollArea):
     def __init__(self):
         super().__init__()
-        self._job_dir: _job.CtfRefineTomoJobDirectory = None
+        self._job_dir: _job_dir.CtfRefineTomoJobDirectory = None
         layout = self._layout
         self._defocus_canvas = QPlotCanvas(self)
         self._defocus_canvas.setFixedSize(360, 160)
@@ -122,7 +122,7 @@ class QCtfRefineTomoViewer(QJobScrollArea):
         layout.addWidget(QtW.QLabel("<b>CTF Scale Factor</b>"))
         layout.addWidget(self._ctf_scale_canvas)
 
-    def initialize(self, job_dir: _job.CtfRefineTomoJobDirectory):
+    def initialize(self, job_dir: _job_dir.CtfRefineTomoJobDirectory):
         """Initialize the viewer with the job directory."""
         self._job_dir = job_dir
         self._process_update()

@@ -12,7 +12,7 @@ from scipy import ndimage as ndi
 from superqt.utils import thread_worker, GeneratorWorker
 
 from himena_relion._widgets import QJobScrollArea, register_job
-from himena_relion import _job
+from himena_relion import _job_dir
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -20,14 +20,14 @@ _LOGGER = logging.getLogger(__name__)
 class QSelectJobBase(QJobScrollArea):
     def __init__(self):
         super().__init__()
-        self._job_dir: _job.SelectInteractiveJobDirectory = None
+        self._job_dir: _job_dir.SelectInteractiveJobDirectory = None
         self._text_edit = QtW.QTextEdit()
         self._text_edit.setReadOnly(True)
         self._text_edit.setWordWrapMode(QtGui.QTextOption.WrapMode.NoWrap)
         self._layout.addWidget(self._text_edit)
         self._worker: GeneratorWorker | None = None
 
-    def initialize(self, job_dir: _job.SelectInteractiveJobDirectory):
+    def initialize(self, job_dir: _job_dir.SelectInteractiveJobDirectory):
         """Initialize the viewer with the job directory."""
         self._job_dir = job_dir
         self._text_edit.clear()
@@ -38,12 +38,15 @@ class QSelectJobBase(QJobScrollArea):
         self._worker.yielded.connect(self._cb_html_requested)
         self._worker.start()
 
-    def insert_html(self, job_dir: _job.SelectInteractiveJobDirectory):
-        """Insert HTML into the text edit."""
+    def insert_html(self, job_dir: _job_dir.SelectInteractiveJobDirectory):
+        """Insert HTML into the text edit.
+
+        This is a generator function that yields HTML strings or np.ndarray tables.
+        """
         # implement this in the subclass
         yield ""
 
-    def on_job_updated(self, job_dir: _job.RemoveDuplicatesJobDirectory, path: str):
+    def on_job_updated(self, job_dir: _job_dir.RemoveDuplicatesJobDirectory, path: str):
         """Handle changes to the job directory."""
         if Path(path).suffix not in [".out", ".err", ".star"]:
             self.initialize(job_dir)
@@ -85,9 +88,9 @@ class QSelectJobBase(QJobScrollArea):
             cursor.insertText("\n\n")
 
 
-@register_job(_job.RemoveDuplicatesJobDirectory)
+@register_job(_job_dir.RemoveDuplicatesJobDirectory)
 class QRemoveDuplicatesViewer(QSelectJobBase):
-    def insert_html(self, job_dir: _job.RemoveDuplicatesJobDirectory):
+    def insert_html(self, job_dir: _job_dir.RemoveDuplicatesJobDirectory):
         """Initialize the viewer with the job directory."""
         path_sel = job_dir.particles_star()
         path_rem = job_dir.particles_removed_star()
@@ -106,9 +109,9 @@ class QRemoveDuplicatesViewer(QSelectJobBase):
         yield self._get_summary_table(n_selected, n_removed, n_all)
 
 
-@register_job(_job.SelectInteractiveJobDirectory)
+@register_job(_job_dir.SelectInteractiveJobDirectory)
 class QSelectInteractiveViewer(QSelectJobBase):
-    def insert_html(self, job_dir: _job.SelectInteractiveJobDirectory):
+    def insert_html(self, job_dir: _job_dir.SelectInteractiveJobDirectory):
         path_all = job_dir.particles_pre_star()
         path_sel = job_dir.particles_star()
         if not (path_sel.exists() and path_all.exists()):
@@ -155,6 +158,22 @@ class QSelectInteractiveViewer(QSelectJobBase):
         yield from yield_projections(images_selected)
         yield "<br><h2>Removed Images</h2><br>"
         yield from yield_projections(images_removed)
+
+
+@register_job(_job_dir.SplitParticlesJobDirectory)
+class SplitParticlesViewer(QSelectJobBase):
+    def insert_html(self, job_dir: _job_dir.SplitParticlesJobDirectory):
+        for path in job_dir.iter_particles_stars():
+            if not path.exists():
+                continue
+            df = starfile.read(path)
+            yield f"<h2>{path.name} = {df.shape[0]} particles</h2>"
+            particles_in_each_tomo = []
+            for name, sub in df.groupby("rlnTomoName"):
+                particles_in_each_tomo.append((name, f"n = {sub.shape[0]}"))
+            particles_in_each_tomo.sort(key=lambda x: x[0])
+            yield np.array(particles_in_each_tomo, dtype=np.dtypes.StringDType())
+            yield "<br><br>"
 
 
 def yield_projections(images: list[tuple[Path, np.ndarray | None]]):

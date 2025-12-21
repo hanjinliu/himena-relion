@@ -36,7 +36,7 @@ def _(path: Path):
 @register_reader_plugin(priority=500, module="himena_relion.io")
 def read_relion_job(path: Path) -> WidgetDataModel:
     if job_star := _get_job_star(path):
-        from himena_relion._job import JobDirectory
+        from himena_relion._job_dir import JobDirectory
 
         job_dir = JobDirectory.from_job_star(job_star)
         return WidgetDataModel(

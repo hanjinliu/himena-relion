@@ -10,13 +10,13 @@ from qtpy import QtWidgets as QtW, QtCore
 import starfile
 from himena_relion._image_readers import ArrayFilteredView
 from himena_relion._widgets import Q2DViewer, Q2DFilterWidget
-from himena_relion import _job
+from himena_relion import _job_dir
 
 _LOGGER = logging.getLogger(__name__)
 
 
 class QFindBeads3DViewer(QtW.QWidget):
-    def __init__(self, job_dir: _job.ExternalJobDirectory):
+    def __init__(self, job_dir: _job_dir.ExternalJobDirectory):
         super().__init__()
         self._job_dir = job_dir
         layout = QtW.QVBoxLayout(self)
@@ -31,13 +31,13 @@ class QFindBeads3DViewer(QtW.QWidget):
         layout.addWidget(self._viewer)
         self.initialize(job_dir)
 
-    def on_job_updated(self, job_dir: _job.ExternalJobDirectory, path: str):
+    def on_job_updated(self, job_dir: _job_dir.ExternalJobDirectory, path: str):
         """Handle changes to the job directory."""
         if Path(path).suffix == ".mod":
             self.initialize(job_dir)
             _LOGGER.debug("%s Updated", job_dir.job_id)
 
-    def initialize(self, job_dir: _job.ExternalJobDirectory):
+    def initialize(self, job_dir: _job_dir.ExternalJobDirectory):
         """Initialize the viewer with the job directory."""
         current_text = self._tomo_choice.currentText()
         items: list[str] = []
@@ -78,7 +78,7 @@ class QFindBeads3DViewer(QtW.QWidget):
             size=point_size,
         )
 
-    def _iter_tomogram_info(self) -> Iterator[_job.TomogramInfo]:
+    def _iter_tomogram_info(self) -> Iterator[_job_dir.TomogramInfo]:
         pipe = self._job_dir.parse_job_pipeline()
         input0 = pipe.get_input_by_type("TomogramGroupMetadata")
         assert input0 is not None, (
@@ -87,11 +87,11 @@ class QFindBeads3DViewer(QtW.QWidget):
         df_tomo = starfile.read(input0.path)
         assert isinstance(df_tomo, pd.DataFrame), type(df_tomo)
         for _, row in df_tomo.iterrows():
-            yield _job.TomogramInfo.from_series(row)
+            yield _job_dir.TomogramInfo.from_series(row)
 
 
 class QEraseGoldViewer(QtW.QWidget):
-    def __init__(self, job_dir: _job.ExternalJobDirectory):
+    def __init__(self, job_dir: _job_dir.ExternalJobDirectory):
         super().__init__()
         self._job_dir = job_dir
         layout = QtW.QVBoxLayout(self)
@@ -108,7 +108,7 @@ class QEraseGoldViewer(QtW.QWidget):
         self._binsize_old = -1
         self.initialize(job_dir)
 
-    def on_job_updated(self, job_dir: _job.ExternalJobDirectory, path: str):
+    def on_job_updated(self, job_dir: _job_dir.ExternalJobDirectory, path: str):
         """Handle changes to the job directory."""
         if Path(path).suffix == ".star":
             self._process_update()
@@ -122,7 +122,7 @@ class QEraseGoldViewer(QtW.QWidget):
             self._binsize_old = new_binsize
             self._viewer.auto_fit()
 
-    def initialize(self, job_dir: _job.ExternalJobDirectory):
+    def initialize(self, job_dir: _job_dir.ExternalJobDirectory):
         """Initialize the viewer with the job directory."""
         self._process_update()
         self._viewer.auto_fit()

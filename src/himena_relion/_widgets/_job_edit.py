@@ -7,7 +7,7 @@ from typing import Any
 from himena import MainWindow
 from qtpy import QtWidgets as QtW, QtCore
 from himena.qt import magicgui as _mgui
-from himena_relion import _job
+from himena_relion import _job_dir
 from himena_relion._job_class import (
     RelionJob,
     RelionJobExecution,
@@ -80,7 +80,7 @@ class QJobScheduler(QtW.QWidget):
     def set_schedule_mode(self):
         self._set_mode(ScheduleMode())
 
-    def set_edit_mode(self, job_dir: _job.JobDirectory):
+    def set_edit_mode(self, job_dir: _job_dir.JobDirectory):
         self._set_mode(EditMode(job_dir))
 
     # def preview_job_star(self):
@@ -200,7 +200,7 @@ class ScheduleMode(Mode):
 
 
 class EditMode(Mode):
-    def __init__(self, job_dir: _job.JobDirectory):
+    def __init__(self, job_dir: _job_dir.JobDirectory):
         self.job_dir = job_dir
 
     def exec(self, widget: QJobScheduler):

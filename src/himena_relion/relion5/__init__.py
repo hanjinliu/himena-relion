@@ -1,3 +1,3 @@
-from himena_relion.relion5 import widgets, _builtins
+from himena_relion.relion5 import widgets, _builtins, _connections
 
-del widgets, _builtins
+del widgets, _builtins, _connections

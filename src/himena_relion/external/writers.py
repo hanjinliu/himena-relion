@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import pandas as pd
-from himena_relion import _job
+from himena_relion import _job_dir
 from himena_relion._job_class import to_string
 from himena_relion.consts import ARG_NAME_REMAP
 
@@ -53,7 +53,7 @@ def prep_job_star(
     arg_map = dict(ARG_NAME_REMAP)
     for key, value in kwargs.items():
         value = to_string(value)
-        if isinstance(value, _job.JobDirectory):
+        if isinstance(value, _job_dir.JobDirectory):
             pass  # this is himena-relion internal use only
         elif key in [
             "in_mics",

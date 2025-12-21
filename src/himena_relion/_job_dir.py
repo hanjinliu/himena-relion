@@ -75,16 +75,20 @@ class JobDirectory:
         """Get the job title (human readable name of this job)."""
         if label := getattr(self, "_job_type", None):
             return JOB_ID_MAP.get(label, label)
+        if job_cls := self._to_job_class():
+            return job_cls.job_title()
         return "Unknown"
 
     def himena_model_type(self) -> str:
         """Model type string specific to this job."""
         if label := getattr(self, "_job_type", None):
             subtype = label
+            if self.is_tomo():
+                subtype = change_name_for_tomo(subtype)
+        elif job_cls := self._to_job_class():
+            subtype = job_cls.himena_model_type()
         else:
             subtype = "unknown"
-        if self.is_tomo():
-            subtype = change_name_for_tomo(subtype)
         return Type.RELION_JOB + "." + subtype
 
     @property
@@ -1012,18 +1016,14 @@ class ReconstructParticlesJobDirectory(JobDirectory):
 
     _job_type = "relion.reconstructparticletomo"
 
-    def merged_mrc(self) -> NDArray[np.floating]:
-        """Return the path to the merged MRC file."""
+    def merged_mrc(self) -> NDArray[np.floating] | None:
+        """Return the path to the merged MRC file if exists."""
         path = self.path / "merged.mrc"
-        with mrcfile.open(path, mode="r") as mrc:
-            return mrc.data
-
-    def halfmap_mrc(self, half: Literal[1, 2]) -> NDArray[np.floating]:
-        """Return the path to the halfmap MRC file."""
-        name = f"half{half}.mrc"
-        path = self.path / name
-        with mrcfile.open(path, mode="r") as mrc:
-            return mrc.data
+        try:
+            with mrcfile.open(path, mode="r") as mrc:
+                return mrc.data
+        except Exception:
+            return None
 
 
 class MaskCreateJobDirectory(JobDirectory):
@@ -1126,6 +1126,21 @@ class RemoveDuplicatesJobDirectory(JobDirectory):
     def particles_removed_star(self) -> Path:
         """Return the path to the particles_removed star file."""
         return self.path / "particles_removed.star"
+
+
+class SplitParticlesJobDirectory(JobDirectory):
+    _job_type = "relion.select.split"
+
+    def iter_particles_stars(self) -> Iterator[Path]:
+        """Iterate over all particles star files."""
+        path_ith_list: list[tuple[Path, int]] = []
+        num = len("particles_split")
+        for path in self.path.glob("particles_split*.star"):
+            ith = int(path.stem[num:])
+            path_ith_list.append((path, ith))
+        path_ith_list.sort(key=lambda x: x[1])
+        for path, _ in path_ith_list:
+            yield path
 
 
 class CtfRefineTomoJobDirectory(HasTiltSeriesJobDirectory):

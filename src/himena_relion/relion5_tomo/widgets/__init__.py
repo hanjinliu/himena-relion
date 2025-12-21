@@ -1,3 +1,4 @@
+from himena_relion.relion5.widgets import _mask_create, _postprocess, _select
 from himena_relion.relion5_tomo.widgets import (
     _aligntilt,
     _ctf,
@@ -6,12 +7,9 @@ from himena_relion.relion5_tomo.widgets import (
     _initial_model,
     _import,
     _extract,
-    _mask_create,
     _tilt_series,
     _tomogram,
-    _postprocess,
     _reconstruct,
-    _select,
 )
 
 del (
@@ -23,9 +21,10 @@ del (
     _initial_model,
     _import,
     _extract,
-    _mask_create,
-    _postprocess,
     _reconstruct,
     _tilt_series,
+    # from relion5
+    _mask_create,
+    _postprocess,
     _select,
 )

@@ -9,17 +9,17 @@ from himena_relion._widgets import (
     Q2DFilterWidget,
     register_job,
 )
-from himena_relion import _job
+from himena_relion import _job_dir
 from himena_relion._image_readers import ArrayFilteredView
 
 _LOGGER = logging.getLogger(__name__)
 
 
-@register_job(_job.TomogramJobDirectory)
+@register_job(_job_dir.TomogramJobDirectory)
 class QTomogramViewer(QJobScrollArea):
     def __init__(self):
         super().__init__()
-        self._job_dir: _job.TomogramJobDirectory = None
+        self._job_dir: _job_dir.TomogramJobDirectory = None
         layout = self._layout
 
         self._viewer = Q2DViewer()
@@ -34,13 +34,13 @@ class QTomogramViewer(QJobScrollArea):
         self._filter_widget.value_changed.connect(self._viewer.redraw)
         self._is_split = False
 
-    def on_job_updated(self, job_dir: _job.TomogramJobDirectory, path: str):
+    def on_job_updated(self, job_dir: _job_dir.TomogramJobDirectory, path: str):
         """Handle changes to the job directory."""
         if Path(path).suffix == ".mrc":
             self.initialize(job_dir)
             _LOGGER.debug("%s Updated", job_dir.job_id)
 
-    def initialize(self, job_dir: _job.TomogramJobDirectory):
+    def initialize(self, job_dir: _job_dir.TomogramJobDirectory):
         """Initialize the viewer with the job directory."""
         self._job_dir = job_dir
         current_text = self._tomo_choice.currentText()
@@ -89,11 +89,11 @@ class QTomogramViewer(QJobScrollArea):
             )
 
 
-@register_job(_job.DenoiseJobDirectory)
+@register_job(_job_dir.DenoiseJobDirectory)
 class QDenoiseTomogramViewer(QJobScrollArea):
     def __init__(self):
         super().__init__()
-        self._job_dir: _job.DenoiseJobDirectory = None
+        self._job_dir: _job_dir.DenoiseJobDirectory = None
         layout = self._layout
 
         self._viewer = Q2DViewer()
@@ -103,13 +103,13 @@ class QDenoiseTomogramViewer(QJobScrollArea):
         layout.addWidget(self._tomo_choice)
         layout.addWidget(self._viewer)
 
-    def on_job_updated(self, job_dir: _job.DenoiseJobDirectory, path: str):
+    def on_job_updated(self, job_dir: _job_dir.DenoiseJobDirectory, path: str):
         """Handle changes to the job directory."""
         if Path(path).suffix not in [".out", ".err", ".star"]:
             self.initialize(job_dir)
             _LOGGER.debug("%s Updated", job_dir.job_id)
 
-    def initialize(self, job_dir: _job.DenoiseJobDirectory):
+    def initialize(self, job_dir: _job_dir.DenoiseJobDirectory):
         """Initialize the viewer with the job directory."""
         self._job_dir = job_dir
         if job_dir._is_train:
@@ -137,11 +137,11 @@ class QDenoiseTomogramViewer(QJobScrollArea):
             self._viewer.set_array_view(tomo_view, self._viewer._last_clim)
 
 
-@register_job(_job.PickJobDirectory)
+@register_job(_job_dir.PickJobDirectory)
 class PickViewer(QJobScrollArea):
     def __init__(self):
         super().__init__()
-        self._job_dir: _job.PickJobDirectory = None
+        self._job_dir: _job_dir.PickJobDirectory = None
         layout = self._layout
 
         self._viewer = Q2DViewer()
@@ -155,13 +155,13 @@ class PickViewer(QJobScrollArea):
         layout.addWidget(self._viewer)
         self._filter_widget.value_changed.connect(self._viewer.redraw)
 
-    def on_job_updated(self, job_dir: _job.PickJobDirectory, path: str):
+    def on_job_updated(self, job_dir: _job_dir.PickJobDirectory, path: str):
         """Handle changes to the job directory."""
         if Path(path).suffix not in [".out", ".err", ".star"]:
             self.initialize(job_dir)
             _LOGGER.debug("%s Updated", job_dir.job_id)
 
-    def initialize(self, job_dir: _job.PickJobDirectory):
+    def initialize(self, job_dir: _job_dir.PickJobDirectory):
         """Initialize the viewer with the job directory."""
         self._job_dir = job_dir
         current_text = self._tomo_choice.currentText()

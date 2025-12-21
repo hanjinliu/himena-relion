@@ -11,7 +11,7 @@ from superqt.utils import qthrottled
 from himena.consts import MonospaceFontFamily
 from himena.widgets import current_instance
 from himena.qt import drag_files, QColoredSVGIcon
-from himena_relion import _job, _job_class
+from himena_relion import _job_class, _job_dir
 from himena_relion._utils import read_icon_svg, read_icon_svg_for_type
 from himena_relion._pipeline import RelionPipeline
 from himena_relion._widgets._job_edit import QJobParameter
@@ -20,10 +20,10 @@ from himena_relion._widgets._job_edit import QJobParameter
 class JobWidgetBase:
     """Widget that will be updated upon RELION job updates."""
 
-    def on_job_updated(self, job_dir: _job.JobDirectory, fp: Path):
+    def on_job_updated(self, job_dir: _job_dir.JobDirectory, fp: Path):
         """Handle updates to the job directory."""
 
-    def initialize(self, job_dir: _job.JobDirectory):
+    def initialize(self, job_dir: _job_dir.JobDirectory):
         """Initialize the widget with the job directory."""
 
     def tab_title(self) -> str:
@@ -80,12 +80,12 @@ class QTextEditBase(QtW.QWidget, JobWidgetBase):
 
 
 class QRunOutLog(QTextEditBase):
-    def on_job_updated(self, job_dir: _job.JobDirectory, fp: Path):
+    def on_job_updated(self, job_dir: _job_dir.JobDirectory, fp: Path):
         """Update the log text when run.out is updated."""
         if fp.name == "run.out":
             self.initialize(job_dir)
 
-    def initialize(self, job_dir: _job.JobDirectory):
+    def initialize(self, job_dir: _job_dir.JobDirectory):
         lines: list[str] = []
         with suppress(Exception):
             with open(job_dir.path / "run.out", encoding="utf-8", newline="\n") as f:
@@ -99,12 +99,12 @@ class QRunOutLog(QTextEditBase):
 
 
 class QRunErrLog(QTextEditBase):
-    def on_job_updated(self, job_dir: _job.JobDirectory, fp: Path):
+    def on_job_updated(self, job_dir: _job_dir.JobDirectory, fp: Path):
         """Update the log text when run.err is updated."""
         if fp.name == "run.err":
             self.initialize(job_dir)
 
-    def initialize(self, job_dir: _job.JobDirectory):
+    def initialize(self, job_dir: _job_dir.JobDirectory):
         with suppress(Exception):
             self.setText(job_dir.path.joinpath("run.err").read_text(encoding="utf-8"))
 
@@ -116,15 +116,15 @@ class QNoteLog(QTextEditBase):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setReadOnly(False)
-        self._job_dir: _job.JobDirectory | None = None
+        self._job_dir: _job_dir.JobDirectory | None = None
         self._text_edit.textChanged.connect(self._autosave_throttled)
 
-    def on_job_updated(self, job_dir: _job.JobDirectory, fp: Path):
+    def on_job_updated(self, job_dir: _job_dir.JobDirectory, fp: Path):
         """Handle updates to the job directory."""
         if fp.name == "note.txt":
             self.initialize(job_dir)
 
-    def initialize(self, job_dir: _job.JobDirectory):
+    def initialize(self, job_dir: _job_dir.JobDirectory):
         self._job_dir = job_dir
         with suppress(Exception):
             self.setText(job_dir.path.joinpath("note.txt").read_text(encoding="utf-8"))
@@ -195,7 +195,7 @@ class QJobPipelineViewer(QtW.QWidget, JobWidgetBase):
             self._list_widget_out.addItem(list_item)
             self._list_widget_out.setItemWidget(list_item, item)
 
-    def update_item_colors(self, job_dir: _job.JobDirectory):
+    def update_item_colors(self, job_dir: _job_dir.JobDirectory):
         """Update the colors based on whether the files exist."""
         rln_dir = job_dir.relion_project_dir
         text_color = self.palette().text().color().name()
@@ -218,7 +218,7 @@ class QJobPipelineViewer(QtW.QWidget, JobWidgetBase):
 
 
 class QJobParameterView(QJobParameter, JobWidgetBase):
-    def initialize(self, job_dir: _job.JobDirectory):
+    def initialize(self, job_dir: _job_dir.JobDirectory):
         self.clear_content()
         if job_cls := job_dir._to_job_class():
             self.update_by_job(job_cls)
@@ -355,6 +355,10 @@ class QJobStateLabel(QtW.QWidget, JobWidgetBase):
         self._state_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
         layout.addWidget(self._job_desc)
         layout.addWidget(self._state_label)
+        font = self.font()
+        font.setPointSize(font.pointSize() + 3)
+        self._job_desc.setFont(font)
+        self._state_label.setFont(font)
 
     def on_job_updated(self, job_dir, fp):
         self._on_job_updated(job_dir)
@@ -366,15 +370,15 @@ class QJobStateLabel(QtW.QWidget, JobWidgetBase):
             f"{job_dir.job_title()}</b>"
         )
 
-    def _on_job_updated(self, job_dir: _job.JobDirectory):
+    def _on_job_updated(self, job_dir: _job_dir.JobDirectory):
         match job_dir.state():
-            case _job.RelionJobState.EXIT_SUCCESS:
+            case _job_dir.RelionJobState.EXIT_SUCCESS:
                 self._state_label.setText("Completed")
-            case _job.RelionJobState.EXIT_FAILURE:
+            case _job_dir.RelionJobState.EXIT_FAILURE:
                 self._state_label.setText("Failed")
-            case _job.RelionJobState.EXIT_ABORTED:
+            case _job_dir.RelionJobState.EXIT_ABORTED:
                 self._state_label.setText("Aborted")
-            case _job.RelionJobState.ABORT_NOW:
+            case _job_dir.RelionJobState.ABORT_NOW:
                 self._state_label.setText("Aborting")
             case _:
                 self._state_label.setText("Running")
