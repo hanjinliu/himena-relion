@@ -293,7 +293,6 @@ class ExcludeTiltJob(_Relion5TomoJob):
                 "group": "I/O",
             },
         ] = 5,
-        nr_mpi: MPI_TYPE = 1,
         do_queue: DO_QUEUE_TYPE = False,
         min_dedicated: MIN_DEDICATED_TYPE = 1,
     ):
