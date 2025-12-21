@@ -25,6 +25,15 @@ IN_MICROGRAPHS = Annotated[
         "group": "I/O",
     },
 ]
+IN_PARTICLES = Annotated[
+    str,
+    {
+        "label": "Input particles",
+        "widget_type": PathDrop,
+        "type_label": ["ParticlesData", "ParticleGroupMetadata"],
+        "group": "I/O",
+    },
+]
 IMG_TYPE = Annotated[
     str,
     {
@@ -76,6 +85,15 @@ PROCESS_TYPE = Annotated[
         "label": "Input postprocess STAR",
         "widget_type": PathDrop,
         "type_label": "ProcessData",
+        "group": "I/O",
+    },
+]
+IN_OPTIMISER = Annotated[
+    str,
+    {
+        "label": "Input optimiser STAR",
+        "widget_type": PathDrop,
+        "type_label": "OptimiserData",
         "group": "I/O",
     },
 ]
@@ -806,8 +824,211 @@ class Refine3DJob(_Relion5Job):
         raise NotImplementedError("This is a builtin job placeholder.")
 
 
-# TODO: SelectInteractive
-# TODO: SelectRemoveDuplicates
+class _SelectJob(_Relion5Job):
+    @classmethod
+    def type_label(cls):
+        return "relion.select"
+
+    @classmethod
+    def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
+        kwargs = super().normalize_kwargs(**kwargs)
+        for name, default in [
+            ("fn_model", ""),
+            ("fn_mic", ""),
+            ("fn_data", ""),
+            ("do_class_ranker", False),
+            ("do_discard", False),
+            ("do_filaments", False),
+            ("do_queue", False),
+            ("do_random", False),
+            ("do_recenter", False),
+            ("do_regroup", False),
+            ("do_select_values", False),
+            ("do_split", False),
+            ("do_remove_duplicates", False),
+            ("select_label", "rlnCtfMaxResolution"),
+            ("select_minval", -9999.0),
+            ("select_maxval", 9999.0),
+            ("duplicate_threshold", 30.0),
+            ("image_angpix", -1.0),
+            ("rank_threshold", 0.5),
+            ("select_nr_classes", -1),
+            ("select_nr_parts", -1),
+            ("nr_groups", 1),
+            ("split_size", 100),
+            ("nr_split", -1),
+            ("dendrogram_threshold", 0.85),
+            ("dendrogram_minclass", -1000),
+            ("min_dedicated", 1),
+        ]:
+            kwargs.setdefault(name, default)
+        return super().normalize_kwargs(**kwargs)
+
+
+class SelectClassesInteractiveJob(_SelectJob):
+    @classmethod
+    def type_label(cls):
+        return "relion.select.interactive"
+
+    def run(self, fn_model: IN_OPTIMISER = ""):
+        raise NotImplementedError("This is a builtin job placeholder.")
+
+
+class SelectClassesAutoJob(_SelectJob):
+    @classmethod
+    def type_label(cls):
+        return "relion.select.class2dauto"
+
+    @classmethod
+    def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
+        kwargs = super().normalize_kwargs(**kwargs)
+        kwargs["do_class_ranker"] = True
+        return super().normalize_kwargs(**kwargs)
+
+    def run(
+        self,
+        fn_model: IN_OPTIMISER = "",
+        rank_threshold: Annotated[
+            float, {"label": "Minimum threshold for auto selection"}
+        ] = 0.5,
+        select_nr_parts: Annotated[
+            int, {"label": "Minimum number of particles to select"}
+        ] = -1,
+        select_nr_classes: Annotated[
+            int, {"label": "Or minimum number of classes to select"}
+        ] = -1,
+        do_recenter: Annotated[bool, {"label": "Recenter the class averages"}] = False,
+        do_regroup: Annotated[bool, {"label": "Regroup the particles"}] = False,
+        nr_groups: Annotated[int, {"label": "Approximate number of groups"}] = 1,
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")
+
+
+class _SelectValuesJob(_SelectJob):
+    @classmethod
+    def type_label(cls):
+        return "relion.select.onvalue"
+
+
+class SelectParticlesJob(_SelectValuesJob):
+    @classmethod
+    def command_id(cls):
+        return super().command_id() + "-particles"
+
+    @classmethod
+    def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
+        kwargs = super().normalize_kwargs(**kwargs)
+        kwargs["do_select_values"] = True
+        return super().normalize_kwargs(**kwargs)
+
+    def run(
+        self,
+        fn_data: IN_PARTICLES = "",
+        select_label: Annotated[
+            str, {"label": "Metadata label for selection"}
+        ] = "rlnCtfMaxResolution",
+        select_minval: Annotated[
+            float, {"label": "Minimum value for selection"}
+        ] = -9999,
+        select_maxval: Annotated[
+            float, {"label": "Maximum value for selection"}
+        ] = 9999,
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")
+
+
+class SelectMicrographsJob(_SelectValuesJob):
+    @classmethod
+    def command_id(cls):
+        return super().command_id() + "-micrographs"
+
+    @classmethod
+    def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
+        kwargs = super().normalize_kwargs(**kwargs)
+        kwargs["do_discard"] = True
+        return super().normalize_kwargs(**kwargs)
+
+    def run(
+        self,
+        fn_mic: IN_MICROGRAPHS = "",
+        select_label: Annotated[
+            str, {"label": "Metadata label for selection"}
+        ] = "rlnCtfMaxResolution",
+        select_minval: Annotated[
+            float, {"label": "Minimum value for selection"}
+        ] = -9999,
+        select_maxval: Annotated[
+            float, {"label": "Maximum value for selection"}
+        ] = 9999,
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")
+
+
+class SelectRemoveDuplicatesJob(_SelectJob):
+    @classmethod
+    def type_label(cls):
+        return "relion.select.removeduplicates"
+
+    @classmethod
+    def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
+        kwargs = super().normalize_kwargs(**kwargs)
+        kwargs["do_remove_duplicates"] = True
+        return super().normalize_kwargs(**kwargs)
+
+    def run(
+        self,
+        fn_data: IN_PARTICLES = "",
+        duplicate_threshold: Annotated[
+            float, {"label": "Minimum inter-particle distance (A)"}
+        ] = 30,
+        image_angpix: Annotated[float, {"label": "Image pixel size (A)"}] = -1,
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")
+
+
+class SelectSplitJob(_SelectJob):
+    @classmethod
+    def type_label(cls):
+        return "relion.select.split"
+
+    @classmethod
+    def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
+        kwargs = super().normalize_kwargs(**kwargs)
+        kwargs["do_split"] = True
+        return super().normalize_kwargs(**kwargs)
+
+    def run(
+        self,
+        fn_data: IN_PARTICLES = "",
+        do_random: Annotated[
+            bool, {"label": "Randomise order before making subsets"}
+        ] = False,
+        split_size: Annotated[int, {"label": "Number of particles per subset"}] = 100,
+        nr_split: Annotated[int, {"label": "Or number of subsets"}] = -1,
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")
+
+
+class SelectFilamentsJob(_SelectJob):
+    @classmethod
+    def type_label(cls):
+        return "relion.select.filamentsdendrogram"
+
+    @classmethod
+    def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
+        kwargs = super().normalize_kwargs(**kwargs)
+        kwargs["do_filaments"] = True
+        return super().normalize_kwargs(**kwargs)
+
+    def run(
+        self,
+        fn_model: IN_OPTIMISER = "",
+        dendrogram_threshold: Annotated[
+            float, {"label": "Dendrogram threshold"}
+        ] = 0.85,
+        dendrogram_minclass: Annotated[int, {"label": "Minimum class size"}] = -1000,
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")
 
 
 class MaskCreationJob(_Relion5Job):
@@ -910,6 +1131,11 @@ connect_jobs(
     MotionCorrOwnJob,
     CtfEstimationJob,
     node_mapping={"corrected_micrographs.star": "input_star_mics"},
+)
+connect_jobs(
+    CtfEstimationJob,
+    SelectMicrographsJob,
+    node_mapping={"tilt_series_ctf.star": "fn_mic"},
 )
 connect_jobs(
     Class3DJob,

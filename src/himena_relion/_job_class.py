@@ -6,7 +6,7 @@ import inspect
 import logging
 import subprocess
 import tempfile
-from typing import Any, Generator, get_origin
+from typing import Any, Callable, Generator, get_origin
 from pathlib import Path
 from magicgui.widgets.bases import ValueWidget
 
@@ -367,7 +367,7 @@ def to_string(value) -> str:
 def connect_jobs(
     pre: type[RelionJob],
     post: type[RelionJob],
-    node_mapping: dict[str, str] | None = None,
+    node_mapping: dict[str | Callable[[Path], str], str] | None = None,
 ):
     type_pre = Type.RELION_JOB + "." + pre.himena_model_type()
     when = when_reader_used(type_pre, "himena_relion.io.read_relion_job")
@@ -381,7 +381,7 @@ def connect_jobs(
     )
 
 
-def _node_mapping_to_context(node_mapping: dict[str, str]):
+def _node_mapping_to_context(node_mapping: dict[str | Callable[[Path], str], str]):
     def _func(ui: MainWindow, step: WorkflowStep) -> dict[str, Any]:
         win = ui.window_for_id(step.id)
         if win is None:
@@ -393,7 +393,12 @@ def _node_mapping_to_context(node_mapping: dict[str, str]):
         out = {}
         rln_dir = val.relion_project_dir
         for from_, to_ in node_mapping.items():
-            file_path = val.path.joinpath(from_)
+            if isinstance(from_, str):
+                file_path = val.path.joinpath(from_)
+            elif callable(from_):
+                file_path = Path(from_(val.path))
+            else:
+                raise TypeError(f"Unsupported from_ type: {type(from_)}")
             file_path_rel = file_path.relative_to(rln_dir).as_posix()
             if "." in to_:  # dict valule
                 to_, subkey = to_.split(".", 1)

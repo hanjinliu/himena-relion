@@ -15,7 +15,7 @@ class QPathDropWidget(QtW.QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._type_label = ""
+        self._type_labels: list[str] = []
         self._icon_label = QtW.QLabel()
         self._path_line_edit = QtW.QLineEdit()
         self._btn = QtW.QPushButton("...")
@@ -29,16 +29,19 @@ class QPathDropWidget(QtW.QWidget):
         self.setAcceptDrops(True)
         self._btn.clicked.connect(self._on_browse_clicked)
 
-    def set_type_label(self, label: str) -> None:
-        self._type_label = label
-        svg = read_icon_svg_for_type(label)
+    def set_type_label(self, label: str | list[str]) -> None:
+        if isinstance(label, list):
+            self._type_labels = label
+        else:
+            self._type_labels = [label]
+        svg = read_icon_svg_for_type(label[0])
         icon = QColoredSVGIcon(svg, color="gray")
         self._icon_label.setPixmap(icon.pixmap(20, 20))
 
     def dragEnterEvent(self, a0):
         if isinstance(src := a0.source(), QRelionNodeItem):
             cat = src.file_type_category()
-            if cat is not None and cat.startswith(self._type_label):
+            if cat is not None and cat.startswith(tuple(self._type_labels)):
                 a0.accept()
                 a0.setDropAction(QtCore.Qt.DropAction.CopyAction)
                 return
@@ -58,10 +61,13 @@ class QPathDropWidget(QtW.QWidget):
         self._path_line_edit.setText(value)
 
     def _on_browse_clicked(self):
-        path, _ = QtW.QFileDialog.getOpenFileName(
-            self,
-            f"Select {self._type_label} file",
-        )
+        if len(self._type_labels) == 0:
+            caption = "Select file"
+        elif len(self._type_labels) == 1:
+            caption = f"Select {self._type_labels[0]} file"
+        else:
+            caption = f"Select {' or '.join(self._type_labels)} file"
+        path, _ = QtW.QFileDialog.getOpenFileName(self, caption)
         if path:
             path_abs = Path(path)
             if path_abs.is_relative_to(Path.cwd()):
@@ -83,7 +89,7 @@ class PathDrop(ValueWidget):
     def __init__(
         self,
         value=Undefined,
-        type_label: str = "",
+        type_label: str | list[str] = "",
         **kwargs,
     ):
         super().__init__(

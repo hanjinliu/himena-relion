@@ -6,6 +6,7 @@ from himena_relion import _configs
 from himena_relion._widgets._magicgui import OptimisationSetEdit, DoseRateEdit
 from himena_relion._widgets._path_input import PathDrop
 from himena_relion.relion5._builtins import (
+    IN_PARTICLES,
     ANG_SAMPLING_TYPE,
     CONTINUE_TYPE,
     DO_APPLY_HELICAL_SYMMETRY_TYPE,
@@ -55,6 +56,9 @@ from himena_relion.relion5._builtins import (
     MotionCorr2Job,
     MotionCorrOwnJob,
     PostProcessingJob,
+    SelectClassesInteractiveJob,
+    SelectParticlesJob,
+    SelectRemoveDuplicatesJob,
 )
 
 IN_TILT_TYPE = Annotated[
@@ -66,15 +70,7 @@ IN_TILT_TYPE = Annotated[
         "group": "I/O",
     },
 ]
-IN_PARTICLES = Annotated[
-    str,
-    {
-        "label": "Input particles (optional)",
-        "widget_type": PathDrop,
-        "type_label": "ParticleGroupMetadata",
-        "group": "I/O",
-    },
-]
+
 IN_OPTIM = Annotated[
     dict,
     {"label": "Input particles", "group": "I/O", "widget_type": OptimisationSetEdit},
@@ -863,7 +859,7 @@ class Class3DTomoJob(_Relion5TomoJob, Class3DJob):
                 kwargs["helical_rise_inistep"],
             ) = kwargs.pop("helical_rise_range")
         if "rot_tilt_psi_range" in kwargs:
-            kwargs["range_rot"], kwargs["range_tilt"], kwargs["range_psi"] = kwargs.pop(
+            kwargs["rot_range"], kwargs["tilt_range"], kwargs["psi_range"] = kwargs.pop(
                 "rot_tilt_psi_range"
             )
         if "helical_tube_diameter_range" in kwargs:
@@ -890,9 +886,9 @@ class Class3DTomoJob(_Relion5TomoJob, Class3DJob):
             kwargs.pop("helical_rise_inistep", 0),
         )
         kwargs["rot_tilt_psi_range"] = (
-            kwargs.pop("range_rot", -1),
-            kwargs.pop("range_tilt", 15),
-            kwargs.pop("range_psi", 10),
+            kwargs.pop("rot_range", -1),
+            kwargs.pop("tilt_range", 15),
+            kwargs.pop("psi_range", 10),
         )
         kwargs["helical_tube_diameter_range"] = (
             kwargs.pop("helical_tube_inner_diameter", -1),
@@ -1288,6 +1284,16 @@ connect_jobs(
     node_mapping={"optimisation_set.star": "in_optim.in_optimisation"},
 )
 connect_jobs(
+    PickJob,
+    SelectRemoveDuplicatesJob,
+    node_mapping={"particles.star": "fn_data"},
+)
+connect_jobs(
+    PickJob,
+    SelectParticlesJob,
+    node_mapping={"particles.star": "fn_data"},
+)
+connect_jobs(
     ExtractParticlesTomoJob,
     InitialModelTomoJob,
     node_mapping={"optimisation_set.star": "in_optim.in_optimisation"},
@@ -1317,6 +1323,25 @@ connect_jobs(
     Class3DTomoJob,
     Refine3DTomoJob,
 )
+
+connect_jobs(
+    Refine3DTomoJob,
+    SelectRemoveDuplicatesJob,
+    node_mapping={"run_data.star": "fn_data"},
+)
+
+
+def _optimiser_last_iter(path: Path) -> str:
+    files = sorted(path.glob("run_it???_optimiser.star"))
+    return str(files[-1]) if files else ""
+
+
+connect_jobs(
+    Class3DTomoJob,
+    SelectClassesInteractiveJob,
+    node_mapping={_optimiser_last_iter: "fn_model"},
+)
+
 connect_jobs(
     ReconstructParticlesJob,
     Refine3DTomoJob,
