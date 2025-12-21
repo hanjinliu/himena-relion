@@ -44,7 +44,6 @@ from himena_relion.relion5._builtins import (
     SIGMA_TILT_TYPE,
     T_TYPE,
     TRUST_REF_SIZE_TYPE,
-    USE_GPU_TYPE,
     MPI_TYPE,
     DO_QUEUE_TYPE,
     MIN_DEDICATED_TYPE,
@@ -136,6 +135,10 @@ class ImportTomoJob(_ImportTomoJob):
         return super().command_id()
 
     @classmethod
+    def param_matches(cls, job_params: dict[str, str]) -> bool:
+        return job_params.get("do_coords", "No") == "No"
+
+    @classmethod
     def job_title(cls) -> str:
         return "Import Tomo"
 
@@ -206,6 +209,10 @@ class ImportCoordinatesJob(_ImportTomoJob):
         return super().command_id() + ".coords"
 
     @classmethod
+    def param_matches(cls, job_params: dict[str, str]) -> bool:
+        return job_params.get("do_coords", "No") == "Yes"
+
+    @classmethod
     def job_title(cls) -> str:
         return "Import Coordinates"
 
@@ -225,7 +232,11 @@ class ImportCoordinatesJob(_ImportTomoJob):
         self,
         in_coords: Annotated[
             Path,
-            {"filter": "STAR files (*.star);;All files (*)", "group": "Coordinates"},
+            {
+                "label": "Input coordinates",
+                "filter": "STAR files (*.star);;All files (*)",
+                "group": "Coordinates",
+            },
         ],
         remove_substring: Annotated[
             str, {"label": "Remove substring from file names", "group": "Coordinates"}
@@ -317,6 +328,10 @@ class AlignTiltSeriesImodFiducial(_AlignTiltSeriesJobBase):
         return super().command_id() + ".imodfiducial"
 
     @classmethod
+    def param_matches(cls, job_params: dict[str, str]) -> bool:
+        return job_params.get("do_imod_fiducials", "No") == "Yes"
+
+    @classmethod
     def job_title(cls) -> str:
         return "Align Tilt Series (IMOD Fiducials)"
 
@@ -360,6 +375,10 @@ class AlignTiltSeriesImodPatch(_AlignTiltSeriesJobBase):
     @classmethod
     def command_id(cls):
         return super().command_id() + ".imodpatch"
+
+    @classmethod
+    def param_matches(cls, job_params: dict[str, str]) -> bool:
+        return job_params.get("do_imod_patchtrack", "No") == "Yes"
 
     @classmethod
     def job_title(cls) -> str:
@@ -406,6 +425,10 @@ class AlignTiltSeriesAreTomo2(_AlignTiltSeriesJobBase):
     @classmethod
     def command_id(cls):
         return super().command_id() + ".aretomo2"
+
+    @classmethod
+    def param_matches(cls, job_params: dict[str, str]) -> bool:
+        return job_params.get("do_aretomo2", "No") == "Yes"
 
     @classmethod
     def job_title(cls) -> str:
@@ -480,7 +503,7 @@ class ReconstructTomogramJob(_Relion5TomoJob):
 
     def run(
         self,
-        # Tab 1: I/O
+        # I/O
         in_tiltseries: IN_TILT_TYPE = "",
         generate_split_tomograms: Annotated[
             bool, {"label": "Split tomograms", "group": "I/O"}
@@ -494,7 +517,7 @@ class ReconstructTomogramJob(_Relion5TomoJob):
         thickness_proj: Annotated[
             int, {"label": "Number of Z-slices (binned pix)", "group": "I/O"}
         ] = 10,
-        # Tab 2: Reconstruct
+        # Reconstruct
         dims: Annotated[
             tuple[int, int, int],
             {"label": "Tomogram X, Y, Z size (unbinned pix)", "group": "Reconstruct"},
@@ -508,18 +531,37 @@ class ReconstructTomogramJob(_Relion5TomoJob):
         tomo_name: Annotated[
             str, {"label": "Reconstruct only this tomogram", "group": "Reconstruct"}
         ] = "",
+        # Filter
         do_fourier: Annotated[
             bool,
-            {"label": "Fourier-inversion with odd/even frames", "group": "Reconstruct"},
+            {"label": "Fourier-inversion with odd/even frames", "group": "Filter"},
         ] = True,
-        ctf_intact_first_peak: IGNORE_CTF_TYPE = True,
-        # Tab 3: Running
+        ctf_intact_first_peak: Annotated[
+            bool, {"label": "Ignore CTFs until first peak", "group": "Filter"}
+        ] = True,
+        # Running
         nr_mpi: MPI_TYPE = 1,
         nr_threads: THREAD_TYPE = 1,
         do_queue: DO_QUEUE_TYPE = False,
         min_dedicated: MIN_DEDICATED_TYPE = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
+
+    @classmethod
+    def setup_widgets(self, widgets):
+        @widgets["do_proj"].changed.connect
+        def _on_do_proj_changed(value: bool):
+            widgets["centre_proj"].enabled = value
+            widgets["thickness_proj"].enabled = value
+
+        widgets["centre_proj"].enabled = widgets["do_proj"].value
+        widgets["thickness_proj"].enabled = widgets["do_proj"].value
+
+        @widgets["do_fourier"].changed.connect
+        def _on_do_fourier_changed(value: bool):
+            widgets["ctf_intact_first_peak"].enabled = value
+
+        widgets["ctf_intact_first_peak"].enabled = widgets["do_fourier"].value
 
 
 class PickJob(_Relion5TomoJob):
@@ -629,6 +671,10 @@ class DenoiseTrain(_DenoiseJobBase):
         return super().command_id() + "-train"
 
     @classmethod
+    def param_matches(cls, job_params: dict[str, str]) -> bool:
+        return job_params.get("do_cryocare_train", "No") == "Yes"
+
+    @classmethod
     def job_title(cls) -> str:
         return "CryoCARE Train"
 
@@ -680,6 +726,10 @@ class DenoisePredict(_DenoiseJobBase):
     @classmethod
     def command_id(cls):
         return super().command_id() + "-predict"
+
+    @classmethod
+    def param_matches(cls, job_params: dict[str, str]) -> bool:
+        return job_params.get("do_cryocare_predict", "No") == "Yes"
 
     @classmethod
     def job_title(cls) -> str:
@@ -780,9 +830,8 @@ class InitialModelTomoJob(_Relion5TomoJob):
         nr_pool: NUM_POOL_TYPE = 3,
         do_preread_images: DO_PREREAD_TYPE = False,
         do_combine_thru_disc: DO_COMBINE_THRU_DISC_TYPE = False,
-        # Running
-        use_gpu: USE_GPU_TYPE = True,
         gpu_ids: GPU_IDS_TYPE = "",
+        # Running
         nr_mpi: MPI_TYPE = 1,
         nr_threads: THREAD_TYPE = 1,
         min_dedicated: MIN_DEDICATED_TYPE = 1,
@@ -920,7 +969,6 @@ class Class3DTomoJob(_Relion5TomoJob, Class3DJob):
         do_pad1: Annotated[bool, {"label": "Skip padding", "group": "Compute"}] = False,
         do_preread_images: DO_PREREAD_TYPE = False,
         do_combine_thru_disc: DO_COMBINE_THRU_DISC_TYPE = False,
-        use_gpu: USE_GPU_TYPE = False,
         gpu_ids: GPU_IDS_TYPE = "",
         # Running
         nr_mpi: MPI_TYPE = 1,
@@ -1043,7 +1091,6 @@ class Refine3DTomoJob(_Relion5TomoJob):
         do_pad1: Annotated[bool, {"label": "Skip padding", "group": "Compute"}] = False,
         do_preread_images: DO_PREREAD_TYPE = False,
         do_combine_thru_disc: DO_COMBINE_THRU_DISC_TYPE = False,
-        use_gpu: USE_GPU_TYPE = False,
         gpu_ids: GPU_IDS_TYPE = "",
         # Running
         nr_mpi: MPI_TYPE = 1,

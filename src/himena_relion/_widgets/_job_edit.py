@@ -109,7 +109,7 @@ class QJobParameter(QtW.QScrollArea):
         self.setWidget(self._scroll_area_inner)
         self._param_layout = QtW.QVBoxLayout(self._scroll_area_inner)
         self._param_layout.setContentsMargins(0, 0, 0, 0)
-        self._mgui_widgets: list[ValueWidget] = []
+        self._mgui_widgets: dict[str, ValueWidget] = {}
         self._groupboxes: list[QtW.QGroupBox] = []
 
     def clear_content(self):
@@ -123,6 +123,7 @@ class QJobParameter(QtW.QScrollArea):
         """Update the widget based on the job directory."""
         self.clear_content()
 
+        # convert `run` to widgets.
         sig = job_cls._signature()
         typemap = _mgui.get_type_map()
         groups = defaultdict[str, list[ValueWidget]](list)
@@ -133,7 +134,7 @@ class QJobParameter(QtW.QScrollArea):
             groups[group].append(widget)
         for group, widgets in groups.items():
             gb = QtW.QGroupBox(group)
-            fontsize = gb.font().pointSize() + 2
+            fontsize = gb.font().pointSize() + 3
             gb.setStyleSheet(f"QGroupBox::title {{ font-size: {fontsize}pt; }}")
             gb_layout = QtW.QVBoxLayout(gb)
             gb_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignTop)
@@ -146,14 +147,16 @@ class QJobParameter(QtW.QScrollArea):
                     widget.max_width = 160
                 gb_layout.addWidget(widget.native)
                 param_label.setToolTip(widget.tooltip)
-                self._mgui_widgets.append(widget)
+                self._mgui_widgets[widget.name] = widget
             self._param_layout.addWidget(gb)
             self._groupboxes.append(gb)
+        # initialize widgets
+        job_cls.setup_widgets(self._mgui_widgets)
 
     def set_parameters(self, params: dict, enabled: bool = True):
         # NOTE: params must be normalized already
         params = params.copy()
-        for widget in self._mgui_widgets:
+        for widget in self._mgui_widgets.values():
             if widget.name in params:
                 new_value = params.pop(widget.name)
                 widget.value = parse_string(new_value, widget.annotation)
@@ -166,8 +169,8 @@ class QJobParameter(QtW.QScrollArea):
     def get_parameters(self) -> dict[str, Any]:
         """Get the parameters from the widgets."""
         params = {}
-        for widget in self._mgui_widgets:
-            params[widget.name] = widget.value
+        for name, widget in self._mgui_widgets.items():
+            params[name] = widget.value
         return params
 
 

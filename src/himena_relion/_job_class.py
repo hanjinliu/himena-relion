@@ -8,6 +8,7 @@ import subprocess
 import tempfile
 from typing import Any, Generator, get_origin
 from pathlib import Path
+from magicgui.widgets.bases import ValueWidget
 
 from himena.types import AnyContext
 from himena.workflow import WorkflowStep
@@ -72,6 +73,13 @@ class RelionJob(ABC):
     @abstractmethod
     def run(self, *args, **kwargs) -> Generator[None, None, None]:
         """Run this job."""
+
+    @classmethod
+    def setup_widgets(self, widgets: dict[str, ValueWidget]):
+        """Setup the magicgui widgets for this job.
+
+        This methods is called after all the widgets are created.
+        """
 
     @classmethod
     def _signature(cls) -> inspect.Signature:
@@ -190,6 +198,10 @@ class RelionJob(ABC):
         # jobs.
         return False
 
+    @classmethod
+    def param_matches(cls, job_params: dict[str, str]) -> bool:
+        return True
+
 
 class _RelionBuiltinJob(RelionJob):
     @classmethod
@@ -203,15 +215,20 @@ class _RelionBuiltinJob(RelionJob):
         This is used to convert python objects to job.star.
         """
         kwargs.update(_configs.get_queue_dict())
+        if "gpu_ids" in kwargs:
+            gpu_ids = kwargs["gpu_ids"]
+            assert isinstance(gpu_ids, str)
+            kwargs["use_gpu"] = len(gpu_ids.strip()) > 0
         return kwargs
 
     @classmethod
     def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
-        # This is used to convert job.star to python, such as editing existing jobs
+        """This is used to convert job.star to python, such as editing existing jobs."""
         for key in _configs.get_queue_dict().keys():
             kwargs.pop(key, None)
         kwargs.pop("scratch_dir", None)
         kwargs.pop("other_args", None)
+        kwargs.pop("use_gpu", None)
         return kwargs
 
     @classmethod

@@ -121,6 +121,7 @@ def abort_relion_job(ui: MainWindow, model: WidgetDataModel):
     group="07-job-operation",
 )
 def edit_relion_job(ui: MainWindow, model: WidgetDataModel):
+    """Edit this RELION job's parameters and overwrite."""
     job_dir = assert_job(model)
     job_cls = job_dir._to_job_class()
     if job_cls is None:

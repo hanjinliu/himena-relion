@@ -1,5 +1,6 @@
 from typing import Annotated, Any
 
+from magicgui.widgets.bases import ValueWidget
 from himena_relion._job_class import _RelionBuiltinJob, connect_jobs, parse_string
 from himena_relion._widgets._magicgui import PathDrop, BfactorEdit
 from himena_relion import _configs
@@ -226,8 +227,7 @@ DO_PREREAD_TYPE = Annotated[
 DO_COMBINE_THRU_DISC_TYPE = Annotated[
     bool, {"label": "Combine iterations through disc", "group": "Running"}
 ]
-USE_GPU_TYPE = Annotated[bool, {"label": "Use GPU acceleration", "group": "Compute"}]
-GPU_IDS_TYPE = Annotated[str, {"label": "GPU IDs", "group": "Compute"}]
+GPU_IDS_TYPE = Annotated[str, {"label": "GPU IDs to use", "group": "Compute"}]
 # sharpen
 B_FACTOR_TYPE = Annotated[
     dict,
@@ -542,6 +542,14 @@ class CtfEstimationJob(_Relion5Job):
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
+    @classmethod
+    def setup_widgets(cls, widgets: dict[str, ValueWidget]) -> None:
+        @widgets["do_phaseshift"].changed.connect
+        def _on_do_phaseshift_changed(value: bool):
+            widgets["phase_range"].enabled = value
+
+        widgets["phase_range"].enabled = False
+
 
 class Class3DJob(_Relion5Job):
     @classmethod
@@ -669,7 +677,6 @@ class Class3DJob(_Relion5Job):
         do_pad1: Annotated[bool, {"label": "Skip padding", "group": "Compute"}] = False,
         do_preread_images: DO_PREREAD_TYPE = False,
         do_combine_thru_disc: DO_COMBINE_THRU_DISC_TYPE = False,
-        use_gpu: USE_GPU_TYPE = False,
         gpu_ids: GPU_IDS_TYPE = "",
         # Running
         nr_mpi: MPI_TYPE = 1,
@@ -789,7 +796,6 @@ class Refine3DJob(_Relion5Job):
         do_pad1: Annotated[bool, {"label": "Skip padding", "group": "Compute"}] = False,
         do_preread_images: DO_PREREAD_TYPE = False,
         do_combine_thru_disc: DO_COMBINE_THRU_DISC_TYPE = False,
-        use_gpu: USE_GPU_TYPE = False,
         gpu_ids: GPU_IDS_TYPE = "",
         # Running
         nr_mpi: MPI_TYPE = 1,

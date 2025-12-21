@@ -5,7 +5,7 @@ import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 import shutil
-from typing import Callable, Iterator, Literal, TYPE_CHECKING
+from typing import Any, Callable, Iterator, Literal, TYPE_CHECKING
 import numpy as np
 from numpy.typing import NDArray
 import pandas as pd
@@ -110,18 +110,26 @@ class JobDirectory:
         return self.path / "job_pipeline.star"
 
     def parse_job_pipeline(self) -> RelionPipeline:
+        """Read the job_pipeline.star file under this job directory."""
         return RelionPipeline.from_star(self.job_pipeline())
 
     def _to_job_class(self) -> type[RelionJob] | None:
         from himena_relion._job_class import iter_relion_jobs
 
         fp = self.job_star()
-        job_block = starfile.read(fp, read_n_blocks=1)
+        job_star_content = starfile.read(fp)
+        job_block: dict[str, Any] = job_star_content["job"]
         job_type = job_block["rlnJobTypeLabel"]
         is_tomo = bool(int(job_block["rlnJobIsTomo"]))
+        df: pd.DataFrame = job_star_content["joboptions_values"]
+        job_star_params = dict(zip(df["rlnJobOptionVariable"], df["rlnJobOptionValue"]))
 
         for subcls in iter_relion_jobs():
-            if subcls.type_label() == job_type and subcls.job_is_tomo() == is_tomo:
+            if (
+                subcls.type_label() == job_type
+                and subcls.job_is_tomo() == is_tomo
+                and subcls.param_matches(job_star_params)
+            ):
                 return subcls
         return None
 
