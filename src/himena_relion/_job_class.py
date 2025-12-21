@@ -149,6 +149,7 @@ class RelionJob(ABC):
             proc = subprocess.Popen(
                 ["relion_pipeliner", "--RunJobs", d],
                 start_new_session=True,
+                shell=True,
             )
             return RelionJobExecution(proc, _job.JobDirectory(Path(d).resolve()))
 
@@ -171,6 +172,7 @@ class RelionJob(ABC):
             proc = subprocess.Popen(
                 ["relion_pipeliner", "--RunJobs", to_run],
                 start_new_session=True,
+                shell=True,
             )
             return RelionJobExecution(proc, job_dir)
 
