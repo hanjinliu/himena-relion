@@ -1,7 +1,11 @@
 from pathlib import Path
 from typing import Annotated, Any
 
-from himena_relion._job_class import _RelionBuiltinJob, parse_string
+from himena_relion._job_class import (
+    _RelionBuiltinJob,
+    _RelionBuiltinContinue,
+    parse_string,
+)
 from himena_relion import _configs
 from himena_relion._widgets._magicgui import OptimisationSetEdit, DoseRateEdit
 from himena_relion._widgets._path_input import PathDrop
@@ -43,6 +47,7 @@ from himena_relion.relion5._builtins import (
     RELAX_SYMMETRY_TYPE,
     ROT_TILT_PSI_RANGE_TYPE,
     SIGMA_TILT_TYPE,
+    SOLVENT_FLATTEN_FSC_TYPE,
     T_TYPE,
     TRUST_REF_SIZE_TYPE,
     MPI_TYPE,
@@ -73,6 +78,13 @@ IN_OPTIM = Annotated[
     dict,
     {"label": "Input particles", "group": "I/O", "widget_type": OptimisationSetEdit},
 ]
+
+
+def _refine3d_latest_optimiser_star(path: Path) -> str:
+    # NOTE: this must be defined before its use in more_node_mappings because
+    # the classmethod is called in __init_subclass__
+    opt = sorted(path.glob("run_it*_optimiser.star"))
+    return str(opt[-1]) if opt else ""
 
 
 def norm_optim(**kwargs):
@@ -953,9 +965,7 @@ class Refine3DTomoJob(_Relion5TomoJob, Refine3DJob):
         # Optimisation
         particle_diameter: MASK_DIAMETER_TYPE = 200,
         do_zero_mask: MASK_WITH_ZEROS_TYPE = True,
-        do_solvent_fsc: Annotated[
-            bool, {"label": "Use solvent-flattened FSCs", "group": "Compute"}
-        ] = False,
+        do_solvent_fsc: SOLVENT_FLATTEN_FSC_TYPE = False,
         do_blush: DO_BLUSH_TYPE = False,
         # Sampling
         sampling: ANG_SAMPLING_TYPE = "7.5 degrees",
@@ -994,6 +1004,32 @@ class Refine3DTomoJob(_Relion5TomoJob, Refine3DJob):
         min_dedicated: MIN_DEDICATED_TYPE = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
+
+
+class Refine3DTomoContinue(_RelionBuiltinContinue):
+    original_class = Refine3DTomoJob
+
+    def run(
+        self,
+        fn_cont: CONTINUE_TYPE = "",
+        # Compute
+        do_parallel_discio: USE_PARALLEL_DISC_IO_TYPE = True,
+        nr_pool: NUM_POOL_TYPE = 3,
+        do_pad1: Annotated[bool, {"label": "Skip padding", "group": "Compute"}] = False,
+        do_preread_images: DO_PREREAD_TYPE = False,
+        do_combine_thru_disc: DO_COMBINE_THRU_DISC_TYPE = False,
+        gpu_ids: GPU_IDS_TYPE = "",
+        # Running
+        nr_mpi: MPI_TYPE = 1,
+        nr_threads: THREAD_TYPE = 1,
+        do_queue: DO_QUEUE_TYPE = False,
+        min_dedicated: MIN_DEDICATED_TYPE = 1,
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")
+
+    @classmethod
+    def more_node_mappings(cls) -> dict[str, str]:
+        return {_refine3d_latest_optimiser_star: "fn_cont"}
 
 
 class ReconstructParticlesJob(_Relion5TomoJob):

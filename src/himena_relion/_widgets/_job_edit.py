@@ -13,6 +13,7 @@ from himena_relion._job_class import (
     RelionJobExecution,
     parse_string,
     _RelionBuiltinJob,
+    _RelionBuiltinContinue,
 )
 from magicgui.widgets.bases import ValueWidget
 from magicgui.signature import MagicParameter
@@ -60,7 +61,10 @@ class QJobScheduler(QtW.QWidget):
 
     def update_by_job(self, job_cls: type[RelionJob]):
         """Update the widget based on the job directory."""
-        prefix = "Job: "
+        if issubclass(job_cls, _RelionBuiltinContinue):
+            prefix = "Continue - "
+        else:
+            prefix = "Job: "
         self._set_content(job_cls, prefix + job_cls.job_title())
         self._job_param_widget.update_by_job(job_cls)
 
@@ -79,6 +83,9 @@ class QJobScheduler(QtW.QWidget):
 
     def set_schedule_mode(self):
         self._set_mode(ScheduleMode())
+
+    def set_continue_mode(self, job_dir: _job_dir.JobDirectory):
+        self._set_mode(ContinueMode(job_dir))
 
     def set_edit_mode(self, job_dir: _job_dir.JobDirectory):
         self._set_mode(EditMode(job_dir))
@@ -198,6 +205,22 @@ class ScheduleMode(Mode):
 
     def button_text(self) -> str:
         return "Run Job"
+
+
+class ContinueMode(Mode):
+    def __init__(self, job_dir: _job_dir.JobDirectory):
+        self.job_dir = job_dir
+
+    def exec(self, widget: QJobScheduler):
+        if not isinstance(job_cls := widget._current_job_cls, _RelionBuiltinContinue):
+            raise RuntimeError(f"Cannot continue this job type {job_cls!r}.")
+        params = widget.get_parameters()
+        proc = job_cls.continue_job(self.job_dir, **params)
+        if isinstance(proc, RelionJobExecution):
+            widget._ui.show_notification(f"Job '{job_cls.job_title()}' continued.")
+
+    def button_text(self) -> str:
+        return "Continue Job"
 
 
 class EditMode(Mode):

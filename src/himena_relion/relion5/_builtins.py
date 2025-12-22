@@ -139,13 +139,16 @@ MASK_DIAMETER_TYPE = Annotated[
 MASK_WITH_ZEROS_TYPE = Annotated[
     bool, {"label": "Mask individual particles with zeros", "group": "Optimisation"}
 ]
-SIGMA_TILT_TYPE = Annotated[
-    float, {"label": "Prior width on tilt angle", "group": "Optimisation"}
+SOLVENT_FLATTEN_FSC_TYPE = Annotated[
+    bool, {"label": "Use solvent-flattened FSCs", "group": "Optimisation"}
 ]
 DO_BLUSH_TYPE = Annotated[
     bool, {"label": "Use Blush regularisation", "group": "Optimisation"}
 ]
 # Sampling
+SIGMA_TILT_TYPE = Annotated[
+    float, {"label": "Prior width on tilt angle", "group": "Sampling"}
+]
 ANG_SAMPLING_TYPE = Annotated[
     str,
     {
@@ -234,16 +237,16 @@ HELICAL_Z_PERCENTAGE_TYPE = Annotated[
 
 # Compute
 USE_PARALLEL_DISC_IO_TYPE = Annotated[
-    bool, {"label": "Use parallel disc I/O", "group": "Running"}
+    bool, {"label": "Use parallel disc I/O", "group": "Compute"}
 ]
 NUM_POOL_TYPE = Annotated[
-    int, {"label": "Number of pooled particles", "min": 1, "group": "Running"}
+    int, {"label": "Number of pooled particles", "min": 1, "group": "Compute"}
 ]
 DO_PREREAD_TYPE = Annotated[
     bool, {"label": "Pre-read all particles into RAM", "group": "Compute"}
 ]
 DO_COMBINE_THRU_DISC_TYPE = Annotated[
-    bool, {"label": "Combine iterations through disc", "group": "Running"}
+    bool, {"label": "Combine iterations through disc", "group": "Compute"}
 ]
 GPU_IDS_TYPE = Annotated[str, {"label": "GPU IDs to use", "group": "Compute"}]
 # sharpen
@@ -796,9 +799,7 @@ class Refine3DJob(_Relion5Job):
         # Optimisation
         particle_diameter: MASK_DIAMETER_TYPE = 200,
         do_zero_mask: MASK_WITH_ZEROS_TYPE = True,
-        do_solvent_fsc: Annotated[
-            bool, {"label": "Use solvent-flattened FSCs", "group": "Compute"}
-        ] = False,
+        do_solvent_fsc: SOLVENT_FLATTEN_FSC_TYPE = False,
         do_blush: DO_BLUSH_TYPE = False,
         # Sampling
         sampling: ANG_SAMPLING_TYPE = "7.5 degrees",

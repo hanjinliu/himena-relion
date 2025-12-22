@@ -6,14 +6,15 @@ import inspect
 import logging
 import subprocess
 import tempfile
-from typing import Any, Callable, Generator, get_origin
+from typing import Any, Callable, Generator, get_origin, TYPE_CHECKING
 from pathlib import Path
 from magicgui.widgets.bases import ValueWidget
 
-from himena.types import AnyContext
+from himena.types import AnyContext, WidgetDataModel
 from himena.workflow import WorkflowStep
 from himena.widgets import MainWindow
 from himena.plugins import when_reader_used, register_function
+import numpy as np
 import pandas as pd
 import starfile
 from himena_relion import _configs, _job_dir
@@ -24,6 +25,9 @@ from himena_relion._utils import (
     unwrapped_annotated,
     change_name_for_tomo,
 )
+
+if TYPE_CHECKING:
+    from himena_relion._widgets._job_edit import QJobScheduler
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -106,18 +110,23 @@ class RelionJob(ABC):
 
         All the RELION external jobs defined this way will be automatically registered.
         """
-        if cls.__name__.startswith("_") or cls.__name__ == "RelionExternalJob":
+        if (
+            cls.__name__.startswith("_")
+            or cls.__name__ == "RelionExternalJob"
+            or issubclass(cls, _RelionBuiltinContinue)
+        ):
             return
+        command_id = cls.command_id()
         _LOGGER.info(
             "Registering RELION job %s with command ID %s",
             cls.job_title(),
-            cls.command_id(),
+            command_id,
         )
         register_function(
             cls._show_scheduler_widget,
             menus=[MenuId.RELION_NEW_JOB],
             title=f"{cls.command_palette_title_prefix()} {cls.job_title()}",
-            command_id=cls.command_id(),
+            command_id=command_id,
         )
 
     @classmethod
@@ -176,15 +185,7 @@ class RelionJob(ABC):
 
     @classmethod
     def _show_scheduler_widget(cls, ui: MainWindow, context: AnyContext):
-        from himena_relion._widgets._job_edit import QJobScheduler
-
-        for dock in ui.dock_widgets:
-            if isinstance(scheduler := dock.widget, QJobScheduler):
-                dock.show()
-                break
-        else:
-            scheduler = QJobScheduler(ui)
-            ui.add_dock_widget(scheduler, title="RELION Job Scheduler", area="right")
+        scheduler = _get_scheduler_widget(ui)
         scheduler.update_by_job(cls)
         if context:
             scheduler.set_parameters(context)
@@ -256,6 +257,99 @@ class _RelionBuiltinJob(RelionJob):
             kwargs=cls.normalize_kwargs(**kwargs),
             is_tomo=int(cls.job_is_tomo()),
         )
+
+
+class _RelionBuiltinContinue(_RelionBuiltinJob):
+    original_class: type[RelionJob]
+
+    @classmethod
+    def command_id(cls) -> str:
+        return cls.original_class.type_label() + ".continue"
+
+    @classmethod
+    def command_palette_title_prefix(cls) -> str:
+        return "Continue -"
+
+    @classmethod
+    def job_title(cls) -> str:
+        return cls.original_class.job_title()
+
+    def __init_subclass__(cls):
+        """This is called when a subclass is defined.
+
+        All the RELION external jobs defined this way will be automatically registered.
+        """
+        if cls.__name__.startswith("_") or cls.__name__ == "RelionExternalJob":
+            return
+        command_id = cls.command_id()
+        _LOGGER.info(
+            "Registering RELION job %s with command ID %s",
+            cls.job_title(),
+            command_id,
+        )
+        register_function(
+            cls._show_scheduler_widget_for_continue,
+            menus=[],
+            title=f"{cls.command_palette_title_prefix()} {cls.job_title()}",
+            command_id=command_id,
+            palette=False,
+        )
+
+        # auto connect jobs
+        connect_jobs(
+            cls.original_class,
+            cls,
+            node_mapping=cls.more_node_mappings(),
+        )
+
+    @classmethod
+    def more_node_mappings(cls) -> dict[str | Callable[[Path], str], str]:
+        """Define additional node mappings for this continue job, if needed."""
+        return {}
+
+    @classmethod
+    def _show_scheduler_widget_for_continue(
+        cls,
+        ui: MainWindow,
+        model: WidgetDataModel,
+        context: AnyContext,
+    ):
+        scheduler = _get_scheduler_widget(ui)
+        scheduler.update_by_job(cls)
+        job_dir = model.value
+        if not isinstance(job_dir, _job_dir.JobDirectory):
+            raise RuntimeError("Widget model does not contain a job directory.")
+        orig_params = job_dir.get_job_params_as_dict()
+        sig = cls._signature()
+        for orig_key, orig_val in orig_params.items():
+            if orig_key in sig.parameters:
+                context.setdefault(orig_key, orig_val)
+        if context:
+            scheduler.set_parameters(context)
+        scheduler.set_continue_mode(job_dir)
+        return scheduler
+
+    def continue_job(
+        self, job_dir: _job_dir.JobDirectory, **kwargs
+    ) -> RelionJobExecution | None:
+        job_star_path = job_dir.job_star()
+        job_star_data = starfile.read(job_star_path)
+        params_df: pd.DataFrame = job_star_data["joboptions_values"]
+        # update job parameters
+        for key, val_new in kwargs.items():
+            mask = params_df["rlnJobOptionVariable"] == key
+            idx = np.where(mask)[0]
+            params_df.iloc[idx, 1] = to_string(val_new)
+        job_star_data["joboptions_values"] = params_df
+        starfile.write(job_star_data, job_star_path)
+        d = job_dir.path.relative_to(job_dir.relion_project_dir).as_posix()
+        if not d.endswith("/"):
+            d += "/"
+        proc = subprocess.Popen(
+            ["relion_pipeliner", "--RunJobs", d],
+            start_new_session=True,
+        )
+        return RelionJobExecution(proc, _job_dir.JobDirectory(Path(d).resolve()))
 
 
 def prep_builtin_job_star(
@@ -368,6 +462,7 @@ def connect_jobs(
     pre: type[RelionJob],
     post: type[RelionJob],
     node_mapping: dict[str | Callable[[Path], str], str] | None = None,
+    value_mapping: list[tuple[Any, str]] | None = None,
 ):
     type_pre = Type.RELION_JOB + "." + pre.himena_model_type()
     when = when_reader_used(type_pre, "himena_relion.io.read_relion_job")
@@ -379,6 +474,19 @@ def connect_jobs(
         post.command_id(),
         user_context=user_context,
     )
+
+
+def _get_scheduler_widget(ui: MainWindow) -> QJobScheduler:
+    from himena_relion._widgets._job_edit import QJobScheduler
+
+    for dock in ui.dock_widgets:
+        if isinstance(scheduler := dock.widget, QJobScheduler):
+            dock.show()
+            break
+    else:
+        scheduler = QJobScheduler(ui)
+        ui.add_dock_widget(scheduler, title="RELION Job Scheduler", area="right")
+    return scheduler
 
 
 def _node_mapping_to_context(node_mapping: dict[str | Callable[[Path], str], str]):

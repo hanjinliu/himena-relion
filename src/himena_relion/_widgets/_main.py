@@ -72,7 +72,19 @@ class QRelionJobWidget(QtW.QWidget):
                 t0 = default_timer()
                 wdt.initialize(job_dir)
             except Exception as e:
-                _LOGGER.error(f"Failed to initialize job widget {wdt!r}: {e!r}")
+                exc_tb = e.__traceback__
+                traceback_msgs: list[str] = []
+                while exc_tb is not None:
+                    filename = exc_tb.tb_frame.f_code.co_filename
+                    lineno = exc_tb.tb_lineno
+                    traceback_msgs.append(f'  File "{filename}", line {lineno}')
+                    exc_tb = exc_tb.tb_next
+                    if len(traceback_msgs) > 100:
+                        break
+                msg = "\n".join(traceback_msgs) + f"\n{e!r}"
+                _LOGGER.error(
+                    f"Failed to initialize job widget {type(wdt).__name__!r}:\n{msg}"
+                )
             else:
                 t1 = default_timer()
                 _LOGGER.info(

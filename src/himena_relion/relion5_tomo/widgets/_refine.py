@@ -83,9 +83,13 @@ class QRefine3DViewer(QJobScrollArea):
         else:
             map_out = None
         df_fsc, df_groups = res.model_dataframe(class_id)
-        return map_out, df_fsc, df_groups["rlnGroupNrParticles"].sum()
+        if df_groups is not None:
+            num_particles = df_groups["rlnGroupNrParticles"].sum()
+        else:
+            num_particles = 0
+        return map_out, df_fsc, num_particles
 
-    def _on_items_read(self, items: tuple[np.ndarray, pd.DataFrame | None, int]):
+    def _on_items_read(self, items: tuple[np.ndarray | None, pd.DataFrame | None, int]):
         map_out, df_fsc, num_particles = items
         had_image = self._viewer.has_image
         self._viewer.set_image(map_out)

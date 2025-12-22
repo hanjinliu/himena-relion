@@ -876,8 +876,12 @@ class Refine3DResults(_3DResultsBase):
             img2 = None
         return img1, img2
 
-    def model_dataframe(self, class_id: int = 1) -> tuple[pd.DataFrame, pd.DataFrame]:
+    def model_dataframe(
+        self, class_id: int = 1
+    ) -> tuple[pd.DataFrame | None, pd.DataFrame | None]:
         starpath = self.path / f"run{self.it_str}_half1_model.star"
+        if not starpath.exists():
+            return None, None
         _dict = starfile.read(starpath, read_n_blocks=4)
         df_fsc = _dict[f"model_class_{class_id}"]
         df_groups = _dict["model_groups"]
