@@ -46,7 +46,7 @@ class RelionJob(ABC):
         self._output_job_dir = output_job_dir
 
     @property
-    def output_job_dir(self) -> _job_dir.ExternalJobDirectory:
+    def output_job_dir(self) -> _job_dir.JobDirectory:
         """Get the output job directory object."""
         return self._output_job_dir
 
@@ -271,6 +271,10 @@ class _RelionBuiltinContinue(_RelionBuiltinJob):
         return "Continue -"
 
     @classmethod
+    def type_label(cls) -> str:
+        return cls.original_class.type_label()
+
+    @classmethod
     def job_title(cls) -> str:
         return cls.original_class.job_title()
 
@@ -329,9 +333,8 @@ class _RelionBuiltinContinue(_RelionBuiltinJob):
         scheduler.set_continue_mode(job_dir)
         return scheduler
 
-    def continue_job(
-        self, job_dir: _job_dir.JobDirectory, **kwargs
-    ) -> RelionJobExecution | None:
+    def continue_job(self, **kwargs) -> RelionJobExecution | None:
+        job_dir = self.output_job_dir
         job_star_path = job_dir.job_star()
         job_star_data = starfile.read(job_star_path)
         params_df: pd.DataFrame = job_star_data["joboptions_values"]

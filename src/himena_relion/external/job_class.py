@@ -30,7 +30,7 @@ def pick_job_class(class_id: str) -> "type[RelionExternalJob]":
 
 class RelionExternalJob(RelionJob):
     def __init__(self, output_job_dir: _job_dir.ExternalJobDirectory):
-        self._output_job_dir = output_job_dir
+        super().__init__(output_job_dir)
         self._console = Console(record=True)
         cls = type(self)
         if pick_job_class(self.import_path()) is not cls:
@@ -38,6 +38,11 @@ class RelionExternalJob(RelionJob):
                 "The return value of `import_path` cannot be used to pick "
                 f"{cls!r} defined in {cls.__module__}:{cls.__name__}."
             )
+
+    @property
+    def output_job_dir(self) -> _job_dir.ExternalJobDirectory:
+        """Get the output job directory object."""
+        return self._output_job_dir
 
     @property
     def console(self) -> Console:

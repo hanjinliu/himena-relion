@@ -212,10 +212,10 @@ class ContinueMode(Mode):
         self.job_dir = job_dir
 
     def exec(self, widget: QJobScheduler):
-        if not isinstance(job_cls := widget._current_job_cls, _RelionBuiltinContinue):
+        if not issubclass(job_cls := widget._current_job_cls, _RelionBuiltinContinue):
             raise RuntimeError(f"Cannot continue this job type {job_cls!r}.")
         params = widget.get_parameters()
-        proc = job_cls.continue_job(self.job_dir, **params)
+        proc = job_cls(self.job_dir).continue_job(**params)
         if isinstance(proc, RelionJobExecution):
             widget._ui.show_notification(f"Job '{job_cls.job_title()}' continued.")
 
