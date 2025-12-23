@@ -15,7 +15,12 @@ from himena.style import Theme
 from himena_relion._job_class import execute_job
 from himena_relion._widgets._job_widgets import QJobPipelineViewer
 from himena_relion.consts import Type, JOB_ID_MAP
-from himena_relion._pipeline import NodeStatus, RelionDefaultPipeline, RelionJobInfo
+from himena_relion._pipeline import (
+    NodeStatus,
+    RelionDefaultPipeline,
+    RelionJobInfo,
+    is_all_inputs_ready,
+)
 from himena_relion.pipeline._flowchart import (
     QRelionPipelineFlowChartView,
     RelionJobNodeItem,
@@ -53,9 +58,7 @@ class QRelionPipelineFlowChart(QtW.QWidget):
             self._on_background_left_clicked
         )
 
-        self._job_state_to_info_mapping = defaultdict[NodeStatus, set[RelionJobInfo]](
-            set
-        )
+        self._state_to_job_map = defaultdict[NodeStatus, set[RelionJobInfo]](set)
 
     def sizeHint(self):
         return QtCore.QSize(350, 600)
@@ -154,19 +157,19 @@ class QRelionPipelineFlowChart(QtW.QWidget):
                 except Exception as e:
                     _LOGGER.warning("Failed to read default_pipeline.star: %s", e)
                 else:
-                    success_old = self._job_state_to_info_mapping[NodeStatus.SUCCEEDED]
-                    self._job_state_to_info_mapping.clear()
+                    success_old = self._state_to_job_map[NodeStatus.SUCCEEDED]
+                    self._state_to_job_map.clear()
                     for job in pipeline.iter_nodes():
-                        self._job_state_to_info_mapping[job.status].add(job)
-                    success_new = self._job_state_to_info_mapping[NodeStatus.SUCCEEDED]
+                        self._state_to_job_map[job.status].add(job)
+                    success_new = self._state_to_job_map[NodeStatus.SUCCEEDED]
                     if success_new - success_old:
-                        for job in self._job_state_to_info_mapping[
-                            NodeStatus.SUCCEEDED
-                        ]:
-                            execute_job(job.path.as_posix())
-                            self._flow_chart._ui.show_notification(
-                                f"Scheduled job {job.path} started."
-                            )
+                        for job in self._state_to_job_map[NodeStatus.SCHEDULED]:
+                            # run all the scheduled jobs whose dependencies are met
+                            if is_all_inputs_ready(job.path):
+                                execute_job(job.path.as_posix(), ignore_error=True)
+                                self._flow_chart._ui.show_notification(
+                                    f"Scheduled job {job.path} started."
+                                )
 
                     # update the internal data (thus, the flow chart)
                     model = WidgetDataModel(

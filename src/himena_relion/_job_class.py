@@ -456,7 +456,7 @@ def connect_jobs(
     )
 
 
-def execute_job(d: str | Path) -> RelionJobExecution:
+def execute_job(d: str | Path, ignore_error: bool = False) -> RelionJobExecution:
     """Execute a RELION job named `d` (such as "Class3D/job012/")."""
     if isinstance(d, Path):
         d = d.as_posix()
@@ -464,11 +464,17 @@ def execute_job(d: str | Path) -> RelionJobExecution:
         d += "/"
     if d.count("/") > 2:
         d = "/".join(d.split("/")[-2:]) + "/"
+    try:
+        job_dir = _job_dir.JobDirectory(Path(d).resolve())
+    except FileNotFoundError as e:
+        if not ignore_error:
+            raise e
+        return None
     proc = subprocess.Popen(
         ["relion_pipeliner", "--RunJobs", d],
         start_new_session=True,
     )
-    return RelionJobExecution(proc, _job_dir.JobDirectory(Path(d).resolve()))
+    return RelionJobExecution(proc, job_dir)
 
 
 def _get_scheduler_widget(ui: MainWindow) -> QJobScheduler:

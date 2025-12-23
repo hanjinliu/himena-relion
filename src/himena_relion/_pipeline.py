@@ -255,5 +255,7 @@ class RelionOptimisationSet:
 
 def is_all_inputs_ready(d: str | Path) -> bool:
     """True if the job at directory `d` has all inputs ready."""
-    pipeline = RelionPipeline.from_star(Path(d) / "job_pipeline.star")
-    return all(input_.path.exists() for input_ in pipeline.inputs)
+    if (ppath := Path(d) / "job_pipeline.star").exists():
+        pipeline = RelionPipeline.from_star(ppath)
+        return all(input_.path.exists() for input_ in pipeline.inputs)
+    return False
