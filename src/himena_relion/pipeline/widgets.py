@@ -163,7 +163,7 @@ class QRelionPipelineFlowChart(QtW.QWidget):
                         for job in self._job_state_to_info_mapping[
                             NodeStatus.SUCCEEDED
                         ]:
-                            execute_job(job.path)
+                            execute_job(job.path.as_posix())
                             self._flow_chart._ui.show_notification(
                                 f"Scheduled job {job.path} started."
                             )

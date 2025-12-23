@@ -456,8 +456,10 @@ def connect_jobs(
     )
 
 
-def execute_job(d: str):
+def execute_job(d: str | Path) -> RelionJobExecution:
     """Execute a RELION job named `d` (such as "Class3D/job012/")."""
+    if isinstance(d, Path):
+        d = d.as_posix()
     if not d.endswith("/"):
         d += "/"
     if d.count("/") > 2:
