@@ -83,6 +83,9 @@ class RelionJobInfo:
     parents: list[RelionOutputFile]
     status: NodeStatus = NodeStatus.SUCCEEDED
 
+    def __hash__(self):
+        return hash(self.path)
+
 
 @dataclass
 class RelionOutputFile:
@@ -248,3 +251,9 @@ class RelionOptimisationSet:
         tomo_star_path: str = df["rlnTomoTomogramsFile"][0]
         particles_path: str = df["rlnTomoParticlesFile"][0]
         return cls(Path(tomo_star_path), Path(particles_path))
+
+
+def is_all_inputs_ready(d: str | Path) -> bool:
+    """True if the job at directory `d` has all inputs ready."""
+    pipeline = RelionPipeline.from_star(Path(d) / "job_pipeline.star")
+    return all(input_.path.exists() for input_ in pipeline.inputs)

@@ -201,7 +201,7 @@ class ScheduleMode(Mode):
         widget.clear_content()
         if isinstance(proc, RelionJobExecution):
             widget._ui.read_file(proc.job_directory.path)
-            widget._ui.show_notification(f"Job '{job_cls.job_title()}' launched.")
+            widget._ui.show_notification(f"Job '{job_cls.job_title()}' started.")
 
     def button_text(self) -> str:
         return "Run Job"

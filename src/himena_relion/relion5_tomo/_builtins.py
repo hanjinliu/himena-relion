@@ -80,6 +80,11 @@ IN_OPTIM = Annotated[
     {"label": "Input particles", "group": "I/O", "widget_type": OptimisationSetEdit},
 ]
 
+TOMO_THICKNESS_TYPE = Annotated[
+    float,
+    {"label": "Estimated tomogram thickness (nm)", "min": 1.0, "group": "I/O"},
+]
+
 
 def _latest_optimiser_star(path: Path) -> str:
     # NOTE: this must be defined before its use in more_node_mappings because
@@ -369,6 +374,7 @@ class AlignTiltSeriesImodFiducial(_AlignTiltSeriesJobBase):
     def run(
         self,
         in_tiltseries: IN_TILT_TYPE = "",
+        tomogram_thickness: TOMO_THICKNESS_TYPE = 300.0,
         fiducial_diameter: Annotated[float, {"label": "Fiducial diameter (nm)"}] = 10.0,
         nr_mpi: MPI_TYPE = 1,
         do_queue: DO_QUEUE_TYPE = False,
@@ -416,6 +422,7 @@ class AlignTiltSeriesImodPatch(_AlignTiltSeriesJobBase):
     def run(
         self,
         in_tiltseries: IN_TILT_TYPE = "",
+        tomogram_thickness: TOMO_THICKNESS_TYPE = 300.0,
         patch_size: Annotated[float, {"label": "Patch size (nm)", "min": 1}] = 100,
         patch_overlap: Annotated[
             float, {"label": "Patch overlap (%)", "min": 0, "max": 100}
@@ -461,6 +468,7 @@ class AlignTiltSeriesAreTomo2(_AlignTiltSeriesJobBase):
     def run(
         self,
         in_tiltseries: IN_TILT_TYPE = "",
+        tomogram_thickness: TOMO_THICKNESS_TYPE = 300.0,
         do_aretomo_tiltcorrect: Annotated[
             bool, {"label": "Correct tilt angle offset"}
         ] = False,

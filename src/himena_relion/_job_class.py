@@ -18,7 +18,7 @@ import numpy as np
 import pandas as pd
 from starfile_rs import as_star, read_star
 from himena_relion import _configs, _job_dir
-from himena_relion._pipeline import RelionPipeline
+from himena_relion._pipeline import is_all_inputs_ready
 from himena_relion.consts import Type, MenuId, JOB_ID_MAP
 from himena_relion._utils import (
     last_job_directory,
@@ -148,18 +148,9 @@ class RelionJob(ABC):
                 ],
                 check=True,
             )
-        d = last_job_directory()
-        # check if all the input is ready
-        pipeline = RelionPipeline.from_star(Path(d) / "job_pipeline.star")
-        inputs_ready = all(input_.path.exists() for input_ in pipeline.inputs)
-
-        if inputs_ready:
-            # Run the job. Note that the job path must be in "Class3D/job012/" format.
-            proc = subprocess.Popen(
-                ["relion_pipeliner", "--RunJobs", d],
-                start_new_session=True,
-            )
-            return RelionJobExecution(proc, _job_dir.JobDirectory(Path(d).resolve()))
+        d = last_job_directory()  # FIXME: not thread-safe
+        if is_all_inputs_ready(d):
+            return execute_job(d)
 
     @classmethod
     @abstractmethod
@@ -172,16 +163,8 @@ class RelionJob(ABC):
         job_star_dict = self.prep_job_star(**kwargs)
         as_star(job_star_dict).write(job_dir.job_star())
         to_run = str(job_dir.path.relative_to(job_dir.relion_project_dir))
-        if not to_run.endswith("/"):
-            to_run += "/"
-        pipeline = RelionPipeline.from_star(Path(to_run, "job_pipeline.star"))
-        inputs_ready = all(input_.path.exists() for input_ in pipeline.inputs)
-        if inputs_ready:
-            proc = subprocess.Popen(
-                ["relion_pipeliner", "--RunJobs", to_run],
-                start_new_session=True,
-            )
-            return RelionJobExecution(proc, job_dir)
+        if is_all_inputs_ready(to_run):
+            return execute_job(to_run)
 
     @classmethod
     def _show_scheduler_widget(cls, ui: MainWindow, context: AnyContext):
@@ -346,13 +329,7 @@ class _RelionBuiltinContinue(_RelionBuiltinJob):
         job_star_data.with_loop_block("joboptions_values", params_df)
         as_star(job_star_data).write(job_star_path)
         d = job_dir.path.relative_to(job_dir.relion_project_dir).as_posix()
-        if not d.endswith("/"):
-            d += "/"
-        proc = subprocess.Popen(
-            ["relion_pipeliner", "--RunJobs", d],
-            start_new_session=True,
-        )
-        return RelionJobExecution(proc, _job_dir.JobDirectory(Path(d).resolve()))
+        return execute_job(d)
 
 
 def prep_builtin_job_star(
@@ -465,7 +442,7 @@ def connect_jobs(
     pre: type[RelionJob],
     post: type[RelionJob],
     node_mapping: dict[str | Callable[[Path], str], str] | None = None,
-    value_mapping: list[tuple[Any, str]] | None = None,
+    value_mapping: list[tuple[Any, str]] | None = None,  # TODO: implement later
 ):
     type_pre = Type.RELION_JOB + "." + pre.himena_model_type()
     when = when_reader_used(type_pre, "himena_relion.io.read_relion_job")
@@ -477,6 +454,19 @@ def connect_jobs(
         post.command_id(),
         user_context=user_context,
     )
+
+
+def execute_job(d: str):
+    """Execute a RELION job named `d` (such as "Class3D/job012/")."""
+    if not d.endswith("/"):
+        d += "/"
+    if d.count("/") > 2:
+        d = "/".join(d.split("/")[-2:]) + "/"
+    proc = subprocess.Popen(
+        ["relion_pipeliner", "--RunJobs", d],
+        start_new_session=True,
+    )
+    return RelionJobExecution(proc, _job_dir.JobDirectory(Path(d).resolve()))
 
 
 def _get_scheduler_widget(ui: MainWindow) -> QJobScheduler:

@@ -67,7 +67,7 @@ class QTextEditBase(QtW.QWidget, JobWidgetBase):
             font_family = _monospace_font_for_linux()
         else:
             font_family = MonospaceFontFamily
-        self.setFont(QtGui.QFont(font_family, 8))
+        self._text_edit.setFont(QtGui.QFont(font_family, 8))
         self._text_edit.setReadOnly(True)
         self._text_edit.setWordWrapMode(QtGui.QTextOption.WrapMode.NoWrap)
         self._text_edit.setUndoRedoEnabled(False)
@@ -523,7 +523,7 @@ class QFileLabel(QtW.QWidget):
 
 @lru_cache(maxsize=1)
 def _monospace_font_for_linux() -> str:
-    candidates = ["DejaVu Sans Mono", "Ubuntu Mono", "Noto Sans Mono"]
+    candidates = ["Noto Sans Mono", "DejaVu Sans Mono", "Ubuntu Mono"]
     families = QtGui.QFontDatabase.families()
     for fam in candidates:
         if fam in families:

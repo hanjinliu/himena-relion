@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from himena import MainWindow, WidgetDataModel, create_text_model
+from himena import MainWindow, WidgetDataModel
 from himena.exceptions import Cancelled
 from himena.plugins import register_function
 from himena_relion.consts import Type, MenuId, RelionJobState, FileNames
@@ -17,14 +17,10 @@ if TYPE_CHECKING:
     command_id="himena-relion:open-job-star",
     group="00-open-file",
 )
-def open_relion_job_star(model: WidgetDataModel) -> WidgetDataModel:
+def open_relion_job_star(ui: MainWindow, model: WidgetDataModel) -> WidgetDataModel:
     job_dir = assert_job(model)
     job_star_path = job_dir.job_star()
-    return create_text_model(
-        job_star_path.read_text(),
-        title=f"{job_dir.path.stem}/{job_star_path.name}",
-        extension_default=".star",
-    )
+    ui.read_file(job_star_path, plugin="himena_builtins.io.read_as_text_anyway")
 
 
 @register_function(
@@ -34,14 +30,12 @@ def open_relion_job_star(model: WidgetDataModel) -> WidgetDataModel:
     command_id="himena-relion:open-job-pipeline-star",
     group="00-open-file",
 )
-def open_relion_job_pipeline_star(model: WidgetDataModel) -> WidgetDataModel:
+def open_relion_job_pipeline_star(
+    ui: MainWindow, model: WidgetDataModel
+) -> WidgetDataModel:
     job_dir = assert_job(model)
     job_star_path = job_dir.job_pipeline()
-    return create_text_model(
-        job_star_path.read_text(),
-        title=f"{job_dir.path.stem}/{job_star_path.name}",
-        extension_default=".star",
-    )
+    ui.read_file(job_star_path, plugin="himena_builtins.io.read_as_text_anyway")
 
 
 @register_function(
@@ -52,6 +46,7 @@ def open_relion_job_pipeline_star(model: WidgetDataModel) -> WidgetDataModel:
     group="03-job-mark",
 )
 def mark_as_finished(model: WidgetDataModel):
+    """Mark this job as 'finished'"""
     job_dir = assert_job(model)
     job_dir.path.joinpath(FileNames.EXIT_SUCCESS).touch()
 
@@ -64,6 +59,7 @@ def mark_as_finished(model: WidgetDataModel):
     group="03-job-mark",
 )
 def mark_as_failed(model: WidgetDataModel):
+    """Mark this job as 'failed'"""
     job_dir = assert_job(model)
     job_dir.path.joinpath(FileNames.EXIT_FAILURE).touch()
 

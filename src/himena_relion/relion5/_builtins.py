@@ -560,7 +560,6 @@ class CtfEstimationJob(_Relion5Job):
             {"label": "Dose-dependent Thon ring fading (e/A^2)", "group": "CTFFIND"},
         ] = 100,
         nr_mpi: MPI_TYPE = 1,
-        nr_threads: THREAD_TYPE = 1,
         do_queue: DO_QUEUE_TYPE = False,
         min_dedicated: MIN_DEDICATED_TYPE = 1,
     ):
