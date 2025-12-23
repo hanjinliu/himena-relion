@@ -5,7 +5,7 @@ from typing import Annotated, Any
 import numpy as np
 from numpy.typing import NDArray
 from functools import lru_cache
-import starfile
+from starfile_rs import read_star_block
 
 
 def bin_image(img: np.ndarray, nbin: int) -> np.ndarray:
@@ -107,9 +107,8 @@ def make_tilt_projection_mat(deg: float) -> NDArray[np.float32]:
 
 
 def last_job_directory() -> str:
-    df = starfile.read("default_pipeline.star")
-    path_last = df["pipeline_processes"]["rlnPipeLineProcessName"].iloc[-1]
-    return path_last
+    block = read_star_block("default_pipeline.star", "pipeline_processes")
+    return block.to_pandas()["rlnPipeLineProcessName"].iloc[-1]
 
 
 def unwrapped_annotated(annot: Any) -> Any:

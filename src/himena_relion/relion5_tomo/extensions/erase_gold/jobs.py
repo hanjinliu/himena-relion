@@ -7,7 +7,7 @@ import mrcfile
 import pandas as pd
 import numpy as np
 from numpy.typing import NDArray
-import starfile
+from starfile_rs import as_star, read_star
 from himena_relion import _job_dir, _utils
 from himena_relion.external import RelionExternalJob
 from himena_relion._job_class import connect_jobs
@@ -143,8 +143,7 @@ class FindBeads3D(RelionExternalJob):
             str, {"label": "findbeads3d executable"}
         ] = "findbeads3d",
     ):
-        df_tomo = starfile.read(in_mics)
-        assert isinstance(df_tomo, pd.DataFrame)
+        df_tomo = read_star(in_mics).first().trust_loop().to_pandas()
         out_job_dir = self.output_job_dir
         models_dir = out_job_dir.path.joinpath("models")
         models_dir.mkdir(exist_ok=True, parents=True)
@@ -155,7 +154,7 @@ class FindBeads3D(RelionExternalJob):
             path_star = info.tilt_series_star_file
             tomo_path = info.reconstructed_tomogram[0]
             size_pix = gold_nm / info.tomo_pixel_size * 10
-            tilt_star_df = starfile.read(path_star)
+            tilt_star_df = read_star(path_star).first().trust_loop().to_pandas()
             angrange = tilt_star_df[TILT_ANGLE].min(), tilt_star_df[TILT_ANGLE].max()
             model_path = models_dir / f"{info.tomo_name}.mod"
             model_paths.append(model_path.relative_to(out_job_dir.relion_project_dir))
@@ -168,7 +167,7 @@ class FindBeads3D(RelionExternalJob):
         df_tomo["TomoBeadModel"] = model_paths
         df_tomo["TomoBeadSize"] = gold_nm
         output_node_path = out_job_dir.path / "tomograms.star"
-        starfile.write(df_tomo, output_node_path)
+        as_star({"global": df_tomo}).write(output_node_path)
         self.console.log(
             f"findbeads3d jobs finished successfully, output saved to {output_node_path}"
         )
@@ -199,8 +198,7 @@ class EraseGold(RelionExternalJob):
         ] = False,
     ):
         """Erase gold fiducials from tilt series using the output model files."""
-        df_tomo = starfile.read(in_mics)
-        assert isinstance(df_tomo, pd.DataFrame)
+        df_tomo = read_star(in_mics).first().trust_loop().to_pandas()
         out_job_dir = self.output_job_dir
 
         tilt_save_dir = out_job_dir.path / "tilt_series"
@@ -215,7 +213,12 @@ class EraseGold(RelionExternalJob):
             model_path = rln_dir / str(row["TomoBeadModel"])
             edf_path = rln_dir / str(row[ETOMO_FILE])
             gold_nm = row["TomoBeadSize"]
-            tilt_star_df = starfile.read(info.tomo_tilt_series_star_file)
+            tilt_star_df = (
+                read_star(info.tomo_tilt_series_star_file)
+                .first()
+                .trust_loop()
+                .to_pandas()
+            )
             assert isinstance(tilt_star_df, pd.DataFrame)
             tomo_center = (np.array(info.tomo_shape, dtype=np.float32) - 1) / 2
             rng = np.random.default_rng(seed)
@@ -268,7 +271,7 @@ class EraseGold(RelionExternalJob):
                 tilt_star_df[col] = _to_update
 
             star_save_path = tilt_save_dir / info.tomo_tilt_series_star_file.name
-            starfile.write(tilt_star_df, star_save_path)
+            as_star({"global": tilt_star_df}).write(star_save_path)
             self.console.log(f"Erased tilt series starfile saved to {star_save_path}")
             yield
 
@@ -277,7 +280,7 @@ class EraseGold(RelionExternalJob):
             / f"{_job_dir.TomogramInfo.from_series(row).tomo_name}.star"
             for _, row in df_tomo.iterrows()
         ]
-        starfile.write(df_tomo, output_node_path)
+        as_star({"global": df_tomo}).write(output_node_path)
         self.console.log(
             f"EraseGold jobs finished successfully, output saved to {output_node_path}"
         )

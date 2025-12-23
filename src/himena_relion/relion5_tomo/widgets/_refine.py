@@ -95,6 +95,8 @@ class QRefine3DViewer(QJobScrollArea):
         self._viewer.set_image(map_out)
         if df_fsc is not None:
             self._fsc_plot.plot_fsc_refine(df_fsc)
+        else:
+            self._fsc_plot.clear()
         self._num_particles_label.setText(f"<b>{num_particles}</b> particles")
         self._worker = None
         if not had_image:

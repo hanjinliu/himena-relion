@@ -5,9 +5,8 @@ from typing import Iterator
 import imodmodel
 import mrcfile
 import numpy as np
-import pandas as pd
 from qtpy import QtWidgets as QtW, QtCore
-import starfile
+from starfile_rs import read_star
 from himena_relion._image_readers import ArrayFilteredView
 from himena_relion._widgets import Q2DViewer, Q2DFilterWidget
 from himena_relion import _job_dir
@@ -84,8 +83,7 @@ class QFindBeads3DViewer(QtW.QWidget):
         assert input0 is not None, (
             f"No TomogramGroupMetadata input found in {self._job_dir.path}"
         )
-        df_tomo = starfile.read(input0.path)
-        assert isinstance(df_tomo, pd.DataFrame), type(df_tomo)
+        df_tomo = read_star(input0.path).first().trust_loop().to_pandas()
         for _, row in df_tomo.iterrows():
             yield _job_dir.TomogramInfo.from_series(row)
 
@@ -149,8 +147,7 @@ class QEraseGoldViewer(QtW.QWidget):
             self._viewer.clear()
             self._viewer.redraw()
             return
-        df = starfile.read(star_path)
-        assert isinstance(df, pd.DataFrame), type(df)
+        df = read_star(star_path).first().trust_loop().to_pandas()
         rln_dir = self._job_dir.relion_project_dir
         paths = [rln_dir / p for p in df["rlnMicrographName"]]
         if "rlnTomoNominalStageTiltAngle" in df:

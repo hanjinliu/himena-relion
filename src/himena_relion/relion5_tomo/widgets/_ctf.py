@@ -4,7 +4,7 @@ import logging
 import numpy as np
 import pandas as pd
 from qtpy import QtWidgets as QtW
-import starfile
+from starfile_rs import read_star
 from himena_relion._image_readers._array import ArrayFilteredView
 from himena_relion._widgets import (
     QJobScrollArea,
@@ -86,7 +86,7 @@ class QCtfFindViewer(QJobScrollArea):
                 break
         else:
             return
-        df = starfile.read(path)
+        df = read_star(path).first().trust_loop().to_pandas()
         assert isinstance(df, pd.DataFrame)
         rln_dir = job_dir.relion_project_dir
         paths = [rln_dir / p for p in df["rlnCtfImage"]]
@@ -144,7 +144,7 @@ class QCtfRefineTomoViewer(QJobScrollArea):
             return
         for ts_path in job_dir.iter_tilt_series_path():
             if ts_path.stem == text:
-                df = starfile.read(ts_path)
+                df = read_star(ts_path).first().trust_loop().to_pandas()
                 self._defocus_canvas.plot_defocus(df)
                 self._ctf_scale_canvas.plot_ctf_scale(df)
                 break

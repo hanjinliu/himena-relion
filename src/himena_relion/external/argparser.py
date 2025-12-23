@@ -8,7 +8,7 @@ from typing import Any
 import inspect
 from enum import IntEnum
 
-import starfile
+from starfile_rs import as_star
 
 from himena_relion._utils import last_job_directory
 from himena_relion.consts import JOB_IMPORT_PATH_FILE, FileNames
@@ -106,7 +106,7 @@ def run_function(argv: list[str] | None = None) -> None:
     if prep_job_star_enum > 0:
         df = prep_job_star(f"himena-relion {class_id}", **func_args)
         tempstar = "temp-job.star"
-        starfile.write(df, o_dir / tempstar)
+        as_star(df).write(o_dir / tempstar)
         if prep_job_star_enum is PrepJobStarEnum.PREP_ONLY:
             pass
         elif prep_job_star_enum is PrepJobStarEnum.PREP_AND_ADD:

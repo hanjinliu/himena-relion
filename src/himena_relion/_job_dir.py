@@ -5,11 +5,11 @@ import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 import shutil
-from typing import Any, Callable, Iterator, Literal, TYPE_CHECKING
+from typing import Callable, Iterator, Literal, TYPE_CHECKING
 import numpy as np
 from numpy.typing import NDArray
 import pandas as pd
-import starfile
+from starfile_rs import read_star, read_star_block
 import mrcfile
 from himena_relion._image_readers._array import ArrayFilteredView
 from himena_relion._utils import change_name_for_tomo
@@ -52,7 +52,7 @@ class JobDirectory:
         fp = Path(path)
         if fp.name != "job.star" or not fp.exists():
             raise ValueError(f"Expected an existing job.star file, got {fp}")
-        job_block = starfile.read(fp, read_n_blocks=1)
+        job_block = read_star_block(fp, block_name="job").trust_single()
         job_type = job_block["rlnJobTypeLabel"]
         cls = JobDirectory._type_map.get(job_type, JobDirectory)
         job_dir = fp.parent
@@ -60,7 +60,7 @@ class JobDirectory:
 
     def is_tomo(self) -> bool:
         """Return whether this job is a tomography job."""
-        job_block = starfile.read(self.job_star(), read_n_blocks=1)
+        job_block = read_star_block(self.job_star(), block_name="job").trust_single()
         return bool(int(job_block["rlnJobIsTomo"]))
 
     @property
@@ -120,12 +120,12 @@ class JobDirectory:
     def _to_job_class(self) -> type[RelionJob] | None:
         from himena_relion._job_class import iter_relion_jobs
 
-        fp = self.job_star()
-        job_star_content = starfile.read(fp)
-        job_block: dict[str, Any] = job_star_content["job"]
+        star = read_star(self.job_star())
+        job_block = star["job"].trust_single()
+
         job_type = job_block["rlnJobTypeLabel"]
         is_tomo = bool(int(job_block["rlnJobIsTomo"]))
-        df: pd.DataFrame = job_star_content["joboptions_values"]
+        df = star["joboptions_values"].to_pandas()
         job_star_params = dict(zip(df["rlnJobOptionVariable"], df["rlnJobOptionValue"]))
 
         for subcls in iter_relion_jobs():
@@ -169,8 +169,7 @@ class JobDirectory:
         return self.get_job_params_as_dict()[param]
 
     def get_job_params_as_dict(self) -> dict[str, str]:
-        dfs = starfile.read(self.job_star(), always_dict=True)
-        df: pd.DataFrame = dfs["joboptions_values"]
+        df = read_star_block(self.job_star(), "joboptions_values").to_pandas()
         return dict(zip(df["rlnJobOptionVariable"], df["rlnJobOptionValue"]))
 
     def iter_tilt_series(self) -> Iterator[TiltSeriesInfo]:
@@ -357,17 +356,15 @@ class MotionCorrectionJobDirectory(HasFrameJobDirectory):
 
     def iter_tilt_series(self) -> Iterator[CorrectedTiltSeriesInfo]:
         """Iterate over all motion correction info."""
-        star = starfile.read(self.corrected_tilt_series_star())
-        if not isinstance(star, pd.DataFrame):
-            raise TypeError(f"Expected a DataFrame, got {type(star)}")
+        fp = self.corrected_tilt_series_star()
+        star = read_star(fp).first().trust_loop().to_pandas()
         for _, row in star.iterrows():
             yield CorrectedTiltSeriesInfo.from_series(row)
 
     def corrected_tilt_series(self, tomoname: str) -> CorrectedTiltSeriesInfo:
         """Return the first corrected tilt series info."""
-        star = starfile.read(self.corrected_tilt_series_star())
-        if not isinstance(star, pd.DataFrame):
-            raise TypeError(f"Expected a DataFrame, got {type(star)}")
+        fp = self.corrected_tilt_series_star()
+        star = read_star(fp).first().trust_loop().to_pandas()
         star_filt = star[star["rlnTomoName"] == tomoname]
         if len(star_filt) == 0:
             raise ValueError(f"Tilt series {tomoname} not found in star file.")
@@ -405,9 +402,8 @@ class CtfCorrectionJobDirectory(HasTiltSeriesJobDirectory):
 
     def iter_tilt_series(self) -> Iterator[CtfCorrectedTiltSeriesInfo]:
         """Iterate over all CTF-corrected tilt series info."""
-        star = starfile.read(self.tilt_series_ctf_star())
-        if not isinstance(star, pd.DataFrame):
-            raise TypeError(f"Expected a DataFrame, got {type(star)}")
+        fp = self.tilt_series_ctf_star()
+        star = read_star(fp).first().trust_loop().to_pandas()
         for _, row in star.iterrows():
             yield CtfCorrectedTiltSeriesInfo.from_series(row)
 
@@ -436,9 +432,7 @@ class ExcludeTiltSeriesJobDirectory(HasTiltSeriesJobDirectory):
     def iter_tilt_series(self) -> Iterator[SelectedTiltSeriesInfo]:
         """Iterate over all excluded tilt series info."""
         if (path := self.selected_tilt_series_star()).exists():
-            star = starfile.read(path)
-            if not isinstance(star, pd.DataFrame):
-                raise TypeError(f"Expected a DataFrame, got {type(star)}")
+            star = read_star(path).first().trust_loop().to_pandas()
             for _, row in star.iterrows():
                 yield SelectedTiltSeriesInfo.from_series(row)
 
@@ -474,9 +468,8 @@ class AlignTiltSeriesJobDirectory(HasTiltSeriesJobDirectory):
 
     def iter_aligned_tilt_series(self) -> Iterator[AlignedTiltSeriesInfo]:
         """Iterate over all aligned tilt series info."""
-        star = starfile.read(self.aligned_tilt_series_star())
-        if not isinstance(star, pd.DataFrame):
-            raise TypeError(f"Expected a DataFrame, got {type(star)}")
+        fp = self.aligned_tilt_series_star()
+        star = read_star(fp).first().trust_loop().to_pandas()
         for _, row in star.iterrows():
             yield AlignedTiltSeriesInfo.from_series(row)
 
@@ -514,9 +507,8 @@ class AlignTiltSeriesJobDirectory(HasTiltSeriesJobDirectory):
 
     def aligned_tilt_series(self, tomoname: str) -> AlignedTiltSeriesInfo:
         """Return the first corrected tilt series info."""
-        star = starfile.read(self.aligned_tilt_series_star())
-        if not isinstance(star, pd.DataFrame):
-            raise TypeError(f"Expected a DataFrame, got {type(star)}")
+        fp = self.aligned_tilt_series_star()
+        star = read_star(fp).first().trust_loop().to_pandas()
         star_filt = star[star["rlnTomoName"] == tomoname]
         if len(star_filt) == 0:
             raise ValueError(f"Tilt series {tomoname} not found in star file.")
@@ -697,7 +689,7 @@ class ExtractJobDirectory(JobDirectory):
     def particles(self) -> pd.DataFrame:
         """Return the particles DataFrame for this iteration."""
         star_path = self.particles_star()
-        return starfile.read(star_path)["particles"]
+        return read_star_block(star_path, "particles").trust_loop().to_pandas()
 
     def is_2d(self) -> bool:
         """Return whether the extraction is 2D stack or 3D subtomogram."""
@@ -787,7 +779,7 @@ class _3DResultsBase:
     def particles(self) -> pd.DataFrame:
         """Return the particles DataFrame for this iteration."""
         star_path = self._data_star()
-        return starfile.read(star_path)["particles"]
+        return read_star_block(star_path, "particles").trust_loop().to_pandas()
 
     def _data_star(self) -> Path:
         """Return the path to the data star file for this iteration."""
@@ -882,9 +874,9 @@ class Refine3DResults(_3DResultsBase):
         starpath = self.path / f"run{self.it_str}_half1_model.star"
         if not starpath.exists():
             return None, None
-        _dict = starfile.read(starpath, read_n_blocks=4)
-        df_fsc = _dict[f"model_class_{class_id}"]
-        df_groups = _dict["model_groups"]
+        star = read_star(starpath)
+        df_fsc = star[f"model_class_{class_id}"].to_pandas()
+        df_groups = star["model_groups"].to_pandas()
         # df_groups example:
         # rlnGroupNumber rlnGroupName  rlnGroupNrParticles  rlnGroupScaleCorrection
         #   1             TS_01            931                 0.998775
@@ -970,8 +962,8 @@ class Class3DResults(_3DResultsBase):
     def summary_dataframe(self) -> pd.DataFrame | None:
         starpath = self.path / f"run{self.it_str}_model.star"
         try:
-            _dict = starfile.read(starpath)
-            return _dict["model_classes"]
+            block = read_star_block(starpath, "model_classes")
+            return block.trust_loop().to_pandas()
         except Exception as e:
             _LOGGER.warning(f"Failed to read FSC data from {starpath}: {e}")
             return None
@@ -979,8 +971,8 @@ class Class3DResults(_3DResultsBase):
     def fsc_dataframe(self, class_id: int) -> pd.DataFrame | None:
         starpath = self.path / f"run{self.it_str}_model.star"
         try:
-            _dict = starfile.read(starpath)
-            return _dict[f"model_class_{class_id}"]
+            block = read_star_block(starpath, f"model_class_{class_id}")
+            return block.trust_loop().to_pandas()
         except Exception as e:
             _LOGGER.warning(f"Failed to read FSC data from {starpath}: {e}")
             return None
@@ -1066,10 +1058,7 @@ class PostProcessJobDirectory(JobDirectory):
         """Return the FSC DataFrame."""
         star_path = self.path / "postprocess.star"
         if star_path.exists():
-            df = starfile.read(star_path, always_dict=True)["fsc"]
-            if not isinstance(df, pd.DataFrame):
-                raise TypeError(f"Expected a DataFrame, got {type(df)}")
-            return df
+            return read_star_block(star_path, "fsc").trust_loop().to_pandas()
 
 
 class SelectInteractiveJobDirectory(JobDirectory):
@@ -1082,7 +1071,7 @@ class SelectInteractiveJobDirectory(JobDirectory):
     def particles_pre_star(self) -> Path:
         """Return the path to the pre-selection particles star file."""
         path_opt_star = self._opt_star()
-        opt_dict = starfile.read(self.relion_project_dir / path_opt_star)
+        opt_dict = read_star(path_opt_star).first().trust_single().to_dict()
         return self.relion_project_dir / opt_dict["rlnTomoParticlesFile"]
 
     def is_selected_array(self) -> NDArray[np.bool_] | None:
@@ -1112,10 +1101,9 @@ class SelectInteractiveJobDirectory(JobDirectory):
         return mrc_paths
 
     def _opt_star(self):
-        dfs = starfile.read(self.path / "job_pipeline.star")
-        optimizer_star_path = Path(
-            dfs["pipeline_input_edges"]["rlnPipeLineEdgeFromNode"].iloc[0]
-        )
+        b_in = read_star_block(self.path / "job_pipeline.star", "pipeline_input_edges")
+        df = b_in.trust_loop().to_pandas()
+        optimizer_star_path = Path(df["rlnPipeLineEdgeFromNode"].iloc[0])
         new_stem = optimizer_star_path.stem[: -len("optimiser")] + "optimisation_set"
         return optimizer_star_path.parent / (new_stem + ".star")
 
@@ -1170,7 +1158,4 @@ class FrameAlignTomoJobDirectory(JobDirectory):
 
 
 def _read_star_as_df(star_path: Path) -> pd.DataFrame:
-    star = starfile.read(star_path)
-    if not isinstance(star, pd.DataFrame):
-        raise TypeError(f"Expected a DataFrame, got {type(star)}")
-    return star
+    return read_star(star_path).first().trust_loop().to_pandas()

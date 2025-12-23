@@ -16,7 +16,7 @@ from himena.widgets import MainWindow
 from himena.plugins import when_reader_used, register_function
 import numpy as np
 import pandas as pd
-import starfile
+from starfile_rs import as_star, read_star
 from himena_relion import _configs, _job_dir
 from himena_relion._pipeline import RelionPipeline
 from himena_relion.consts import Type, MenuId, JOB_ID_MAP
@@ -134,8 +134,8 @@ class RelionJob(ABC):
         with tempfile.TemporaryDirectory() as tmpdir:
             tmpdir = Path(tmpdir)
             job_star_path = str(tmpdir / "job.star")
-            job_star_df = cls.prep_job_star(**kwargs)
-            starfile.write(job_star_df, job_star_path)
+            job_star_dict = cls.prep_job_star(**kwargs)
+            as_star(job_star_dict).write(job_star_path)
             # $ relion_pipeliner --addJobFromStar <job.star>
             # This reformats the input job.star and creates a new job directory.
             # The new job is scheduled but NOT run yet. To run the job, we need to
@@ -169,8 +169,8 @@ class RelionJob(ABC):
     def edit_and_run_job(self, **kwargs) -> RelionJobExecution | None:
         """Edit the existing job directory and run it."""
         job_dir = self.output_job_dir
-        job_star_df = self.prep_job_star(**kwargs)
-        starfile.write(job_star_df, job_dir.job_star())
+        job_star_dict = self.prep_job_star(**kwargs)
+        as_star(job_star_dict).write(job_dir.job_star())
         to_run = str(job_dir.path.relative_to(job_dir.relion_project_dir))
         if not to_run.endswith("/"):
             to_run += "/"
@@ -336,15 +336,15 @@ class _RelionBuiltinContinue(_RelionBuiltinJob):
     def continue_job(self, **kwargs) -> RelionJobExecution | None:
         job_dir = self.output_job_dir
         job_star_path = job_dir.job_star()
-        job_star_data = starfile.read(job_star_path)
-        params_df: pd.DataFrame = job_star_data["joboptions_values"]
+        job_star_data = read_star(job_star_path)
+        params_df = job_star_data["joboptions_values"].to_pandas()
         # update job parameters
         for key, val_new in kwargs.items():
             mask = params_df["rlnJobOptionVariable"] == key
             idx = np.where(mask)[0]
             params_df.iloc[idx, 1] = to_string(val_new)
-        job_star_data["joboptions_values"] = params_df
-        starfile.write(job_star_data, job_star_path)
+        job_star_data.with_loop_block("joboptions_values", params_df)
+        as_star(job_star_data).write(job_star_path)
         d = job_dir.path.relative_to(job_dir.relion_project_dir).as_posix()
         if not d.endswith("/"):
             d += "/"

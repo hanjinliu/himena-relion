@@ -249,6 +249,9 @@ DO_COMBINE_THRU_DISC_TYPE = Annotated[
     bool, {"label": "Combine iterations through disc", "group": "Compute"}
 ]
 GPU_IDS_TYPE = Annotated[str, {"label": "GPU IDs to use", "group": "Compute"}]
+USE_FAST_SUBSET_TYPE = Annotated[
+    bool, {"label": "Use fast subsets", "group": "Compute"}
+]
 # sharpen
 B_FACTOR_TYPE = Annotated[
     dict,
@@ -580,33 +583,6 @@ class Class3DJob(_Relion5Job):
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
         kwargs["scratch_dir"] = _configs.get_scratch_dir()
-        kwargs["helical_twist_range"] = (
-            kwargs.pop("helical_twist_min", 0),
-            kwargs.pop("helical_twist_max", 0),
-            kwargs.pop("helical_twist_inistep", 0),
-        )
-        kwargs["helical_rise_range"] = (
-            kwargs.pop("helical_rise_min", 0),
-            kwargs.pop("helical_rise_max", 0),
-            kwargs.pop("helical_rise_inistep", 0),
-        )
-        kwargs["rot_tilt_psi_range"] = (
-            kwargs.pop("rot_range", -1),
-            kwargs.pop("tilt_range", 15),
-            kwargs.pop("psi_range", 10),
-        )
-        kwargs["helical_tube_diameter_range"] = (
-            kwargs.pop("helical_tube_inner_diameter", -1),
-            kwargs.pop("helical_tube_outer_diameter", -1),
-        )
-        kwargs["offset_range_step"] = (
-            kwargs.pop("offset_range", 5),
-            kwargs.pop("offset_step", 1),
-        )
-        return super().normalize_kwargs(**kwargs)
-
-    @classmethod
-    def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
         if "helical_twist_range" in kwargs:
             (
                 kwargs["helical_twist_min"],
@@ -632,6 +608,34 @@ class Class3DJob(_Relion5Job):
             kwargs["offset_range"], kwargs["offset_step"] = kwargs.pop(
                 "offset_range_step"
             )
+        kwargs["fn_cont"] = ""
+        return super().normalize_kwargs(**kwargs)
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
+        kwargs["helical_twist_range"] = (
+            kwargs.pop("helical_twist_min", 0),
+            kwargs.pop("helical_twist_max", 0),
+            kwargs.pop("helical_twist_inistep", 0),
+        )
+        kwargs["helical_rise_range"] = (
+            kwargs.pop("helical_rise_min", 0),
+            kwargs.pop("helical_rise_max", 0),
+            kwargs.pop("helical_rise_inistep", 0),
+        )
+        kwargs["rot_tilt_psi_range"] = (
+            kwargs.pop("rot_range", -1),
+            kwargs.pop("tilt_range", 15),
+            kwargs.pop("psi_range", 10),
+        )
+        kwargs["helical_tube_diameter_range"] = (
+            kwargs.pop("helical_tube_inner_diameter", -1),
+            kwargs.pop("helical_tube_outer_diameter", -1),
+        )
+        kwargs["offset_range_step"] = (
+            kwargs.pop("offset_range", 5),
+            kwargs.pop("offset_step", 1),
+        )
         return super().normalize_kwargs_inv(**kwargs)
 
     def run(
@@ -639,7 +643,6 @@ class Class3DJob(_Relion5Job):
         fn_img: IMG_TYPE = "",
         fn_ref: REF_TYPE = "",
         fn_mask: MASK_TYPE = "",
-        fn_cont: CONTINUE_TYPE = "",
         # Reference
         ref_correct_greyscale: REF_CORRECT_GRAY_TYPE = False,
         trust_ref_size: TRUST_REF_SIZE_TYPE = True,
@@ -690,9 +693,7 @@ class Class3DJob(_Relion5Job):
         helical_twist_range: HELICAL_TWIST_RANGE_TYPE = (0, 0, 0),
         helical_rise_range: HELICAL_RISE_RANGE_TYPE = (0, 0, 0),
         # Compute
-        do_fast_subsets: Annotated[
-            bool, {"label": "Use fast subsets", "group": "Compute"}
-        ] = False,
+        do_fast_subsets: USE_FAST_SUBSET_TYPE = False,
         do_parallel_discio: USE_PARALLEL_DISC_IO_TYPE = True,
         nr_pool: NUM_POOL_TYPE = 3,
         do_pad1: Annotated[bool, {"label": "Skip padding", "group": "Compute"}] = False,
@@ -753,6 +754,7 @@ class Refine3DJob(_Relion5Job):
             kwargs["offset_range"], kwargs["offset_step"] = kwargs.pop(
                 "offset_range_step"
             )
+        kwargs["fn_cont"] = ""
         return super().normalize_kwargs(**kwargs)
 
     @classmethod
@@ -780,6 +782,7 @@ class Refine3DJob(_Relion5Job):
             kwargs.pop("offset_range", 5),
             kwargs.pop("offset_step", 1),
         )
+        kwargs.pop("fn_cont", None)
         return super().normalize_kwargs_inv(**kwargs)
 
     def run(
@@ -787,7 +790,6 @@ class Refine3DJob(_Relion5Job):
         fn_img: IMG_TYPE = "",
         fn_ref: REF_TYPE = "",
         fn_mask: MASK_TYPE = "",
-        fn_cont: CONTINUE_TYPE = "",
         # Reference
         ref_correct_greyscale: REF_CORRECT_GRAY_TYPE = False,
         trust_ref_size: TRUST_REF_SIZE_TYPE = True,

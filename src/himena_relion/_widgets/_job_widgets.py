@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from contextlib import suppress
+from functools import lru_cache
 from pathlib import Path
+import sys
 from typing import Iterator
 from qtpy import QtWidgets as QtW, QtGui, QtCore
 from superqt import QToggleSwitch
@@ -46,6 +48,8 @@ class QJobScrollArea(QtW.QScrollArea, JobWidgetBase):
 
 
 class QTextEditBase(QtW.QWidget, JobWidgetBase):
+    """Text edit used for log viewing etc."""
+
     def __init__(self, parent=None):
         super().__init__(parent)
         layout = QtW.QVBoxLayout(self)
@@ -53,7 +57,13 @@ class QTextEditBase(QtW.QWidget, JobWidgetBase):
         self._wordwrap_checkbox.setChecked(False)
         self._wordwrap_checkbox.toggled.connect(self._on_wordwrap_changed)
         self._text_edit = QtW.QPlainTextEdit()
-        self.setFont(QtGui.QFont(MonospaceFontFamily, 8))
+        if sys.platform.startswith("linux"):
+            # In linux, "Monospace" sometimes falls back to Sans Serif.
+            # Here, we try to find a better monospace font.
+            font_family = _monospace_font_for_linux()
+        else:
+            font_family = MonospaceFontFamily
+        self.setFont(QtGui.QFont(font_family, 8))
         self._text_edit.setReadOnly(True)
         self._text_edit.setWordWrapMode(QtGui.QTextOption.WrapMode.NoWrap)
         self._text_edit.setUndoRedoEnabled(False)
@@ -222,11 +232,23 @@ class QJobParameterView(QJobParameter, JobWidgetBase):
         self.clear_content()
         if job_cls := job_dir._to_job_class():
             self.update_by_job(job_cls)
-            if issubclass(job_cls, _job_class._RelionBuiltinJob):
-                self.set_parameters(
-                    job_cls.normalize_kwargs_inv(**job_dir.get_job_params_as_dict()),
-                    enabled=False,
-                )
+            self._update_params(job_dir, job_cls)
+
+    def on_job_updated(self, job_dir, fp):
+        if fp.name == "job.star":
+            if job_cls := job_dir._to_job_class():
+                self._update_params(job_dir, job_cls)
+
+    def _update_params(
+        self,
+        job_dir: _job_dir.JobDirectory,
+        job_cls: type[_job_class.RelionJob],
+    ):
+        if issubclass(job_cls, _job_class._RelionBuiltinJob):
+            self.set_parameters(
+                job_cls.normalize_kwargs_inv(**job_dir.get_job_params_as_dict()),
+                enabled=False,
+            )
 
     def tab_title(self) -> str:
         return "Parameters"
@@ -471,3 +493,13 @@ class QFileLabel(QtW.QWidget):
     def _copy_relative_path_to_clipboard(self):
         if clipboard := QtW.QApplication.clipboard():
             clipboard.setText(str(self._path_rel))
+
+
+@lru_cache(maxsize=1)
+def _monospace_font_for_linux() -> str:
+    candidates = ["DejaVu Sans Mono", "Ubuntu Mono", "Noto Sans Mono"]
+    families = QtGui.QFontDatabase.families()
+    for fam in candidates:
+        if fam in families:
+            return fam
+    return MonospaceFontFamily

@@ -55,6 +55,7 @@ from himena_relion.relion5._builtins import (
     MIN_DEDICATED_TYPE,
     THREAD_TYPE,
     GPU_IDS_TYPE,
+    USE_FAST_SUBSET_TYPE,
     USE_PARALLEL_DISC_IO_TYPE,
     CtfEstimationJob,
     Class3DJob,
@@ -80,7 +81,7 @@ IN_OPTIM = Annotated[
 ]
 
 
-def _refine3d_latest_optimiser_star(path: Path) -> str:
+def _latest_optimiser_star(path: Path) -> str:
     # NOTE: this must be defined before its use in more_node_mappings because
     # the classmethod is called in __init_subclass__
     opt = sorted(path.glob("run_it*_optimiser.star"))
@@ -799,16 +800,17 @@ class InitialModelTomoJob(_Relion5TomoJob):
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
         kwargs["scratch_dir"] = _configs.get_scratch_dir()
+        kwargs["fn_cont"] = ""
         return norm_optim(**super().normalize_kwargs(**kwargs))
 
     @classmethod
     def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
+        kwargs.pop("fn_cont", None)
         return norm_optim_inv(**super().normalize_kwargs_inv(**kwargs))
 
     def run(
         self,
         in_optim: IN_OPTIM = None,
-        fn_cont: CONTINUE_TYPE = "",
         # CTF
         do_ctf_correction: DO_CTF_TYPE = True,
         ctf_intact_first_peak: IGNORE_CTF_TYPE = False,
@@ -844,6 +846,32 @@ class InitialModelTomoJob(_Relion5TomoJob):
         raise NotImplementedError("This is a builtin job placeholder.")
 
 
+class InitialModelTomoContinue(_RelionBuiltinContinue):
+    original_class = InitialModelTomoJob
+
+    def run(
+        self,
+        fn_cont: CONTINUE_TYPE = "",
+        # Optimisation
+        nr_iter: NUM_ITER_TYPE = 200,
+        # Compute
+        use_parallel_disc_io: USE_PARALLEL_DISC_IO_TYPE = True,
+        nr_pool: NUM_POOL_TYPE = 3,
+        do_preread_images: DO_PREREAD_TYPE = False,
+        do_combine_thru_disc: DO_COMBINE_THRU_DISC_TYPE = False,
+        gpu_ids: GPU_IDS_TYPE = "",
+        # Running
+        nr_mpi: MPI_TYPE = 1,
+        nr_threads: THREAD_TYPE = 1,
+        min_dedicated: MIN_DEDICATED_TYPE = 1,
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")
+
+    @classmethod
+    def more_node_mappings(cls) -> dict[str, str]:
+        return {_latest_optimiser_star: "fn_cont"}
+
+
 class Class3DTomoJob(_Relion5TomoJob, Class3DJob):
     @classmethod
     def type_label(cls) -> str:
@@ -866,7 +894,6 @@ class Class3DTomoJob(_Relion5TomoJob, Class3DJob):
         in_optim: IN_OPTIM = None,
         fn_ref: REF_TYPE = "",
         fn_mask: MASK_TYPE = "",
-        fn_cont: CONTINUE_TYPE = "",
         # Reference
         ref_correct_greyscale: REF_CORRECT_GRAY_TYPE = False,
         trust_ref_size: TRUST_REF_SIZE_TYPE = True,
@@ -877,8 +904,8 @@ class Class3DTomoJob(_Relion5TomoJob, Class3DJob):
         ctf_intact_first_peak: IGNORE_CTF_TYPE = False,
         # Optimisation
         nr_classes: NUM_CLASS_TYPE = 1,
-        nr_iter: NUM_ITER_TYPE = 25,
         tau_fudge: T_TYPE = 1,
+        nr_iter: NUM_ITER_TYPE = 25,
         particle_diameter: MASK_DIAMETER_TYPE = 200,
         do_zero_mask: MASK_WITH_ZEROS_TYPE = True,
         highres_limit: Annotated[
@@ -917,9 +944,7 @@ class Class3DTomoJob(_Relion5TomoJob, Class3DJob):
         helical_twist_range: HELICAL_TWIST_RANGE_TYPE = (0, 0, 0),
         helical_rise_range: HELICAL_RISE_RANGE_TYPE = (0, 0, 0),
         # Compute
-        do_fast_subsets: Annotated[
-            bool, {"label": "Use fast subsets", "group": "Compute"}
-        ] = False,
+        do_fast_subsets: USE_FAST_SUBSET_TYPE = False,
         do_parallel_discio: USE_PARALLEL_DISC_IO_TYPE = True,
         nr_pool: NUM_POOL_TYPE = 3,
         do_pad1: Annotated[bool, {"label": "Skip padding", "group": "Compute"}] = False,
@@ -933,6 +958,33 @@ class Class3DTomoJob(_Relion5TomoJob, Class3DJob):
         min_dedicated: MIN_DEDICATED_TYPE = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
+
+
+class Class3DTomoContinue(_RelionBuiltinContinue):
+    original_class = Class3DTomoJob
+
+    def run(
+        self,
+        fn_cont: CONTINUE_TYPE = "",
+        # Compute
+        do_fast_subsets: USE_FAST_SUBSET_TYPE = False,
+        do_parallel_discio: USE_PARALLEL_DISC_IO_TYPE = True,
+        nr_pool: NUM_POOL_TYPE = 3,
+        do_pad1: Annotated[bool, {"label": "Skip padding", "group": "Compute"}] = False,
+        do_preread_images: DO_PREREAD_TYPE = False,
+        do_combine_thru_disc: DO_COMBINE_THRU_DISC_TYPE = False,
+        gpu_ids: GPU_IDS_TYPE = "",
+        # Running
+        nr_mpi: MPI_TYPE = 1,
+        nr_threads: THREAD_TYPE = 1,
+        do_queue: DO_QUEUE_TYPE = False,
+        min_dedicated: MIN_DEDICATED_TYPE = 1,
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")
+
+    @classmethod
+    def more_node_mappings(cls) -> dict[str, str]:
+        return {_latest_optimiser_star: "fn_cont"}
 
 
 class Refine3DTomoJob(_Relion5TomoJob, Refine3DJob):
@@ -953,7 +1005,6 @@ class Refine3DTomoJob(_Relion5TomoJob, Refine3DJob):
         in_optim: IN_OPTIM = None,
         fn_ref: REF_TYPE = "",
         fn_mask: MASK_TYPE = "",
-        fn_cont: CONTINUE_TYPE = "",
         # Reference
         ref_correct_greyscale: REF_CORRECT_GRAY_TYPE = False,
         trust_ref_size: TRUST_REF_SIZE_TYPE = True,
@@ -1029,7 +1080,7 @@ class Refine3DTomoContinue(_RelionBuiltinContinue):
 
     @classmethod
     def more_node_mappings(cls) -> dict[str, str]:
-        return {_refine3d_latest_optimiser_star: "fn_cont"}
+        return {_latest_optimiser_star: "fn_cont"}
 
 
 class ReconstructParticlesJob(_Relion5TomoJob):

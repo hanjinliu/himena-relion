@@ -3,7 +3,7 @@ from typing import Iterator, Sequence
 from enum import Enum
 from pathlib import Path
 from dataclasses import dataclass, field
-import starfile
+from starfile_rs import as_star, read_star
 import pandas as pd
 
 
@@ -25,12 +25,12 @@ class RelionDefaultPipeline(Sequence["RelionJobInfo"]):
 
     @classmethod
     def from_pipeline_star(cls, star_path: Path) -> RelionDefaultPipeline:
-        dfs = starfile.read(star_path, always_dict=True)
+        star = read_star(star_path)
 
-        if "pipeline_processes" not in dfs or "pipeline_input_edges" not in dfs:
+        if "pipeline_processes" not in star or "pipeline_input_edges" not in star:
             return cls([])  # project without any jobs
-        processes: pd.DataFrame = dfs["pipeline_processes"]
-        mappers: pd.DataFrame = dfs["pipeline_input_edges"]
+        processes = star["pipeline_processes"].trust_loop().to_pandas()
+        mappers = star["pipeline_input_edges"].trust_loop().to_pandas()
 
         nodes: dict[Path, RelionJobInfo] = {}
         for path, alias, type_label, status in zip(
@@ -148,25 +148,22 @@ class RelionPipeline:
 
     @classmethod
     def from_star(cls, path: str | Path) -> RelionPipeline:
-        df_all = starfile.read(path, always_dict=True)
-        assert isinstance(df_all, dict)
-        df_general = df_all.get("pipeline_general")
-        df_processes = df_all.get("pipeline_processes")
-        assert isinstance(df_processes, pd.DataFrame)
+        star = read_star(path)
+        df_general = star["pipeline_general"].to_pandas()
+        df_processes = star["pipeline_processes"].to_pandas()
         process_name = df_processes["rlnPipeLineProcessName"].iloc[0]
         process_alias = df_processes["rlnPipeLineProcessAlias"].iloc[0]
         process_type_label = df_processes["rlnPipeLineProcessTypeLabel"].iloc[0]
         process_status_label = df_processes["rlnPipeLineProcessStatusLabel"].iloc[0]
 
         # construct type map
-        df_type_map = df_all.get("pipeline_nodes")
-        assert isinstance(df_type_map, pd.DataFrame)
+        df_type_map = star["pipeline_nodes"].to_pandas()
         _type_map = {}
         for _, row in df_type_map.iterrows():
             _type_map[row["rlnPipeLineNodeName"]] = row["rlnPipeLineNodeTypeLabel"]
 
-        df_in = df_all.get("pipeline_input_edges")
-        if isinstance(df_in, pd.DataFrame):
+        if block_in := star.get("pipeline_input_edges"):
+            df_in = block_in.to_pandas()
             inputs = [
                 RelionJobPipelineNode.from_file_path(
                     input_path_rel,
@@ -177,8 +174,8 @@ class RelionPipeline:
         else:
             inputs = []
 
-        df_out = df_all.get("pipeline_output_edges")
-        if isinstance(df_out, pd.DataFrame):
+        if block_out := star.get("pipeline_output_edges"):
+            df_out = block_out.to_pandas()
             outputs = [
                 RelionJobPipelineNode.from_file_path(
                     output_path_rel,
@@ -236,7 +233,7 @@ class RelionPipeline:
                 }
             ),
         }
-        starfile.write(df_all, path)
+        as_star(df_all).write(path)
         return
 
 
@@ -247,12 +244,7 @@ class RelionOptimisationSet:
 
     @classmethod
     def from_file(cls, path: str | Path) -> RelionOptimisationSet:
-        df = starfile.read(path)
-        if isinstance(df, pd.DataFrame):
-            tomo_star_path: str = df["rlnTomoTomogramsFile"][0]
-            particles_path: str = df["rlnTomoParticlesFile"][0]
-        else:
-            tomo_star_path: str = df["rlnTomoTomogramsFile"]
-            particles_path: str = df["rlnTomoParticlesFile"]
-
+        df = read_star(path).first().to_pandas()
+        tomo_star_path: str = df["rlnTomoTomogramsFile"][0]
+        particles_path: str = df["rlnTomoParticlesFile"][0]
         return cls(Path(tomo_star_path), Path(particles_path))

@@ -7,7 +7,7 @@ import base64
 from io import BytesIO
 from PIL import Image
 from qtpy import QtWidgets as QtW, QtGui
-import starfile
+from starfile_rs import read_star, read_star_block
 from scipy import ndimage as ndi
 from superqt.utils import thread_worker, GeneratorWorker
 
@@ -97,14 +97,13 @@ class QRemoveDuplicatesViewer(QSelectJobBase):
         if not (path_sel.exists() and path_rem.exists()):
             return "Job is running..."
         yield "<h2>Summary</h2>"
-        df_selected = starfile.read(path_sel, always_dict=True).get("particles", None)
-        if df_selected is None:
+        try:
+            block_selected = read_star_block(path_sel, "particles").trust_loop()
+            block_removed = read_star(path_rem).first().trust_loop()
+        except Exception:
             return "Output file is broken or missing."
-        df_removed = starfile.read(path_rem)
-        if df_removed is None:
-            return "Output file is broken or missing."
-        n_selected = df_selected.shape[0]
-        n_removed = df_removed.shape[0]
+        n_selected = len(block_selected)
+        n_removed = len(block_removed)
         n_all = n_selected + n_removed
         yield self._get_summary_table(n_selected, n_removed, n_all)
 
@@ -117,12 +116,15 @@ class QSelectInteractiveViewer(QSelectJobBase):
         if not (path_sel.exists() and path_all.exists()):
             return "Job is running..."
         yield "<h2>Summary</h2>"
-        df_all = starfile.read(path_all, always_dict=True).get("particles", None)
-        df_selected = starfile.read(path_sel, always_dict=True).get("particles", None)
-        n_all = df_all.shape[0]
+        try:
+            block_all = read_star_block(path_all, "particles").trust_loop()
+            block_selected = read_star_block(path_sel, "particles").trust_loop()
+        except Exception:
+            return "Output file is broken or missing."
+        n_all = len(block_all)
         if n_all == 0:
             return
-        n_selected = df_selected.shape[0]
+        n_selected = len(block_selected)
         n_removed = n_all - n_selected
 
         yield self._get_summary_table(n_selected, n_removed, n_all)
@@ -166,8 +168,9 @@ class SplitParticlesViewer(QSelectJobBase):
         for path in job_dir.iter_particles_stars():
             if not path.exists():
                 continue
-            df = starfile.read(path)
-            yield f"<h2>{path.name} = {df.shape[0]} particles</h2>"
+            block = read_star(path).first().trust_loop()
+            yield f"<h2>{path.name} = {len(block)} particles</h2>"
+            df = block.to_pandas()
             particles_in_each_tomo = []
             for name, sub in df.groupby("rlnTomoName"):
                 particles_in_each_tomo.append((name, f"n = {sub.shape[0]}"))

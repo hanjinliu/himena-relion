@@ -216,7 +216,9 @@ class ContinueMode(Mode):
             raise RuntimeError(f"Cannot continue this job type {job_cls!r}.")
         params = widget.get_parameters()
         proc = job_cls(self.job_dir).continue_job(**params)
+        widget.clear_content()
         if isinstance(proc, RelionJobExecution):
+            widget._ui.read_file(proc.job_directory.path)
             widget._ui.show_notification(f"Job '{job_cls.job_title()}' continued.")
 
     def button_text(self) -> str:
