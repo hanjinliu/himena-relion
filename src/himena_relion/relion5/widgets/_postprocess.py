@@ -53,3 +53,6 @@ class QPostProcessViewer(QJobScrollArea):
         """Handle toggling between masked and unmasked maps."""
         if self._job_dir is not None:
             self.initialize(self._job_dir)
+
+    def widget_added_callback(self):
+        self._canvas.widget_added_callback()

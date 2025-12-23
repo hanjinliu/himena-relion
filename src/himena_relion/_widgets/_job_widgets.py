@@ -28,6 +28,9 @@ class JobWidgetBase:
     def initialize(self, job_dir: _job_dir.JobDirectory):
         """Initialize the widget with the job directory."""
 
+    def widget_added_callback(self):
+        """Called when the widget is added to the main window."""
+
     def tab_title(self) -> str:
         """Return the title of the tab for this widget."""
         return "Results"
@@ -56,6 +59,7 @@ class QTextEditBase(QtW.QWidget, JobWidgetBase):
         self._wordwrap_checkbox = QToggleSwitch("Word wrap")
         self._wordwrap_checkbox.setChecked(False)
         self._wordwrap_checkbox.toggled.connect(self._on_wordwrap_changed)
+        self._filename_label = QtW.QLabel("")
         self._text_edit = QtW.QPlainTextEdit()
         if sys.platform.startswith("linux"):
             # In linux, "Monospace" sometimes falls back to Sans Serif.
@@ -67,7 +71,13 @@ class QTextEditBase(QtW.QWidget, JobWidgetBase):
         self._text_edit.setReadOnly(True)
         self._text_edit.setWordWrapMode(QtGui.QTextOption.WrapMode.NoWrap)
         self._text_edit.setUndoRedoEnabled(False)
-        layout.addWidget(self._wordwrap_checkbox)
+        header_layout = QtW.QHBoxLayout()
+        header_layout.setContentsMargins(0, 0, 0, 0)
+        header_layout.addWidget(self._wordwrap_checkbox)
+        header_layout.addWidget(
+            self._filename_label, alignment=QtCore.Qt.AlignmentFlag.AlignRight
+        )
+        layout.addLayout(header_layout)
         layout.addWidget(self._text_edit)
 
     def _on_wordwrap_changed(self, checked: bool):
@@ -89,12 +99,36 @@ class QTextEditBase(QtW.QWidget, JobWidgetBase):
         self._text_edit.setReadOnly(readonly)
 
 
-class QRunOutLog(QTextEditBase):
-    def on_job_updated(self, job_dir: _job_dir.JobDirectory, fp: Path):
-        """Update the log text when run.out is updated."""
-        if fp.name == "run.out":
-            self.initialize(job_dir)
+class QRunOutErrLog(QtW.QSplitter, JobWidgetBase):
+    """Combined log viewer for run.out and run.err."""
 
+    def __init__(self):
+        super().__init__(QtCore.Qt.Orientation.Vertical)
+        self._out_log = QRunOutLog()
+        self._err_log = QRunErrLog()
+        self.addWidget(self._out_log)
+        self._out_log._filename_label.setText("run.out")
+        self._err_log._filename_label.setText("run.err")
+        self.addWidget(self._err_log)
+
+    def on_job_updated(self, job_dir: _job_dir.JobDirectory, fp: Path):
+        if fp.name == "run.out":
+            self._out_log.initialize(job_dir)
+        elif fp.name == "run.err":
+            self._err_log.initialize(job_dir)
+        elif fp.name.startswith("RELION_JOB_"):
+            self._out_log.initialize(job_dir)
+            self._err_log.initialize(job_dir)
+
+    def initialize(self, job_dir: _job_dir.JobDirectory):
+        self._out_log.initialize(job_dir)
+        self._err_log.initialize(job_dir)
+
+    def tab_title(self) -> str:
+        return "Out/Err"
+
+
+class QRunOutLog(QTextEditBase):
     def initialize(self, job_dir: _job_dir.JobDirectory):
         lines: list[str] = []
         with suppress(Exception):
@@ -104,30 +138,22 @@ class QRunOutLog(QTextEditBase):
                     lines.append(line.split("\r")[-1])
             self.setText("".join(lines))
 
-    def tab_title(self) -> str:
-        return "run.out"
-
 
 class QRunErrLog(QTextEditBase):
-    def on_job_updated(self, job_dir: _job_dir.JobDirectory, fp: Path):
-        """Update the log text when run.err is updated."""
-        if fp.name == "run.err":
-            self.initialize(job_dir)
-
     def initialize(self, job_dir: _job_dir.JobDirectory):
         with suppress(Exception):
             self.setText(job_dir.path.joinpath("run.err").read_text(encoding="utf-8"))
 
-    def tab_title(self) -> str:
-        return "run.err"
 
+class QNoteEdit(QTextEditBase):
+    """Editable text edit area for note.txt."""
 
-class QNoteLog(QTextEditBase):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setReadOnly(False)
         self._job_dir: _job_dir.JobDirectory | None = None
         self._text_edit.textChanged.connect(self._autosave_throttled)
+        self._filename_label.setText("note.txt")
 
     def on_job_updated(self, job_dir: _job_dir.JobDirectory, fp: Path):
         """Handle updates to the job directory."""

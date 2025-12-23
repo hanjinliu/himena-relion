@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 import numpy as np
 from himena import StandardType, WidgetDataModel, create_image_model
@@ -59,6 +60,7 @@ def read_relion_pipeline(path: Path) -> WidgetDataModel:
     if pipeline_star := _get_default_pipeline_star(path):
         from himena_relion.pipeline import RelionDefaultPipeline
 
+        os.chdir(pipeline_star.parent)
         return WidgetDataModel(
             value=RelionDefaultPipeline.from_pipeline_star(pipeline_star),
             type=Type.RELION_PIPELINE,

@@ -14,9 +14,8 @@ from himena_relion import _job_dir
 from himena_relion._widgets._job_widgets import (
     JobWidgetBase,
     QJobStateLabel,
-    QRunErrLog,
-    QRunOutLog,
-    QNoteLog,
+    QRunOutErrLog,
+    QNoteEdit,
     QJobPipelineViewer,
     QJobParameterView,
 )
@@ -60,9 +59,8 @@ class QRelionJobWidget(QtW.QWidget):
 
         self.add_job_widget(QJobPipelineViewer())
         self.add_job_widget(QJobParameterView())
-        self.add_job_widget(QRunOutLog())
-        self.add_job_widget(QRunErrLog())
-        self.add_job_widget(QNoteLog())
+        self.add_job_widget(QRunOutErrLog())
+        self.add_job_widget(QNoteEdit())
         try:
             self._state_widget.initialize(job_dir)
         except Exception as e:
@@ -108,6 +106,12 @@ class QRelionJobWidget(QtW.QWidget):
     @validate_protocol
     def size_hint(self):
         return 420, 540
+
+    @validate_protocol
+    def widget_added_callback(self):
+        """Callback when the widget is added to the main window."""
+        for wdt in self._iter_job_widgets():
+            wdt.widget_added_callback()
 
     @validate_protocol
     def widget_closed_callback(self):

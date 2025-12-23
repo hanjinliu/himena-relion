@@ -6,6 +6,7 @@ from magicgui.widgets.bases import ValueWidget
 from magicgui.types import Undefined
 from magicgui.backends._qtpy.widgets import QBaseValueWidget
 from himena.qt import QColoredSVGIcon
+from himena.widgets import current_instance
 from himena_relion._utils import read_icon_svg_for_type
 from himena_relion._widgets import QRelionNodeItem
 
@@ -67,7 +68,16 @@ class QPathDropWidget(QtW.QWidget):
             caption = f"Select {self._type_labels[0]} file"
         else:
             caption = f"Select {' or '.join(self._type_labels)} file"
-        path, _ = QtW.QFileDialog.getOpenFileName(self, caption)
+        # look for .Nodes/<type_label>/ directory.
+        start_dir = Path.cwd().joinpath(".Nodes")
+        for type_label in self._type_labels:
+            candidate_dir = start_dir.joinpath(type_label)
+            if candidate_dir.is_dir() and candidate_dir.exists():
+                start_dir = candidate_dir
+                break
+        path = current_instance().exec_file_dialog(
+            caption=caption, start_path=start_dir
+        )
         if path:
             path_abs = Path(path)
             if path_abs.is_relative_to(Path.cwd()):

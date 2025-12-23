@@ -102,3 +102,6 @@ class QRefine3DViewer(QJobScrollArea):
         if not had_image:
             self._viewer.auto_threshold(update_now=False)
             self._viewer.auto_fit()
+
+    def widget_added_callback(self):
+        self._fsc_plot.widget_added_callback()

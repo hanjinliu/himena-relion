@@ -103,6 +103,12 @@ class QCtfFindViewer(QJobScrollArea):
         self._max_resolution_canvas.plot_ctf_max_resolution(df)
         self._viewer.set_array_view(ts_view)
 
+    def widget_added_callback(self):
+        self._defocus_canvas.widget_added_callback()
+        self._astigmatism_canvas.widget_added_callback()
+        self._defocus_angle_canvas.widget_added_callback()
+        self._max_resolution_canvas.widget_added_callback()
+
 
 @register_job(_job_dir.CtfRefineTomoJobDirectory)
 class QCtfRefineTomoViewer(QJobScrollArea):
@@ -148,3 +154,7 @@ class QCtfRefineTomoViewer(QJobScrollArea):
                 self._defocus_canvas.plot_defocus(df)
                 self._ctf_scale_canvas.plot_ctf_scale(df)
                 break
+
+    def widget_added_callback(self):
+        self._defocus_canvas.widget_added_callback()
+        self._ctf_scale_canvas.widget_added_callback()
