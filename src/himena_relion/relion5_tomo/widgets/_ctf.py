@@ -1,9 +1,10 @@
 from __future__ import annotations
 from pathlib import Path
 import logging
+from typing import Any, Callable
 import numpy as np
-import pandas as pd
 from qtpy import QtWidgets as QtW
+from superqt.utils import thread_worker, GeneratorWorker
 from starfile_rs import read_star
 from himena_relion._image_readers._array import ArrayFilteredView
 from himena_relion._widgets import (
@@ -24,15 +25,16 @@ class QCtfFindViewer(QJobScrollArea):
         self._job_dir: _job_dir.CtfCorrectionJobDirectory = None
         layout = self._layout
         self._defocus_canvas = QPlotCanvas(self)
-        self._defocus_canvas.setFixedSize(360, 120)
+        self._defocus_canvas.setFixedSize(360, 145)
         self._astigmatism_canvas = QPlotCanvas(self)
-        self._astigmatism_canvas.setFixedSize(360, 120)
+        self._astigmatism_canvas.setFixedSize(360, 145)
         self._defocus_angle_canvas = QPlotCanvas(self)
-        self._defocus_angle_canvas.setFixedSize(360, 120)
+        self._defocus_angle_canvas.setFixedSize(360, 145)
         self._max_resolution_canvas = QPlotCanvas(self)
-        self._max_resolution_canvas.setFixedSize(360, 120)
+        self._max_resolution_canvas.setFixedSize(360, 145)
 
         self._viewer = Q2DViewer(zlabel="Tilt index")
+        self._worker: GeneratorWorker | None = None
         self._ts_choice = QtW.QComboBox()
         self._ts_choice.currentTextChanged.connect(self._ts_choice_changed)
         layout.addWidget(self._ts_choice)
@@ -86,8 +88,19 @@ class QCtfFindViewer(QJobScrollArea):
                 break
         else:
             return
+
+        self.widget_closed_callback()
+        self._worker = self._prep_data_to_plot(job_dir, path)
+        self._worker.yielded.connect(self._on_data_ready)
+        self._worker.start()
+
+    @thread_worker
+    def _prep_data_to_plot(
+        self,
+        job_dir: _job_dir.CtfCorrectionJobDirectory,
+        path: Path,
+    ):
         df = read_star(path).first().trust_loop().to_pandas()
-        assert isinstance(df, pd.DataFrame)
         rln_dir = job_dir.relion_project_dir
         paths = [rln_dir / p for p in df["rlnCtfImage"]]
         if "rlnTomoNominalStageTiltAngle" in df:
@@ -97,17 +110,30 @@ class QCtfFindViewer(QJobScrollArea):
             df = df.iloc[order].reset_index(drop=True)
         ts_view = ArrayFilteredView.from_mrcs(paths)
 
-        self._defocus_canvas.plot_defocus(df)
-        self._astigmatism_canvas.plot_ctf_astigmatism(df)
-        self._defocus_angle_canvas.plot_ctf_defocus_angle(df)
-        self._max_resolution_canvas.plot_ctf_max_resolution(df)
-        self._viewer.set_array_view(ts_view)
+        yield self._defocus_canvas.plot_defocus, df
+        yield self._astigmatism_canvas.plot_ctf_astigmatism, df
+        yield self._defocus_angle_canvas.plot_ctf_defocus_angle, df
+        yield self._max_resolution_canvas.plot_ctf_max_resolution, df
+        yield self._viewer.set_array_view, ts_view
+
+    def _on_data_ready(self, yielded: tuple[Callable, Any]):
+        fn, df = yielded
+        fn(df)
 
     def widget_added_callback(self):
         self._defocus_canvas.widget_added_callback()
         self._astigmatism_canvas.widget_added_callback()
         self._defocus_angle_canvas.widget_added_callback()
         self._max_resolution_canvas.widget_added_callback()
+
+    def closeEvent(self, a0):
+        self.widget_closed_callback()
+        return super().closeEvent(a0)
+
+    def widget_closed_callback(self):
+        if self._worker is not None:
+            self._worker.quit()
+            self._worker = None
 
 
 @register_job(_job_dir.CtfRefineTomoJobDirectory)

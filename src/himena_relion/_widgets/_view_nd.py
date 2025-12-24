@@ -51,7 +51,7 @@ class Q2DViewer(QViewer):
         layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignHCenter)
         self._array_view = None
         self._points = np.empty((0, 3), dtype=np.float32)
-        self._point_size = 5.0
+        self._point_size = 12.0
         self._face_colors = np.zeros((0, 4), dtype=np.float32)
         self._edge_colors = np.zeros((0, 4), dtype=np.float32)
         self._dims_slider = QtW.QSlider(QtCore.Qt.Orientation.Horizontal, self)
@@ -212,7 +212,7 @@ class Q2DViewer(QViewer):
 
     def _point_size_normed(self) -> float:
         # vispy point size is not scaled by device pixel ratio.
-        return self._point_size * self.devicePixelRatioF()
+        return self._point_size / self.devicePixelRatioF()
 
     def _auto_contrast(self):
         """Automatically adjust the contrast based on the histogram."""
@@ -294,7 +294,11 @@ class Q3DViewer(QViewer):
             self.auto_threshold(update_now=False)
             self.auto_fit(update_now=False)
         else:
-            self._iso_slider.setRange(*self._canvas._lims)
+            th_min, th_max = self._canvas._lims
+            cur_th = self._iso_slider.value()
+            if cur_th < th_min or cur_th > th_max:
+                self._iso_slider.setValue((th_min + th_max) / 2)
+            self._iso_slider.setRange(th_min, th_max)
         if update_now:
             self._canvas.update_canvas()
 

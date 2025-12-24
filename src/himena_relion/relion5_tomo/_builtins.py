@@ -911,7 +911,7 @@ class Class3DTomoJob(_Relion5TomoJob, Class3DJob):
 
     @classmethod
     def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
-        return norm_optim_inv(Class3DJob.normalize_kwargs_inv(**kwargs))
+        return norm_optim_inv(**Class3DJob.normalize_kwargs_inv(**kwargs))
 
     def run(
         self,

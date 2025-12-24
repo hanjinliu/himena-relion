@@ -26,9 +26,10 @@ classifiers = [
 ]
 dependencies = [
   "starfile-rs>=0.1.1",
-  "imodmodel",
+  "imodmodel>=0.1.0",
   "rich",
-  "cmap",
+  "scipy>=1.16.3",
+  "cmap>=0.6.2",
   "vispy>=0.15.2",
   "mrcfile>=1.5.4",
   "tifffile>=2025.10.16",

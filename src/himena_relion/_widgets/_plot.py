@@ -32,7 +32,7 @@ class QPlotCanvas(QModelMatplotlibCanvas):
             fig.plot(tilt_angle, defocus_u_um, name="U", width=1)
             fig.plot(tilt_angle, defocus_v_um, name="V", width=1)
             fig.x.label = "Nominal stage tilt angle (°)"
-            fig.y.label = "Defocus (µm)"
+            fig.y.label = "Def. (µm)"
             fig.set_legend(font_size=9.0, location="top_right")
             self.update_model(WidgetDataModel(value=fig, type=StandardType.PLOT))
             self.tight_layout()
@@ -41,13 +41,13 @@ class QPlotCanvas(QModelMatplotlibCanvas):
         return self._plot_single(df, "rlnCtfScalefactor", "Scale")
 
     def plot_ctf_astigmatism(self, df: pd.DataFrame):
-        return self._plot_single(df, "rlnCtfAstigmatism", "Astigmatism (A)")
+        return self._plot_single(df, "rlnCtfAstigmatism", "Ast. (A)")
 
     def plot_ctf_defocus_angle(self, df: pd.DataFrame):
         return self._plot_single(df, "rlnDefocusAngle", "Angle (°)")
 
     def plot_ctf_max_resolution(self, df: pd.DataFrame):
-        return self._plot_single(df, "rlnCtfMaxResolution", "Resolution (Å)")
+        return self._plot_single(df, "rlnCtfMaxResolution", "Res. (Å)")
 
     def _plot_single(self, df: pd.DataFrame, ycol: str, ylabel: str):
         with self._plot_style():
@@ -72,10 +72,7 @@ class QPlotCanvas(QModelMatplotlibCanvas):
                 x[:: len(x) // 5],
                 labels=[_res_to_str(r) for r in xticklabels[:: len(x) // 5]],
             )
-            fig.x.label = "Resolution (Å)"
-            fig.y.label = "FSC"
-            self.update_model(WidgetDataModel(value=fig, type=StandardType.PLOT))
-            self.tight_layout()
+            self._fsc_finalize(fig)
 
     def plot_fsc_postprocess(self, df: pd.DataFrame):
         x = df["rlnResolution"]
@@ -94,11 +91,8 @@ class QPlotCanvas(QModelMatplotlibCanvas):
                 x[:: len(x) // 5],
                 labels=[_res_to_str(r) for r in xticklabels[:: len(x) // 5]],
             )
-            fig.x.label = "Resolution (Å)"
-            fig.y.label = "FSC"
             fig.set_legend(font_size=9.0)
-            self.update_model(WidgetDataModel(value=fig, type=StandardType.PLOT))
-            self.tight_layout()
+            self._fsc_finalize(fig)
 
     def tight_layout(self):
         """Tighten the layout of the plot."""
@@ -108,6 +102,13 @@ class QPlotCanvas(QModelMatplotlibCanvas):
     @contextmanager
     def _plot_style(self):
         yield  # implement in the future
+
+    def _fsc_finalize(self, fig: hplt.SingleAxes):
+        fig.x.label = "Resolution (Å)"
+        fig.y.label = "FSC"
+        fig.y.lim = (-0.04, 1.04)
+        self.update_model(WidgetDataModel(value=fig, type=StandardType.PLOT))
+        self.tight_layout()
 
 
 def _res_to_str(res: float):

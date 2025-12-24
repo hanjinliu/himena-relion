@@ -228,7 +228,7 @@ class _RelionBuiltinJob(RelionJob):
             kwargs["use_gpu"] = len(gpu_ids.strip()) > 0
         if "use_scratch" in kwargs:
             kwargs["scratch_dir"] = (
-                _configs.get_scratch_dir() if kwargs["use_scratch"] else ""
+                _configs.get_scratch_dir() if kwargs.pop("use_scratch") else ""
             )
         return kwargs
 
