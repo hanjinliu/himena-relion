@@ -197,7 +197,9 @@ class JobDirectory:
                 _id = "/".join(self.path.as_posix().split("/")[-2:]) + "/"
                 df = block.to_pandas()
                 pos_sl = df["rlnPipeLineProcessName"] == _id
-                out = df[pos_sl]["rlnPipeLineProcessStatusLabel"] == "Scheduled"
+                out = bool(
+                    df[pos_sl].loc[0, "rlnPipeLineProcessStatusLabel"] == "Scheduled"
+                )
         return out
 
 
