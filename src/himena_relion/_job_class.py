@@ -22,7 +22,7 @@ from himena_relion._pipeline import is_all_inputs_ready
 from himena_relion.consts import Type, MenuId, JOB_ID_MAP
 from himena_relion._utils import (
     last_job_directory,
-    unwrapped_annotated,
+    unwrap_annotated,
     change_name_for_tomo,
 )
 
@@ -96,7 +96,7 @@ class RelionJob(ABC):
         for param in sig.parameters.values():
             if param.name in args:
                 arg = args.pop(param.name)
-                annot = unwrapped_annotated(param.annotation)
+                annot = unwrap_annotated(param.annotation)
                 arg_parsed = parse_string(arg, annot)
                 func_args[param.name] = arg_parsed
             elif param.default is param.empty:
@@ -133,21 +133,27 @@ class RelionJob(ABC):
     def create_and_run_job(cls, **kwargs) -> RelionJobExecution | None:
         with tempfile.TemporaryDirectory() as tmpdir:
             tmpdir = Path(tmpdir)
-            job_star_path = str(tmpdir / "job.star")
+            job_star_path = tmpdir / "job.star"
             job_star_dict = cls.prep_job_star(**kwargs)
             as_star(job_star_dict).write(job_star_path)
             # $ relion_pipeliner --addJobFromStar <job.star>
             # This reformats the input job.star and creates a new job directory.
             # The new job is scheduled but NOT run yet. To run the job, we need to
             # call relion_pipeliner --RunJobs <job_dir>
-            subprocess.run(
+
+            proc = subprocess.run(
                 [
                     "relion_pipeliner",
                     "--addJobFromStar",
-                    job_star_path,
+                    str(job_star_path),
                 ],
-                check=True,
             )
+            if proc.returncode != 0:
+                raise RuntimeError(
+                    "relion_pipeliner --addJobFromStar failed. Created job.star follows:"
+                    f"\n\n{job_star_path.read_text()}"
+                )
+
         d = last_job_directory()  # FIXME: not thread-safe
         if is_all_inputs_ready(d):
             return execute_job(d)
@@ -442,7 +448,6 @@ def connect_jobs(
     pre: type[RelionJob],
     post: type[RelionJob],
     node_mapping: dict[str | Callable[[Path], str], str] | None = None,
-    value_mapping: list[tuple[Any, str]] | None = None,  # TODO: implement later
 ):
     type_pre = Type.RELION_JOB + "." + pre.himena_model_type()
     when = when_reader_used(type_pre, "himena_relion.io.read_relion_job")

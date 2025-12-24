@@ -45,6 +45,7 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         splitter = QtW.QSplitter(QtCore.Qt.Orientation.Vertical)
         splitter.addWidget(self._flow_chart)
         splitter.addWidget(self._footer)
+        splitter.setSizes([800, 420])
 
         layout.addWidget(self._directory_label)
         layout.addWidget(self._finder)

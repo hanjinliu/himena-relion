@@ -21,6 +21,7 @@ it for your real data processing.
 - [x] Efficient 2D/3D rendering over SSH using [vispy](https://github.com/vispy/vispy) and EGL.
 - [x] View job flowchart, and open jobs from the flowchart.
 - [x] Run RELION jobs from the GUI. Drag-and-drop support for job inputs from outputs.
+- [x] Automatically run scheduled jobs when their inputs are ready.
 - [x] Make implementing "external" jobs type-safer and more python-friendly.
 
 ![](images/post-process.png)
@@ -40,7 +41,3 @@ himena --new em  # create a new profile named "em"
 himena em --install himena-relion  # install the plugin into "em" profile
 himena em  # launch the GUI with "em" profile
 ```
-
-## License
-
-`himena-relion` is distributed under the terms of the [BSD 3-Clause](https://spdx.org/licenses/BSD-3-Clause.html) license.

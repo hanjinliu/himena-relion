@@ -1,6 +1,6 @@
 from __future__ import annotations
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated, Any, get_args, get_origin
 
 import numpy as np
 from numpy.typing import NDArray
@@ -107,16 +107,21 @@ def make_tilt_projection_mat(deg: float) -> NDArray[np.float32]:
 
 
 def last_job_directory() -> str:
+    """Get the identifier of the latest job."""
     block = read_star_block("default_pipeline.star", "pipeline_processes")
     return block.to_pandas()["rlnPipeLineProcessName"].iloc[-1]
 
 
-def unwrapped_annotated(annot: Any) -> Any:
-    origin = getattr(annot, "__origin__", None)
+def unwrap_annotated(annot: Any) -> Any:
+    """Recursively unwrap Annotated types to get the base type.
+
+    For example, Annotated[str, {...}] -> str.
+    """
+    origin = get_origin(annot)
     if origin is Annotated:
-        args = annot.__args__
+        args = get_args(annot)
         base_type = args[0]
-        return base_type
+        return unwrap_annotated(base_type)
     else:
         return annot
 
