@@ -131,5 +131,5 @@ class RelionExternalJob(RelionJob):
             "other_args",
         ]:
             if key not in params:
-                kwargs.pop(key)
+                kwargs.pop(key, None)
         return kwargs

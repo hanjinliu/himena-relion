@@ -179,7 +179,7 @@ connect_jobs(
     _tomo.ReconstructParticlesJob,
     _tomo.Refine3DTomoJob,
     node_mapping={
-        "optimisation_set.star": "in_optim.in_optimisation",
+        _tomo.ReconstructParticlesJob.get_optimisation_set: "in_optim.in_optimisation",
         "merged.mrc": "fn_ref",
     },
 )

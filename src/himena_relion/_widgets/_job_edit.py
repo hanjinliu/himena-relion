@@ -6,6 +6,7 @@ from typing import Any
 
 from himena import MainWindow
 from qtpy import QtWidgets as QtW, QtCore
+from magicgui.widgets import ComboBox
 from himena.qt import magicgui as _mgui
 from himena_relion import _job_dir
 from himena_relion._job_class import (
@@ -31,7 +32,7 @@ class QJobScheduler(QtW.QWidget):
         font.setPointSize(font.pointSize() + 3)
         self._title_label.setFont(font)
         self._job_param_widget = QJobParameter()
-        self._exec_btn = QtW.QPushButton("Run Job")  # TODO: support scheduling
+        self._exec_btn = QtW.QPushButton("Run Job")
         self._exec_btn.clicked.connect(self._exec_action)
         self._mode: Mode = ScheduleMode()
 
@@ -57,6 +58,7 @@ class QJobScheduler(QtW.QWidget):
 
     def clear_content(self):
         self._set_content(None, "No job selected")
+        self._exec_btn.setVisible(False)
 
     def update_by_job(self, job_cls: type[RelionJob]):
         """Update the widget based on the job directory."""
@@ -101,6 +103,7 @@ class QJobScheduler(QtW.QWidget):
     def _set_mode(self, mode: Mode):
         self._mode = mode
         self._exec_btn.setText(mode.button_text())
+        self._exec_btn.setVisible(True)
 
     def _exec_action(self):
         self._mode.exec(self)
@@ -148,7 +151,7 @@ class QJobParameter(QtW.QScrollArea):
                 gb_layout.addWidget(param_label)
                 if isinstance(widget, _mgui.ToggleSwitch):
                     widget.text = ""
-                elif isinstance(widget, (_mgui.IntEdit, _mgui.FloatEdit)):
+                elif isinstance(widget, (_mgui.IntEdit, _mgui.FloatEdit, ComboBox)):
                     widget.max_width = 160
                 gb_layout.addWidget(widget.native)
                 param_label.setToolTip(widget.tooltip)

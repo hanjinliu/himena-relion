@@ -107,28 +107,28 @@ connect_jobs(
     node_mapping={"optimisation_set.star": "in_optim.in_optimisation"},
 )
 connect_jobs(
-    ExtractParticlesTomoJob,
+    InspectParticles,
     InitialModelTomoJob,
     node_mapping={
         "optimisation_set.star": "in_optim.in_optimisation",
     },
 )
 connect_jobs(
-    ExtractParticlesTomoJob,
+    InspectParticles,
     ReconstructParticlesJob,
     node_mapping={
         "optimisation_set.star": "in_optim.in_optimisation",
     },
 )
 connect_jobs(
-    ExtractParticlesTomoJob,
+    InspectParticles,
     Class3DTomoJob,
     node_mapping={
         "optimisation_set.star": "in_optim.in_optimisation",
     },
 )
 connect_jobs(
-    ExtractParticlesTomoJob,
+    InspectParticles,
     Refine3DTomoJob,
     node_mapping={
         "optimisation_set.star": "in_optim.in_optimisation",

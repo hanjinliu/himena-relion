@@ -7,6 +7,7 @@ from himena_relion._job_class import (
     parse_string,
 )
 from himena_relion import _configs
+from himena_relion._pipeline import RelionPipeline
 from himena_relion._widgets._magicgui import OptimisationSetEdit, DoseRateEdit
 from himena_relion._widgets._path_input import PathDrop
 from himena_relion.relion5._builtins import (
@@ -1139,6 +1140,17 @@ class ReconstructParticlesJob(_Relion5TomoJob):
         min_dedicated: MIN_DEDICATED_TYPE = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
+
+    @staticmethod
+    def get_optimisation_set(path: Path) -> str | None:
+        """Function used for job connection."""
+        if (opt_path := path.joinpath("optimisation_set.star")).exists():
+            return opt_path.as_posix()
+        if (pipeline_path := path.joinpath("job_pipeline.star")).exists():
+            pipeline = RelionPipeline.from_star(pipeline_path)
+            if node := pipeline.get_input_by_type("TomoOptimisationSet"):
+                return node.path
+        return None
 
 
 class CtfRefineTomoJob(_Relion5TomoJob):
