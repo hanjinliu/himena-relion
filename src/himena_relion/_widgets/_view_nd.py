@@ -109,6 +109,7 @@ class Q2DViewer(QViewer):
         finally:
             self._dims_slider.blockSignals(False)
         if not had_image:
+            self._auto_contrast()
             self.auto_fit()
 
     def set_points(
@@ -279,7 +280,7 @@ class Q3DViewer(QViewer):
 
     def set_image(self, image: np.ndarray | None, update_now: bool = True):
         """Set the 3D image to be displayed."""
-        had_image = self._has_image
+        had_image = self.has_image
         if image is None:
             self._canvas.image = np.zeros((2, 2, 2))
             self._canvas.image_visual.visible = False

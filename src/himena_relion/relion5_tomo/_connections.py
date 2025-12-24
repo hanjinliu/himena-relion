@@ -100,6 +100,21 @@ connect_jobs(
     node_mapping={"optimisation_set.star": "in_optim.in_optimisation"},
 )
 connect_jobs(
+    _spa.SelectClassesInteractiveJob,
+    _tomo.ExtractParticlesTomoJob,
+)
+connect_jobs(
+    _spa.SelectSplitJob,
+    _tomo.PickJob,
+    node_mapping={
+        "particles_split1.star": "fn_data",
+    },
+)
+connect_jobs(
+    _spa.SelectRemoveDuplicatesJob,
+    _tomo.ReconstructParticlesJob,
+)
+connect_jobs(
     _tomo.PickJob,
     _spa.SelectSplitJob,
     node_mapping={"particles.star": "fn_data"},
@@ -116,6 +131,8 @@ connect_jobs(
     _tomo.ReconstructParticlesJob,
     node_mapping={
         "optimisation_set.star": "in_optim.in_optimisation",
+    },
+    value_mapping={
         _box_size: "box_size",
         _crop_size: "crop_size",
     },

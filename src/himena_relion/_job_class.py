@@ -448,13 +448,14 @@ def connect_jobs(
     pre: type[RelionJob],
     post: type[RelionJob],
     node_mapping: dict[str | Callable[[Path], str], str] | None = None,
+    value_mapping: dict[str | Callable[[Path], Any], Any] | None = None,
 ):
     type_pre = Type.RELION_JOB + "." + pre.himena_model_type()
     when = when_reader_used(type_pre, "himena_relion.io.read_relion_job")
     if node_mapping is None:
         user_context = None
     else:
-        user_context = _node_mapping_to_context(node_mapping)
+        user_context = _node_mapping_to_context(node_mapping, value_mapping)
     when.add_command_suggestion(
         post.command_id(),
         user_context=user_context,
@@ -495,7 +496,13 @@ def _get_scheduler_widget(ui: MainWindow) -> QJobScheduler:
     return scheduler
 
 
-def _node_mapping_to_context(node_mapping: dict[str | Callable[[Path], str], str]):
+def _node_mapping_to_context(
+    node_mapping: dict[str | Callable[[Path], str | None], str] | None = None,
+    value_mapping: dict[Callable[[Path], Any], Any] | None = None,
+):
+    node_mapping = node_mapping or {}
+    value_mapping = value_mapping or {}
+
     def _func(ui: MainWindow, step: WorkflowStep) -> dict[str, Any]:
         win = ui.window_for_id(step.id)
         if win is None:
@@ -510,7 +517,10 @@ def _node_mapping_to_context(node_mapping: dict[str | Callable[[Path], str], str
             if isinstance(from_, str):
                 file_path = val.path.joinpath(from_)
             elif callable(from_):
-                file_path = Path(from_(val.path))
+                returned_value = from_(val.path)
+                if returned_value is None:
+                    continue
+                file_path = Path(returned_value)
             else:
                 raise TypeError(f"Unsupported from_ type: {type(from_)}")
             file_path_rel = file_path.relative_to(rln_dir).as_posix()
@@ -521,6 +531,14 @@ def _node_mapping_to_context(node_mapping: dict[str | Callable[[Path], str], str
                 out[to_][subkey] = file_path_rel
             else:
                 out[to_] = file_path_rel
+        for from_, to_ in value_mapping.items():
+            if callable(from_):
+                returned_value = from_(val.path)
+                if returned_value is None:
+                    continue
+            else:
+                raise TypeError(f"Unsupported from_ type: {type(from_)}")
+            out[to_] = returned_value
         return out
 
     return _func

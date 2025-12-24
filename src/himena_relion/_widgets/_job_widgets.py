@@ -125,7 +125,7 @@ class QRunOutErrLog(QtW.QSplitter, JobWidgetBase):
         self._err_log.initialize(job_dir)
 
     def tab_title(self) -> str:
-        return "Out/Err"
+        return "Logs"
 
 
 class QRunOutLog(QTextEditBase):
@@ -166,7 +166,7 @@ class QNoteEdit(QTextEditBase):
             self.setText(job_dir.path.joinpath("note.txt").read_text(encoding="utf-8"))
 
     def tab_title(self) -> str:
-        return "note.txt"
+        return "Note"
 
     @qthrottled(timeout=1000)
     def _autosave_throttled(self):

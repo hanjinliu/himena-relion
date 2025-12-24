@@ -629,9 +629,12 @@ class PickJobDirectory(JobDirectory):
 
     def tomo_and_particles_star(self) -> tuple[Path | None, Path | None]:
         """Return the path to the tomogram and particles star file."""
-        job_pipeline = self.parse_job_pipeline()
+        try:
+            job_pipeline = self.parse_job_pipeline()
+        except FileNotFoundError:
+            return None, None
         rln_dir = self.relion_project_dir
-        if node := job_pipeline.get_input_by_type("TomogramGroupMetadata.star.relion"):
+        if node := job_pipeline.get_input_by_type("TomogramGroupMetadata"):
             tomo_star_path = rln_dir / node.path
         else:
             tomo_star_path = None
