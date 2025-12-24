@@ -148,7 +148,7 @@ class QDenoiseTomogramViewer(QJobScrollArea):
 
 
 @register_job(_job_dir.PickJobDirectory)
-class PickViewer(QJobScrollArea):
+class QPickViewer(QJobScrollArea):
     def __init__(self):
         super().__init__()
         self._job_dir: _job_dir.PickJobDirectory = None

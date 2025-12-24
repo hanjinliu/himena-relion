@@ -1,14 +1,12 @@
 from pathlib import Path
-import subprocess
 from typing import Annotated
 
 import imodmodel
 import mrcfile
 import pandas as pd
 import numpy as np
-from numpy.typing import NDArray
 from starfile_rs import as_star, read_star
-from himena_relion import _job_dir, _utils
+from himena_relion import _job_dir
 from himena_relion.external import RelionExternalJob
 from himena_relion._job_class import connect_jobs
 from himena_relion.relion5_tomo._builtins import ReconstructTomogramJob, IN_TILT_TYPE
@@ -16,103 +14,7 @@ from himena_relion.relion5_tomo.extensions.erase_gold.widgets import (
     QFindBeads3DViewer,
     QEraseGoldViewer,
 )
-
-
-def _xf_to_array(xf: str | Path) -> NDArray[np.floating]:
-    with open(xf) as f:
-        arr_str = [line.split() for line in f]
-    return np.array(arr_str, dtype=np.float32)
-
-
-def project_fiducials(
-    fid: NDArray[np.floating],
-    tomo_center: NDArray[np.floating],
-    deg: NDArray[np.floating],
-    xf: NDArray[np.floating],
-    tilt_center: NDArray[np.floating],
-) -> NDArray[np.floating]:
-    fid_center = fid - tomo_center
-    out = []
-    for i, d in enumerate(deg):
-        a11, a12, a21, a22, tx, ty = xf[i]
-        mat_al = np.linalg.inv(np.array([[a22, a21], [a12, a11]]))
-        for zyx in fid_center:
-            zyx0 = _utils.make_tilt_projection_mat(d) @ zyx + tomo_center
-            zyx0[1:] = mat_al @ (zyx0[1:] - [ty, tx] - tomo_center[1:]) + tilt_center
-            zyx0[0] = i
-            out.append(zyx0)
-    return np.stack(out, axis=0)
-
-
-def _findbeads3d_wrapped(
-    exe: str,
-    tomo_path: str | Path,
-    out_path: str | Path,
-    size_pix: float,
-    angle_range: tuple[float, float] = (-60.0, 60.0),
-):
-    # rec_TS_01_half1.mrc out.mod -angle "-60.0,60.0" -si 12
-    a0, a1 = angle_range
-    stdout_path = Path(out_path).with_suffix(".out")
-    stderr_path = Path(out_path).with_suffix(".err")
-    with open(stdout_path, "w") as stdout_file, open(stderr_path, "w") as stderr_file:
-        out = subprocess.run(
-            [
-                exe,
-                str(tomo_path),
-                str(out_path),
-                "-angle",
-                f"{a0},{a1}",
-                "-si",
-                str(size_pix),
-            ],
-            stdout=stdout_file,
-            stderr=stderr_file,
-        )
-    if out.returncode != 0:
-        raise RuntimeError(f"findbeads3d failed with return code {out.returncode}")
-
-
-def _erase_gold(
-    img: NDArray[np.floating],  # (H, W)
-    pos: NDArray[np.floating],  # (N, 2)
-    rng: np.random.Generator,
-    gold_px: float = 10.0,
-):
-    # NOTE: float16 sometimes causes overflow in mean/std calculation
-    img = img.astype(np.float32, copy=True)
-    mask = np.zeros_like(img, dtype=bool)
-    gold_px_int = int(np.ceil(gold_px))
-    yy, xx = np.indices((gold_px_int, gold_px_int))
-    yy = yy - gold_px / 2
-    xx = xx - gold_px / 2
-    rr: NDArray[np.floating] = np.sqrt(yy**2 + xx**2)
-    circle_mask = rr <= (gold_px / 2)
-    for yc, xc in pos:
-        y0 = int(yc - gold_px / 2)
-        x0 = int(xc - gold_px / 2)
-        y_start = max(0, y0)
-        x_start = max(0, x0)
-        y_end = min(mask.shape[0], y0 + gold_px_int)
-        x_end = min(mask.shape[1], x0 + gold_px_int)
-        if x_end <= x_start or y_end <= y_start:
-            continue
-
-        mask_y_start = y_start - y0
-        mask_x_start = x_start - x0
-        mask_y_end = mask_y_start + (y_end - y_start)
-        mask_x_end = mask_x_start + (x_end - x_start)
-        mask_cropped = circle_mask[mask_y_start:mask_y_end, mask_x_start:mask_x_end]
-        ref = img[y_start:y_end, x_start:x_end][~mask_cropped]
-        if ref.size == 0:
-            continue  # should never happen, but just in case
-        mean = np.mean(ref)
-        std = np.std(ref, mean=mean)
-        img[y_start:y_end, x_start:x_end][mask_cropped] = rng.normal(
-            mean, std, size=mask_cropped.sum()
-        )
-
-    return img.astype(np.float16)
+from himena_relion.relion5_tomo.extensions.erase_gold import _impl
 
 
 TILT_ANGLE = "rlnTomoNominalStageTiltAngle"
@@ -159,7 +61,7 @@ class FindBeads3D(RelionExternalJob):
             model_path = models_dir / f"{info.tomo_name}.mod"
             model_paths.append(model_path.relative_to(out_job_dir.relion_project_dir))
             self.console.log(f"Running findbeads3d for tomogram {info.tomo_name}")
-            _findbeads3d_wrapped(
+            _impl.findbeads3d_wrapped(
                 findbeads3d_exe, tomo_path, model_path, size_pix, angrange
             )
             yield
@@ -229,11 +131,11 @@ class EraseGold(RelionExternalJob):
             fid = imodmodel.read(model_path)[["z", "y", "x"]].to_numpy(np.float32)
             fid *= info.tomogram_binning
             deg = tilt_star_df[TILT_ANGLE].to_numpy(dtype=np.float32)
-            xf = _xf_to_array(edf_path.with_suffix(".xf"))
+            xf = _impl.xf_to_array(edf_path.with_suffix(".xf"))
             self.console.log(
                 f"{fid.shape[0]} fiducials found for tomogram {info.tomo_name}"
             )
-            fid_tr = project_fiducials(fid, tomo_center, deg, xf, tilt_center)
+            fid_tr = _impl.project_fiducials(fid, tomo_center, deg, xf, tilt_center)
             yield
             if process_halves:
                 col_list = [MIC_NAME, MIC_ODD, MIC_EVEN]
@@ -252,7 +154,7 @@ class EraseGold(RelionExternalJob):
                         voxel_size = mrc.voxel_size
                     z_matches = abs(fid_tr[:, 0] - ith) < 0.01
                     yield
-                    img_erased = _erase_gold(
+                    img_erased = _impl.erase_gold(
                         img,
                         pos=fid_tr[z_matches, 1:],
                         rng=rng,

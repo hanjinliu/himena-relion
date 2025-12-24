@@ -51,7 +51,7 @@ class Q2DViewer(QViewer):
         layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignHCenter)
         self._array_view = None
         self._points = np.empty((0, 3), dtype=np.float32)
-        self._point_size = 10.0
+        self._point_size = 6.0
         self._face_colors = np.zeros((0, 4), dtype=np.float32)
         self._edge_colors = np.zeros((0, 4), dtype=np.float32)
         self._dims_slider = QtW.QSlider(QtCore.Qt.Orientation.Horizontal, self)

@@ -641,9 +641,7 @@ class PickJobDirectory(JobDirectory):
         if (path_opt := self.path / "optimisation_set.star").exists():
             opt_set = RelionOptimisationSet.from_file(path_opt)
             particle_star_path = rln_dir / opt_set.particles_star
-        elif node_part := job_pipeline.get_input_by_type(
-            "ParticleGroupMetadata.star.relion"
-        ):
+        elif node_part := job_pipeline.get_input_by_type("ParticleGroupMetadata"):
             particle_star_path = rln_dir / node_part.path
         else:
             particle_star_path = None

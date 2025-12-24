@@ -5,6 +5,7 @@ from pathlib import Path
 from dataclasses import dataclass, field
 from starfile_rs import empty_star, read_star
 import pandas as pd
+from himena_relion.consts import FileNames
 
 
 class RelionDefaultPipeline(Sequence["RelionJobInfo"]):
@@ -267,5 +268,10 @@ def is_all_inputs_ready(d: str | Path) -> bool:
     """True if the job at directory `d` has all inputs ready."""
     if (ppath := Path(d) / "job_pipeline.star").exists():
         pipeline = RelionPipeline.from_star(ppath)
-        return all(input_.path.exists() for input_ in pipeline.inputs)
+        # NOTE: Do NOT check the existence of output files. For example, Extract job
+        # writes optimisation_set.star before the job actually finishes.
+        return all(
+            input_.path_job.joinpath(FileNames.EXIT_SUCCESS).exists()
+            for input_ in pipeline.inputs
+        )
     return False
