@@ -245,6 +245,14 @@ NUM_POOL_TYPE = Annotated[
 DO_PREREAD_TYPE = Annotated[
     bool, {"label": "Pre-read all particles into RAM", "group": "Compute"}
 ]
+USE_SCRATCH_TYPE = Annotated[
+    bool,
+    {
+        "label": "Copy particles to scratch directory",
+        "tooltip": "Preload particles to scratch directory to improve I/O performance during computation.",
+        "group": "Compute",
+    },
+]
 DO_COMBINE_THRU_DISC_TYPE = Annotated[
     bool, {"label": "Combine iterations through disc", "group": "Compute"}
 ]
@@ -581,7 +589,6 @@ class Class3DJob(_Relion5Job):
 
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
-        kwargs["scratch_dir"] = _configs.get_scratch_dir()
         if "helical_twist_range" in kwargs:
             (
                 kwargs["helical_twist_min"],
@@ -694,6 +701,7 @@ class Class3DJob(_Relion5Job):
         # Compute
         do_fast_subsets: USE_FAST_SUBSET_TYPE = False,
         do_parallel_discio: USE_PARALLEL_DISC_IO_TYPE = True,
+        use_scratch: USE_SCRATCH_TYPE = False,
         nr_pool: NUM_POOL_TYPE = 3,
         do_pad1: Annotated[bool, {"label": "Skip padding", "group": "Compute"}] = False,
         do_preread_images: DO_PREREAD_TYPE = False,
@@ -727,7 +735,6 @@ class Refine3DJob(_Relion5Job):
 
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
-        kwargs["scratch_dir"] = _configs.get_scratch_dir()
         if "helical_twist_range" in kwargs:
             (
                 kwargs["helical_twist_min"],
@@ -825,6 +832,7 @@ class Refine3DJob(_Relion5Job):
         # Compute
         do_parallel_discio: USE_PARALLEL_DISC_IO_TYPE = True,
         nr_pool: NUM_POOL_TYPE = 3,
+        use_scratch: USE_SCRATCH_TYPE = False,
         do_pad1: Annotated[bool, {"label": "Skip padding", "group": "Compute"}] = False,
         do_preread_images: DO_PREREAD_TYPE = False,
         do_combine_thru_disc: DO_COMBINE_THRU_DISC_TYPE = False,

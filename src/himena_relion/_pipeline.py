@@ -87,6 +87,17 @@ class RelionJobInfo:
     def __hash__(self):
         return hash(self.path)
 
+    def job_repr(self) -> str:
+        """Return a string representation of the job."""
+        # mainly for notification
+        job_xxx = self.path.resolve().stem
+        if job_xxx.startswith("job"):
+            job_xxx = job_xxx[3:]
+        if als := self.alias:
+            return f"{job_xxx} ({als})"
+        else:
+            return f"{job_xxx}"
+
 
 @dataclass
 class RelionOutputFile:

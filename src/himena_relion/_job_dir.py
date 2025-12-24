@@ -697,10 +697,6 @@ class ExtractJobDirectory(JobDirectory):
         """Return whether the extraction is 2D stack or 3D subtomogram."""
         return self.get_job_param("do_stack2d") == "Yes"
 
-    def tomo_names(self) -> list[str]:
-        """Return the list of tomogram names from the particles star file."""
-        return [path.name for path in self.path.joinpath("Subtomograms").iterdir()]
-
     def max_num_subtomograms(self, tomoname: str) -> int:
         """Return the number of subtomograms for a given tomogram name."""
         tomo_dir = self.path / "Subtomograms" / tomoname

@@ -163,14 +163,17 @@ class QRelionPipelineFlowChart(QtW.QWidget):
                     for job in pipeline.iter_nodes():
                         self._state_to_job_map[job.status].add(job)
                     success_new = self._state_to_job_map[NodeStatus.SUCCEEDED]
-                    if success_new - success_old:
+                    if succeeded := success_new - success_old:
+                        ui = self._flow_chart._ui
                         for job in self._state_to_job_map[NodeStatus.SCHEDULED]:
                             # run all the scheduled jobs whose dependencies are met
                             if is_all_inputs_ready(job.path):
                                 execute_job(job.path.as_posix(), ignore_error=True)
-                                self._flow_chart._ui.show_notification(
-                                    f"Scheduled job {job.path} started."
+                                ui.show_notification(
+                                    f"Scheduled job {job.job_repr()} started."
                                 )
+                        for job in succeeded:
+                            ui.show_notification(f"Job {job.job_repr()} succeeded.")
 
                     # update the internal data (thus, the flow chart)
                     model = WidgetDataModel(

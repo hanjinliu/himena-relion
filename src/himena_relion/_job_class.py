@@ -16,7 +16,7 @@ from himena.widgets import MainWindow
 from himena.plugins import when_reader_used, register_function
 import numpy as np
 import pandas as pd
-from starfile_rs import as_star, read_star
+from starfile_rs import as_star, read_star, read_star_text
 from himena_relion import _configs, _job_dir
 from himena_relion._pipeline import is_all_inputs_ready
 from himena_relion.consts import Type, MenuId, JOB_ID_MAP
@@ -171,6 +171,12 @@ class RelionJob(ABC):
         to_run = str(job_dir.path.relative_to(job_dir.relion_project_dir))
         if is_all_inputs_ready(to_run):
             return execute_job(to_run)
+        else:
+            default_pipeline_path = job_dir.relion_project_dir / "default_pipeline.star"
+            if not default_pipeline_path.exists():
+                return _LOGGER.warning("Project default_pipeline.star not found.")
+            # Job state needs to be updated to "Scheduled"
+            _update_job_state(default_pipeline_path, to_run, "Scheduled")
 
     @classmethod
     def _show_scheduler_widget(cls, ui: MainWindow, context: AnyContext):
@@ -219,6 +225,10 @@ class _RelionBuiltinJob(RelionJob):
             gpu_ids = kwargs["gpu_ids"]
             assert isinstance(gpu_ids, str)
             kwargs["use_gpu"] = len(gpu_ids.strip()) > 0
+        if "use_scratch" in kwargs:
+            kwargs["scratch_dir"] = (
+                _configs.get_scratch_dir() if kwargs["use_scratch"] else ""
+            )
         return kwargs
 
     @classmethod
@@ -226,7 +236,8 @@ class _RelionBuiltinJob(RelionJob):
         """This is used to convert job.star to python, such as editing existing jobs."""
         for key in _configs.get_queue_dict().keys():
             kwargs.pop(key, None)
-        kwargs.pop("scratch_dir", None)
+        if "scratch_dir" in kwargs:
+            kwargs["use_scratch"] = kwargs.pop("scratch_dir", "").strip() != ""
         kwargs.pop("other_args", None)
         kwargs.pop("use_gpu", None)
         return kwargs
@@ -474,12 +485,7 @@ def connect_jobs(
 
 def execute_job(d: str | Path, ignore_error: bool = False) -> RelionJobExecution:
     """Execute a RELION job named `d` (such as "Class3D/job012/")."""
-    if isinstance(d, Path):
-        d = d.as_posix()
-    if not d.endswith("/"):
-        d += "/"
-    if d.count("/") > 2:
-        d = "/".join(d.split("/")[-2:]) + "/"
+    d = _normalize_job_id(d)
     try:
         job_dir = _job_dir.JobDirectory(Path(d).resolve())
     except FileNotFoundError as e:
@@ -491,6 +497,31 @@ def execute_job(d: str | Path, ignore_error: bool = False) -> RelionJobExecution
         start_new_session=True,
     )
     return RelionJobExecution(proc, job_dir)
+
+
+def _normalize_job_id(d: str | Path) -> str:
+    if isinstance(d, Path):
+        d = d.as_posix()
+    if not d.endswith("/"):
+        d += "/"
+    if d.count("/") > 2:
+        d = "/".join(d.split("/")[-2:]) + "/"
+    return d
+
+
+def _update_job_state(
+    default_pipeline_path: Path, job_id: str, state: str = "Scheduled"
+):
+    with default_pipeline_path.open("r+") as f:  # use open to acquire lock
+        pipeline_star = read_star_text(f.read())
+        if pipeline_block := pipeline_star.get("pipeline_processes"):
+            df = pipeline_block.to_pandas()
+            pos_sl = df["rlnPipeLineProcessName"] == _normalize_job_id(job_id)
+            if len(true_ids := np.where(pos_sl)) == 1:
+                df.loc[true_ids[0][0], "rlnPipeLineProcessStatusLabel"] = state
+                pipeline_star.with_loop_block("pipeline_processes", df)
+                f.seek(0)
+                f.write(pipeline_star.to_string())
 
 
 def _get_scheduler_widget(ui: MainWindow) -> QJobScheduler:

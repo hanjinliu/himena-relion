@@ -94,11 +94,20 @@ class QTextEditBase(QtW.QWidget, JobWidgetBase):
         hbar = self._text_edit.horizontalScrollBar()
         vval_old = vbar.value()
         hval_old = hbar.value()
+        is_bottom = vval_old == vbar.maximum()
         sel0 = self._text_edit.textCursor().selectionStart()
         sel1 = self._text_edit.textCursor().selectionEnd()
         self._text_edit.setPlainText(text)
-        vbar.setValue(min(vval_old, vbar.maximum()))
+
+        # if the vertical scrollbar was at the bottom, keep it at the bottom, otherwise
+        # keep the previous position.
+        if is_bottom:
+            vbar.setValue(vbar.maximum())
+        else:
+            vbar.setValue(min(vval_old, vbar.maximum()))
         hbar.setValue(min(hval_old, hbar.maximum()))
+
+        # restore text selection
         max_position = len(text)
         self._text_edit.textCursor().setPosition(min(sel0, max_position))
         self._text_edit.textCursor().setPosition(

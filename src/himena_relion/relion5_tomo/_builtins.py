@@ -58,6 +58,7 @@ from himena_relion.relion5._builtins import (
     GPU_IDS_TYPE,
     USE_FAST_SUBSET_TYPE,
     USE_PARALLEL_DISC_IO_TYPE,
+    USE_SCRATCH_TYPE,
     CtfEstimationJob,
     Class3DJob,
     MotionCorr2Job,
@@ -808,7 +809,6 @@ class InitialModelTomoJob(_Relion5TomoJob):
 
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
-        kwargs["scratch_dir"] = _configs.get_scratch_dir()
         kwargs["fn_cont"] = ""
         return norm_optim(**super().normalize_kwargs(**kwargs))
 
@@ -845,6 +845,7 @@ class InitialModelTomoJob(_Relion5TomoJob):
         use_parallel_disc_io: USE_PARALLEL_DISC_IO_TYPE = True,
         nr_pool: NUM_POOL_TYPE = 3,
         do_preread_images: DO_PREREAD_TYPE = False,
+        use_scratch: USE_SCRATCH_TYPE = False,
         do_combine_thru_disc: DO_COMBINE_THRU_DISC_TYPE = False,
         gpu_ids: GPU_IDS_TYPE = "",
         # Running
@@ -955,6 +956,7 @@ class Class3DTomoJob(_Relion5TomoJob, Class3DJob):
         # Compute
         do_fast_subsets: USE_FAST_SUBSET_TYPE = False,
         do_parallel_discio: USE_PARALLEL_DISC_IO_TYPE = True,
+        use_scratch: USE_SCRATCH_TYPE = False,
         nr_pool: NUM_POOL_TYPE = 3,
         do_pad1: Annotated[bool, {"label": "Skip padding", "group": "Compute"}] = False,
         do_preread_images: DO_PREREAD_TYPE = False,
@@ -1055,6 +1057,7 @@ class Refine3DTomoJob(_Relion5TomoJob, Refine3DJob):
         nr_pool: NUM_POOL_TYPE = 3,
         do_pad1: Annotated[bool, {"label": "Skip padding", "group": "Compute"}] = False,
         do_preread_images: DO_PREREAD_TYPE = False,
+        use_scratch: USE_SCRATCH_TYPE = False,
         do_combine_thru_disc: DO_COMBINE_THRU_DISC_TYPE = False,
         gpu_ids: GPU_IDS_TYPE = "",
         # Running
@@ -1118,7 +1121,7 @@ class ReconstructParticlesJob(_Relion5TomoJob):
         crop_size: Annotated[
             int, {"label": "Crop size (binned pix)", "group": "Average"}
         ] = -1,
-        snr: Annotated[float, {"label": "SNR", "group": "Average"}] = 0,
+        snr: Annotated[float, {"label": "Wiener SNR constant", "group": "Average"}] = 0,
         sym_name: Annotated[str, {"label": "Symmetry", "group": "Average"}] = "C1",
         # Helix
         do_helix: DO_HELIX_TYPE = False,
@@ -1151,6 +1154,16 @@ class ReconstructParticlesJob(_Relion5TomoJob):
             if node := pipeline.get_input_by_type("TomoOptimisationSet"):
                 return node.path
         return None
+
+    @classmethod
+    def setup_widgets(self, widgets):
+        @widgets["do_helix"].changed.connect
+        def _on_do_helix_changed(value: bool):
+            for name, child in widgets.items():
+                if name.startswith("helical_"):
+                    child.enabled = value
+
+        _on_do_helix_changed(widgets["do_helix"].value)
 
 
 class CtfRefineTomoJob(_Relion5TomoJob):
