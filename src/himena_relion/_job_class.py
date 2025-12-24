@@ -192,6 +192,16 @@ class RelionJob(ABC):
     def param_matches(cls, job_params: dict[str, str]) -> bool:
         return True
 
+    @classmethod
+    def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
+        """This is used to convert python objects to job.star."""
+        return kwargs
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
+        """This is used to convert job.star to python, such as editing existing jobs."""
+        return kwargs
+
 
 class _RelionBuiltinJob(RelionJob):
     @classmethod

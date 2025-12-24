@@ -12,7 +12,6 @@ from himena_relion._job_class import (
     RelionJob,
     RelionJobExecution,
     parse_string,
-    _RelionBuiltinJob,
     _RelionBuiltinContinue,
 )
 from magicgui.widgets.bases import ValueWidget
@@ -71,8 +70,7 @@ class QJobScheduler(QtW.QWidget):
     def set_parameters(self, params: dict):
         if (job_cls := self._current_job_cls) is None:
             raise RuntimeError("No job class selected.")
-        if issubclass(job_cls, _RelionBuiltinJob):
-            params = job_cls.normalize_kwargs_inv(**params)
+        params = job_cls.normalize_kwargs_inv(**params)
         self._job_param_widget.set_parameters(params)
 
     def get_parameters(self) -> dict[str, Any]:

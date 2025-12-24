@@ -8,6 +8,7 @@ from runpy import run_path
 
 from himena_relion import _job_dir
 from himena_relion._job_class import RelionJob
+from himena_relion.consts import ARG_NAME_REMAP
 from himena_relion.external.writers import prep_job_star
 
 
@@ -109,3 +110,26 @@ class RelionExternalJob(RelionJob):
     @classmethod
     def _signature(cls) -> inspect.Signature:
         return inspect.signature(cls.run.__get__(object()))
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
+        params = cls._signature().parameters
+        for correct, wrong in ARG_NAME_REMAP:
+            if wrong in kwargs and correct not in kwargs:
+                kwargs[correct] = kwargs.pop(wrong)
+        for key in [
+            "fn_exe",
+            "do_queue",
+            "in_3dref",
+            "in_coords",
+            "in_mask",
+            "in_mics",
+            "in_movies",
+            "in_parts",
+            "min_dedicated",
+            "j",
+            "other_args",
+        ]:
+            if key not in params:
+                kwargs.pop(key)
+        return kwargs

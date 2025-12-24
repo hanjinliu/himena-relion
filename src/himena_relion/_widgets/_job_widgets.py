@@ -270,11 +270,10 @@ class QJobParameterView(QJobParameter, JobWidgetBase):
         job_dir: _job_dir.JobDirectory,
         job_cls: type[_job_class.RelionJob],
     ):
-        if issubclass(job_cls, _job_class._RelionBuiltinJob):
-            self.set_parameters(
-                job_cls.normalize_kwargs_inv(**job_dir.get_job_params_as_dict()),
-                enabled=False,
-            )
+        self.set_parameters(
+            job_cls.normalize_kwargs_inv(**job_dir.get_job_params_as_dict()),
+            enabled=False,
+        )
 
     def tab_title(self) -> str:
         return "Parameters"

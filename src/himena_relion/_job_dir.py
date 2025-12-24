@@ -262,6 +262,7 @@ class ExternalJobDirectory(JobDirectory):
             value_key = f"param{ith}_value"
             if label_key in param_dict and value_key in param_dict:
                 out[param_dict[label_key]] = param_dict[value_key]
+        out.pop("", None)  # when there are empty param labels
         return out
 
 
