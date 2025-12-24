@@ -199,7 +199,7 @@ class JobDirectory:
                 df = block.to_pandas()
                 pos_sl = df["rlnPipeLineProcessName"] == _id
                 out = bool(
-                    df[pos_sl].loc[0, "rlnPipeLineProcessStatusLabel"] == "Scheduled"
+                    df[pos_sl]["rlnPipeLineProcessStatusLabel"].iloc[0] == "Scheduled"
                 )
         return out
 
