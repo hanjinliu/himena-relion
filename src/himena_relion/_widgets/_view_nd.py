@@ -81,12 +81,17 @@ class Q2DViewer(QViewer):
         self._array_view = None
         self._points = np.empty((0, 3), dtype=np.float32)
 
+    @property
+    def has_image(self) -> bool:
+        return self._array_view is not None
+
     def set_array_view(
         self,
         image: np.ndarray | ArrayFilteredView,
         clim: tuple[float, float] | None = None,
     ):
         """Set the 3D image to be displayed."""
+        had_image = self.has_image
         if isinstance(image, np.ndarray):
             self._array_view = ArrayFilteredView.from_array(image)
         elif isinstance(image, ArrayFilteredView):
@@ -103,6 +108,8 @@ class Q2DViewer(QViewer):
             self.redraw()
         finally:
             self._dims_slider.blockSignals(False)
+        if not had_image:
+            self.auto_fit()
 
     def set_points(
         self,
@@ -272,6 +279,7 @@ class Q3DViewer(QViewer):
 
     def set_image(self, image: np.ndarray | None, update_now: bool = True):
         """Set the 3D image to be displayed."""
+        had_image = self._has_image
         if image is None:
             self._canvas.image = np.zeros((2, 2, 2))
             self._canvas.image_visual.visible = False
@@ -281,6 +289,9 @@ class Q3DViewer(QViewer):
             self._canvas.image_visual.visible = True
             self._has_image = True
         self._canvas.set_iso_threshold(self._iso_slider.value())
+        if not had_image:
+            self.auto_threshold(update_now=False)
+            self.auto_fit(update_now=False)
         if update_now:
             self._canvas.update_canvas()
 
@@ -317,12 +328,7 @@ class Q3DViewer(QViewer):
         arr = np.asarray(model.value, dtype=np.float32)
         if arr.ndim != 3:
             raise ValueError("Input array must be 3D.")
-        had_image = self._has_image
-        self.set_image(arr, update_now=False)
-        if not had_image:
-            self.auto_threshold(update_now=False)
-            self.auto_fit(update_now=False)
-        self._canvas.update_canvas()
+        self.set_image(arr, update_now=True)
 
     @validate_protocol
     def model_type(self) -> str:

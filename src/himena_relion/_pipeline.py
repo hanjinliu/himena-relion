@@ -247,7 +247,6 @@ class RelionPipeline:
                 }
             ),
         )
-        print(star.to_string())
         return star.write(path)
 
 

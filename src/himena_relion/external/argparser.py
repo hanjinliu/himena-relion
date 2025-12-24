@@ -1,19 +1,13 @@
 from __future__ import annotations
 
 from pathlib import Path
-import subprocess
 import sys
 import argparse
 from typing import Any
 import inspect
-from enum import IntEnum
 
-from starfile_rs import as_star
-
-from himena_relion._utils import last_job_directory
-from himena_relion.consts import JOB_IMPORT_PATH_FILE, FileNames
+from himena_relion.consts import FileNames
 from himena_relion._job_dir import ExternalJobDirectory
-from himena_relion.external.writers import prep_job_star
 from himena_relion.external.job_class import pick_job_class
 
 
@@ -44,9 +38,6 @@ class RelionExternalArgParser(argparse.ArgumentParser):
         self.add_argument("class_id", type=str)
         self.add_argument("--o", type=str)
         self.add_argument("--j", type=int, default=1)
-        self.add_argument(
-            "--prep_job_star_for_pipeliner", type=int, choices=[0, 1, 2], default=0
-        )
 
 
 def parse_argv(argv: list[str] | None = None) -> dict[str, Any]:
@@ -85,7 +76,6 @@ def run_function(argv: list[str] | None = None) -> None:
     args = parse_argv(argv)
     class_id = str(args.pop("class_id"))
     job_cls = pick_job_class(class_id)
-    prep_job_star_enum = PrepJobStarEnum(args.pop("prep_job_star_for_pipeliner", 0))
 
     if args.get("o", None) is None:
         raise ValueError("Output directory (--o) is required but not given.")
@@ -102,23 +92,6 @@ def run_function(argv: list[str] | None = None) -> None:
             f"Unknown arguments for {func_name}: {unknown}. Function signature is "
             f"{func_name}{sig}."
         )
-
-    if prep_job_star_enum > 0:
-        df = prep_job_star(f"himena-relion {class_id}", **func_args)
-        tempstar = "temp-job.star"
-        as_star(df).write(o_dir / tempstar)
-        if prep_job_star_enum is PrepJobStarEnum.PREP_ONLY:
-            pass
-        elif prep_job_star_enum is PrepJobStarEnum.PREP_AND_ADD:
-            subprocess.run(
-                ["relion_pipeliner", "--addJobFromStar", str(o_dir / tempstar)],
-                check=True,
-            )
-            job_dir = last_job_directory()
-            Path(job_dir).joinpath(JOB_IMPORT_PATH_FILE).write_text(
-                f"{job.import_path()}\n", encoding="utf-8"
-            )
-        return
 
     # prepare output nodes in pipeline
     root_rel = job.output_job_dir.path.relative_to(
@@ -149,9 +122,3 @@ def run_function(argv: list[str] | None = None) -> None:
             o_dir.joinpath(FileNames.EXIT_FAILURE).touch()
     if o_dir.exists():
         o_dir.joinpath(FileNames.EXIT_SUCCESS).touch()
-
-
-class PrepJobStarEnum(IntEnum):
-    NONE = 0
-    PREP_ONLY = 1
-    PREP_AND_ADD = 2

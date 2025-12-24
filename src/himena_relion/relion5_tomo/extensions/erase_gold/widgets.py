@@ -79,10 +79,13 @@ class QFindBeads3DViewer(QtW.QWidget):
 
     def _iter_tomogram_info(self) -> Iterator[_job_dir.TomogramInfo]:
         pipe = self._job_dir.parse_job_pipeline()
-        input0 = pipe.get_input_by_type("TomogramGroupMetadata")
-        assert input0 is not None, (
-            f"No TomogramGroupMetadata input found in {self._job_dir.path}"
-        )
+        input0 = pipe.get_input_by_type("MicrographGroupMetadata")
+        if input0 is None:
+            input0 = pipe.get_input_by_type("TomogramGroupMetadata")
+        if input0 is None:
+            raise ValueError(
+                f"No TomogramGroupMetadata input found in {self._job_dir.path}"
+            )
         df_tomo = read_star(input0.path).first().trust_loop().to_pandas()
         for _, row in df_tomo.iterrows():
             yield _job_dir.TomogramInfo.from_series(row)
