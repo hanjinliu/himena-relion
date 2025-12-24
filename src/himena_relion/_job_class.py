@@ -122,7 +122,6 @@ class RelionJob(ABC):
             cls.job_title(),
             command_id,
         )
-        cls._show_scheduler_widget.__doc__ = cls.__doc__
         register_function(
             cls._show_scheduler_widget,
             menus=[MenuId.RELION_NEW_JOB],
