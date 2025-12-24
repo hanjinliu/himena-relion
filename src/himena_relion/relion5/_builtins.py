@@ -315,6 +315,8 @@ class _MotionCorrJobBase(_Relion5Job):
 
 
 class MotionCorr2Job(_MotionCorrJobBase):
+    """Motion correction using MotionCor2 (GPU)."""
+
     @classmethod
     def type_label(cls) -> str:
         return "relion.motioncorr.motioncor2"
@@ -402,6 +404,8 @@ class MotionCorr2Job(_MotionCorrJobBase):
 
 
 class MotionCorrOwnJob(_MotionCorrJobBase):
+    """Motion correction using RELION's implementation (CPU)."""
+
     @classmethod
     def type_label(cls) -> str:
         return "relion.motioncorr.own"
@@ -497,6 +501,8 @@ class MotionCorrOwnJob(_MotionCorrJobBase):
 
 
 class CtfEstimationJob(_Relion5Job):
+    """Contrast transfer function (CTF) estimation using CTFFIND4."""
+
     @classmethod
     def type_label(cls) -> str:
         return "relion.ctffind.ctffind4"
@@ -583,6 +589,8 @@ class CtfEstimationJob(_Relion5Job):
 
 
 class Class3DJob(_Relion5Job):
+    """3D classification."""
+
     @classmethod
     def type_label(cls) -> str:
         return "relion.class3d"
@@ -729,6 +737,8 @@ class Class3DJob(_Relion5Job):
 
 
 class Refine3DJob(_Relion5Job):
+    """3D auto-refinement of pre-aligned particles."""
+
     @classmethod
     def type_label(cls) -> str:
         return "relion.refine3d"
@@ -1027,6 +1037,8 @@ class SelectMicrographsJob(_SelectValuesJob):
 
 
 class SelectRemoveDuplicatesJob(_SelectJob):
+    """Remove duplicate particles based on their coordinates."""
+
     @classmethod
     def type_label(cls):
         return "relion.select.removeduplicates"
@@ -1049,6 +1061,8 @@ class SelectRemoveDuplicatesJob(_SelectJob):
 
 
 class SelectSplitJob(_SelectJob):
+    """Split particles into subsets."""
+
     @classmethod
     def type_label(cls):
         return "relion.select.split"
@@ -1094,6 +1108,8 @@ class SelectFilamentsJob(_SelectJob):
 
 
 class MaskCreationJob(_Relion5Job):
+    """Create a 3D mask from a reconstructed map."""
+
     @classmethod
     def type_label(cls) -> str:
         return "relion.maskcreate"

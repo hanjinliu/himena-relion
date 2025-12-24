@@ -46,7 +46,7 @@ JOB_ID_MAP = {
     "relion.aligntiltseries": "Align Tilts",
     "relion.reconstructtomograms": "Reconstruct Tomos",
     "relion.denoisetomo": "Denoise",
-    "relion.picktomo": "Pick Tomo",
+    "relion.picktomo": "Manual Pick",
     "relion.pseudosubtomo": "Extract",
     "relion.initialmodel.tomo": "Initial Model",
     "relion.refine3d.tomo": "Auto Refine",

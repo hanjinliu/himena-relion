@@ -11,7 +11,7 @@ from qtpy import QtWidgets as QtW, QtGui, QtCore
 from superqt import QToggleSwitch
 from superqt.utils import qthrottled
 from himena.consts import MonospaceFontFamily
-from himena.widgets import current_instance
+from himena.widgets import current_instance, set_status_tip
 from himena.qt import drag_files, QColoredSVGIcon
 from himena_relion import _job_class, _job_dir
 from himena_relion._utils import read_icon_svg, read_icon_svg_for_type
@@ -376,6 +376,7 @@ class QRelionNodeItem(QtW.QWidget):
         return QColoredSVGIcon(svg, color="gray")
 
     def _drag_dir_event(self):
+        set_status_tip(f"Start dragging directory {self._filepath.parent}", duration=5)
         drag_files(
             self._filepath.parent,
             desc=self._filepath_rel.parent.as_posix(),
@@ -388,6 +389,7 @@ class QRelionNodeItem(QtW.QWidget):
         current_instance().read_file(path)
 
     def _drag_file_event(self):
+        set_status_tip(f"Start dragging file {self._filepath}", duration=5)
         drag_files(
             self._filepath,
             desc=self._filepath_rel.as_posix(),
@@ -424,10 +426,12 @@ class QJobStateLabel(QtW.QWidget, JobWidgetBase):
         font = self.font()
         font.setPointSize(font.pointSize() + 3)
         self._job_desc.setFont(font)
+        font.setPointSize(font.pointSize() + 2)
         self._state_label.setFont(font)
 
     def on_job_updated(self, job_dir, fp):
-        self._on_job_updated(job_dir)
+        if fp.name == "default_pipeline.star" or fp.suffix == "":
+            self._on_job_updated(job_dir)
 
     def initialize(self, job_dir):
         self._on_job_updated(job_dir)
@@ -447,7 +451,10 @@ class QJobStateLabel(QtW.QWidget, JobWidgetBase):
             case _job_dir.RelionJobState.ABORT_NOW:
                 self._state_label.setText("Aborting")
             case _:
-                self._state_label.setText("Running")
+                if job_dir.is_scheduled():
+                    self._state_label.setText("Scheduled")
+                else:
+                    self._state_label.setText("Running")
 
 
 class QFileLabel(QtW.QWidget):

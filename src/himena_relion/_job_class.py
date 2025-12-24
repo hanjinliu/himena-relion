@@ -127,6 +127,7 @@ class RelionJob(ABC):
             menus=[MenuId.RELION_NEW_JOB],
             title=f"{cls.command_palette_title_prefix()} {cls.job_title()}",
             command_id=command_id,
+            tooltip=getattr(cls, "__doc__", None),
         )
 
     @classmethod

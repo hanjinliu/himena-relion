@@ -11,6 +11,11 @@ def _optimiser_last_iter(path: Path) -> str:
     return str(files[-1]) if files else ""
 
 
+def _binning(path: Path) -> int:
+    jobdir = JobDirectory(path)
+    return int(jobdir.get_job_param("binning"))
+
+
 def _box_size(path: Path) -> int:
     """Extract box size from the job directory path."""
     jobdir = JobDirectory(path)
@@ -133,6 +138,7 @@ connect_jobs(
         "optimisation_set.star": "in_optim.in_optimisation",
     },
     value_mapping={
+        _binning: "binning",
         _box_size: "box_size",
         _crop_size: "crop_size",
     },
@@ -163,10 +169,21 @@ connect_jobs(
     _spa.SelectRemoveDuplicatesJob,
     node_mapping={"run_data.star": "fn_data"},
 )
+# *** -> Mask creation
+connect_jobs(
+    _tomo.InitialModelTomoJob,
+    _spa.MaskCreationJob,
+    node_mapping={"initial_model.mrc": "fn_in"},
+)
 connect_jobs(
     _tomo.Refine3DTomoJob,
     _spa.MaskCreationJob,
     node_mapping={"run_class001.mrc.star": "fn_in"},
+)
+connect_jobs(
+    _tomo.ReconstructParticlesJob,
+    _spa.MaskCreationJob,
+    node_mapping={"merged.mrc": "fn_in"},
 )
 
 connect_jobs(

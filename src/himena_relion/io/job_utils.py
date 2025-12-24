@@ -67,30 +67,6 @@ def mark_as_failed(model: WidgetDataModel):
 @register_function(
     menus=[MenuId.RELION_UTILS],
     types=[Type.RELION_JOB],
-    title="Clone job",
-    command_id="himena-relion:clone-job",
-    group="07-job-operation",
-)
-def clone_relion_job(ui: MainWindow, model: WidgetDataModel):
-    """Clone this RELION job.
-
-    This will not immediately make a copy of the job directory, so it is different from
-    the clone operation in cryoSPARC. Parameters from this job will be copied to the
-    job runner widget to facilitate creating a new job with the same parameters.
-    """
-    job_dir = assert_job(model)
-    job_cls = job_dir._to_job_class()
-    if job_cls is None:
-        raise RuntimeError("Cannot determine job class.")
-    scheduler = job_cls._show_scheduler_widget(ui, {})
-    scheduler.update_by_job(job_cls)
-    scheduler.set_parameters(job_dir.get_job_params_as_dict())
-    scheduler.set_schedule_mode()
-
-
-@register_function(
-    menus=[MenuId.RELION_UTILS],
-    types=[Type.RELION_JOB],
     title="Abort job",
     command_id="himena-relion:abort-job",
     group="07-job-operation",
@@ -126,6 +102,30 @@ def edit_relion_job(ui: MainWindow, model: WidgetDataModel):
     scheduler = job_cls._show_scheduler_widget(ui, {})
     scheduler.set_edit_mode(job_dir)
     scheduler.set_parameters(job_dir.get_job_params_as_dict())
+
+
+@register_function(
+    menus=[MenuId.RELION_UTILS],
+    types=[Type.RELION_JOB],
+    title="Clone job",
+    command_id="himena-relion:clone-job",
+    group="07-job-operation",
+)
+def clone_relion_job(ui: MainWindow, model: WidgetDataModel):
+    """Clone this RELION job.
+
+    This will not immediately make a copy of the job directory, so it is different from
+    the clone operation in cryoSPARC. Parameters from this job will be copied to the
+    job runner widget to facilitate creating a new job with the same parameters.
+    """
+    job_dir = assert_job(model)
+    job_cls = job_dir._to_job_class()
+    if job_cls is None:
+        raise RuntimeError("Cannot determine job class.")
+    scheduler = job_cls._show_scheduler_widget(ui, {})
+    scheduler.update_by_job(job_cls)
+    scheduler.set_parameters(job_dir.get_job_params_as_dict())
+    scheduler.set_schedule_mode()
 
 
 @register_function(

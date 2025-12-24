@@ -51,7 +51,7 @@ class Q2DViewer(QViewer):
         layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignHCenter)
         self._array_view = None
         self._points = np.empty((0, 3), dtype=np.float32)
-        self._point_size = 6.0
+        self._point_size = 5.0
         self._face_colors = np.zeros((0, 4), dtype=np.float32)
         self._edge_colors = np.zeros((0, 4), dtype=np.float32)
         self._dims_slider = QtW.QSlider(QtCore.Qt.Orientation.Horizontal, self)
@@ -168,7 +168,7 @@ class Q2DViewer(QViewer):
         else:
             min_, max_ = self._last_clim
         zs = self._points[:, 0]
-        thickness = self._point_size if self._out_of_slice else 0.01
+        thickness = self._point_size_normed() if self._out_of_slice else 0.01
         zdiff = zs - slider_value
         mask = np.abs(zdiff) < thickness / 2
         sizes = np.sqrt((thickness) ** 2 - (zdiff[mask] * 2) ** 2)
@@ -205,10 +205,14 @@ class Q2DViewer(QViewer):
                 np.ones((1, 2), dtype=np.float32),
                 face_color=np.zeros(4),
                 edge_color=np.zeros(4),
-                size=self._point_size,
+                size=self._point_size_normed(),
             )
             self._canvas.markers_visual.visible = False
         self._canvas.update_canvas()
+
+    def _point_size_normed(self) -> float:
+        # vispy point size is not scaled by device pixel ratio.
+        return self._point_size * self.devicePixelRatioF()
 
     def _auto_contrast(self):
         """Automatically adjust the contrast based on the histogram."""
@@ -244,10 +248,6 @@ class Q2DViewer(QViewer):
         """Automatically fit the camera to the image."""
         self._canvas.auto_fit()
         self._canvas.update_canvas()
-
-    def set_text_overlay(self, text: str, color: str = "white", size: int = 20):
-        """Set a text overlay on the viewer."""
-        # TODO
 
 
 class Q3DViewer(QViewer):
@@ -293,6 +293,8 @@ class Q3DViewer(QViewer):
         if not had_image:
             self.auto_threshold(update_now=False)
             self.auto_fit(update_now=False)
+        else:
+            self._iso_slider.setRange(*self._canvas._lims)
         if update_now:
             self._canvas.update_canvas()
 
@@ -315,10 +317,6 @@ class Q3DViewer(QViewer):
         self._canvas.camera.update()
         if update_now:
             self._canvas.update_canvas()
-
-    def set_text_overlay(self, text: str, color: str = "white", size: int = 20):
-        """Set a text overlay on the viewer."""
-        # TODO
 
     def _on_iso_changed(self, value: float):
         self._canvas.set_iso_threshold(value)

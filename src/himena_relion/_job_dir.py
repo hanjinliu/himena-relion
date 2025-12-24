@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -66,7 +66,11 @@ class JobDirectory:
     @property
     def job_id(self) -> str:
         """Return the job ID based on the directory name."""
-        _id = self.path.stem
+        try:
+            fp = self.path.resolve()
+        except Exception:
+            fp = self.path
+        _id = fp.stem
         if _id.startswith("job"):
             return _id[3:]
         return _id
@@ -162,7 +166,6 @@ class JobDirectory:
         elif self.path.joinpath("RELION_JOB_ABORT_NOW").exists():
             return RelionJobState.ABORT_NOW
         else:
-            # TODO: how to deal with preparing state?
             return RelionJobState.RUNNING
 
     def get_job_param(self, param: str) -> str:
@@ -185,6 +188,17 @@ class JobDirectory:
                     item.unlink()
             else:
                 shutil.rmtree(item)
+
+    def is_scheduled(self) -> bool:
+        out = False
+        with suppress(Exception):
+            if (path := self.path.joinpath("default_pipeline.star")).exists():
+                block = read_star_block(path, "pipeline_processes")
+                _id = "/".join(self.path.as_posix().split("/")[-2:]) + "/"
+                df = block.to_pandas()
+                pos_sl = df["rlnPipeLineProcessName"] == _id
+                out = df[pos_sl]["rlnPipeLineProcessStatusLabel"] == "Scheduled"
+        return out
 
 
 class HasFrameJobDirectory(JobDirectory):

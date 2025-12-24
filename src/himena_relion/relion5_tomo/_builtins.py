@@ -287,6 +287,8 @@ class CtfEstimationTomoJob(_Relion5TomoJob, CtfEstimationJob):
 
 
 class ExcludeTiltJob(_Relion5TomoJob):
+    """Manually select tilts to exclude from further processing."""
+
     @classmethod
     def type_label(cls) -> str:
         return "relion.excludetilts"
@@ -336,6 +338,8 @@ class _AlignTiltSeriesJobBase(_Relion5TomoJob):
 
 
 class AlignTiltSeriesImodFiducial(_AlignTiltSeriesJobBase):
+    """Automatic tilt series alignment using IMOD fiducial tracking."""
+
     @classmethod
     def command_id(cls):
         return super().command_id() + ".imodfiducial"
@@ -386,6 +390,8 @@ class AlignTiltSeriesImodFiducial(_AlignTiltSeriesJobBase):
 
 
 class AlignTiltSeriesImodPatch(_AlignTiltSeriesJobBase):
+    """Automatic tilt series alignment using IMOD patch tracking."""
+
     @classmethod
     def command_id(cls):
         return super().command_id() + ".imodpatch"
@@ -437,6 +443,8 @@ class AlignTiltSeriesImodPatch(_AlignTiltSeriesJobBase):
 
 
 class AlignTiltSeriesAreTomo2(_AlignTiltSeriesJobBase):
+    """Automatic tilt series alignment using AreTomo2."""
+
     @classmethod
     def command_id(cls):
         return super().command_id() + ".aretomo2"
@@ -489,6 +497,8 @@ class AlignTiltSeriesAreTomo2(_AlignTiltSeriesJobBase):
 
 
 class ReconstructTomogramJob(_Relion5TomoJob):
+    """Reconstruct tomograms from aligned tilt series by back projection."""
+
     @classmethod
     def type_label(cls) -> str:
         return "relion.reconstructtomograms"
@@ -581,6 +591,8 @@ class ReconstructTomogramJob(_Relion5TomoJob):
 
 
 class PickJob(_Relion5TomoJob):
+    """Manually pick particles from tomograms."""
+
     @classmethod
     def type_label(cls) -> str:
         return "relion.picktomo"
@@ -611,6 +623,8 @@ class PickJob(_Relion5TomoJob):
 
 
 class ExtractParticlesTomoJob(_Relion5TomoJob):
+    """Extract pseudo subtomograms for averaging and refinement."""
+
     @classmethod
     def type_label(cls) -> str:
         return "relion.pseudosubtomo"
@@ -1061,7 +1075,7 @@ class Refine3DTomoJob(_Relion5TomoJob, Refine3DJob):
         do_combine_thru_disc: DO_COMBINE_THRU_DISC_TYPE = False,
         gpu_ids: GPU_IDS_TYPE = "",
         # Running
-        nr_mpi: MPI_TYPE = 1,
+        nr_mpi: MPI_TYPE = 3,
         nr_threads: THREAD_TYPE = 1,
         do_queue: DO_QUEUE_TYPE = False,
         min_dedicated: MIN_DEDICATED_TYPE = 1,
