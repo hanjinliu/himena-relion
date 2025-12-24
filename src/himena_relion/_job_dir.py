@@ -190,11 +190,12 @@ class JobDirectory:
                 shutil.rmtree(item)
 
     def is_scheduled(self) -> bool:
+        """Check if the job is in the scheduled state."""
         out = False
         with suppress(Exception):
             if (path := self.path.joinpath("default_pipeline.star")).exists():
                 block = read_star_block(path, "pipeline_processes")
-                _id = "/".join(self.path.as_posix().split("/")[-2:]) + "/"
+                _id = "/".join(path.parent.as_posix().split("/")[-2:]) + "/"
                 df = block.to_pandas()
                 pos_sl = df["rlnPipeLineProcessName"] == _id
                 out = bool(
@@ -1082,9 +1083,11 @@ class SelectInteractiveJobDirectory(JobDirectory):
         """Return the path to the particles star file."""
         return self.path / "particles.star"
 
-    def particles_pre_star(self) -> Path:
+    def particles_pre_star(self) -> Path | None:
         """Return the path to the pre-selection particles star file."""
         path_opt_star = self._opt_star()
+        if not path_opt_star.exists():
+            return None
         opt_dict = read_star(path_opt_star).first().trust_single().to_dict()
         return self.relion_project_dir / opt_dict["rlnTomoParticlesFile"]
 
@@ -1114,12 +1117,12 @@ class SelectInteractiveJobDirectory(JobDirectory):
                 mrc_paths.append(None)
         return mrc_paths
 
-    def _opt_star(self):
+    def _opt_star(self) -> Path:
         b_in = read_star_block(self.path / "job_pipeline.star", "pipeline_input_edges")
         df = b_in.trust_loop().to_pandas()
         optimizer_star_path = Path(df["rlnPipeLineEdgeFromNode"].iloc[0])
         new_stem = optimizer_star_path.stem[: -len("optimiser")] + "optimisation_set"
-        return optimizer_star_path.parent / (new_stem + ".star")
+        return self.relion_project_dir / optimizer_star_path.parent / f"{new_stem}.star"
 
 
 class RemoveDuplicatesJobDirectory(JobDirectory):

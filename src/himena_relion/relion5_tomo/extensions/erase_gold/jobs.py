@@ -26,6 +26,8 @@ MIC_EVEN = "rlnMicrographNameEven"
 
 
 class FindBeads3D(RelionExternalJob):
+    """Run findbeads3d on tomograms to locate gold fiducials."""
+
     def output_nodes(self):
         return [("tomograms.star", "TomogramGroupMetadata.star")]
 
@@ -79,6 +81,8 @@ class FindBeads3D(RelionExternalJob):
 
 
 class EraseGold(RelionExternalJob):
+    """Replace golds in tilt series with noise."""
+
     def output_nodes(self):
         return [("tilt_series.star", "TomogramGroupMetadata.star")]
 

@@ -21,6 +21,11 @@ from .widgets import QInspectViewer
 
 
 class InspectParticles(RelionExternalJob):
+    """View particles in tomograms.
+
+    This job is also useful to create an optimisation_set.star from tomograms.star and
+    particles.star files."""
+
     def output_nodes(self):
         return [("optimisation_set.star", "TomoOptimisationSet.star")]
 

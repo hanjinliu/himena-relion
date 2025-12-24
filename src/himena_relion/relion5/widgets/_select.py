@@ -95,7 +95,7 @@ class QRemoveDuplicatesViewer(QSelectJobBase):
         path_sel = job_dir.particles_star()
         path_rem = job_dir.particles_removed_star()
         if not (path_sel.exists() and path_rem.exists()):
-            return "Job is running..."
+            return "Not enough output files to display results."
         yield "<h2>Summary</h2>"
         try:
             block_selected = read_star_block(path_sel, "particles").trust_loop()
@@ -113,8 +113,8 @@ class QSelectInteractiveViewer(QSelectJobBase):
     def insert_html(self, job_dir: _job_dir.SelectInteractiveJobDirectory):
         path_all = job_dir.particles_pre_star()
         path_sel = job_dir.particles_star()
-        if not (path_sel.exists() and path_all.exists()):
-            return "Job is running..."
+        if path_all is None or not (path_sel.exists() and path_all.exists()):
+            return "Not enough output files to display results."
         yield "<h2>Summary</h2>"
         try:
             block_all = read_star_block(path_all, "particles").trust_loop()

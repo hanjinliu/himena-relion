@@ -936,6 +936,15 @@ class _SelectJob(_Relion5Job):
             kwargs.setdefault(name, default)
         return super().normalize_kwargs(**kwargs)
 
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs):
+        kwargs = super().normalize_kwargs_inv(**kwargs)
+        params = cls._signature().parameters
+        for name in list(kwargs.keys()):
+            if name not in params:
+                kwargs.pop(name)
+        return kwargs
+
 
 class SelectClassesInteractiveJob(_SelectJob):
     @classmethod
