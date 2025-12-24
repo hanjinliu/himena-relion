@@ -271,7 +271,7 @@ class EraseGold(RelionExternalJob):
                 tilt_star_df[col] = _to_update
 
             star_save_path = tilt_save_dir / info.tomo_tilt_series_star_file.name
-            as_star({"global": tilt_star_df}).write(star_save_path)
+            as_star({info.tomo_name: tilt_star_df}).write(star_save_path)
             self.console.log(f"Erased tilt series starfile saved to {star_save_path}")
             yield
 

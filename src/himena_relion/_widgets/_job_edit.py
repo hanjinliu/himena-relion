@@ -202,6 +202,8 @@ class ScheduleMode(Mode):
         if isinstance(proc, RelionJobExecution):
             widget._ui.read_file(proc.job_directory.path)
             widget._ui.show_notification(f"Job '{job_cls.job_title()}' started.")
+        else:
+            widget._ui.show_notification(f"Job '{job_cls.job_title()}' scheduled.")
 
     def button_text(self) -> str:
         return "Run Job"
@@ -240,7 +242,7 @@ class EditMode(Mode):
         params = widget.get_parameters()
         job.edit_and_run_job(**params)
         widget.clear_content()
-        widget._ui.show_notification(f"Job '{job_cls.job_title()}' edited and rerun.")
+        widget._ui.show_notification(f"Job '{job_cls.job_title()}' Overwritten.")
 
     def button_text(self) -> str:
         return "Overwrite And Run"

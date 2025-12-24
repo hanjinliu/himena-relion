@@ -3,7 +3,7 @@ from typing import Iterator, Sequence
 from enum import Enum
 from pathlib import Path
 from dataclasses import dataclass, field
-from starfile_rs import as_star, read_star
+from starfile_rs import empty_star, read_star
 import pandas as pd
 
 
@@ -200,9 +200,11 @@ class RelionPipeline:
 
     def write_star(self, path: str | Path):
         nodes = self.inputs + self.outputs
-        df_all = {
-            "pipeline_general": self.general,
-            "pipeline_processes": pd.DataFrame(
+        star = empty_star()
+        star.with_loop_block("pipeline_general", self.general)
+        star.with_loop_block(
+            "pipeline_processes",
+            pd.DataFrame(
                 {
                     "rlnPipeLineProcessName": [self.process_name],
                     "rlnPipeLineProcessAlias": [self.process_alias or ""],
@@ -210,7 +212,10 @@ class RelionPipeline:
                     "rlnPipeLineProcessStatusLabel": [self.status_label or ""],
                 }
             ),
-            "pipeline_nodes": pd.DataFrame(
+        )
+        star.with_loop_block(
+            "pipeline_nodes",
+            pd.DataFrame(
                 {
                     "rlnPipeLineNodeName": [node.path.as_posix() for node in nodes],
                     "rlnPipeLineNodeTypeLabel": [
@@ -219,7 +224,10 @@ class RelionPipeline:
                     "rlnPipeLineNodeTypeLabelDepth": [1 for _ in nodes],
                 }
             ),
-            "pipeline_input_edges": pd.DataFrame(
+        )
+        star.with_loop_block(
+            "pipeline_input_edges",
+            pd.DataFrame(
                 {
                     "rlnPipeLineEdgeFromNode": [
                         node.path.as_posix() for node in self.inputs
@@ -227,7 +235,10 @@ class RelionPipeline:
                     "rlnPipeLineEdgeProcess": [self.process_name for _ in self.inputs],
                 }
             ),
-            "pipeline_output_edges": pd.DataFrame(
+        )
+        star.with_loop_block(
+            "pipeline_output_edges",
+            pd.DataFrame(
                 {
                     "rlnPipeLineEdgeProcess": [self.process_name for _ in self.outputs],
                     "rlnPipeLineEdgeToNode": [
@@ -235,9 +246,9 @@ class RelionPipeline:
                     ],
                 }
             ),
-        }
-        as_star(df_all).write(path)
-        return
+        )
+        print(star.to_string())
+        return star.write(path)
 
 
 @dataclass
