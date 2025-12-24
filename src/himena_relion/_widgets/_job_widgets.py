@@ -99,9 +99,10 @@ class QTextEditBase(QtW.QWidget, JobWidgetBase):
         self._text_edit.setPlainText(text)
         vbar.setValue(min(vval_old, vbar.maximum()))
         hbar.setValue(min(hval_old, hbar.maximum()))
-        self._text_edit.textCursor().setPosition(sel0)
+        max_position = len(text)
+        self._text_edit.textCursor().setPosition(min(sel0, max_position))
         self._text_edit.textCursor().setPosition(
-            sel1, QtGui.QTextCursor.MoveMode.KeepAnchor
+            min(sel1, max_position), QtGui.QTextCursor.MoveMode.KeepAnchor
         )
 
     def setReadOnly(self, readonly: bool):

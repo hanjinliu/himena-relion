@@ -122,6 +122,7 @@ class RelionJob(ABC):
             cls.job_title(),
             command_id,
         )
+        cls._show_scheduler_widget.__doc__ = cls.__doc__
         register_function(
             cls._show_scheduler_widget,
             menus=[MenuId.RELION_NEW_JOB],
@@ -524,30 +525,39 @@ def _node_mapping_to_context(
         out = {}
         rln_dir = val.relion_project_dir
         for from_, to_ in node_mapping.items():
-            if isinstance(from_, str):
-                file_path = val.path.joinpath(from_)
-            elif callable(from_):
-                returned_value = from_(val.path)
-                if returned_value is None:
-                    continue
-                file_path = Path(returned_value)
-            else:
-                raise TypeError(f"Unsupported from_ type: {type(from_)}")
-            file_path_rel = file_path.relative_to(rln_dir).as_posix()
-            if "." in to_:  # dict valule
-                to_, subkey = to_.split(".", 1)
-                if to_ not in out:
-                    out[to_] = {}
-                out[to_][subkey] = file_path_rel
-            else:
-                out[to_] = file_path_rel
+            try:
+                if isinstance(from_, str):
+                    file_path = val.path.joinpath(from_)
+                elif callable(from_):
+                    returned_value = from_(val.path)
+                    if returned_value is None:
+                        continue
+                    file_path = Path(returned_value)
+                else:
+                    raise TypeError(f"Unsupported from_ type: {type(from_)}")
+                if file_path.is_relative_to(rln_dir):
+                    file_path = file_path.relative_to(rln_dir)
+                file_path_rel = file_path.as_posix()
+                if "." in to_:  # dict valule
+                    to_, subkey = to_.split(".", 1)
+                    if to_ not in out:
+                        out[to_] = {}
+                    out[to_][subkey] = file_path_rel
+                else:
+                    out[to_] = file_path_rel
+            except Exception as e:
+                _LOGGER.error("Error in node mapping from %r to %r: %s", from_, to_, e)
         for from_, to_ in value_mapping.items():
-            if callable(from_):
-                returned_value = from_(val.path)
-                if returned_value is None:
-                    continue
-            else:
-                raise TypeError(f"Unsupported from_ type: {type(from_)}")
+            try:
+                if callable(from_):
+                    returned_value = from_(val.path)
+                    if returned_value is None:
+                        continue
+                else:
+                    raise TypeError(f"Unsupported from_ type: {type(from_)}")
+            except Exception as e:
+                _LOGGER.error("Error in value mapping from %r to %r: %s", from_, to_, e)
+                continue
             out[to_] = returned_value
         return out
 
