@@ -499,6 +499,14 @@ class MotionCorrOwnJob(_MotionCorrJobBase):
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
+    @classmethod
+    def setup_widgets(cls, widgets: dict[str, ValueWidget]) -> None:
+        @widgets["do_save_ps"].changed.connect
+        def _on_do_float16_changed(value: bool):
+            widgets["group_for_ps"].enabled = not value
+
+        _on_do_float16_changed(widgets["do_save_ps"].value)  # initialize
+
 
 class CtfEstimationJob(_Relion5Job):
     """Contrast transfer function (CTF) estimation using CTFFIND4."""
@@ -610,7 +618,7 @@ class Class3DJob(_Relion5Job):
                 kwargs["helical_rise_inistep"],
             ) = kwargs.pop("helical_rise_range")
         if "rot_tilt_psi_range" in kwargs:
-            kwargs["rot_range"], kwargs["tilt_range"], kwargs["psi_range"] = kwargs.pop(
+            kwargs["range_rot"], kwargs["range_tilt"], kwargs["range_psi"] = kwargs.pop(
                 "rot_tilt_psi_range"
             )
         if "helical_tube_diameter_range" in kwargs:
@@ -638,9 +646,9 @@ class Class3DJob(_Relion5Job):
             kwargs.pop("helical_rise_inistep", 0),
         )
         kwargs["rot_tilt_psi_range"] = (
-            kwargs.pop("rot_range", -1),
-            kwargs.pop("tilt_range", 15),
-            kwargs.pop("psi_range", 10),
+            kwargs.pop("range_rot", -1),
+            kwargs.pop("range_tilt", 15),
+            kwargs.pop("range_psi", 10),
         )
         kwargs["helical_tube_diameter_range"] = (
             kwargs.pop("helical_tube_inner_diameter", -1),
@@ -650,6 +658,7 @@ class Class3DJob(_Relion5Job):
             kwargs.pop("offset_range", 5),
             kwargs.pop("offset_step", 1),
         )
+        kwargs.pop("fn_cont", None)
         return super().normalize_kwargs_inv(**kwargs)
 
     def run(
@@ -730,8 +739,13 @@ class Class3DJob(_Relion5Job):
             widgets["sigma_angles"].enabled = value
             widgets["relax_sym"].enabled = value
 
-        widgets["sigma_angles"].enabled = False
-        widgets["relax_sym"].enabled = False
+        @widgets["do_ctf_correction"].changed.connect
+        def _on_do_ctf_correction_changed(value: bool):
+            widgets["ctf_intact_first_peak"].enabled = value
+
+        widgets["sigma_angles"].enabled = widgets["do_local_ang_searches"].value
+        widgets["relax_sym"].enabled = widgets["do_local_ang_searches"].value
+        widgets["ctf_intact_first_peak"].enabled = widgets["do_ctf_correction"].value
 
         _setup_helix_params(widgets)
 
@@ -857,6 +871,11 @@ class Refine3DJob(_Relion5Job):
 
     @classmethod
     def setup_widgets(self, widgets):
+        @widgets["do_ctf_correction"].changed.connect
+        def _on_do_ctf_correction_changed(value: bool):
+            widgets["ctf_intact_first_peak"].enabled = value
+
+        widgets["ctf_intact_first_peak"].enabled = widgets["do_ctf_correction"].value
         _setup_helix_params(widgets)
 
 

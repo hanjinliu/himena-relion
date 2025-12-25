@@ -1,9 +1,12 @@
 from pathlib import Path
-
-from himena_relion._job_dir import JobDirectory
+import logging
+from starfile_rs import read_star
 from himena_relion.relion5 import _builtins as _spa
 from himena_relion.relion5_tomo import _builtins as _tomo
+from himena_relion._job_dir import JobDirectory
 from himena_relion._job_class import connect_jobs
+
+_LOGGER = logging.getLogger(__name__)
 
 
 def _optimiser_last_iter(path: Path) -> str:
@@ -11,21 +14,63 @@ def _optimiser_last_iter(path: Path) -> str:
     return str(files[-1]) if files else ""
 
 
-def _binning(path: Path) -> int:
+def _subtomo_binning(path: Path) -> int:
     jobdir = JobDirectory(path)
     return int(jobdir.get_job_param("binning"))
 
 
-def _box_size(path: Path) -> int:
+def _subtomo_box_size(path: Path) -> int:
     """Extract box size from the job directory path."""
     jobdir = JobDirectory(path)
     return int(jobdir.get_job_param("box_size"))
 
 
-def _crop_size(path: Path) -> int:
+def _subtomo_crop_size(path: Path) -> int:
     """Extract crop size from the job directory path."""
     jobdir = JobDirectory(path)
     return int(jobdir.get_job_param("crop_size"))
+
+
+def _pixel_size_from_opt_star(path: Path) -> float:
+    _set = read_star(path).first().trust_single()
+    tomo_star = read_star(_set["rlnTomoTomogramsFile"]).first().trust_loop()
+    return tomo_star.to_pandas()["rlnMicrographOriginalPixelSize"].mean()
+
+
+def _subtomo_diameter_a(path: Path) -> float:
+    """Extract particle diameter A from the job directory path."""
+    box_size = _subtomo_box_size(path)
+    try:
+        pix_size = _pixel_size_from_opt_star(path / "optimisation_set.star")
+        diameter_a = box_size * pix_size
+    except Exception:
+        _LOGGER.warning(
+            "Failed to extract pixel size, using default diameter", exc_info=True
+        )
+        diameter_a = 200.0  # default value
+    return round(diameter_a, 1)
+
+
+def _recon_diameter_a(path: Path) -> float:
+    """Extract particle diameter A from the job directory path."""
+    box_size = _subtomo_box_size(path)
+    try:
+        jobdir = JobDirectory(path)
+        pix_size = _pixel_size_from_opt_star(jobdir.get_job_param("in_optimisation"))
+        diameter_a = box_size * pix_size
+    except Exception:
+        _LOGGER.warning(
+            "Failed to extract pixel size, using default diameter", exc_info=True
+        )
+        diameter_a = 200.0  # default value
+    return round(diameter_a, 1)
+
+
+def _inherit_particle_diameter(path: Path) -> float:
+    """Inherit particle diameter from the ExtractParticlesTomoJob."""
+    jobdir = JobDirectory(path)
+    dia = jobdir.get_job_param("particle_diameter")
+    return round(float(dia), 1)
 
 
 for _MotionCorJob in [_tomo.MotionCorr2TomoJob, _tomo.MotionCorrOwnTomoJob]:
@@ -118,6 +163,12 @@ connect_jobs(
 connect_jobs(
     _spa.SelectRemoveDuplicatesJob,
     _tomo.ReconstructParticlesJob,
+    node_mapping={"particles.star": "in_optim.in_optimisation"},
+)
+connect_jobs(
+    _spa.SelectRemoveDuplicatesJob,
+    _tomo.ExtractParticlesTomoJob,
+    node_mapping={"particles.star": "in_optim.in_optimisation"},
 )
 connect_jobs(
     _tomo.PickJob,
@@ -130,6 +181,9 @@ connect_jobs(
     node_mapping={
         "optimisation_set.star": "in_optim.in_optimisation",
     },
+    value_mapping={
+        _subtomo_diameter_a: "particle_diameter",
+    },
 )
 connect_jobs(
     _tomo.ExtractParticlesTomoJob,
@@ -138,9 +192,9 @@ connect_jobs(
         "optimisation_set.star": "in_optim.in_optimisation",
     },
     value_mapping={
-        _binning: "binning",
-        _box_size: "box_size",
-        _crop_size: "crop_size",
+        _subtomo_binning: "binning",
+        _subtomo_box_size: "box_size",
+        _subtomo_crop_size: "crop_size",
     },
 )
 connect_jobs(
@@ -150,6 +204,9 @@ connect_jobs(
         "optimisation_set.star": "in_optim.in_optimisation",
         "initial_model.mrc": "fn_ref",
     },
+    value_mapping={
+        _inherit_particle_diameter: "particle_diameter",
+    },
 )
 connect_jobs(
     _tomo.InitialModelTomoJob,
@@ -158,10 +215,16 @@ connect_jobs(
         "optimisation_set.star": "in_optim.in_optimisation",
         "initial_model.mrc": "fn_ref",
     },
+    value_mapping={
+        _inherit_particle_diameter: "particle_diameter",
+    },
 )
 connect_jobs(
     _tomo.Class3DTomoJob,
     _tomo.Refine3DTomoJob,
+    value_mapping={
+        _inherit_particle_diameter: "particle_diameter",
+    },
 )
 
 connect_jobs(
@@ -194,10 +257,24 @@ connect_jobs(
 
 connect_jobs(
     _tomo.ReconstructParticlesJob,
+    _tomo.Class3DTomoJob,
+    node_mapping={
+        _tomo.ReconstructParticlesJob.get_optimisation_set: "in_optim.in_optimisation",
+        "merged.mrc": "fn_ref",
+    },
+    value_mapping={
+        _recon_diameter_a: "particle_diameter",
+    },
+)
+connect_jobs(
+    _tomo.ReconstructParticlesJob,
     _tomo.Refine3DTomoJob,
     node_mapping={
         _tomo.ReconstructParticlesJob.get_optimisation_set: "in_optim.in_optimisation",
         "merged.mrc": "fn_ref",
+    },
+    value_mapping={
+        _recon_diameter_a: "particle_diameter",
     },
 )
 connect_jobs(

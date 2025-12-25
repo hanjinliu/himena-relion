@@ -24,7 +24,9 @@ class InspectParticles(RelionExternalJob):
     """View particles in tomograms.
 
     This job is also useful to create an optimisation_set.star from tomograms.star and
-    particles.star files."""
+    particles.star files. Unlike Pick job, this job does not discard any particle
+    properties in the input particles.star file.
+    """
 
     def output_nodes(self):
         return [("optimisation_set.star", "TomoOptimisationSet.star")]

@@ -44,9 +44,12 @@ class QExtractJobViewer(QJobScrollArea):
         """Initialize the viewer with the job directory."""
         self._job_dir = job_dir
         # update choices, don't include tomogram IDs with no subtomograms
+        subtomo_dir = job_dir.path.joinpath("Subtomograms")
+        if not subtomo_dir.exists():
+            return
         tomo_names = [
             path.name
-            for path in job_dir.path.joinpath("Subtomograms").iterdir()
+            for path in subtomo_dir.iterdir()
             if path.is_dir() and (next(path.iterdir(), None) is not None)
         ]
         existing_names = [

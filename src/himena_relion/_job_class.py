@@ -466,18 +466,20 @@ def to_string(value) -> str:
     return value
 
 
+# For debugging purposes, such as drawing connection maps
+CONNECTED_JOBS: list[tuple[type[RelionJob], type[RelionJob]]] = []
+
+
 def connect_jobs(
     pre: type[RelionJob],
     post: type[RelionJob],
     node_mapping: dict[str | Callable[[Path], str], str] | None = None,
     value_mapping: dict[str | Callable[[Path], Any], Any] | None = None,
 ):
+    CONNECTED_JOBS.append((pre, post))
     type_pre = Type.RELION_JOB + "." + pre.himena_model_type()
     when = when_reader_used(type_pre, "himena_relion.io.read_relion_job")
-    if node_mapping is None:
-        user_context = None
-    else:
-        user_context = _node_mapping_to_context(node_mapping, value_mapping)
+    user_context = _node_mapping_to_context(node_mapping, value_mapping)
     when.add_command_suggestion(
         post.command_id(),
         user_context=user_context,
@@ -593,3 +595,40 @@ def _node_mapping_to_context(
         return out
 
     return _func
+
+
+def plot_connected_jobs(tomo: bool = True):
+    import matplotlib.pyplot as plt
+    from himena_relion.relion5_tomo._builtins import _Relion5TomoJob
+
+    xticklabels = []
+    yticklabels = []
+    for pre, post in CONNECTED_JOBS:
+        if not (issubclass(pre, _Relion5TomoJob) or issubclass(post, _Relion5TomoJob)):
+            if tomo:
+                continue
+        if post.__name__ not in xticklabels:
+            xticklabels.append(post.__name__)
+        if pre.__name__ not in yticklabels:
+            yticklabels.append(pre.__name__)
+    heatmap = np.zeros((len(yticklabels), len(xticklabels)), dtype=int)
+    for pre, post in CONNECTED_JOBS:
+        try:
+            x = xticklabels.index(post.__name__)
+            y = yticklabels.index(pre.__name__)
+        except ValueError:
+            continue
+        heatmap[y, x] += 1
+    plt.figure(figsize=(8, 8))
+    for i in range(0, heatmap.shape[0], 5):
+        plt.axhline(i - 0.5, color="gray", linewidth=0.5)
+    for j in range(0, heatmap.shape[1], 5):
+        plt.axvline(j - 0.5, color="gray", linewidth=0.5)
+    plt.imshow(heatmap, cmap="Blues", interpolation="nearest")
+    plt.xticks(ticks=np.arange(len(xticklabels)), labels=xticklabels, rotation=90)
+    plt.yticks(ticks=np.arange(len(yticklabels)), labels=yticklabels)
+    plt.xlabel("post")
+    plt.ylabel("pre")
+    plt.title("Connected RELION Jobs")
+    plt.tight_layout()
+    plt.show()

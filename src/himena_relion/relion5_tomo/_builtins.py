@@ -869,6 +869,14 @@ class InitialModelTomoJob(_Relion5TomoJob):
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
+    @classmethod
+    def setup_widgets(self, widgets):
+        @widgets["do_ctf_correction"].changed.connect
+        def _on_do_ctf_correction_changed(value: bool):
+            widgets["ctf_intact_first_peak"].enabled = value
+
+        widgets["ctf_intact_first_peak"].enabled = widgets["do_ctf_correction"].value
+
 
 class InitialModelTomoContinue(_RelionBuiltinContinue):
     original_class = InitialModelTomoJob
@@ -897,6 +905,8 @@ class InitialModelTomoContinue(_RelionBuiltinContinue):
 
 
 class Class3DTomoJob(_Relion5TomoJob, Class3DJob):
+    """3D classification of subtomograms."""
+
     @classmethod
     def type_label(cls) -> str:
         return "relion.class3d"
@@ -1237,6 +1247,13 @@ class CtfRefineTomoJob(_Relion5TomoJob):
         min_dedicated: MIN_DEDICATED_TYPE = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
+
+    def setup_widgets(self, widgets):
+        @widgets["do_reg_def"].changed.connect
+        def _on_do_reg_def_changed(value: bool):
+            widgets["lambda_param"].enabled = value
+
+        widgets["lambda_param"].enabled = widgets["do_reg_def"].value
 
 
 class PostProcessTomoJob(_Relion5TomoJob, PostProcessJob):
