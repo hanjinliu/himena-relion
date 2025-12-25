@@ -9,12 +9,22 @@ from starfile_rs import read_star_block
 
 
 def bin_image(img: np.ndarray, nbin: int) -> np.ndarray:
-    """Bin a 2D image by an integer factor."""
-    ny, nx = img.shape
-    nyb = ny // nbin
-    nxb = nx // nbin
-    img = img[: nyb * nbin, : nxb * nbin]
-    return img.reshape(nyb, nbin, nxb, nbin).mean(axis=(1, 3))
+    """Bin a 2D or 3D image by an integer factor."""
+    if img.ndim == 2:
+        ny, nx = img.shape
+        nyb = ny // nbin
+        nxb = nx // nbin
+        img = img[: nyb * nbin, : nxb * nbin]
+        return img.reshape(nyb, nbin, nxb, nbin).mean(axis=(1, 3))
+    elif img.ndim == 3:
+        nz, ny, nx = img.shape
+        nzb = nz // nbin
+        nyb = ny // nbin
+        nxb = nx // nbin
+        img = img[: nzb * nbin, : nyb * nbin, : nxb * nbin]
+        return img.reshape(nzb, nbin, nyb, nbin, nxb, nbin).mean(axis=(1, 3, 5))
+    else:
+        raise ValueError(f"Expected 2D or 3D image, got {img.ndim}D")
 
 
 def lowpass_filter(img: np.ndarray, cutoff: float) -> np.ndarray:
@@ -37,12 +47,12 @@ def frequency_mesh(shape: tuple[int, int]) -> np.ndarray:
 
 
 # Adapted from skimage.filters.thresholding (BSD-2-Clause license)
-def threshold_yen(image: np.ndarray, nbins=256):
-    counts, edges = np.histogram(
-        image.reshape(-1),
-        nbins,
-        density=False,
-    )
+def threshold_yen(image: np.ndarray, nbins=256, use_positive: bool = True) -> float:
+    if use_positive:
+        input_arr = image[image > 0].ravel()
+    else:
+        input_arr = image.ravel()
+    counts, edges = np.histogram(input_arr, nbins, density=False)
     bin_centers = (edges[:-1] + edges[1:]) / 2
 
     # On blank images (e.g. filled with 0) with int dtype, `histogram()`
@@ -59,7 +69,7 @@ def threshold_yen(image: np.ndarray, nbins=256):
     # P2_sq indexes is shifted +1. I assume, with P1[:-1] it's help avoid
     # '-inf' in crit. ImageJ Yen implementation replaces those values by zero.
     crit = np.log(((P1_sq[:-1] * P2_sq[1:]) ** -1) * (P1[:-1] * (1.0 - P1[:-1])) ** 2)
-    return bin_centers[crit.argmax()]
+    return float(bin_centers[crit.argmax()])
 
 
 def read_icon_svg(name: str) -> str:

@@ -159,12 +159,16 @@ class QRelionPipelineFlowChart(QtW.QWidget):
                     _LOGGER.warning("Failed to read default_pipeline.star: %s", e)
                 else:
                     success_old = self._state_to_job_map[NodeStatus.SUCCEEDED]
+                    failed_old = self._state_to_job_map[NodeStatus.FAILED]
                     self._state_to_job_map.clear()
                     for job in pipeline.iter_nodes():
                         self._state_to_job_map[job.status].add(job)
                     success_new = self._state_to_job_map[NodeStatus.SUCCEEDED]
+                    failed_new = self._state_to_job_map[NodeStatus.FAILED]
+                    ui = self._flow_chart._ui
+
+                    # Notify newly succeeded jobs and run scheduled jobs
                     if succeeded := success_new - success_old:
-                        ui = self._flow_chart._ui
                         for job in self._state_to_job_map[NodeStatus.SCHEDULED]:
                             # run all the scheduled jobs whose dependencies are met
                             if is_all_inputs_ready(job.path):
@@ -172,10 +176,19 @@ class QRelionPipelineFlowChart(QtW.QWidget):
                                 ui.show_notification(
                                     f"Scheduled job {job.job_repr()} started."
                                 )
-                        for job in succeeded:
-                            ui.show_notification(f"Job {job.job_repr()} succeeded.")
+                        ui.show_notification(
+                            "\n".join(
+                                f"Job {job.job_repr()} succeeded." for job in succeeded
+                            )
+                        )
 
-                    # update the internal data (thus, the flow chart)
+                    # Notify newly failed jobs
+                    if failed := failed_new - failed_old:
+                        ui.show_notification(
+                            "\n".join(f"Job {job.job_repr()} failed." for job in failed)
+                        )
+
+                    # Update the internal data (thus, the flow chart)
                     model = WidgetDataModel(
                         value=pipeline,
                         type=Type.RELION_PIPELINE,

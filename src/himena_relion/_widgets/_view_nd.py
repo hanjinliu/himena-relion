@@ -259,7 +259,8 @@ class Q3DViewer(QViewer):
         self._canvas = Vispy3DViewer(self)
         self._canvas._scene.bgcolor = "#242424"
         self._canvas._viewbox.border_color = "#4A4A4A"
-        self._canvas.native.setMinimumSize(180, 180)
+        self._canvas.native.setMaximumSize(400, 400)
+        self._canvas.native.setMinimumSize(300, 300)
         layout = QtW.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignHCenter)
@@ -307,7 +308,7 @@ class Q3DViewer(QViewer):
         img = self._canvas.image
         if self._canvas.image_visual.visible:
             if thresh is None:
-                thresh = _utils.threshold_yen(img)
+                thresh = _utils.threshold_yen(_utils.bin_image(img, 4))
             self._iso_slider.setValue(thresh)
             self._iso_slider.setRange(*self._canvas._lims)
         if update_now:

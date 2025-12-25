@@ -17,7 +17,6 @@ class QMaskCreateViewer(QJobScrollArea):
     def __init__(self):
         super().__init__()
         self._viewer = Q3DViewer()
-        self._viewer.setMaximumSize(400, 400)
         self._layout.addWidget(self._viewer)
         self._layout.addWidget(spacer_widget())
 

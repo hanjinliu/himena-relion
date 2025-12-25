@@ -25,7 +25,7 @@ class QRefine3DViewer(QJobScrollArea):
         layout = self._layout
         self._viewer = Q3DViewer()
         max_width = 400
-        self._viewer.setMaximumSize(max_width, max_width)
+        self._viewer.setMaximumWidth(max_width)
         self._fsc_plot = QPlotCanvas(self)
         self._iter_choice = QIntWidget("Iteration", label_width=60)
         self._iter_choice.setMinimum(0)
@@ -91,7 +91,6 @@ class QRefine3DViewer(QJobScrollArea):
 
     def _on_items_read(self, items: tuple[np.ndarray | None, pd.DataFrame | None, int]):
         map_out, df_fsc, num_particles = items
-        had_image = self._viewer.has_image
         self._viewer.set_image(map_out)
         if df_fsc is not None:
             self._fsc_plot.plot_fsc_refine(df_fsc)
@@ -99,9 +98,6 @@ class QRefine3DViewer(QJobScrollArea):
             self._fsc_plot.clear()
         self._num_particles_label.setText(f"<b>{num_particles}</b> particles")
         self._worker = None
-        if not had_image:
-            self._viewer.auto_threshold(update_now=False)
-            self._viewer.auto_fit()
 
     def widget_added_callback(self):
         self._fsc_plot.widget_added_callback()

@@ -14,6 +14,7 @@ class QPlotCanvas(QModelMatplotlibCanvas):
         super().__init__()
         self.setParent(parent)
         self.setMaximumSize(400, 280)
+        self.setMinimumSize(300, 200)
         self.clear()
 
     def clear(self):
