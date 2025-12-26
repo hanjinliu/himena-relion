@@ -855,7 +855,7 @@ class InitialModelTomoJob(_Relion5TomoJob):
         ] = True,
         sigma_tilt: SIGMA_TILT_TYPE = -1,
         # Compute
-        use_parallel_disc_io: USE_PARALLEL_DISC_IO_TYPE = True,
+        do_parallel_discio: USE_PARALLEL_DISC_IO_TYPE = True,
         nr_pool: NUM_POOL_TYPE = 3,
         do_preread_images: DO_PREREAD_TYPE = False,
         use_scratch: USE_SCRATCH_TYPE = False,
@@ -864,6 +864,7 @@ class InitialModelTomoJob(_Relion5TomoJob):
         # Running
         nr_mpi: MPI_TYPE = 1,
         nr_threads: THREAD_TYPE = 1,
+        do_queue: DO_QUEUE_TYPE = False,
         min_dedicated: MIN_DEDICATED_TYPE = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
@@ -886,7 +887,7 @@ class InitialModelTomoContinue(_RelionBuiltinContinue):
         # Optimisation
         nr_iter: NUM_ITER_TYPE = 200,
         # Compute
-        use_parallel_disc_io: USE_PARALLEL_DISC_IO_TYPE = True,
+        do_parallel_discio: USE_PARALLEL_DISC_IO_TYPE = True,
         nr_pool: NUM_POOL_TYPE = 3,
         do_preread_images: DO_PREREAD_TYPE = False,
         do_combine_thru_disc: DO_COMBINE_THRU_DISC_TYPE = False,
@@ -894,6 +895,7 @@ class InitialModelTomoContinue(_RelionBuiltinContinue):
         # Running
         nr_mpi: MPI_TYPE = 1,
         nr_threads: THREAD_TYPE = 1,
+        do_queue: DO_QUEUE_TYPE = False,
         min_dedicated: MIN_DEDICATED_TYPE = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
