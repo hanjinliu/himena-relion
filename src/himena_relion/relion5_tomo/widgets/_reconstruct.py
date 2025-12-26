@@ -24,7 +24,8 @@ class QReconstructViewer(QJobScrollArea):
         self, job_dir: _job_dir.ReconstructParticlesJobDirectory, path: str
     ):
         """Handle changes to the job directory."""
-        if Path(path).suffix == ".mrc":
+        fp = Path(path)
+        if fp.name.startswith("RELION_JOB_") or fp.suffix == ".mrc":
             self.initialize(job_dir)
             _LOGGER.debug("%s Updated", job_dir.job_id)
 

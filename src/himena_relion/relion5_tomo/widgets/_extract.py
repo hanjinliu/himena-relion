@@ -35,8 +35,10 @@ class QExtractJobViewer(QJobScrollArea):
 
     def on_job_updated(self, job_dir: _job_dir.ExtractJobDirectory, path: str):
         """Handle changes to the job directory."""
-        _path = Path(path)
-        if _path.name.endswith(("_stack2d.mrcs", "_data.mrc")):
+        fp = Path(path)
+        if fp.name.startswith("RELION_JOB_") or fp.name.endswith(
+            ("_stack2d.mrcs", "_data.mrc")
+        ):
             self.initialize(job_dir)
             _LOGGER.debug("%s Updated", self._job_dir.job_id)
 

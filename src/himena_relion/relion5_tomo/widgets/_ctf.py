@@ -51,7 +51,8 @@ class QCtfFindViewer(QJobScrollArea):
 
     def on_job_updated(self, job_dir: _job_dir.CtfCorrectionJobDirectory, path: str):
         """Handle changes to the job directory."""
-        if Path(path).suffix == ".ctf":
+        fp = Path(path)
+        if fp.name.startswith("RELION_JOB_") or fp.suffix == ".ctf":
             self._process_update()
             _LOGGER.debug("%s Updated", self._job_dir.job_id)
 
@@ -158,6 +159,13 @@ class QCtfRefineTomoViewer(QJobScrollArea):
         """Initialize the viewer with the job directory."""
         self._job_dir = job_dir
         self._process_update()
+
+    def on_job_updated(self, job_dir: _job_dir.CtfCorrectionJobDirectory, path: str):
+        """Handle changes to the job directory."""
+        fp = Path(path)
+        if fp.name.startswith("RELION_JOB_") or fp.suffix == ".star":
+            self._process_update()
+            _LOGGER.debug("%s Updated", self._job_dir.job_id)
 
     def _process_update(self):
         choices = [p.stem for p in self._job_dir.iter_tilt_series_path()]

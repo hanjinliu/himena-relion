@@ -307,6 +307,20 @@ def _mask_create_search_halfmap(path: Path) -> str | None:
     return None
 
 
+def _mask_create_search_optim(path: Path) -> str | None:
+    parents = JobDirectory(path).parent_jobs()
+    for p in parents:
+        match p.job_type_label():
+            case "relion.refine3d.tomo":
+                params = p.get_job_params_as_dict()
+                if optim_path := params.get("in_optimisation", None):
+                    return optim_path
+            case "relion.reconstructparticletomo":
+                if out := _tomo.ReconstructParticlesJob.get_optimisation_set(p.path):
+                    return out
+    return None
+
+
 connect_jobs(
     _spa.MaskCreationJob,
     _tomo.PostProcessTomoJob,
@@ -328,7 +342,9 @@ def _postprocess_search_optim(path: Path) -> str | None:
             case "relion.reconstructparticletomo":
                 if out := _tomo.ReconstructParticlesJob.get_optimisation_set(p.path):
                     return out
-
+            case "relion.maskcreate":
+                if out := _mask_create_search_optim(p.path):
+                    return out
     return None
 
 
@@ -379,8 +395,18 @@ connect_jobs(
     _tomo.ReconstructParticlesJob,
     node_mapping={"optimisation_set.star": "in_optim.in_optimisation"},
 )
+
+
+def _ctfrefine_search_mask(path: Path) -> str | None:
+    job_dir = JobDirectory(path)
+    return job_dir.get_job_params_as_dict().get("in_refmask", None)
+
+
 connect_jobs(
     _tomo.CtfRefineTomoJob,
     _tomo.Refine3DTomoJob,
-    node_mapping={"optimisation_set.star": "in_optim.in_optimisation"},
+    node_mapping={
+        "optimisation_set.star": "in_optim.in_optimisation",
+        _ctfrefine_search_mask: "fn_mask",
+    },
 )

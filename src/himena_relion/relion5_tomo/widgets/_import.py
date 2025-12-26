@@ -14,9 +14,14 @@ class QImportTiltSeriesViewer(QJobScrollArea):
 
     def on_job_updated(self, job_dir: _job_dir.ImportJobDirectory, path: str):
         """Handle changes to the job directory."""
-        if Path(path).suffix not in [".out", ".err", ".star"]:
+        fp = Path(path)
+        if fp.name.startswith("RELION_JOB_") or fp.suffix not in [
+            ".out",
+            ".err",
+            ".star",
+        ]:
             self.initialize(job_dir)
-            _LOGGER.debug("%s Updated", self._job_dir.job_id)
+            _LOGGER.debug("%s Updated", job_dir.job_id)
 
     def initialize(self, job_dir: _job_dir.ImportJobDirectory):
         """Initialize the viewer with the job directory."""
