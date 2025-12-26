@@ -25,7 +25,7 @@ classifiers = [
   "Programming Language :: Python :: Implementation :: PyPy",
 ]
 dependencies = [
-  "starfile-rs>=0.1.1",
+  "starfile-rs>=0.1.4",
   "imodmodel>=0.1.0",
   "rich",
   "scipy>=1.16.3",

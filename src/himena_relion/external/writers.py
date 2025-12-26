@@ -1,17 +1,15 @@
 from __future__ import annotations
 
-import pandas as pd
 from himena_relion import _job_dir
 from himena_relion._job_class import to_string
 from himena_relion.consts import ARG_NAME_REMAP
+from himena_relion.schemas import JobStarModel
 
-# https://deepwiki.com/3dem/relion/3.3-scheduling-and-automation
 
-
-def prep_job_star(
+def prep_job_star_external(
     fn_exe: str,
     **kwargs,
-) -> dict[str, pd.DataFrame]:
+) -> JobStarModel:
     params = {
         "do_queue": "No",
         "fn_exe": f"{fn_exe}",
@@ -83,16 +81,14 @@ def prep_job_star(
     for key, value in params.items():
         variables.append(key)
         values.append(value)
-    return {
-        "job": {
-            "rlnJobTypeLabel": "relion.external",
-            "rlnJobIsContinue": 0,
-            "rlnJobIsTomo": 0,
-        },
-        "joboptions_values": pd.DataFrame(
-            {
-                "rlnJobOptionVariable": variables,
-                "rlnJobOptionValue": values,
-            }
+    return JobStarModel(
+        job=JobStarModel.Job(
+            job_type_label="relion.external",
+            job_is_continue=0,
+            job_is_tomo=0,
         ),
-    }
+        joboptions_values=JobStarModel.Options(
+            variable=variables,
+            value=values,
+        ),
+    )

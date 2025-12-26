@@ -6,12 +6,13 @@ from himena_relion.schemas._tilt_series import TomogramsGroupModel
 class OptimisationSetModel(schema.SingleDataModel):
     tomogram_star: Path = schema.Field("rlnTomoTomogramsFile")
     particles_star: Path = schema.Field("rlnTomoParticlesFile")
+    trajectories_star: Path = schema.Field("rlnTomoTrajectoriesFile", default=None)
 
     def read_tomogram_model(self) -> TomogramsGroupModel:
         return TomogramsGroupModel.validate_file(self.tomogram_star)
 
 
-class Job(schema.SingleDataModel):
+class JobModel(schema.SingleDataModel):
     job_type_label: str = schema.Field("rlnJobTypeLabel")
     job_is_continue: int = schema.Field("rlnJobIsContinue")
     job_is_tomo: int = schema.Field("rlnJobIsTomo")
@@ -26,8 +27,11 @@ class JobOptionsValues(schema.LoopDataModel):
 
 
 class JobStarModel(schema.StarModel):
-    job: Job = schema.Field()
+    job: JobModel = schema.Field()
     joboptions_values: JobOptionsValues = schema.Field()
+
+    Job = JobModel
+    Options = JobOptionsValues
 
 
 class ParticlesModel(schema.LoopDataModel):

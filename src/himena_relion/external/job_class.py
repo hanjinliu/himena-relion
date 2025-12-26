@@ -9,7 +9,8 @@ from runpy import run_path
 from himena_relion import _job_dir
 from himena_relion._job_class import RelionJob
 from himena_relion.consts import ARG_NAME_REMAP
-from himena_relion.external.writers import prep_job_star
+from himena_relion.external.writers import prep_job_star_external
+from himena_relion.schemas import JobStarModel
 
 
 def pick_job_class(class_id: str) -> "type[RelionExternalJob]":
@@ -74,11 +75,14 @@ class RelionExternalJob(RelionJob):
         return cls.__name__
 
     @classmethod
-    def prep_job_star(cls, **kwargs):
+    def prep_job_star(cls, **kwargs) -> JobStarModel:
         import_path = cls.import_path()
         sig = cls._signature()
         bound = sig.bind(**kwargs)
-        return prep_job_star(fn_exe=f"himena-relion {import_path}", **bound.arguments)
+        return prep_job_star_external(
+            fn_exe=f"himena-relion {import_path}",
+            **bound.arguments,
+        )
 
     @abstractmethod
     def output_nodes(self) -> list[tuple[str, str]]:

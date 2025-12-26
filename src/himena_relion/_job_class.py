@@ -15,8 +15,6 @@ from himena.workflow import WorkflowStep
 from himena.widgets import MainWindow
 from himena.plugins import when_reader_used, register_function
 import numpy as np
-import pandas as pd
-from starfile_rs import as_star
 from himena_relion import _configs, _job_dir
 from himena_relion._pipeline import is_all_inputs_ready
 from himena_relion.consts import Type, MenuId, JOB_ID_MAP
@@ -136,23 +134,19 @@ class RelionJob(ABC):
         with tempfile.TemporaryDirectory() as tmpdir:
             tmpdir = Path(tmpdir)
             job_star_path = tmpdir / "job.star"
-            job_star_dict = cls.prep_job_star(**kwargs)
-            as_star(job_star_dict).write(job_star_path)
+            job_star_model = cls.prep_job_star(**kwargs)
+
+            job_star_model.write(job_star_path)
             # $ relion_pipeliner --addJobFromStar <job.star>
             # This reformats the input job.star and creates a new job directory.
             # The new job is scheduled but NOT run yet. To run the job, we need to
             # call relion_pipeliner --RunJobs <job_dir>
-
-            proc = subprocess.run(
-                [
-                    "relion_pipeliner",
-                    "--addJobFromStar",
-                    str(job_star_path),
-                ],
-            )
+            args = ["relion_pipeliner", "--addJobFromStar", str(job_star_path)]
+            proc = subprocess.run(args)
             if proc.returncode != 0:
+                args_str = " ".join(args)
                 raise RuntimeError(
-                    "relion_pipeliner --addJobFromStar failed. Created job.star follows:"
+                    f"{args_str} failed. Created job.star follows:"
                     f"\n\n{job_star_path.read_text()}"
                 )
 
@@ -162,14 +156,14 @@ class RelionJob(ABC):
 
     @classmethod
     @abstractmethod
-    def prep_job_star(cls, **kwargs) -> dict[str, Any]:
+    def prep_job_star(cls, **kwargs) -> JobStarModel:
         """Prepare job star data with given parameters."""
 
     def edit_and_run_job(self, **kwargs) -> RelionJobExecution | None:
         """Edit the existing job directory and run it."""
         job_dir = self.output_job_dir
-        job_star_dict = self.prep_job_star(**kwargs)
-        as_star(job_star_dict).write(job_dir.job_star())
+        job_star_model = self.prep_job_star(**kwargs)
+        job_star_model.write(job_dir.job_star())
         to_run = str(job_dir.path.relative_to(job_dir.relion_project_dir))
         if is_all_inputs_ready(to_run):
             return execute_job(to_run)
@@ -201,6 +195,7 @@ class RelionJob(ABC):
 
     @classmethod
     def param_matches(cls, job_params: dict[str, str]) -> bool:
+        """Only used to dispatch existing jobs to the correct class."""
         return True
 
     @classmethod
@@ -266,12 +261,22 @@ class _RelionBuiltinJob(RelionJob):
         return out
 
     @classmethod
-    def prep_job_star(cls, **kwargs):
-        return prep_builtin_job_star(
-            type_label=cls.type_label(),
-            is_continue=int(issubclass(cls, _RelionBuiltinContinue)),
-            is_tomo=int(cls.job_is_tomo()),
-            kwargs=cls.normalize_kwargs(**kwargs),
+    def prep_job_star(cls, **kwargs) -> JobStarModel:
+        _var = []
+        _val = []
+        for k, v in cls.normalize_kwargs(**kwargs).items():
+            _var.append(k)
+            _val.append(to_string(v))
+        return JobStarModel(
+            job=JobStarModel.Job(
+                job_type_label=cls.type_label(),
+                job_is_continue=int(issubclass(cls, _RelionBuiltinContinue)),
+                job_is_tomo=int(cls.job_is_tomo()),
+            ),
+            joboptions_values=JobStarModel.Options(
+                variable=_var,
+                value=_val,
+            ),
         )
 
 
@@ -366,32 +371,6 @@ class _RelionBuiltinContinue(_RelionBuiltinJob):
         job_star.write(job_star_path)
         d = job_dir.path.relative_to(job_dir.relion_project_dir).as_posix()
         return execute_job(d)
-
-
-def prep_builtin_job_star(
-    type_label: str,
-    is_continue: int = 0,
-    is_tomo: int = 0,
-    kwargs: dict[str, Any] = {},
-):
-    job = {
-        "rlnJobTypeLabel": type_label,
-        "rlnJobIsContinue": is_continue,
-        "rlnJobIsTomo": is_tomo,
-    }
-    _var = []
-    _val = []
-    for k, v in kwargs.items():
-        _var.append(k)
-        _val.append(to_string(v))
-    joboptions_values = {
-        "rlnJobOptionVariable": _var,
-        "rlnJobOptionValue": _val,
-    }
-    return {
-        "job": job,
-        "joboptions_values": pd.DataFrame(joboptions_values),
-    }
 
 
 @dataclass

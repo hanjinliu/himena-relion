@@ -40,3 +40,9 @@ class RelionPipelineModel(schema.StarModel):
     output_edges: RelionPipelineOutputEdges = schema.Field(
         "pipeline_output_edges", default=None
     )
+
+    General = RelionPipelineGeneral
+    Processes = RelionPipelineProcesses
+    Nodes = RelionPipelineNodes
+    InputEdges = RelionPipelineInputEdges
+    OutputEdges = RelionPipelineOutputEdges

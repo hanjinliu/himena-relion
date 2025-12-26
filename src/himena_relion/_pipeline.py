@@ -36,7 +36,6 @@ class RelionDefaultPipeline(Sequence["RelionJobInfo"]):
             return cls([])  # project without any jobs
         processes = pipeline_star.processes
         mappers = pipeline_star.input_edges
-        # mappers = pipeline_star["pipeline_input_edges"].trust_loop().to_pandas()
 
         nodes: dict[Path, RelionJobInfo] = {}
         for path, alias, type_label, status in zip(
@@ -211,36 +210,27 @@ class RelionPipeline:
 
     def write_star(self, path: str | Path):
         nodes = self.inputs + self.outputs
-        # TODO: use schema to construct star file
-        star = RelionPipelineModel.validate_dict(
-            {
-                "pipeline_general": self.general,
-                "pipeline_processes": {
-                    "rlnPipeLineProcessName": [self.process_name],
-                    "rlnPipeLineProcessAlias": [self.process_alias or ""],
-                    "rlnPipeLineProcessTypeLabel": [self.process_type_label],
-                    "rlnPipeLineProcessStatusLabel": [self.status_label or ""],
-                },
-                "pipeline_nodes": {
-                    "rlnPipeLineNodeName": [node.path.as_posix() for node in nodes],
-                    "rlnPipeLineNodeTypeLabel": [
-                        node.type_label or "" for node in nodes
-                    ],
-                    "rlnPipeLineNodeTypeLabelDepth": [1 for _ in nodes],
-                },
-                "pipeline_input_edges": {
-                    "rlnPipeLineEdgeFromNode": [
-                        node.path.as_posix() for node in self.inputs
-                    ],
-                    "rlnPipeLineEdgeProcess": [self.process_name for _ in self.inputs],
-                },
-                "pipeline_output_edges": {
-                    "rlnPipeLineEdgeProcess": [self.process_name for _ in self.outputs],
-                    "rlnPipeLineEdgeToNode": [
-                        node.path.as_posix() for node in self.outputs
-                    ],
-                },
-            },
+        star = RelionPipelineModel(
+            general=self.general,
+            processes=RelionPipelineModel.Processes(
+                process_name=[self.process_name],
+                alias=[self.process_alias or ""],
+                type_label=[self.process_type_label],
+                status_label=[self.status_label or ""],
+            ),
+            nodes=RelionPipelineModel.Nodes(
+                name=[node.path.as_posix() for node in nodes],
+                type_label=[node.type_label or "" for node in nodes],
+                type_label_depth=[1 for _ in nodes],
+            ),
+            input_edges=RelionPipelineModel.InputEdges(
+                from_node=[node.path.as_posix() for node in self.inputs],
+                process=[self.process_name for _ in self.inputs],
+            ),
+            output_edges=RelionPipelineModel.OutputEdges(
+                process=[self.process_name for _ in self.outputs],
+                to_node=[node.path.as_posix() for node in self.outputs],
+            ),
         )
         return star.write(path)
 
