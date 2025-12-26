@@ -1247,7 +1247,8 @@ class CtfRefineTomoJob(_Relion5TomoJob):
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
-    def setup_widgets(self, widgets):
+    @classmethod
+    def setup_widgets(cls, widgets):
         @widgets["do_reg_def"].changed.connect
         def _on_do_reg_def_changed(value: bool):
             widgets["lambda_param"].enabled = value

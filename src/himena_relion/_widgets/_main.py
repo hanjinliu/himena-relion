@@ -107,8 +107,9 @@ class QRelionJobWidget(QtW.QWidget):
     @validate_protocol
     def widget_closed_callback(self):
         """Callback when the widget is closed."""
-        self._watcher.quit()
-        self._watcher = None
+        if self._watcher is not None:
+            self._watcher.quit()
+            self._watcher = None
 
     def add_job_widget(self, widget: JobWidgetBase):
         """Add a job widget to the tab widget."""

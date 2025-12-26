@@ -183,10 +183,13 @@ class RelionJob(ABC):
     @classmethod
     def _show_scheduler_widget(cls, ui: MainWindow, context: AnyContext):
         scheduler = _get_scheduler_widget(ui)
-        scheduler.update_by_job(cls)
-        if context:
-            scheduler.set_parameters(context)
-        scheduler.set_schedule_mode()
+        try:
+            scheduler.update_by_job(cls)
+            if context:
+                scheduler.set_parameters(context)
+        finally:
+            # this must be called even if update_by_job fails
+            scheduler.set_schedule_mode()
         return scheduler
 
     @classmethod
@@ -332,18 +335,20 @@ class _RelionBuiltinContinue(_RelionBuiltinJob):
         context: AnyContext,
     ):
         scheduler = _get_scheduler_widget(ui)
-        scheduler.update_by_job(cls)
-        job_dir = model.value
-        if not isinstance(job_dir, _job_dir.JobDirectory):
-            raise RuntimeError("Widget model does not contain a job directory.")
-        orig_params = job_dir.get_job_params_as_dict()
-        sig = cls._signature()
-        for orig_key, orig_val in orig_params.items():
-            if orig_key in sig.parameters:
-                context.setdefault(orig_key, orig_val)
-        if context:
-            scheduler.set_parameters(context)
-        scheduler.set_continue_mode(job_dir)
+        try:
+            scheduler.update_by_job(cls)
+            job_dir = model.value
+            if not isinstance(job_dir, _job_dir.JobDirectory):
+                raise RuntimeError("Widget model does not contain a job directory.")
+            orig_params = job_dir.get_job_params_as_dict()
+            sig = cls._signature()
+            for orig_key, orig_val in orig_params.items():
+                if orig_key in sig.parameters:
+                    context.setdefault(orig_key, orig_val)
+            if context:
+                scheduler.set_parameters(context)
+        finally:
+            scheduler.set_continue_mode(job_dir)
         return scheduler
 
     def continue_job(self, **kwargs) -> RelionJobExecution | None:

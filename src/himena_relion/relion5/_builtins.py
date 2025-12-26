@@ -66,7 +66,7 @@ HALFMAP_TYPE = Annotated[
     {
         "label": "One of the half-maps",
         "widget_type": PathDrop,
-        "type_label": "DensityMap.mrc.halfmap",
+        "type_label": "DensityMap",
         "group": "I/O",
     },
 ]

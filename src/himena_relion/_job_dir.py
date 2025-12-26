@@ -201,6 +201,26 @@ class JobDirectory:
                 )
         return out
 
+    def parent_jobs(self) -> list[JobDirectory]:
+        """Get the parent jobs of this job."""
+        pipeline = self.parse_job_pipeline()
+        rln_dir = self.relion_project_dir
+        parents: list[JobDirectory] = []
+        found = set[Path]()
+        for input_ in pipeline.inputs:
+            if job_rel_path := input_.path_job:
+                out = rln_dir / job_rel_path
+                if out in found:
+                    continue
+                parents.append(JobDirectory(out))
+                found.add(out)
+        return parents
+
+    def job_type_label(self) -> str:
+        """Read job.star and get the job type label."""
+        job_star = JobStarModel.validate_file(self.job_star())
+        return job_star.job.job_type_label
+
 
 class HasFrameJobDirectory(JobDirectory):
     def iter_frames(self, pattern: str) -> Iterator[Path]:
