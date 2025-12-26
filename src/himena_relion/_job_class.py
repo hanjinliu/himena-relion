@@ -347,6 +347,7 @@ class _RelionBuiltinContinue(_RelionBuiltinJob):
         return scheduler
 
     def continue_job(self, **kwargs) -> RelionJobExecution | None:
+        """Continue this job with updated parameters."""
         job_dir = self.output_job_dir
         job_star_path = job_dir.job_star()
         job_star = JobStarModel.validate_file(job_star_path)

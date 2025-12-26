@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import Iterator, Sequence
+import logging
 from enum import Enum
 from pathlib import Path
 from dataclasses import dataclass, field
@@ -7,6 +8,8 @@ from starfile_rs.schema import ValidationError
 import pandas as pd
 from himena_relion.consts import FileNames
 from himena_relion.schemas import RelionPipelineModel
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class RelionDefaultPipeline(Sequence["RelionJobInfo"]):
@@ -208,6 +211,7 @@ class RelionPipeline:
 
     def write_star(self, path: str | Path):
         nodes = self.inputs + self.outputs
+        # TODO: use schema to construct star file
         star = RelionPipelineModel.validate_dict(
             {
                 "pipeline_general": self.general,
@@ -247,8 +251,20 @@ def is_all_inputs_ready(d: str | Path) -> bool:
         pipeline = RelionPipeline.from_star(ppath)
         # NOTE: Do NOT check the existence of output files. For example, Extract job
         # writes optimisation_set.star before the job actually finishes.
-        return all(
-            input_.path_job.joinpath(FileNames.EXIT_SUCCESS).exists()
+        not_ready = [
+            input_.path_job
             for input_ in pipeline.inputs
+            if not input_.path_job.joinpath(FileNames.EXIT_SUCCESS).exists()
+        ]
+        _LOGGER.info(
+            "Inputs %s are not ready to start job %s.",
+            [p.as_posix() for p in not_ready],
+            d,
+        )
+        return len(not_ready) == 0
+    else:
+        _LOGGER.warning(
+            "Job pipeline star file %s not found.",
+            ppath.as_posix(),
         )
     return False
