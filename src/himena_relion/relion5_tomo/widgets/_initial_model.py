@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from qtpy import QtWidgets as QtW
+from qtpy import QtWidgets as QtW, QtCore
 from himena_relion._widgets import (
     QJobScrollArea,
     Q3DViewer,
@@ -11,6 +11,7 @@ from himena_relion._widgets import (
     spacer_widget,
 )
 from himena_relion import _job_dir
+from ._shared import QNumParticlesLabel
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -26,7 +27,11 @@ class QInitialModelViewer(QJobScrollArea):
         self._iter_choice = QIntWidget("Iteration", label_width=60)
         self._class_choice.setMinimum(1)
         self._iter_choice.setMinimum(0)
+        self._num_particles_label = QNumParticlesLabel()
+        self._num_particles_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
+        self._num_particles_label.setMaximumWidth(self._viewer.maximumWidth())
         layout.addWidget(self._viewer)
+        layout.addWidget(self._num_particles_label)
         hor_layout = QtW.QHBoxLayout()
         hor_layout.addWidget(self._iter_choice)
         hor_layout.addWidget(self._class_choice)
@@ -89,3 +94,13 @@ class QInitialModelViewer(QJobScrollArea):
         res = self._job_dir.get_result(niter)
         map0 = res.class_map(class_id - self._index_start)
         self._viewer.set_image(map0)
+        try:
+            ptcl = res.particles_model()
+            n_particles = ptcl.particles.block.shape[0]
+        except Exception:
+            n_particles = -1
+            _LOGGER.warning(
+                "Failed to read particles star file to get number of particles",
+                exc_info=True,
+            )
+        self._num_particles_label.set_number(n_particles)

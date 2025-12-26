@@ -14,6 +14,7 @@ from himena_relion._widgets import (
     spacer_widget,
 )
 from himena_relion import _job_dir
+from ._shared import QNumParticlesLabel
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -29,7 +30,7 @@ class QRefine3DViewer(QJobScrollArea):
         self._fsc_plot = QPlotCanvas(self)
         self._iter_choice = QIntWidget("Iteration", label_width=60)
         self._iter_choice.setMinimum(0)
-        self._num_particles_label = QtW.QLabel("--- particles")
+        self._num_particles_label = QNumParticlesLabel()
         layout.addWidget(self._viewer)
         _hor = QtW.QWidget()
         _hor.setMaximumWidth(max_width)
@@ -97,7 +98,7 @@ class QRefine3DViewer(QJobScrollArea):
             self._fsc_plot.plot_fsc_refine(df_fsc)
         else:
             self._fsc_plot.clear()
-        self._num_particles_label.setText(f"<b>{num_particles}</b> particles")
+        self._num_particles_label.set_number(num_particles)
         self._worker = None
 
     def widget_added_callback(self):

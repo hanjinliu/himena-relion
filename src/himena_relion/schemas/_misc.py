@@ -39,6 +39,7 @@ class ParticlesModel(schema.LoopDataModel):
     centered_x: schema.Series[float] = schema.Field("rlnCenteredCoordinateXAngst")
     centered_y: schema.Series[float] = schema.Field("rlnCenteredCoordinateYAngst")
     centered_z: schema.Series[float] = schema.Field("rlnCenteredCoordinateZAngst")
+    class_number: schema.Series[int] = schema.Field("rlnClassNumber")
 
 
 class ParticleMetaModel(schema.StarModel):

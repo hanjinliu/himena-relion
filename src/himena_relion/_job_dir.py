@@ -804,10 +804,10 @@ class _3DResultsBase:
 
     #         angdist.append(data)
 
-    def particles(self) -> pd.DataFrame:
+    def particles_model(self) -> ParticleMetaModel:
         """Return the particles DataFrame for this iteration."""
         star_path = self._data_star()
-        return read_star_block(star_path, "particles").trust_loop().to_pandas()
+        return ParticleMetaModel.validate_file(star_path)
 
     def _data_star(self) -> Path:
         """Return the path to the data star file for this iteration."""
@@ -983,7 +983,9 @@ class Class3DResults(_3DResultsBase):
             return mrc.data
 
     def value_ratio(self) -> dict[int, float]:
-        counts = self.particles()["rlnClassNumber"].value_counts().sort_index()
+        counts = (
+            self.particles_model().particles.class_number.value_counts().sort_index()
+        )
         ratio = counts / counts.sum()
         return {num: ratio.get(num, 0.0) for num in range(1, len(ratio) + 1)}
 
