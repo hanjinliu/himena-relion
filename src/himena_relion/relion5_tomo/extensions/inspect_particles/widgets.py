@@ -147,7 +147,7 @@ def _make_get_particles(
             return pd.DataFrame({c: [] for c in cols}, dtype=float)
         else:
             ptcl = ParticleMetaModel.validate_file(particles_star)
-            sl = ptcl.tomo_name == tomo_name
-            return ptcl.dataframe[sl].reset_index(drop=True)
+            sl = ptcl.particles.tomo_name == tomo_name
+            return ptcl.particles.dataframe[sl].reset_index(drop=True)
 
     return get_particles

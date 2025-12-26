@@ -62,7 +62,7 @@ class QExtractJobViewer(QJobScrollArea):
         self._set_tomo_name_and_particle_list(
             self._tomo_choice.currentText(), self._particle_offset.value()
         )
-        self._particle_offset.setValue(0)
+        self._on_spinbox_changed(self._particle_offset.value())
         _type = "2D stacks" if job_dir.is_2d() else "3D Subtomograms"
         self._dimension_label.setText(f"Extraction method: {_type}")
 

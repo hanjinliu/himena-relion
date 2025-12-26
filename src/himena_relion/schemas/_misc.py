@@ -19,7 +19,7 @@ class Job(schema.SingleDataModel):
 
 class JobOptionsValues(schema.LoopDataModel):
     variable: schema.Series[str] = schema.Field("rlnJobOptionVariable")
-    value: schema.Series[str] = schema.Field("rlnJobOptionValue")
+    value: schema.Series[object] = schema.Field("rlnJobOptionValue")
 
     def to_dict(self) -> dict[str, str]:
         return dict(zip(self.variable, self.value))
