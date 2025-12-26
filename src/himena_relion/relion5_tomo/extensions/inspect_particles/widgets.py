@@ -11,7 +11,7 @@ from starfile_rs import read_star
 from superqt.utils import thread_worker, GeneratorWorker
 from himena_relion._widgets import Q2DViewer, Q2DFilterWidget
 from himena_relion import _job_dir
-from himena_relion.schemas import OptimisationSetModel, ParticlesModel
+from himena_relion.schemas import OptimisationSetModel, ParticleMetaModel
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -146,7 +146,7 @@ def _make_get_particles(
             cols = [f"rlnCenteredCoordinate{x}Angst" for x in "ZYX"]
             return pd.DataFrame({c: [] for c in cols}, dtype=float)
         else:
-            ptcl = ParticlesModel.validate_file(particles_star)
+            ptcl = ParticleMetaModel.validate_file(particles_star)
             sl = ptcl.tomo_name == tomo_name
             return ptcl.dataframe[sl].reset_index(drop=True)
 
