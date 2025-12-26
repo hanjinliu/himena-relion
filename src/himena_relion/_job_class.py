@@ -266,8 +266,9 @@ class _RelionBuiltinJob(RelionJob):
     def prep_job_star(cls, **kwargs):
         return prep_builtin_job_star(
             type_label=cls.type_label(),
-            kwargs=cls.normalize_kwargs(**kwargs),
+            is_continue=issubclass(cls, _RelionBuiltinContinue),
             is_tomo=int(cls.job_is_tomo()),
+            kwargs=cls.normalize_kwargs(**kwargs),
         )
 
 
@@ -362,11 +363,14 @@ class _RelionBuiltinContinue(_RelionBuiltinJob):
 
 
 def prep_builtin_job_star(
-    type_label: str, is_tomo: int = 0, kwargs: dict[str, Any] = {}
+    type_label: str,
+    is_continue: int = 0,
+    is_tomo: int = 0,
+    kwargs: dict[str, Any] = {},
 ):
     job = {
         "rlnJobTypeLabel": type_label,
-        "rlnJobIsContinue": 0,
+        "rlnJobIsContinue": is_continue,
         "rlnJobIsTomo": is_tomo,
     }
     _var = []

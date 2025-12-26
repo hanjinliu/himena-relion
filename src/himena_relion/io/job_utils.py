@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 from himena import MainWindow, WidgetDataModel
 from himena.exceptions import Cancelled
 from himena.plugins import register_function
+from himena.widgets import SubWindow
 from himena_relion.consts import Type, MenuId, RelionJobState, FileNames
 
 if TYPE_CHECKING:
@@ -135,13 +136,13 @@ def clone_relion_job(ui: MainWindow, model: WidgetDataModel):
     command_id="himena-relion:reopen-job",
     group="07-job-operation",
 )
-def reopen_relion_job(model: WidgetDataModel) -> WidgetDataModel:
+def reopen_relion_job(widget: SubWindow) -> WidgetDataModel:
     """Reopen this RELION job.
 
     If some error occurred during reading the job directory and the widget stop working,
     this function can be used to initialize the widget again.
     """
-    return model.with_value(model.value, update_inplace=True).use_tab()
+    widget.update_model(widget.to_model())
 
 
 @register_function(
