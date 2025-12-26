@@ -114,14 +114,14 @@ class BfactorEdit(ValuedContainerWidget):
             text="Use user-provided B-factor", value=False
         )
         self._auto_lowres = FloatEdit(
-            label="Lowest resolution for auto-B fit (A)", value=10.0, min=8, max=15
+            label="Lowest resolution (A)", value=10.0, min=8, max=15
         )
         self._user_bfactor = FloatEdit(
             label="B-factor (A^2)", value=-1000.0, min=-2000, max=0
         )
 
         widgets = [self._toggle_switch, self._auto_lowres, self._user_bfactor]
-        super().__init__(layout="vertical", labels=False, widgets=widgets, **kwargs)
+        super().__init__(layout="vertical", labels=True, widgets=widgets, **kwargs)
         self.margins = (0, 0, 0, 0)
         self._toggle_switch.changed.connect(self._on_toggle_switch_changed)
         self._on_toggle_switch_changed(False)

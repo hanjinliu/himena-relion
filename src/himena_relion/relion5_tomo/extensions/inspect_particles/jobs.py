@@ -85,7 +85,10 @@ def _get_mic(path: Path) -> str:
 connect_jobs(
     SelectClassesInteractiveJob,
     InspectParticles,
-    node_mapping={"particles.star": "in_parts"},
+    node_mapping={
+        SelectClassesInteractiveJob._search_mics: "in_mics",
+        "particles.star": "in_parts",
+    },
 )
 
 connect_jobs(

@@ -176,6 +176,10 @@ class QCtfRefineTomoViewer(QJobScrollArea):
             self._ts_choice.setCurrentIndex(
                 min(index if index >= 0 else 0, len(choices) - 1)
             )
+        else:
+            # clear everything
+            self._defocus_canvas.clear()
+            self._ctf_scale_canvas.clear()
 
     def _ts_choice_changed(self, text: str):
         """Update the viewer when the selected tomogram changes."""

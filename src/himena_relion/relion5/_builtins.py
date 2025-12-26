@@ -1,9 +1,12 @@
+from pathlib import Path
 from typing import Annotated, Any
 
 from magicgui.widgets.bases import ValueWidget
 from himena_relion._job_class import _RelionBuiltinJob, parse_string
+from himena_relion._job_dir import JobDirectory
 from himena_relion._widgets._magicgui import PathDrop, BfactorEdit
 from himena_relion import _configs
+from himena_relion.schemas import OptimisationSetModel
 
 
 # I/O
@@ -973,6 +976,37 @@ class SelectClassesInteractiveJob(_SelectJob):
     def run(self, fn_model: IN_OPTIMISER = ""):
         raise NotImplementedError("This is a builtin job placeholder.")
 
+    @classmethod
+    def _search_parent_class3d(cls, path: Path) -> JobDirectory | None:
+        job = JobDirectory(path)
+        for p in job.parent_jobs():
+            if p.job_type_label() == "relion.class3d":
+                return p
+        else:
+            return None
+
+    @classmethod
+    def _search_opt(cls, path: Path) -> str | None:
+        """Only used for inspect particles of tomo extension."""
+        if job_class3d := cls._search_parent_class3d(path):
+            params = job_class3d.get_job_params_as_dict()
+            if opt_path := params.get("in_opimisation", None):
+                return opt_path
+        return None
+
+    @classmethod
+    def _search_mics(cls, path: Path) -> str | None:
+        """Only used for inspect particles of tomo extension."""
+        if job_class3d := cls._search_parent_class3d(path):
+            params = job_class3d.get_job_params_as_dict()
+            if opt_path := params.get("in_opimisation", None):
+                opt_path = job_class3d.relion_project_dir / opt_path
+                opt = OptimisationSetModel.validate_file(opt_path)
+                return opt.tomogram_star
+            elif in_tomo := params.get("in_tomograms", None):
+                return in_tomo
+        return None
+
 
 class SelectClassesAutoJob(_SelectJob):
     @classmethod
@@ -1176,7 +1210,7 @@ class PostProcessJob(_Relion5Job):
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
         kwargs = super().normalize_kwargs(**kwargs)
-        b_factor = kwargs.get("b_factor", {})
+        b_factor = kwargs.pop("b_factor", {})
         assert isinstance(b_factor, dict), f"b_factor must be a dict, got {b_factor!r}"
         kwargs["do_auto_bfac"] = b_factor.get("do_auto_bfac", True)
         kwargs["autob_lowres"] = b_factor.get("autob_lowres", 10)

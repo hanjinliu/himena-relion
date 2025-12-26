@@ -18,9 +18,10 @@ def _pixel_size_from_opt_star(path: Path) -> float:
 def _subtomo_diameter_a(path: Path) -> float:
     """Extract particle diameter A from the job directory path."""
     box_size = _subtomo_box_size(path)
+    bin_size = _subtomo_binning(path)
     try:
         pix_size = _pixel_size_from_opt_star(path / "optimisation_set.star")
-        diameter_a = box_size * pix_size
+        diameter_a = box_size * pix_size * bin_size
     except Exception:
         _LOGGER.warning(
             "Failed to extract pixel size, using default diameter", exc_info=True
@@ -32,10 +33,11 @@ def _subtomo_diameter_a(path: Path) -> float:
 def _recon_diameter_a(path: Path) -> float:
     """Extract particle diameter A from the job directory path."""
     box_size = _subtomo_box_size(path)
+    bin_size = _subtomo_binning(path)
     try:
         jobdir = JobDirectory(path)
         pix_size = _pixel_size_from_opt_star(jobdir.get_job_param("in_optimisation"))
-        diameter_a = box_size * pix_size
+        diameter_a = box_size * pix_size * bin_size
     except Exception:
         _LOGGER.warning(
             "Failed to extract pixel size, using default diameter", exc_info=True
@@ -130,6 +132,9 @@ connect_jobs(
 connect_jobs(
     _spa.SelectClassesInteractiveJob,
     _tomo.ExtractParticlesTomoJob,
+    node_mapping={
+        _spa.SelectClassesInteractiveJob._search_opt: "in_optim.in_optimisation",
+    },
 )
 connect_jobs(
     _spa.SelectSplitJob,

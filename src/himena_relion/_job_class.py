@@ -505,6 +505,7 @@ def execute_job(d: str | Path, ignore_error: bool = False) -> RelionJobExecution
     except FileNotFoundError as e:
         if not ignore_error:
             raise e
+        _LOGGER.warning("Error executing RELION job %s", d, exc_info=True)
         return None
     args = ["relion_pipeliner", "--RunJobs", d]
     proc = subprocess.Popen(args, start_new_session=True)
