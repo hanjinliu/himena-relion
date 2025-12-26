@@ -74,6 +74,7 @@ class QExtractJobViewer(QJobScrollArea):
     def _update_offset_range(self, value: str):
         max_num = self._job_dir.max_num_subtomograms(value)
         self._particle_offset.setMaximum(max(0, max_num))
+        self._viewer.auto_fit()
 
     def _on_spinbox_changed(self, value: int):
         tomo_name = self._tomo_choice.currentText()

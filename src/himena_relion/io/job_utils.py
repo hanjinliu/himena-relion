@@ -130,6 +130,22 @@ def clone_relion_job(ui: MainWindow, model: WidgetDataModel):
 
 @register_function(
     menus=[MenuId.RELION_UTILS],
+    types=[Type.RELION_JOB],
+    title="Reopen this job",
+    command_id="himena-relion:reopen-job",
+    group="07-job-operation",
+)
+def reopen_relion_job(model: WidgetDataModel) -> WidgetDataModel:
+    """Reopen this RELION job.
+
+    If some error occurred during reading the job directory and the widget stop working,
+    this function can be used to initialize the widget again.
+    """
+    return model.with_value(model.value, update_inplace=True).use_tab()
+
+
+@register_function(
+    menus=[MenuId.RELION_UTILS],
     title="Start New RELION Project",
     command_id="himena-relion:start-new-project",
     group="11-others",

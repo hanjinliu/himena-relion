@@ -25,7 +25,7 @@ from himena_relion.schemas import (
     JobStarModel,
     RelionPipelineModel,
     TSModel,
-    ParticlesModel,
+    ParticleMetaModel,
 )
 
 if TYPE_CHECKING:
@@ -682,9 +682,9 @@ class PickJobDirectory(JobDirectory):
                 cols = [f"rlnCenteredCoordinate{x}Angst" for x in "ZYX"]
                 return pd.DataFrame({c: [] for c in cols}, dtype=float)
             else:
-                ptcl = ParticlesModel.validate_file(particles_star)
-                sl = ptcl.tomo_name == tomo_name
-                return ptcl.dataframe[sl].reset_index(drop=True)
+                ptcl = ParticleMetaModel.validate_file(particles_star)
+                sl = ptcl.particles.tomo_name == tomo_name
+                return ptcl.particles.dataframe[sl].reset_index(drop=True)
 
         return get_particles
 

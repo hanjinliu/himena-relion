@@ -39,7 +39,7 @@ class TomogramsGroupModel(schema.LoopDataModel):
         "rlnTomoTiltSeriesStarFile"
     )
     etomo_directive_file: schema.Series[str] = schema.Field("rlnEtomoDirectiveFile")
-    tomogram_binning: schema.Series[int] = schema.Field("rlnTomoTomogramBinning")
+    tomogram_binning: schema.Series[float] = schema.Field("rlnTomoTomogramBinning")
     size_x: schema.Series[int] = schema.Field("rlnTomoSizeX")
     size_y: schema.Series[int] = schema.Field("rlnTomoSizeY")
     size_z: schema.Series[int] = schema.Field("rlnTomoSizeZ")
