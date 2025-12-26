@@ -17,7 +17,7 @@ class TSModel(schema.LoopDataModel):
     micrograph_name: schema.Series[str] = schema.Field(
         "rlnMicrographName", default=None
     )
-    ctf_image: schema.Series[str] = schema.Field("rlnTomoCtfImage", default=None)
+    ctf_image: schema.Series[str] = schema.Field("rlnCtfImage", default=None)
 
 
 class TomogramsGroupModel(schema.LoopDataModel):
