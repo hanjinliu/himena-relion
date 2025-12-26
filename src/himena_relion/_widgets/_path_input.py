@@ -79,7 +79,7 @@ class QPathDropWidget(QtW.QWidget):
             caption=caption, start_path=start_dir
         )
         if path:
-            path_abs = Path(path)
+            path_abs = Path(path).resolve()
             if path_abs.is_relative_to(Path.cwd()):
                 path_rel = path_abs.relative_to(Path.cwd())
             else:

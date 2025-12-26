@@ -16,7 +16,7 @@ from himena.widgets import MainWindow
 from himena.plugins import when_reader_used, register_function
 import numpy as np
 import pandas as pd
-from starfile_rs import as_star, read_star, read_star_text
+from starfile_rs import as_star
 from himena_relion import _configs, _job_dir
 from himena_relion._pipeline import is_all_inputs_ready
 from himena_relion.consts import Type, MenuId, JOB_ID_MAP
@@ -25,6 +25,7 @@ from himena_relion._utils import (
     unwrap_annotated,
     change_name_for_tomo,
 )
+from himena_relion.schemas import JobStarModel, RelionPipelineModel
 
 if TYPE_CHECKING:
     from himena_relion._widgets._job_edit import QJobScheduler
@@ -347,15 +348,15 @@ class _RelionBuiltinContinue(_RelionBuiltinJob):
     def continue_job(self, **kwargs) -> RelionJobExecution | None:
         job_dir = self.output_job_dir
         job_star_path = job_dir.job_star()
-        job_star_data = read_star(job_star_path)
-        params_df = job_star_data["joboptions_values"].to_pandas()
+        job_star = JobStarModel.validate_file(job_star_path)
+        params_df = job_star.joboptions_values.dataframe
         # update job parameters
         for key, val_new in kwargs.items():
-            mask = params_df["rlnJobOptionVariable"] == key
+            mask = job_star.joboptions_values.variable == key
             idx = np.where(mask)[0]
             params_df.iloc[idx, 1] = to_string(val_new)
-        job_star_data.with_loop_block("joboptions_values", params_df)
-        as_star(job_star_data).write(job_star_path)
+        job_star.joboptions_values = params_df
+        job_star.write(job_star_path)
         d = job_dir.path.relative_to(job_dir.relion_project_dir).as_posix()
         return execute_job(d)
 
@@ -516,15 +517,17 @@ def _update_job_state(
     default_pipeline_path: Path, job_id: str, state: str = "Scheduled"
 ):
     with default_pipeline_path.open("r+") as f:  # use open to acquire lock
-        pipeline_star = read_star_text(f.read())
-        if pipeline_block := pipeline_star.get("pipeline_processes"):
-            df = pipeline_block.to_pandas()
-            pos_sl = df["rlnPipeLineProcessName"] == _normalize_job_id(job_id)
+        try:
+            pipeline_star = RelionPipelineModel.validate_text(f.read())
+            pos_sl = pipeline_star.processes.process_name == _normalize_job_id(job_id)
             if len(true_ids := np.where(pos_sl)) == 1:
+                df = pipeline_star.processes.dataframe
                 df.loc[true_ids[0][0], "rlnPipeLineProcessStatusLabel"] = state
-                pipeline_star.with_loop_block("pipeline_processes", df)
+                pipeline_star.processes = df
                 f.seek(0)
                 f.write(pipeline_star.to_string())
+        except Exception:
+            _LOGGER.warning("Failed to update job state for %s", job_id, exc_info=True)
 
 
 def _get_scheduler_widget(ui: MainWindow) -> QJobScheduler:

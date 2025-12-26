@@ -13,7 +13,6 @@ import tifffile
 if TYPE_CHECKING:
     Arr = NDArray[np.number]
     PathLike = str | Path
-    import pandas as pd
 
 
 def _no_filter(x: Arr, i: int) -> Arr:
@@ -31,7 +30,6 @@ class ArrayFilteredView:
             self._post_filter = _no_filter
         else:
             self._post_filter = post_filter
-        self.dataframe: pd.DataFrame | None = None
 
     def get_slice(self, index: int) -> Arr:
         """Get a slice of the filtered array."""

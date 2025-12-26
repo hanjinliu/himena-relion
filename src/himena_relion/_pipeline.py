@@ -3,9 +3,10 @@ from typing import Iterator, Sequence
 from enum import Enum
 from pathlib import Path
 from dataclasses import dataclass, field
-from starfile_rs import empty_star, read_star
+from starfile_rs.schema import ValidationError
 import pandas as pd
 from himena_relion.consts import FileNames
+from himena_relion.schemas import RelionPipelineModel
 
 
 class RelionDefaultPipeline(Sequence["RelionJobInfo"]):
@@ -26,19 +27,20 @@ class RelionDefaultPipeline(Sequence["RelionJobInfo"]):
 
     @classmethod
     def from_pipeline_star(cls, star_path: Path) -> RelionDefaultPipeline:
-        star = read_star(star_path)
-
-        if "pipeline_processes" not in star or "pipeline_input_edges" not in star:
+        try:
+            pipeline_star = RelionPipelineModel.validate_file(star_path)
+        except ValidationError:
             return cls([])  # project without any jobs
-        processes = star["pipeline_processes"].trust_loop().to_pandas()
-        mappers = star["pipeline_input_edges"].trust_loop().to_pandas()
+        processes = pipeline_star.processes
+        mappers = pipeline_star.input_edges
+        # mappers = pipeline_star["pipeline_input_edges"].trust_loop().to_pandas()
 
         nodes: dict[Path, RelionJobInfo] = {}
         for path, alias, type_label, status in zip(
-            processes["rlnPipeLineProcessName"],
-            processes["rlnPipeLineProcessAlias"],
-            processes["rlnPipeLineProcessTypeLabel"],
-            processes["rlnPipeLineProcessStatusLabel"],
+            processes.process_name,
+            processes.alias,
+            processes.type_label,
+            processes.status_label,
             strict=True,
         ):
             if alias == "None":
@@ -55,8 +57,8 @@ class RelionDefaultPipeline(Sequence["RelionJobInfo"]):
             nodes[Path(path)] = node
 
         for from_node, to_node in zip(
-            mappers["rlnPipeLineEdgeFromNode"],
-            mappers["rlnPipeLineEdgeProcess"],
+            mappers.from_node,
+            mappers.process,
             strict=True,
         ):
             from_path = Path(from_node)
@@ -163,40 +165,34 @@ class RelionPipeline:
 
     @classmethod
     def from_star(cls, path: str | Path) -> RelionPipeline:
-        star = read_star(path)
-        df_general = star["pipeline_general"].to_pandas()
-        df_processes = star["pipeline_processes"].to_pandas()
-        process_name = df_processes["rlnPipeLineProcessName"].iloc[0]
-        process_alias = df_processes["rlnPipeLineProcessAlias"].iloc[0]
-        process_type_label = df_processes["rlnPipeLineProcessTypeLabel"].iloc[0]
-        process_status_label = df_processes["rlnPipeLineProcessStatusLabel"].iloc[0]
+        pipeline = RelionPipelineModel.validate_file(path)
+        df_general = pipeline.general.block.to_pandas()
+        process_name = pipeline.processes.process_name.iloc[0]
+        process_alias = pipeline.processes.alias.iloc[0]
+        process_type_label = pipeline.processes.type_label.iloc[0]
+        process_status_label = pipeline.processes.status_label.iloc[0]
 
         # construct type map
-        df_type_map = star["pipeline_nodes"].to_pandas()
-        _type_map = {}
-        for _, row in df_type_map.iterrows():
-            _type_map[row["rlnPipeLineNodeName"]] = row["rlnPipeLineNodeTypeLabel"]
+        _type_map = dict(zip(pipeline.nodes.name, pipeline.nodes.type_label))
 
-        if block_in := star.get("pipeline_input_edges"):
-            df_in = block_in.to_pandas()
+        if pipeline.input_edges is not None:
             inputs = [
                 RelionJobPipelineNode.from_file_path(
                     input_path_rel,
                     _type_map.get(input_path_rel, None),
                 )
-                for input_path_rel in df_in["rlnPipeLineEdgeFromNode"]
+                for input_path_rel in pipeline.input_edges.from_node
             ]
         else:
             inputs = []
 
-        if block_out := star.get("pipeline_output_edges"):
-            df_out = block_out.to_pandas()
+        if pipeline.output_edges is not None:
             outputs = [
                 RelionJobPipelineNode.from_file_path(
                     output_path_rel,
                     _type_map.get(output_path_rel, None),
                 )
-                for output_path_rel in df_out["rlnPipeLineEdgeToNode"]
+                for output_path_rel in pipeline.output_edges.to_node
             ]
         else:
             outputs = []
@@ -212,67 +208,37 @@ class RelionPipeline:
 
     def write_star(self, path: str | Path):
         nodes = self.inputs + self.outputs
-        star = empty_star()
-        star.with_loop_block("pipeline_general", self.general)
-        star.with_loop_block(
-            "pipeline_processes",
-            pd.DataFrame(
-                {
+        star = RelionPipelineModel.validate_dict(
+            {
+                "pipeline_general": self.general,
+                "pipeline_processes": {
                     "rlnPipeLineProcessName": [self.process_name],
                     "rlnPipeLineProcessAlias": [self.process_alias or ""],
                     "rlnPipeLineProcessTypeLabel": [self.process_type_label],
                     "rlnPipeLineProcessStatusLabel": [self.status_label or ""],
-                }
-            ),
-        )
-        star.with_loop_block(
-            "pipeline_nodes",
-            pd.DataFrame(
-                {
+                },
+                "pipeline_nodes": {
                     "rlnPipeLineNodeName": [node.path.as_posix() for node in nodes],
                     "rlnPipeLineNodeTypeLabel": [
                         node.type_label or "" for node in nodes
                     ],
                     "rlnPipeLineNodeTypeLabelDepth": [1 for _ in nodes],
-                }
-            ),
-        )
-        star.with_loop_block(
-            "pipeline_input_edges",
-            pd.DataFrame(
-                {
+                },
+                "pipeline_input_edges": {
                     "rlnPipeLineEdgeFromNode": [
                         node.path.as_posix() for node in self.inputs
                     ],
                     "rlnPipeLineEdgeProcess": [self.process_name for _ in self.inputs],
-                }
-            ),
-        )
-        star.with_loop_block(
-            "pipeline_output_edges",
-            pd.DataFrame(
-                {
+                },
+                "pipeline_output_edges": {
                     "rlnPipeLineEdgeProcess": [self.process_name for _ in self.outputs],
                     "rlnPipeLineEdgeToNode": [
                         node.path.as_posix() for node in self.outputs
                     ],
-                }
-            ),
+                },
+            },
         )
         return star.write(path)
-
-
-@dataclass
-class RelionOptimisationSet:
-    tomogram_star: Path
-    particles_star: Path
-
-    @classmethod
-    def from_file(cls, path: str | Path) -> RelionOptimisationSet:
-        df = read_star(path).first().to_pandas()
-        tomo_star_path: str = df["rlnTomoTomogramsFile"][0]
-        particles_path: str = df["rlnTomoParticlesFile"][0]
-        return cls(Path(tomo_star_path), Path(particles_path))
 
 
 def is_all_inputs_ready(d: str | Path) -> bool:

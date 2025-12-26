@@ -19,7 +19,14 @@ from himena_relion.consts import (
     JOB_ID_MAP,
     Type,
 )
-from himena_relion._pipeline import RelionPipeline, RelionOptimisationSet
+from himena_relion._pipeline import RelionPipeline
+from himena_relion.schemas import (
+    OptimisationSetModel,
+    JobStarModel,
+    RelionPipelineModel,
+    TSModel,
+    ParticlesModel,
+)
 
 if TYPE_CHECKING:
     from typing import Self
@@ -52,16 +59,13 @@ class JobDirectory:
         fp = Path(path)
         if fp.name != "job.star" or not fp.exists():
             raise ValueError(f"Expected an existing job.star file, got {fp}")
-        job_block = read_star_block(fp, block_name="job").trust_single()
-        job_type = job_block["rlnJobTypeLabel"]
-        cls = JobDirectory._type_map.get(job_type, JobDirectory)
-        job_dir = fp.parent
-        return cls(job_dir)
+        job_star = JobStarModel.validate_file(fp)
+        cls = JobDirectory._type_map.get(job_star.job.job_type_label, JobDirectory)
+        return cls(fp.parent)
 
     def is_tomo(self) -> bool:
         """Return whether this job is a tomography job."""
-        job_block = read_star_block(self.job_star(), block_name="job").trust_single()
-        return bool(int(job_block["rlnJobIsTomo"]))
+        return bool(JobStarModel.validate_file(self.job_star()).job.job_is_tomo)
 
     @property
     def job_id(self) -> str:
@@ -124,19 +128,14 @@ class JobDirectory:
     def _to_job_class(self) -> type[RelionJob] | None:
         from himena_relion._job_class import iter_relion_jobs
 
-        star = read_star(self.job_star())
-        job_block = star["job"].trust_single()
-
-        job_type = job_block["rlnJobTypeLabel"]
-        is_tomo = bool(int(job_block["rlnJobIsTomo"]))
-        df = star["joboptions_values"].to_pandas()
-        job_star_params = dict(zip(df["rlnJobOptionVariable"], df["rlnJobOptionValue"]))
-
+        job_star = JobStarModel.validate_file(self.job_star())
+        job_type = job_star.job.job_type_label
+        is_tomo = bool(job_star.job.job_is_tomo)
         for subcls in iter_relion_jobs():
             if (
                 subcls.type_label() == job_type
                 and subcls.job_is_tomo() == is_tomo
-                and subcls.param_matches(job_star_params)
+                and subcls.param_matches(job_star.joboptions_values.to_dict())
             ):
                 return subcls
         return None
@@ -172,8 +171,8 @@ class JobDirectory:
         return self.get_job_params_as_dict()[param]
 
     def get_job_params_as_dict(self) -> dict[str, str]:
-        df = read_star_block(self.job_star(), "joboptions_values").to_pandas()
-        return dict(zip(df["rlnJobOptionVariable"], df["rlnJobOptionValue"]))
+        job_star = JobStarModel.validate_file(self.job_star())
+        return job_star.joboptions_values.to_dict()
 
     def iter_tilt_series(self) -> Iterator[TiltSeriesInfo]:
         """Iterate over all tilt series info."""
@@ -194,12 +193,11 @@ class JobDirectory:
         out = False
         with suppress(Exception):
             if (path := self.path.joinpath("default_pipeline.star")).exists():
-                block = read_star_block(path, "pipeline_processes")
+                pipeline = RelionPipelineModel.validate_file(path)
                 _id = "/".join(path.parent.as_posix().split("/")[-2:]) + "/"
-                df = block.to_pandas()
-                pos_sl = df["rlnPipeLineProcessName"] == _id
+                pos_sl = pipeline.processes.process_name == _id
                 out = bool(
-                    df[pos_sl]["rlnPipeLineProcessStatusLabel"].iloc[0] == "Scheduled"
+                    pipeline.processes.status_label[pos_sl].iloc[0] == "Scheduled"
                 )
         return out
 
@@ -319,20 +317,14 @@ class TiltSeriesInfo:
 
     def read_tilt_series(self, rln_dir: Path) -> ArrayFilteredView:
         """Read the tilt series from the file."""
-        return self._read_image_series(rln_dir, "rlnMicrographName")
+        ts = self._ts_model(rln_dir)
+        order = ts.nominal_stage_tilt_angle.argsort()
+        paths = [rln_dir / p for p in ts.micrograph_name]
+        return ArrayFilteredView.from_mrcs([paths[i] for i in order])
 
-    def _read_image_series(self, rln_dir: Path, column_name: str) -> ArrayFilteredView:
-        """Read the image series from the specified column in the star file."""
-        df = _read_star_as_df(rln_dir / self.tomo_tilt_series_star_file)
-        paths = [rln_dir / p for p in df[column_name]]
-        if "rlnTomoNominalStageTiltAngle" in df:
-            tilt_angles = df["rlnTomoNominalStageTiltAngle"]
-            order = np.argsort(tilt_angles)
-            paths = [paths[i] for i in order]
-            df = df.iloc[order].reset_index(drop=True)
-        view = ArrayFilteredView.from_mrcs(paths)
-        view.dataframe = df
-        return view
+    def _ts_model(self, rln_dir: Path) -> TSModel:
+        """Read the tilt series star file as TSModel."""
+        return TSModel.validate_file(rln_dir / self.tomo_tilt_series_star_file)
 
 
 class ImportJobDirectory(HasFrameJobDirectory):
@@ -406,7 +398,10 @@ class CtfCorrectedTiltSeriesInfo(CorrectedTiltSeriesInfo):
 
     def read_ctf_series(self, rln_dir: Path) -> ArrayFilteredView:
         """Read the tilt series from the file."""
-        return self._read_image_series(rln_dir, "rlnCtfImage")
+        ts = self._ts_model(rln_dir)
+        order = ts.nominal_stage_tilt_angle.argsort()
+        paths = [rln_dir / p for p in ts.ctf_image]
+        return ArrayFilteredView.from_mrcs([paths[i] for i in order])
 
 
 class CtfCorrectionJobDirectory(HasTiltSeriesJobDirectory):
@@ -657,7 +652,7 @@ class PickJobDirectory(JobDirectory):
         else:
             tomo_star_path = None
         if (path_opt := self.path / "optimisation_set.star").exists():
-            opt_set = RelionOptimisationSet.from_file(path_opt)
+            opt_set = OptimisationSetModel.validate_file(path_opt)
             particle_star_path = rln_dir / opt_set.particles_star
         elif node_part := job_pipeline.get_input_by_type("ParticleGroupMetadata"):
             particle_star_path = rln_dir / node_part.path
@@ -673,14 +668,12 @@ class PickJobDirectory(JobDirectory):
         star = _read_star_as_df(tomo_star)
         for _, row in star.iterrows():
             info = TomogramInfo.from_series(row)
-            getter = self._make_get_particles(particles_star, row)
+            getter = self._make_get_particles(particles_star, info.tomo_name)
             info.get_particles = getter
             yield info
 
     def _make_get_particles(
-        self,
-        particles_star: Path,
-        row: pd.Series,
+        self, particles_star: Path, tomo_name: str
     ) -> Callable[[], pd.DataFrame]:
         """Create a function to get particles for a given tomogram."""
 
@@ -689,9 +682,9 @@ class PickJobDirectory(JobDirectory):
                 cols = [f"rlnCenteredCoordinate{x}Angst" for x in "ZYX"]
                 return pd.DataFrame({c: [] for c in cols}, dtype=float)
             else:
-                df_particles = _read_star_as_df(particles_star)
-                sl = df_particles["rlnTomoName"] == str(row["rlnTomoName"])
-                return df_particles[sl].reset_index(drop=True)
+                ptcl = ParticlesModel.validate_file(particles_star)
+                sl = ptcl.tomo_name == tomo_name
+                return ptcl.dataframe[sl].reset_index(drop=True)
 
         return get_particles
 
@@ -1118,9 +1111,8 @@ class SelectInteractiveJobDirectory(JobDirectory):
         return mrc_paths
 
     def _opt_star(self) -> Path:
-        b_in = read_star_block(self.path / "job_pipeline.star", "pipeline_input_edges")
-        df = b_in.trust_loop().to_pandas()
-        optimizer_star_path = Path(df["rlnPipeLineEdgeFromNode"].iloc[0])
+        pipeline = RelionPipelineModel.validate_file(self.path / "job_pipeline.star")
+        optimizer_star_path = Path(pipeline.input_edges.from_node.iloc[0])
         new_stem = optimizer_star_path.stem[: -len("optimiser")] + "optimisation_set"
         return self.relion_project_dir / optimizer_star_path.parent / f"{new_stem}.star"
 

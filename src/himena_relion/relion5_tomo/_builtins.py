@@ -368,13 +368,12 @@ class AlignTiltSeriesImodFiducial(_AlignTiltSeriesJobBase):
         kwargs.pop("do_imod_patchtrack", None)
         kwargs.pop("gpu_ids", None)
         # remove parameters from other methods
-        kwargs.pop("patch_size", None)
-        kwargs.pop("patch_overlap", None)
-        kwargs.pop("do_aretomo_tiltcorrect", None)
-        kwargs.pop("aretomo_tiltcorrect_angle", None)
-        kwargs.pop("do_aretomo_ctf", None)
-        kwargs.pop("do_aretomo_phaseshift", None)
-        kwargs.pop("other_aretomo_args", None)
+        for key in [
+            "patch_size", "patch_overlap", "do_aretomo_tiltcorrect", "do_aretomo",
+            "aretomo_tiltcorrect_angle", "do_aretomo_ctf", "do_aretomo_phaseshift",
+            "other_aretomo_args", "aretomo_thickness", "aretomo_tiltcorrect",
+        ]:  # fmt: skip
+            kwargs.pop(key, None)
         return kwargs
 
     def run(

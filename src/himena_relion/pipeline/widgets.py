@@ -76,6 +76,7 @@ class QRelionPipelineFlowChart(QtW.QWidget):
     def update_model(self, model: WidgetDataModel) -> None:
         if not isinstance(src := model.source, Path):
             raise TypeError("RELION default_pipeline.star source file not found.")
+        assert isinstance(model.value, RelionDefaultPipeline)
         self.widget_closed_callback()
         self._on_pipeline_updated(model)
         self._flow_chart._relion_project_dir = src.parent
@@ -87,6 +88,9 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         self._watcher = self._watch_default_pipeline_star(src)
         self._update_finder()
         self._finder.setCurrentText("")
+        self._state_to_job_map.clear()
+        for job in model.value.iter_nodes():
+            self._state_to_job_map[job.status].add(job)
 
     @ensure_main_thread
     def _on_pipeline_updated(self, model: WidgetDataModel) -> None:

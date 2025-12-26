@@ -10,6 +10,7 @@ from starfile_rs import read_star
 from himena_relion._image_readers import ArrayFilteredView
 from himena_relion._widgets import Q2DViewer, Q2DFilterWidget
 from himena_relion import _job_dir
+from himena_relion.schemas import TSModel
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -150,14 +151,12 @@ class QEraseGoldViewer(QtW.QWidget):
             self._viewer.clear()
             self._viewer.redraw()
             return
-        df = read_star(star_path).first().trust_loop().to_pandas()
+        ts = TSModel.validate_file(star_path)
         rln_dir = self._job_dir.relion_project_dir
-        paths = [rln_dir / p for p in df["rlnMicrographName"]]
-        if "rlnTomoNominalStageTiltAngle" in df:
-            tilt_angles = df["rlnTomoNominalStageTiltAngle"]
-            order = np.argsort(tilt_angles)
-            paths = [paths[i] for i in order]
-            df = df.iloc[order].reset_index(drop=True)
+        paths = [rln_dir / p for p in ts.micrograph_name]
+        tilt_angles = ts.nominal_stage_tilt_angle
+        order = np.argsort(tilt_angles)
+        paths = [paths[i] for i in order]
         ts_view = ArrayFilteredView.from_mrcs(paths)
         with mrcfile.open(paths[0], header_only=True) as mrc:
             image_scale = mrc.voxel_size.x

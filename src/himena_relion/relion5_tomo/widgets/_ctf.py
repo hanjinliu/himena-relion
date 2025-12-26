@@ -2,7 +2,6 @@ from __future__ import annotations
 from pathlib import Path
 import logging
 from typing import Any, Callable
-import numpy as np
 from qtpy import QtWidgets as QtW
 from superqt.utils import thread_worker, GeneratorWorker
 from starfile_rs import read_star
@@ -14,6 +13,7 @@ from himena_relion._widgets import (
     register_job,
 )
 from himena_relion import _job_dir
+from himena_relion.schemas import TSModel
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -100,14 +100,14 @@ class QCtfFindViewer(QJobScrollArea):
         job_dir: _job_dir.CtfCorrectionJobDirectory,
         path: Path,
     ):
-        df = read_star(path).first().trust_loop().to_pandas()
+        ts = TSModel.validate_file(path)
+        df = ts.block.to_pandas()
         rln_dir = job_dir.relion_project_dir
-        paths = [rln_dir / p for p in df["rlnCtfImage"]]
-        if "rlnTomoNominalStageTiltAngle" in df:
-            tilt_angles = df["rlnTomoNominalStageTiltAngle"]
-            order = np.argsort(tilt_angles)
-            paths = [paths[i] for i in order]
-            df = df.iloc[order].reset_index(drop=True)
+        tilt_angles = ts.nominal_stage_tilt_angle
+        order = tilt_angles.argsort()
+        paths = [rln_dir / p for p in ts.ctf_image]
+        paths = [paths[i] for i in order]
+        df = df.iloc[order].reset_index(drop=True)
         ts_view = ArrayFilteredView.from_mrcs(paths)
 
         yield self._defocus_canvas.plot_defocus, df

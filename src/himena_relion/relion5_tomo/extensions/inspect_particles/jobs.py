@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from starfile_rs import empty_star, read_star
+from starfile_rs import empty_star
 from himena_relion._job_class import connect_jobs
 from himena_relion.external import RelionExternalJob
 from himena_relion.relion5._builtins import (
@@ -17,6 +17,7 @@ from himena_relion.relion5_tomo._builtins import (
     ReconstructParticlesJob,
     Class3DTomoJob,
 )
+from himena_relion.schemas import OptimisationSetModel
 from .widgets import QInspectViewer
 
 
@@ -64,25 +65,21 @@ class InspectParticles(RelionExternalJob):
         in_path = Path(path)
         if not in_path.exists():
             raise FileNotFoundError(f"Input file {path!r} not found.")
+        in_path = in_path.resolve()
         rln_dir = self.output_job_dir.relion_project_dir
         if in_path.is_relative_to(rln_dir):
             in_path = in_path.relative_to(rln_dir)
         return str(in_path)
 
 
-def _get_mic_and_particle(path: Path) -> tuple[str, str]:
-    # _rlnTomoParticlesFile  Refine3D/job074/run_data.star
-    # _rlnTomoTomogramsFile  Polish/job070/tomograms.star
-    opt = read_star(path / "run_optimisation_set.star").first().trust_single().to_dict()
-    return opt["rlnTomoParticlesFile"], opt["rlnTomoTomogramsFile"]
-
-
 def _get_particle(path: Path) -> str:
-    return _get_mic_and_particle(path)[0]
+    opt = OptimisationSetModel.validate_file(path / "run_optimisation_set.star")
+    return opt.particles_star
 
 
 def _get_mic(path: Path) -> str:
-    return _get_mic_and_particle(path)[1]
+    opt = OptimisationSetModel.validate_file(path / "run_optimisation_set.star")
+    return opt.tomogram_star
 
 
 connect_jobs(

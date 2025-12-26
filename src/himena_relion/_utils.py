@@ -5,7 +5,8 @@ from typing import Annotated, Any, get_args, get_origin
 import numpy as np
 from numpy.typing import NDArray
 from functools import lru_cache
-from starfile_rs import read_star_block
+
+from himena_relion.schemas import RelionPipelineModel
 
 
 def bin_image(img: np.ndarray, nbin: int) -> np.ndarray:
@@ -118,8 +119,8 @@ def make_tilt_projection_mat(deg: float) -> NDArray[np.float32]:
 
 def last_job_directory() -> str:
     """Get the identifier of the latest job."""
-    block = read_star_block("default_pipeline.star", "pipeline_processes")
-    return block.to_pandas()["rlnPipeLineProcessName"].iloc[-1]
+    pipeline = RelionPipelineModel.validate_file("default_pipeline.star")
+    return pipeline.processes.process_name.iloc[-1]
 
 
 def unwrap_annotated(annot: Any) -> Any:

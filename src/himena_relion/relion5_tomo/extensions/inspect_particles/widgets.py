@@ -11,6 +11,7 @@ from starfile_rs import read_star
 from superqt.utils import thread_worker, GeneratorWorker
 from himena_relion._widgets import Q2DViewer, Q2DFilterWidget
 from himena_relion import _job_dir
+from himena_relion.schemas import OptimisationSetModel, ParticlesModel
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -110,7 +111,7 @@ def _tomo_and_particles_star(
     else:
         tomo_star_path = None
     if (path_opt := job.path / "optimisation_set.star").exists():
-        opt_set = _job_dir.RelionOptimisationSet.from_file(path_opt)
+        opt_set = OptimisationSetModel.validate_file(path_opt)
         particle_star_path = rln_dir / opt_set.particles_star
     elif node_part := job_pipeline.get_input_by_type("ParticleGroupMetadata"):
         particle_star_path = rln_dir / node_part.path
@@ -129,14 +130,14 @@ def _iter_tomograms(
     star = read_star(tomo_star).first().trust_loop().to_pandas()
     for _, row in star.iterrows():
         info = _job_dir.TomogramInfo.from_series(row)
-        getter = _make_get_particles(particles_star, row)
+        getter = _make_get_particles(particles_star, info.tomo_name)
         info.get_particles = getter
         yield info
 
 
 def _make_get_particles(
     particles_star: Path,
-    row: pd.Series,
+    tomo_name: str,
 ) -> Callable[[], pd.DataFrame]:
     """Create a function to get particles for a given tomogram."""
 
@@ -145,8 +146,8 @@ def _make_get_particles(
             cols = [f"rlnCenteredCoordinate{x}Angst" for x in "ZYX"]
             return pd.DataFrame({c: [] for c in cols}, dtype=float)
         else:
-            df_particles = read_star(particles_star).first().trust_loop().to_pandas()
-            sl = df_particles["rlnTomoName"] == str(row["rlnTomoName"])
-            return df_particles[sl].reset_index(drop=True)
+            ptcl = ParticlesModel.validate_file(particles_star)
+            sl = ptcl.tomo_name == tomo_name
+            return ptcl.dataframe[sl].reset_index(drop=True)
 
     return get_particles

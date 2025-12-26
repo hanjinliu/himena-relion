@@ -1,10 +1,10 @@
 from pathlib import Path
 import logging
-from starfile_rs import read_star
 from himena_relion.relion5 import _builtins as _spa
 from himena_relion.relion5_tomo import _builtins as _tomo
 from himena_relion._job_dir import JobDirectory
 from himena_relion._job_class import connect_jobs
+from himena_relion.schemas import OptimisationSetModel
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -32,9 +32,9 @@ def _subtomo_crop_size(path: Path) -> int:
 
 
 def _pixel_size_from_opt_star(path: Path) -> float:
-    _set = read_star(path).first().trust_single()
-    tomo_star = read_star(_set["rlnTomoTomogramsFile"]).first().trust_loop()
-    return tomo_star.to_pandas()["rlnMicrographOriginalPixelSize"].mean()
+    _opt = OptimisationSetModel.validate_file(path)
+    _tomo = _opt.read_tomogram_model()
+    return _tomo.original_pixel_size.mean()
 
 
 def _subtomo_diameter_a(path: Path) -> float:
@@ -77,7 +77,7 @@ for _MotionCorJob in [_tomo.MotionCorr2TomoJob, _tomo.MotionCorrOwnTomoJob]:
     connect_jobs(
         _tomo.ImportTomoJob,
         _MotionCorJob,
-        node_mapping={"tilt_series.star": "in_movies"},
+        node_mapping={"tilt_series.star": "input_star_mics"},
     )
 connect_jobs(
     _tomo.MotionCorr2TomoJob,
