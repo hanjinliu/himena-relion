@@ -241,7 +241,7 @@ connect_jobs(
 connect_jobs(
     _tomo.Refine3DTomoJob,
     _spa.MaskCreationJob,
-    node_mapping={"run_class001.mrc.star": "fn_in"},
+    node_mapping={"run_class001.mrc": "fn_in"},
 )
 connect_jobs(
     _tomo.ReconstructParticlesJob,
@@ -281,6 +281,19 @@ connect_jobs(
     _tomo.ReconstructParticlesJob,
     _tomo.PostProcessTomoJob,
     node_mapping={"half1.mrc": "fn_in"},
+)
+connect_jobs(
+    _tomo.Refine3DTomoJob,
+    _tomo.PostProcessTomoJob,
+    node_mapping={"run_half1_class001_unfil.mrc": "fn_in"},
+)
+connect_jobs(
+    _spa.MaskCreationJob,
+    _tomo.PostProcessTomoJob,
+    node_mapping={
+        # TODO: search for half map
+        "mask.mrc": "fn_mask",
+    },
 )
 connect_jobs(
     _tomo.PostProcessTomoJob,

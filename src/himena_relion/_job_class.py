@@ -266,7 +266,7 @@ class _RelionBuiltinJob(RelionJob):
     def prep_job_star(cls, **kwargs):
         return prep_builtin_job_star(
             type_label=cls.type_label(),
-            is_continue=issubclass(cls, _RelionBuiltinContinue),
+            is_continue=int(issubclass(cls, _RelionBuiltinContinue)),
             is_tomo=int(cls.job_is_tomo()),
             kwargs=cls.normalize_kwargs(**kwargs),
         )
@@ -501,10 +501,9 @@ def execute_job(d: str | Path, ignore_error: bool = False) -> RelionJobExecution
         if not ignore_error:
             raise e
         return None
-    proc = subprocess.Popen(
-        ["relion_pipeliner", "--RunJobs", d],
-        start_new_session=True,
-    )
+    args = ["relion_pipeliner", "--RunJobs", d]
+    proc = subprocess.Popen(args, start_new_session=True)
+    _LOGGER.info("Started RELION job %s with PID %d", d, proc.pid)
     return RelionJobExecution(proc, job_dir)
 
 

@@ -256,11 +256,14 @@ def is_all_inputs_ready(d: str | Path) -> bool:
             for input_ in pipeline.inputs
             if not input_.path_job.joinpath(FileNames.EXIT_SUCCESS).exists()
         ]
-        _LOGGER.info(
-            "Inputs %s are not ready to start job %s.",
-            [p.as_posix() for p in not_ready],
-            d,
-        )
+        if not_ready:
+            _LOGGER.info(
+                "Inputs %s are not ready to start job %s.",
+                [p.as_posix() for p in not_ready],
+                d,
+            )
+        else:
+            _LOGGER.info("All inputs are ready to start job %s.", d)
         return len(not_ready) == 0
     else:
         _LOGGER.warning(

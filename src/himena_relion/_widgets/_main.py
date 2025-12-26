@@ -130,6 +130,12 @@ class QRelionJobWidget(QtW.QWidget):
         """Handle changes to the job directory."""
         if self._job_dir is None:
             return
+        if not self._job_dir.path.exists():
+            self.widget_closed_callback()
+            raise RuntimeError(
+                "Job directory has been deleted externally. This widget will no longer "
+                "respond to changes. Please close this job widget."
+            )
         if path.stem.startswith("RELION_JOB_"):
             self._state_widget.on_job_updated(self._job_dir, path)
         else:
