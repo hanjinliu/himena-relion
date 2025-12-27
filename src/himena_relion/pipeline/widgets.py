@@ -5,7 +5,7 @@ from pathlib import Path
 import logging
 from qtpy import QtGui, QtWidgets as QtW, QtCore
 from cmap import Color
-from superqt import ensure_main_thread, QSearchableComboBox
+from superqt import QSearchableComboBox
 from superqt.utils import thread_worker, GeneratorWorker
 from watchfiles import watch, Change
 
@@ -31,6 +31,8 @@ _LOGGER = logging.getLogger(__name__)
 
 class QRelionPipelineFlowChart(QtW.QWidget):
     """Widget to display RELION pipeline flow chart and manage scheduling."""
+
+    update_required = QtCore.Signal(RelionDefaultPipeline)
 
     def __init__(self, ui: MainWindow):
         super().__init__()
@@ -59,7 +61,9 @@ class QRelionPipelineFlowChart(QtW.QWidget):
             self._on_background_left_clicked
         )
 
-        self._state_to_job_map = defaultdict[NodeStatus, set[RelionJobInfo]](set)
+        self._state_to_job_map = defaultdict[NodeStatus, dict[str, RelionJobInfo]](dict)
+        self.update_required.connect(self._on_pipeline_updated)
+        self.update_required.connect(self._on_job_state_changed)
 
     def sizeHint(self):
         return QtCore.QSize(350, 600)
@@ -78,7 +82,7 @@ class QRelionPipelineFlowChart(QtW.QWidget):
             raise TypeError("RELION default_pipeline.star source file not found.")
         assert isinstance(model.value, RelionDefaultPipeline)
         self.widget_closed_callback()
-        self._on_pipeline_updated(model)
+        self._on_pipeline_updated(model.value)
         self._flow_chart._relion_project_dir = src.parent
         parts = src.parts
         if len(parts) >= 3:
@@ -90,16 +94,11 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         self._finder.setCurrentText("")
         self._state_to_job_map.clear()
         for job in model.value.iter_nodes():
-            self._state_to_job_map[job.status].add(job)
+            _dict = self._state_to_job_map[job.status]
+            _dict[job.path.as_posix()] = job
 
-    @ensure_main_thread
-    def _on_pipeline_updated(self, model: WidgetDataModel) -> None:
-        current_center_pos = self._flow_chart.mapToScene(
-            self._flow_chart.viewport().rect().center()
-        )
-        self._flow_chart.clear_all()
-        self._flow_chart.add_pipeline(model.value)
-        self._flow_chart.centerOn(current_center_pos)
+    def _on_pipeline_updated(self, pipeline: RelionDefaultPipeline) -> None:
+        self._flow_chart.set_pipeline(pipeline)
 
     @validate_protocol
     def model_type(self) -> str:
@@ -148,10 +147,11 @@ class QRelionPipelineFlowChart(QtW.QWidget):
                     return
 
     @thread_worker(start_thread=True)
-    def _watch_default_pipeline_star(self, path):
+    def _watch_default_pipeline_star(self, path: Path):
         """Watch the job directory for changes."""
         for changes in watch(path, rust_timeout=400, yield_on_timeout=True):
             if self._watcher is None:
+                _LOGGER.info("Pipeline watcher stopped.")
                 return  # stopped
             for change, fp in changes:
                 if change == Change.deleted:
@@ -159,44 +159,36 @@ class QRelionPipelineFlowChart(QtW.QWidget):
                 _LOGGER.info("default_pipeline.star updated.")
                 try:
                     pipeline = RelionDefaultPipeline.from_pipeline_star(path)
-                except Exception as e:
-                    _LOGGER.warning("Failed to read default_pipeline.star: %s", e)
-                else:
-                    success_old = self._state_to_job_map[NodeStatus.SUCCEEDED]
-                    failed_old = self._state_to_job_map[NodeStatus.FAILED]
-                    self._state_to_job_map.clear()
-                    for job in pipeline.iter_nodes():
-                        self._state_to_job_map[job.status].add(job)
-                    success_new = self._state_to_job_map[NodeStatus.SUCCEEDED]
-                    failed_new = self._state_to_job_map[NodeStatus.FAILED]
-                    ui = self._flow_chart._ui
-
-                    # Notify newly succeeded jobs and run scheduled jobs
-                    if succeeded := success_new - success_old:
-                        for job in self._state_to_job_map[NodeStatus.SCHEDULED]:
-                            # run all the scheduled jobs whose dependencies are met
-                            if is_all_inputs_ready(job.path):
-                                execute_job(job.path.as_posix(), ignore_error=True)
-                                ui.show_notification(
-                                    f"Scheduled job {job.job_repr()} started."
-                                )
-                        ui.show_notification(
-                            "\n".join(
-                                f"Job {job.job_repr()} succeeded." for job in succeeded
-                            )
-                        )
-
-                    # Notify newly failed jobs
-                    if failed := failed_new - failed_old:
-                        ui.show_notification(
-                            "\n".join(f"Job {job.job_repr()} failed." for job in failed)
-                        )
-
-                    # Update the internal data (thus, the flow chart)
-                    model = WidgetDataModel(
-                        value=pipeline,
-                        type=Type.RELION_PIPELINE,
-                        title="RELION Pipeline",
+                except Exception:
+                    _LOGGER.warning(
+                        "Failed to read default_pipeline.star", exc_info=True
                     )
-                    self._on_pipeline_updated(model)
+                else:
+                    # Update the internal data (thus, the flow chart)
+                    self.update_required.emit(pipeline)
             yield
+
+    def _on_job_state_changed(self, pipeline: RelionDefaultPipeline) -> None:
+        success_old = self._state_to_job_map[NodeStatus.SUCCEEDED]
+        failed_old = self._state_to_job_map[NodeStatus.FAILED]
+        self._state_to_job_map.clear()
+        for job in pipeline.iter_nodes():
+            _dict = self._state_to_job_map[job.status]
+            _dict[job.path.as_posix()] = job
+        success_new = self._state_to_job_map[NodeStatus.SUCCEEDED]
+        failed_new = self._state_to_job_map[NodeStatus.FAILED]
+        ui = self._flow_chart._ui
+        # Notify newly succeeded jobs and run scheduled jobs
+        if succeeded := set(success_new.keys()) - set(success_old.keys()):
+            for job in self._state_to_job_map[NodeStatus.SCHEDULED].values():
+                # run all the scheduled jobs whose dependencies are met
+                if is_all_inputs_ready(job.path):
+                    execute_job(job.path.as_posix(), ignore_error=True)
+                    ui.show_notification(f"Scheduled job {job.job_repr()} started.")
+            ui.show_notification(
+                "\n".join(f"Job {job}/ succeeded." for job in succeeded)
+            )
+
+        # Notify newly failed jobs
+        if failed := set(failed_new.keys()) - set(failed_old.keys()):
+            ui.show_notification("\n".join(f"Job {job}/ failed." for job in failed))

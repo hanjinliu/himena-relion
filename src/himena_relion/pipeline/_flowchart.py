@@ -20,19 +20,33 @@ class QRelionPipelineFlowChartView(QFlowChartView):
         self._relion_project_dir: Path = Path.cwd()
         self.item_left_double_clicked.connect(self._on_item_double_clicked)
 
-    def add_pipeline(self, pipeline: RelionDefaultPipeline) -> None:
+    def set_pipeline(self, pipeline: RelionDefaultPipeline) -> None:
         if not isinstance(pipeline, RelionDefaultPipeline):
             raise TypeError("Model value must be a RelionDefaultPipeline.")
         self._pipeline = pipeline
-        for info in pipeline._nodes:
-            if info.path not in self._node_map:
-                self._add_job_node_item(info)
-
-    def clear_all(self) -> None:
+        old_positions = {
+            node.item().id(): node.pos() for node in self._node_map.values()
+        }
+        # clear all
         self.scene().clear()
         self._node_map.clear()
 
-    def _add_job_node_item(self, info: RelionJobInfo) -> None:
+        # If the flowchart has been dragged, item positions are different from default.
+        # Restore old positions
+        new_infos = []
+        for info in pipeline._nodes:
+            if info.path in old_positions:
+                self._add_job_node_item(info)
+            else:
+                new_infos.append(info)
+        for new_item in self._node_map.values():
+            if pos := old_positions.get(new_item.item().id()):
+                new_item.setPos(pos)
+        # new items should be added last to adjust their positions properly
+        for new_info in new_infos:
+            self._add_job_node_item(new_info)
+
+    def _add_job_node_item(self, info: RelionJobInfo):
         parents: list[Path] = []
         for parent in info.parents:
             parent_info = parent.node
@@ -41,7 +55,7 @@ class QRelionPipelineFlowChartView(QFlowChartView):
             if parent_info.path not in parents:
                 parents.append(parent_info.path)
         item = RelionJobNodeItem(info)
-        self.add_child(item, parents=parents)
+        return self.add_child(item, parents=parents)
 
     def _on_item_double_clicked(self, item: RelionJobNodeItem):
         self._show_item_by_id(item.id())

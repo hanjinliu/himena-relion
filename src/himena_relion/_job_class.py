@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 import inspect
@@ -487,7 +488,13 @@ def execute_job(d: str | Path, ignore_error: bool = False) -> RelionJobExecution
         _LOGGER.warning("Error executing RELION job %s", d, exc_info=True)
         return None
     args = ["relion_pipeliner", "--RunJobs", d]
-    proc = subprocess.Popen(args, start_new_session=True)
+    # NOTE: Because himena also uses Qt, RELION jobs that depend on napari (such as
+    # ExcludeTiltSeries) may fail to start, saying no Qt bindings are available. This
+    # seems to be due to environment variable QT_API being set to incompatible value
+    # like "pyqt6".
+    env = os.environ.copy()
+    env.pop("QT_API", None)
+    proc = subprocess.Popen(args, start_new_session=True, env=env)
     _LOGGER.info("Started RELION job %s with PID %d", d, proc.pid)
     return RelionJobExecution(proc, job_dir)
 

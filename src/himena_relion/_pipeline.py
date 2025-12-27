@@ -88,9 +88,6 @@ class RelionJobInfo:
     parents: list[RelionOutputFile]
     status: NodeStatus = NodeStatus.SUCCEEDED
 
-    def __hash__(self):
-        return hash(self.path)
-
     def job_repr(self) -> str:
         """Return a string representation of the job."""
         # mainly for notification
