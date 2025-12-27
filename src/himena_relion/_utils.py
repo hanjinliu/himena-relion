@@ -1,5 +1,6 @@
 from __future__ import annotations
 from pathlib import Path
+import logging
 from typing import Annotated, Any, get_args, get_origin
 
 import numpy as np
@@ -7,6 +8,8 @@ from numpy.typing import NDArray
 from functools import lru_cache
 
 from himena_relion.schemas import RelionPipelineModel
+
+_LOGGER = logging.getLogger(__name__)
 
 
 def bin_image(img: np.ndarray, nbin: int) -> np.ndarray:
@@ -73,9 +76,12 @@ def threshold_yen(image: np.ndarray, nbins=256, use_positive: bool = True) -> fl
     return float(bin_centers[crit.argmax()])
 
 
+def path_icon_svg(name: str) -> Path:
+    return Path(__file__).parent / "resources" / f"{name}.svg"
+
+
 def read_icon_svg(name: str) -> str:
-    path = Path(__file__).parent / "resources" / f"{name}.svg"
-    return path.read_text(encoding="utf-8")
+    return path_icon_svg(name).read_text(encoding="utf-8")
 
 
 def read_icon_svg_for_type(type_label: str) -> str:
@@ -146,3 +152,36 @@ def change_name_for_tomo(type_label: str) -> str:
         else:
             type_label = f"{_relion}.{_jobname}_tomo"
     return type_label
+
+
+def normalize_job_id(d: str | Path) -> str:
+    if isinstance(d, Path):
+        d = d.as_posix()
+    if not d.endswith("/"):
+        d += "/"
+    if d.count("/") > 2:
+        d = "/".join(d.split("/")[-2:]) + "/"
+    return d
+
+
+def update_default_pipeline(
+    default_pipeline_path: Path,
+    job_id: str,
+    state: str | None = None,
+    alias: str | None = None,
+):
+    with default_pipeline_path.open("r+") as f:  # use open to acquire lock
+        try:
+            pipeline_star = RelionPipelineModel.validate_text(f.read())
+            pos_sl = pipeline_star.processes.process_name == normalize_job_id(job_id)
+            if len(true_ids := np.where(pos_sl)) == 1:
+                df = pipeline_star.processes.dataframe
+                if state is not None:
+                    df.loc[true_ids[0][0], "rlnPipeLineProcessStatusLabel"] = state
+                if alias is not None:
+                    df.loc[true_ids[0][0], "rlnPipeLineProcessAlias"] = alias
+                pipeline_star.processes = df
+                f.seek(0)
+                f.write(pipeline_star.to_string())
+        except Exception:
+            _LOGGER.warning("Failed to update job state for %s", job_id, exc_info=True)

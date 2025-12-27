@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import logging
 from contextlib import suppress
 from functools import lru_cache
 from pathlib import Path
 import sys
+import html
 from typing import Iterator
+import numpy as np
 from qtpy import QtWidgets as QtW, QtGui, QtCore
 from superqt import QToggleSwitch
 from superqt.utils import qthrottled
@@ -17,6 +20,9 @@ from himena_relion import _job_class, _job_dir
 from himena_relion._utils import read_icon_svg, read_icon_svg_for_type
 from himena_relion._pipeline import RelionPipeline
 from himena_relion._widgets._job_edit import QJobParameter
+from himena_relion.schemas._pipeline import RelionPipelineModel
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class JobWidgetBase:
@@ -278,6 +284,11 @@ class QJobParameterView(QJobParameter, JobWidgetBase):
         if job_cls := job_dir._to_job_class():
             self.update_by_job(job_cls)
             self._update_params(job_dir, job_cls)
+        else:
+            _LOGGER.warning(
+                "Cannot determine the job class for %s",
+                job_dir.job_normal_id(),
+            )
 
     def on_job_updated(self, job_dir, fp):
         if fp.name == "job.star":
@@ -420,13 +431,16 @@ class QJobStateLabel(QtW.QWidget, JobWidgetBase):
         layout.setContentsMargins(0, 0, 0, 0)
         self._job_desc = QtW.QLabel("XXX")
         self._state_label = QtW.QLabel("Not started")
+        self._state_label.setSizePolicy(
+            QtW.QSizePolicy.Policy.Minimum, QtW.QSizePolicy.Policy.Preferred
+        )
         self._state_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
         layout.addWidget(self._job_desc)
         layout.addWidget(self._state_label)
         font = self.font()
         font.setPointSize(font.pointSize() + 3)
         self._job_desc.setFont(font)
-        font.setPointSize(font.pointSize() + 2)
+        font.setPointSize(font.pointSize() - 1)
         self._state_label.setFont(font)
 
     def on_job_updated(self, job_dir, fp):
@@ -435,9 +449,20 @@ class QJobStateLabel(QtW.QWidget, JobWidgetBase):
 
     def initialize(self, job_dir):
         self._on_job_updated(job_dir)
+        # look for alias
+        pipeline = RelionPipelineModel.validate_file(
+            job_dir.relion_project_dir / "default_pipeline.star"
+        )
+        is_eq = pipeline.processes.process_name.eq(job_dir.job_normal_id())
+        is_eq_idx = np.where(is_eq)
+        title = job_dir.job_title()
+        if len(is_eq_idx[0]) > 0:
+            alias = pipeline.processes.alias[int(is_eq_idx[0][0])]
+            if alias.count("/") == 2:
+                alias_latter = alias.split("/")[1]
+                title = html.escape(f"{alias_latter} ({title})")
         self._job_desc.setText(
-            f"<b><span style='color: gray;'>{job_dir.job_id}: </span> "
-            f"{job_dir.job_title()}</b>"
+            f"<b><span style='color: gray;'>{job_dir.job_number}: </span> {title}</b>"
         )
 
     def _on_job_updated(self, job_dir: _job_dir.JobDirectory):
@@ -455,6 +480,9 @@ class QJobStateLabel(QtW.QWidget, JobWidgetBase):
                     self._state_label.setText("Scheduled")
                 else:
                     self._state_label.setText("Running")
+        metric = QtGui.QFontMetrics(self._state_label.font())
+        text_width = metric.horizontalAdvance(self._state_label.text())
+        self._state_label.setFixedWidth(text_width + 10)
 
 
 class QFileLabel(QtW.QWidget):

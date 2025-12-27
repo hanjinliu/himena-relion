@@ -12,7 +12,7 @@ import pandas as pd
 from starfile_rs import read_star, read_star_block
 import mrcfile
 from himena_relion._image_readers._array import ArrayFilteredView
-from himena_relion._utils import change_name_for_tomo
+from himena_relion._utils import change_name_for_tomo, normalize_job_id
 from himena_relion.consts import (
     JOB_IMPORT_PATH_FILE,
     RelionJobState,
@@ -41,7 +41,7 @@ class JobDirectory:
     _type_map = {}
 
     def __init__(self, path: str | Path):
-        self.path = Path(path)
+        self.path = Path(path).resolve()
         if not self.path.exists():
             raise FileNotFoundError(f"Job directory {self.path} does not exist.")
 
@@ -68,8 +68,8 @@ class JobDirectory:
         return bool(JobStarModel.validate_file(self.job_star()).job.job_is_tomo)
 
     @property
-    def job_id(self) -> str:
-        """Return the job ID based on the directory name."""
+    def job_number(self) -> str:
+        """Return the job number string based on the directory name."""
         try:
             fp = self.path.resolve()
         except Exception:
@@ -104,10 +104,8 @@ class JobDirectory:
         """Return the path to the RELION project directory."""
         return self.path.parent.parent
 
-    def job_alias(self) -> str | None:
-        """Return the job alias if exists."""
-        pipeline = self.parse_job_pipeline()
-        return pipeline.process_alias
+    def job_normal_id(self) -> str:
+        return normalize_job_id(self.path.relative_to(self.relion_project_dir))
 
     def can_abort(self) -> bool:
         """Check if the job can be aborted."""
@@ -131,14 +129,19 @@ class JobDirectory:
         job_star = JobStarModel.validate_file(self.job_star())
         job_type = job_star.job.job_type_label
         is_tomo = bool(job_star.job.job_is_tomo)
+        only_is_tomo_did_not_match = None
         for subcls in iter_relion_jobs():
-            if (
-                subcls.type_label() == job_type
-                and subcls.job_is_tomo() == is_tomo
-                and subcls.param_matches(job_star.joboptions_values.to_dict())
+            if subcls.type_label() == job_type and subcls.param_matches(
+                job_star.joboptions_values.to_dict()
             ):
-                return subcls
-        return None
+                if subcls.job_is_tomo() == is_tomo:
+                    return subcls
+                else:
+                    only_is_tomo_did_not_match = subcls
+        if only_is_tomo_did_not_match:
+            # probably due to inconsistency between versions, some jobs have different
+            # is_tomo flag
+            return only_is_tomo_did_not_match
 
     @contextmanager
     def edit_job_pipeline(self):

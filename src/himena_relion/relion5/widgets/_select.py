@@ -50,7 +50,7 @@ class QSelectJobBase(QJobScrollArea):
         """Handle changes to the job directory."""
         if Path(path).suffix not in [".out", ".err", ".star"]:
             self.initialize(job_dir)
-            _LOGGER.debug("%s Updated", job_dir.job_id)
+            _LOGGER.debug("%s Updated", job_dir.job_number)
 
     def _print_running(self):
         self._text_edit.setText("Job is running...")

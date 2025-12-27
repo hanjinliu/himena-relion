@@ -23,8 +23,10 @@ from himena_relion._utils import (
     last_job_directory,
     unwrap_annotated,
     change_name_for_tomo,
+    normalize_job_id,
+    update_default_pipeline,
 )
-from himena_relion.schemas import JobStarModel, RelionPipelineModel
+from himena_relion.schemas import JobStarModel
 
 if TYPE_CHECKING:
     from himena_relion._widgets._job_edit import QJobScheduler
@@ -173,7 +175,7 @@ class RelionJob(ABC):
             if not default_pipeline_path.exists():
                 return _LOGGER.warning("Project default_pipeline.star not found.")
             # Job state needs to be updated to "Scheduled"
-            _update_job_state(default_pipeline_path, to_run, "Scheduled")
+            update_default_pipeline(default_pipeline_path, to_run, state="Scheduled")
 
     @classmethod
     def _show_scheduler_widget(cls, ui: MainWindow, context: AnyContext):
@@ -479,7 +481,7 @@ def connect_jobs(
 
 def execute_job(d: str | Path, ignore_error: bool = False) -> RelionJobExecution:
     """Execute a RELION job named `d` (such as "Class3D/job012/")."""
-    d = _normalize_job_id(d)
+    d = normalize_job_id(d)
     try:
         job_dir = _job_dir.JobDirectory(Path(d).resolve())
     except FileNotFoundError as e:
@@ -497,33 +499,6 @@ def execute_job(d: str | Path, ignore_error: bool = False) -> RelionJobExecution
     proc = subprocess.Popen(args, start_new_session=True, env=env)
     _LOGGER.info("Started RELION job %s with PID %d", d, proc.pid)
     return RelionJobExecution(proc, job_dir)
-
-
-def _normalize_job_id(d: str | Path) -> str:
-    if isinstance(d, Path):
-        d = d.as_posix()
-    if not d.endswith("/"):
-        d += "/"
-    if d.count("/") > 2:
-        d = "/".join(d.split("/")[-2:]) + "/"
-    return d
-
-
-def _update_job_state(
-    default_pipeline_path: Path, job_id: str, state: str = "Scheduled"
-):
-    with default_pipeline_path.open("r+") as f:  # use open to acquire lock
-        try:
-            pipeline_star = RelionPipelineModel.validate_text(f.read())
-            pos_sl = pipeline_star.processes.process_name == _normalize_job_id(job_id)
-            if len(true_ids := np.where(pos_sl)) == 1:
-                df = pipeline_star.processes.dataframe
-                df.loc[true_ids[0][0], "rlnPipeLineProcessStatusLabel"] = state
-                pipeline_star.processes = df
-                f.seek(0)
-                f.write(pipeline_star.to_string())
-        except Exception:
-            _LOGGER.warning("Failed to update job state for %s", job_id, exc_info=True)
 
 
 def _get_scheduler_widget(ui: MainWindow) -> QJobScheduler:

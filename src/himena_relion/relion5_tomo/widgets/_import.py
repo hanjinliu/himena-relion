@@ -21,7 +21,7 @@ class QImportTiltSeriesViewer(QJobScrollArea):
             ".star",
         ]:
             self.initialize(job_dir)
-            _LOGGER.debug("%s Updated", job_dir.job_id)
+            _LOGGER.debug("%s Updated", job_dir.job_number)
 
     def initialize(self, job_dir: _job_dir.ImportJobDirectory):
         """Initialize the viewer with the job directory."""

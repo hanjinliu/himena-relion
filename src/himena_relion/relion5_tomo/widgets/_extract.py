@@ -40,7 +40,7 @@ class QExtractJobViewer(QJobScrollArea):
             ("_stack2d.mrcs", "_data.mrc")
         ):
             self.initialize(job_dir)
-            _LOGGER.debug("%s Updated", self._job_dir.job_id)
+            _LOGGER.debug("%s Updated", self._job_dir.job_number)
 
     def initialize(self, job_dir: _job_dir.ExtractJobDirectory):
         """Initialize the viewer with the job directory."""

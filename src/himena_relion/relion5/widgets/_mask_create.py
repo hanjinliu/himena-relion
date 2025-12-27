@@ -24,7 +24,7 @@ class QMaskCreateViewer(QJobScrollArea):
         """Handle changes to the job directory."""
         if Path(path).name == "mask.mrc":
             self.initialize(job_dir)
-            _LOGGER.debug("%s Updated", job_dir.job_id)
+            _LOGGER.debug("%s Updated", job_dir.job_number)
 
     def initialize(self, job_dir: _job_dir.MaskCreateJobDirectory):
         """Initialize the viewer with the job directory."""

@@ -49,7 +49,7 @@ class QClass3DViewer(QJobScrollArea):
         fp = Path(path)
         if fp.name.startswith("RELION_JOB_") or fp.name.endswith("_model.star"):
             self.initialize(job_dir)
-            _LOGGER.debug("%s Updated", self._job_dir.job_id)
+            _LOGGER.debug("%s Updated", self._job_dir.job_number)
 
     def initialize(self, job_dir: _job_dir.Class3DJobDirectory):
         """Initialize the viewer with the job directory."""

@@ -6,6 +6,9 @@ class RelionPipelineGeneral(schema.SingleDataModel):
 
 
 class RelionPipelineProcesses(schema.LoopDataModel):
+    """Pipeline processes such as
+    Import/job001/       None relion.importtomo  Failed"""
+
     process_name: schema.Series[str] = schema.Field("rlnPipeLineProcessName")
     alias: schema.Series[str] = schema.Field("rlnPipeLineProcessAlias")
     type_label: schema.Series[str] = schema.Field("rlnPipeLineProcessTypeLabel")
@@ -19,11 +22,19 @@ class RelionPipelineNodes(schema.LoopDataModel):
 
 
 class RelionPipelineInputEdges(schema.LoopDataModel):
+    """Pipeline input edges such as
+    Import/job001/tilt_series.star     MotionCorr/job002/
+    """
+
     from_node: schema.Series[str] = schema.Field("rlnPipeLineEdgeFromNode")
     process: schema.Series[str] = schema.Field("rlnPipeLineEdgeProcess")
 
 
 class RelionPipelineOutputEdges(schema.LoopDataModel):
+    """Pipeline output edges such as
+    Import/job001/ Import/job001/tilt_series.star
+    """
+
     process: schema.Series[str] = schema.Field("rlnPipeLineEdgeProcess")
     to_node: schema.Series[str] = schema.Field("rlnPipeLineEdgeToNode")
 

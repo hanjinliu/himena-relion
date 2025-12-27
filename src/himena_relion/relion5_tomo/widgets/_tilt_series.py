@@ -35,7 +35,7 @@ class QMotionCorrViewer(QJobScrollArea):
         """Handle changes to the job directory."""
         if Path(path).suffix == ".mrc":
             self._process_update()
-            _LOGGER.debug("%s Updated", job_dir.job_id)
+            _LOGGER.debug("%s Updated", job_dir.job_number)
 
     def _param_changed(self):
         """Handle changes to filter parameters."""
@@ -100,7 +100,7 @@ class QExcludeTiltViewer(QJobScrollArea):
         """Handle changes to the job directory."""
         if Path(path).name == "selected_tilt_series.star":
             self._process_update()
-            _LOGGER.debug("%s Updated", job_dir.job_id)
+            _LOGGER.debug("%s Updated", job_dir.job_number)
 
     def _param_changed(self):
         """Handle changes to filter parameters."""

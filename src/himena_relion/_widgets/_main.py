@@ -10,7 +10,8 @@ from watchfiles import watch
 from timeit import default_timer
 from himena import MainWindow, WidgetDataModel
 from himena.plugins import validate_protocol
-from himena_relion import _job_dir
+from himena.qt import QColoredToolButton
+from himena_relion import _job_dir, _utils
 from himena_relion._widgets._job_widgets import (
     JobWidgetBase,
     QJobStateLabel,
@@ -19,6 +20,7 @@ from himena_relion._widgets._job_widgets import (
     QJobPipelineViewer,
     QJobParameterView,
 )
+from himena_relion._widgets._misc import spacer_widget
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -31,6 +33,7 @@ class QRelionJobWidget(QtW.QWidget):
         super().__init__()
         self._ui_ref = weakref.ref(ui)
         self._job_dir: _job_dir.JobDirectory | None = None
+        self._control_widget: QRelionJobWidgetControl | None = None
         layout = QtW.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         self._state_widget = QJobStateLabel()
@@ -97,6 +100,19 @@ class QRelionJobWidget(QtW.QWidget):
     @validate_protocol
     def size_hint(self):
         return 420, 540
+
+    @validate_protocol
+    def theme_changed_callback(self, theme):
+        """Callback when the application theme is changed."""
+        for wdt in self.control_widget()._tool_buttons:
+            wdt.update_theme(theme)
+
+    @validate_protocol
+    def control_widget(self) -> QRelionJobWidgetControl:
+        """Get the control widget for this job widget."""
+        if self._control_widget is None:
+            self._control_widget = QRelionJobWidgetControl(self)
+        return self._control_widget
 
     @validate_protocol
     def widget_added_callback(self):
@@ -197,3 +213,21 @@ def register_job(job_type: type[_job_dir.JobDirectory]) -> Callable[[_T], _T]:
         return widget_cls
 
     return inner
+
+
+class QRelionJobWidgetControl(QtW.QWidget):
+    def __init__(self, parent: QRelionJobWidget):
+        super().__init__()
+        self.widget = parent
+        self._tool_buttons = [
+            QColoredToolButton(self.refresh_widget, _utils.path_icon_svg("refresh")),
+        ]
+        layout = QtW.QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(spacer_widget())
+        for btn in self._tool_buttons:
+            layout.addWidget(btn)
+
+    def refresh_widget(self):
+        """Reopen this RELION job."""
+        self.widget.update_model(self.widget.to_model())
