@@ -90,8 +90,6 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         else:
             self._directory_label.setText(f"{parts[-2]}/")
         self._watcher = self._watch_default_pipeline_star(src)
-        self._update_finder()
-        self._finder.setCurrentText("")
         self._state_to_job_map.clear()
         for job in model.value.iter_nodes():
             _dict = self._state_to_job_map[job.status]
@@ -99,6 +97,7 @@ class QRelionPipelineFlowChart(QtW.QWidget):
 
     def _on_pipeline_updated(self, pipeline: RelionDefaultPipeline) -> None:
         self._flow_chart.set_pipeline(pipeline)
+        self._update_finder()
 
     @validate_protocol
     def model_type(self) -> str:
@@ -130,9 +129,12 @@ class QRelionPipelineFlowChart(QtW.QWidget):
             jobxxx = info.path.stem
             if jobxxx.startswith("job"):
                 jobxxx = jobxxx[3:]
-            display_text = (
-                f"{jobxxx}: {JOB_ID_MAP.get(info.type_label, info.type_label)}"
-            )
+            state = info.status.value.title()
+            if info.alias:
+                main_text = info.alias
+            else:
+                main_text = JOB_ID_MAP.get(info.type_label, info.type_label)
+            display_text = f"{jobxxx}: {main_text} [{state}]"
             self._finder.addItem(display_text, info)  # text, userData
         self._finder.setCurrentText("")
         self._finder_initialized = True

@@ -49,11 +49,15 @@ class QReconstructViewer(QJobScrollArea):
         try:
             params = job_dir.get_job_params_as_dict()
             if opt_path := params.get("in_optimisation", None):
+                opt_path = job_dir.relion_project_dir / opt_path
                 opt_model = OptimisationSetModel.validate_file(opt_path)
                 particles_path = opt_model.particles_star
             elif ptcl := params.get("in_particles", None):
                 particles_path = ptcl
-
+            else:
+                return
+            if not particles_path.exists():
+                particles_path = job_dir.relion_project_dir / particles_path
             star = read_star(particles_path)
             if "particles" in star:
                 n_particles = star["particles"].trust_loop().shape[0]

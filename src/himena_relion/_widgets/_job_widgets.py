@@ -459,7 +459,7 @@ class QJobStateLabel(QtW.QWidget, JobWidgetBase):
 
 class QFileLabel(QtW.QWidget):
     dragged = QtCore.Signal()
-    right_clicked = QtCore.Signal()
+    right_clicked = QtCore.Signal(QtCore.QPoint)
     double_clicked = QtCore.Signal()
 
     def __init__(
@@ -509,11 +509,13 @@ class QFileLabel(QtW.QWidget):
         return self._path.exists() or relion_dir.joinpath(self._path_rel).exists()
 
     def mousePressEvent(self, a0):
-        if a0.button() == QtCore.Qt.MouseButton.LeftButton:
-            self._pressed_pos = a0.pos()
+        self._pressed_pos = a0.pos()
 
     def mouseMoveEvent(self, a0):
-        if not self._pressed_pos.isNull():
+        if (
+            a0.buttons() & QtCore.Qt.MouseButton.LeftButton
+            and not self._pressed_pos.isNull()
+        ):
             self._pressed_pos = QtCore.QPoint()
             self.dragged.emit()
 
@@ -530,18 +532,28 @@ class QFileLabel(QtW.QWidget):
             self.double_clicked.emit()
 
     def _make_context_menu(self):
-        menu = QtW.QMenu()
+        menu = QtW.QMenu(self)
+        menu.addAction("Open", self._open_path)
+        menu.addSeparator()
         menu.addAction("Copy Path To Clipboard", self._copy_path_to_clipboard)
         menu.addAction(
-            "Copy Relative Path To Clipboard", self._copy_relative_path_to_clipboard
+            "Copy Relative Path To Clipboard", self._copy_rel_path_to_clipboard
         )
         return menu
+
+    def _open_path(self):
+        if not (path := self._path).exists():
+            raise FileNotFoundError(f"File {path} does not exist.")
+        current_instance().read_file(
+            path,
+            plugin=self._relion_node_item._plugin_for_filetype(),
+        )
 
     def _copy_path_to_clipboard(self):
         if clipboard := QtW.QApplication.clipboard():
             clipboard.setText(str(self._path))
 
-    def _copy_relative_path_to_clipboard(self):
+    def _copy_rel_path_to_clipboard(self):
         if clipboard := QtW.QApplication.clipboard():
             clipboard.setText(str(self._path_rel))
 
