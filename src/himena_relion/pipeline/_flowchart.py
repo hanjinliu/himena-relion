@@ -1,6 +1,6 @@
 from __future__ import annotations
 from pathlib import Path
-
+from qtpy import QtGui, QtCore
 from cmap import Color
 
 from himena import MainWindow
@@ -14,11 +14,13 @@ from himena_relion._job_dir import ExternalJobDirectory, JobDirectory
 class QRelionPipelineFlowChartView(QFlowChartView):
     def __init__(self, ui: MainWindow, scene):
         super().__init__(scene)
-        # self.view.item_right_clicked.connect(self._on_right_clicked)
+        # self.item_right_clicked.connect(self._on_right_clicked)
         self._ui = ui
         self._pipeline = RelionDefaultPipeline([])
         self._relion_project_dir: Path = Path.cwd()
         self.item_left_double_clicked.connect(self._on_item_double_clicked)
+        self.item_left_clicked.connect(self._update_selection_rect)
+        self._last_selection_highlight_rect = None
 
     def set_pipeline(self, pipeline: RelionDefaultPipeline) -> None:
         if not isinstance(pipeline, RelionDefaultPipeline):
@@ -46,6 +48,18 @@ class QRelionPipelineFlowChartView(QFlowChartView):
         for new_info in new_infos:
             self._add_job_node_item(new_info)
 
+    def paintEvent(self, event: QtGui.QPaintEvent) -> None:
+        super().paintEvent(event)
+        painter = QtGui.QPainter(self.viewport())
+        pen = QtGui.QPen(QtGui.QColor(255, 84, 84), 3, QtCore.Qt.PenStyle.DotLine)
+        painter.setPen(pen)
+        for item in self.scene().selectedItems():
+            rect = self.mapFromScene(item.sceneBoundingRect()).boundingRect()
+            rect.adjust(-2, -2, 2, 2)
+            painter.drawRect(rect)
+            self._last_selection_highlight_rect = rect
+        painter.end()
+
     def _add_job_node_item(self, info: RelionJobInfo):
         parents: list[Path] = []
         for parent in info.parents:
@@ -55,10 +69,23 @@ class QRelionPipelineFlowChartView(QFlowChartView):
             if parent_info.path not in parents:
                 parents.append(parent_info.path)
         item = RelionJobNodeItem(info)
-        return self.add_child(item, parents=parents)
+        qitem = self.add_child(item, parents=parents)
+        return qitem
 
     def _on_item_double_clicked(self, item: RelionJobNodeItem):
         self._show_item_by_id(item.id())
+
+    def mousePressEvent(self, event):
+        self._update_selection_rect()
+        return super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        self._update_selection_rect()
+        return super().mouseMoveEvent(event)
+
+    def _update_selection_rect(self):
+        if self._last_selection_highlight_rect:
+            self.update(self._last_selection_highlight_rect.adjusted(-5, -5, 5, 5))
 
     def _show_item_by_id(self, item_id: Path):
         """Open the job directory or activate the already opened one."""
@@ -117,7 +144,7 @@ class RelionJobNodeItem(BaseNodeItem):
             case NodeStatus.RUNNING:
                 return Color("lightblue")
             case NodeStatus.SCHEDULED:
-                return Color("orange")
+                return Color("crimson")
             case _:
                 return Color("lightgray")
 

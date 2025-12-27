@@ -130,11 +130,10 @@ class QRelionPipelineFlowChart(QtW.QWidget):
             if jobxxx.startswith("job"):
                 jobxxx = jobxxx[3:]
             state = info.status.value.title()
+            title = JOB_ID_MAP.get(info.type_label, info.type_label)
             if info.alias:
-                main_text = info.alias
-            else:
-                main_text = JOB_ID_MAP.get(info.type_label, info.type_label)
-            display_text = f"{jobxxx}: {main_text} [{state}]"
+                title = f"{info.alias} ({title})"
+            display_text = f"{jobxxx}: {title} [{state}]"
             self._finder.addItem(display_text, info)  # text, userData
         self._finder.setCurrentText("")
         self._finder_initialized = True
