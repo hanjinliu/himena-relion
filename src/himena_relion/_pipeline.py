@@ -45,10 +45,11 @@ class RelionDefaultPipeline(Sequence["RelionJobInfo"]):
             processes.status_label,
             strict=True,
         ):
-            if alias == "None":
+            if alias.count("/") == 2:
+                # NOTE: alias is like Import/job001/
+                _alias = alias.split("/")[1]
+            else:
                 _alias = None
-            elif isinstance(alias, str):
-                _alias = alias.split("/")[-1]
             node = RelionJobInfo(
                 path=Path(path),
                 type_label=type_label,

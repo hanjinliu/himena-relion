@@ -160,7 +160,8 @@ def normalize_job_id(d: str | Path) -> str:
     if not d.endswith("/"):
         d += "/"
     if d.count("/") > 2:
-        d = "/".join(d.split("/")[-2:]) + "/"
+        # the last character is "/"
+        d = "/".join(d.split("/")[-3:])
     return d
 
 
@@ -185,3 +186,4 @@ def update_default_pipeline(
                 f.write(pipeline_star.to_string())
         except Exception:
             _LOGGER.warning("Failed to update job state for %s", job_id, exc_info=True)
+    default_pipeline_path.touch()  # update modification time

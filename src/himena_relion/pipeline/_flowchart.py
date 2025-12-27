@@ -102,7 +102,7 @@ class RelionJobNodeItem(BaseNodeItem):
         else:
             title = JOB_ID_MAP.get(self._job.type_label, self._job.type_label)
         if alias := self._job.alias:
-            return f"{jobxxx}: {title}\n{alias}"
+            return f"{jobxxx}: {alias}\n({title})"
         return f"{jobxxx}: {title}"
 
     def color(self):

@@ -203,7 +203,7 @@ def set_job_alias(ui: MainWindow, model: WidgetDataModel):
     update_default_pipeline(
         job_dir.relion_project_dir / "default_pipeline.star",
         job_dir.path.relative_to(job_dir.relion_project_dir),
-        alias=normalize_job_id(job_dir.path.parent / alias),
+        alias=normalize_job_id(new_path),
     )
 
 
