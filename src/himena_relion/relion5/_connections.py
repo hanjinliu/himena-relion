@@ -14,8 +14,39 @@ connect_jobs(
 connect_jobs(
     _spa.CtfEstimationJob,
     _spa.SelectMicrographsJob,
-    node_mapping={"tilt_series_ctf.star": "fn_mic"},
+    node_mapping={"micrographs_ctf.star": "fn_mic"},
 )
+connect_jobs(
+    _spa.CtfEstimationJob,
+    _spa.ManualPickJob,
+    node_mapping={"micrographs_ctf.star": "fn_in"},
+)
+for autopick_job in [
+    _spa.AutoPickTemplateJob,
+    _spa.AutoPickLogJob,
+    _spa.AutoPickTopazTrain,
+    _spa.AutoPickTopazPick,
+]:
+    connect_jobs(
+        _spa.CtfEstimationJob,
+        autopick_job,
+        node_mapping={"micrographs_ctf.star": "fn_input_autopick"},
+    )
+
+connect_jobs(
+    _spa.Class2DJob,
+    _spa.SelectClassesInteractiveJob,
+    node_mapping={"run_it001_classes.mrc": "fn_classes"},
+)
+# connect_jobs(
+#     _spa.Class2DJob,
+#     _spa.SelectClassesClassRanker,
+#     node_mapping={"run_it001_classes.mrc": "fn_classes"},
+# )
+# connect_jobs(
+#     _spa.SelectClassesInteractiveJob,
+#     _spa.InitialModel,
+# )
 connect_jobs(
     _spa.Class3DJob,
     _spa.Refine3DJob,

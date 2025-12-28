@@ -82,7 +82,9 @@ class QCtfFindViewer(QJobScrollArea):
         self._viewer.auto_fit()
 
     def _process_update(self):
-        if self._worker is None and self._job_dir.path.joinpath("Movies").exists():
+        if self._job_dir.path.joinpath("Movies").exists():
+            if self._worker is not None:
+                self._worker.quit()
             self._worker = self._prep_data_to_plot(self._job_dir)
             self._worker.yielded.connect(self._on_data_ready)
             self._worker.start()
@@ -96,12 +98,12 @@ class QCtfFindViewer(QJobScrollArea):
 
     @thread_worker
     def _prep_data_to_plot(self, job_dir: _job_dir.JobDirectory):
-        mov_dir = job_dir.path.joinpath("Movies")
-        if not mov_dir.exists():
-            return
         if (final_path := job_dir.path.joinpath("micrographs_ctf.star")).exists():
             df = read_star(final_path).get("micrographs").trust_loop().to_pandas()
         else:
+            mov_dir = job_dir.path.joinpath("Movies")
+            if not mov_dir.exists():
+                return
             it = mov_dir.glob("*_frameImage_PS.txt")
             arr = np.stack([read_ctf_output_txt(txtpath) for txtpath in it])
             df = pd.DataFrame(

@@ -11,6 +11,7 @@ class QMicrographListWidget(QtW.QTableWidget):
         self.setColumnCount(len(columns))
         self.setHorizontalHeaderLabels(list(columns))
         self.horizontalHeader().setVisible(len(columns) > 1)
+        self.horizontalHeader().setStretchLastSection(True)
         self.itemSelectionChanged.connect(self._on_selection_changed)
 
     def set_choices(self, choices: list[tuple[str, ...]]):
@@ -23,6 +24,7 @@ class QMicrographListWidget(QtW.QTableWidget):
         self.setRowCount(len(choices))
         choices_0 = []
         for i, entry in enumerate(choices):
+            self.setRowHeight(i, 16)
             for j, name in enumerate(entry):
                 self.setItem(i, j, QtW.QTableWidgetItem(name))
             choices_0.append(entry[0])

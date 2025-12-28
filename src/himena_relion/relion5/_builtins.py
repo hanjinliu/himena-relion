@@ -28,6 +28,15 @@ IN_MICROGRAPHS = Annotated[
         "group": "I/O",
     },
 ]
+IN_COORDINATES = Annotated[
+    str,
+    {
+        "label": "Input coordinates",
+        "widget_type": PathDrop,
+        "type_label": "MicrographsCoords",
+        "group": "I/O",
+    },
+]
 IN_PARTICLES = Annotated[
     str,
     {
@@ -125,7 +134,7 @@ MCOR_PRE_EXPOSURE_TYPE = Annotated[
 MCOR_EER_FRAC_TYPE = Annotated[
     int, {"label": "EER fractionation", "min": 1, "group": "I/O"}
 ]
-MCOR_DO_F16_TYPE = Annotated[bool, {"label": "Write output in float16", "group": "I/O"}]
+DO_F16_TYPE = Annotated[bool, {"label": "Write output in float16", "group": "I/O"}]
 MCOR_DO_DOSE_WEIGHTING_TYPE = Annotated[
     bool, {"label": "Do dose-weighting", "group": "I/O"}
 ]
@@ -426,7 +435,7 @@ class MotionCorr2Job(_MotionCorrJobBase):
         dose_per_frame: MCOR_DOSE_PER_FRAME_TYPE = 1.0,
         pre_exposure: MCOR_PRE_EXPOSURE_TYPE = 0.0,
         eer_grouping: MCOR_EER_FRAC_TYPE = 32,
-        do_float16: MCOR_DO_F16_TYPE = True,
+        do_float16: DO_F16_TYPE = True,
         do_dose_weighting: MCOR_DO_DOSE_WEIGHTING_TYPE = True,
         group_for_ps: MCOR_SUM_EVERY_E_TYPE = 4.0,
         # Motion correction
@@ -482,7 +491,7 @@ class MotionCorrOwnJob(_MotionCorrJobBase):
         dose_per_frame: MCOR_DOSE_PER_FRAME_TYPE = 1.0,
         pre_exposure: MCOR_PRE_EXPOSURE_TYPE = 0.0,
         eer_grouping: MCOR_EER_FRAC_TYPE = 32,
-        do_float16: MCOR_DO_F16_TYPE = True,
+        do_float16: DO_F16_TYPE = True,
         do_dose_weighting: MCOR_DO_DOSE_WEIGHTING_TYPE = True,
         do_save_noDW: MCOR_DO_SAVE_NO_DW_TYPE = False,
         do_save_ps: MCOR_DO_SAVE_PS_TYPE = True,
@@ -1133,6 +1142,87 @@ class AutoPickTopazPick(_AutoPickJob):
         do_amyloid: Annotated[
             bool, {"label": "Pick amyloid segments", "group": "Helix"}
         ] = False,
+        # Running
+        nr_mpi: MPI_TYPE = 1,
+        do_queue: DO_QUEUE_TYPE = False,
+        min_dedicated: MIN_DEDICATED_TYPE = 1,
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")
+
+
+class ExtractJob(_Relion5Job):
+    """Particle extraction from micrographs."""
+
+    @classmethod
+    def type_label(cls) -> str:
+        return "relion.extract"
+
+    def run(
+        self,
+        # I/O
+        star_mics: IN_MICROGRAPHS = "",
+        coords_suffix: IN_COORDINATES = "",
+        do_reextract: Annotated[
+            bool, {"label": "Re-extract refined particles", "group": "I/O"}
+        ] = False,
+        fndata_reextract: Annotated[
+            str, {"label": "STAR file with refined particles", "group": "I/O"}
+        ] = "",
+        do_reset_offsets: Annotated[
+            bool, {"label": "Reset refined offsets to zero", "group": "I/O"}
+        ] = False,
+        do_recenter: Annotated[
+            bool, {"label": "Recenter refined coordinates", "group": "I/O"}
+        ] = True,
+        recenter_x: Annotated[int, {"group": "I/O"}] = 0,
+        recenter_y: Annotated[int, {"group": "I/O"}] = 0,
+        recenter_z: Annotated[int, {"group": "I/O"}] = 0,
+        do_float16: DO_F16_TYPE = True,
+        # Extract
+        extract_size: Annotated[
+            int, {"label": "Particle box size (pix)", "group": "Extract"}
+        ] = 128,
+        do_invert: Annotated[
+            bool, {"label": "Invert contrast", "group": "Extract"}
+        ] = True,
+        do_norm: Annotated[
+            bool, {"label": "Normalize particles", "group": "Extract"}
+        ] = True,
+        bg_diameter: Annotated[
+            float, {"label": "Diameter of background circle (pix)", "group": "Extract"}
+        ] = -1,
+        white_dust: Annotated[
+            float, {"label": "Stddev for white dust removal", "group": "Extract"}
+        ] = -1,
+        black_dust: Annotated[
+            float, {"label": "Stddev for black dust removal", "group": "Extract"}
+        ] = -1,
+        do_rescale: Annotated[
+            bool, {"label": "Rescale particles", "group": "Extract"}
+        ] = False,
+        rescale: Annotated[
+            int, {"label": "Rescaled box size (pix)", "group": "Extract"}
+        ] = 128,
+        do_fom_threshold: Annotated[
+            bool, {"label": "Use autopick FOM threshold", "group": "Extract"}
+        ] = False,
+        minimum_pick_fom: Annotated[
+            float, {"label": "Minimum autopick FOM", "group": "Extract"}
+        ] = 0,
+        # Helix
+        do_extract_helix: DO_HELIX_TYPE = False,
+        helical_tube_outer_diameter: HELICAL_TUBE_DIAMETER_TYPE = 200,
+        helical_bimodal_angular_priors: Annotated[
+            bool, {"label": "Use bimodal angular priors", "group": "Helix"}
+        ] = True,
+        do_extract_helical_tubes: Annotated[
+            bool, {"label": "Coordinates are star-end only", "group": "Helix"}
+        ] = True,
+        do_cut_into_segments: Annotated[
+            bool, {"label": "Cut helical tubes into segments"}
+        ] = True,
+        helical_nr_asu: HELICAL_NR_ASU_TYPE = 1,
+        helical_rise: HELICAL_RISE_TYPE = 1,
         # Running
         nr_mpi: MPI_TYPE = 1,
         do_queue: DO_QUEUE_TYPE = False,
