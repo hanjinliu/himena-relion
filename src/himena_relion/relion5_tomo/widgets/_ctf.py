@@ -18,7 +18,6 @@ from himena_relion.schemas import TSModel
 _LOGGER = logging.getLogger(__name__)
 
 
-@register_job(_job_dir.CtfCorrectionJobDirectory)
 class QCtfFindViewer(QJobScrollArea):
     def __init__(self, job_dir: _job_dir.CtfCorrectionJobDirectory):
         super().__init__()

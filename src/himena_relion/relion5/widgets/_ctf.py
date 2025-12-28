@@ -35,6 +35,14 @@ def read_ctf_output_txt(path: Path) -> NDArray[np.float32]:
 
 
 @register_job(_job_dir.CtfCorrectionJobDirectory)
+def make_ctffind_viewer(job_dir: _job_dir.MotionCorrBase):
+    if job_dir.is_tomo():
+        from himena_relion.relion5_tomo.widgets import _ctf
+
+        return _ctf.QCtfFindViewer(job_dir)
+    return QCtfFindViewer(job_dir)
+
+
 class QCtfFindViewer(QJobScrollArea):
     def __init__(self, job_dir: _job_dir.CtfCorrectionJobDirectory):
         super().__init__()

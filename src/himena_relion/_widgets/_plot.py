@@ -69,7 +69,7 @@ class QPlotCanvas(QModelMatplotlibCanvas):
                 # just micrographs
                 xvals = df.index
                 xlabel = "Micrograph"
-            if ycol not in df.columns:
+            if ycol in df.columns:
                 yvals = df[ycol]
                 fig.plot(xvals, yvals, width=1)
             fig.x.label = xlabel
