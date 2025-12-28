@@ -15,9 +15,9 @@ _LOGGER = logging.getLogger(__name__)
 
 @register_job(_job_dir.ExtractJobDirectory)
 class QExtractJobViewer(QJobScrollArea):
-    def __init__(self):
+    def __init__(self, job_dir: _job_dir.ExtractJobDirectory):
         super().__init__()
-        self._job_dir: _job_dir.ExtractJobDirectory | None = None
+        self._job_dir = job_dir
         self._viewer = Q2DViewer()
         self._tomo_choice = QtW.QComboBox()
         self._tomo_choice.currentTextChanged.connect(self._on_tomo_changed)
@@ -69,8 +69,6 @@ class QExtractJobViewer(QJobScrollArea):
         self._dimension_label.setText(f"Extraction method: {_type}")
 
     def _on_tomo_changed(self, value: str):
-        if self._job_dir is None:
-            return
         self._set_tomo_name_and_particle_list(value, 0)
         self._update_offset_range(value)
 

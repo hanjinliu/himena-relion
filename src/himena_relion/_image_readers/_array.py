@@ -79,6 +79,8 @@ class ArrayDirectView(ArrayViewBase):
 
     def __init__(self, array: Arr):
         self._array = array
+        if self._array.ndim == 2:
+            self._array = self._array[np.newaxis, :, :]
 
     def get_slice(self, index: int) -> Arr:
         return self._array[index]

@@ -57,7 +57,7 @@ class QRelionJobWidget(QtW.QWidget):
 
         if wcls := RelionJobViewRegistry.instance().get_widget_class(type(job_dir)):
             _LOGGER.info(f"Adding job widget for {job_dir.path}: {wcls!r}")
-            wdt = wcls()
+            wdt = wcls(job_dir)
             self.add_job_widget(wdt)
 
         self.add_job_widget(QJobPipelineViewer())
@@ -182,18 +182,14 @@ class RelionJobViewRegistry:
     def register(
         self,
         job_type: type[_job_dir.JobDirectory],
-        widget_cls: type[JobWidgetBase],
+        widget_cls: Callable[..., JobWidgetBase],
     ):
-        """Register a widget class for a specific job type."""
-        if not issubclass(widget_cls, JobWidgetBase):
-            raise TypeError(
-                f"Widget class must be a subclass of JobWidgetBase, got {widget_cls}"
-            )
+        """Register a widget factory for a specific job type."""
         self._registered[job_type] = widget_cls
 
     def get_widget_class(
         self, job_type: type[_job_dir.JobDirectory]
-    ) -> type[JobWidgetBase] | None:
+    ) -> Callable[[_job_dir.JobDirectory], JobWidgetBase] | None:
         """Get the widget class for a specific job type."""
         return self._registered.get(job_type, None)
 
@@ -205,10 +201,6 @@ def register_job(job_type: type[_job_dir.JobDirectory]) -> Callable[[_T], _T]:
     """Decorator to register a widget class for a specific job type."""
 
     def inner(widget_cls: _T) -> _T:
-        if not issubclass(widget_cls, JobWidgetBase):
-            raise TypeError(
-                f"Widget class must be a subclass of JobWidgetBase, got {widget_cls}"
-            )
         RelionJobViewRegistry.instance().register(job_type, widget_cls)
         return widget_cls
 

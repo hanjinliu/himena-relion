@@ -378,31 +378,28 @@ class CorrectedTiltSeriesInfo(TiltSeriesInfo):
         return out
 
 
-class MotionCorrectionJobDirectory(HasFrameJobDirectory):
-    """Class for handling motion correction job directories in RELION."""
-
-    _job_type = "relion.motioncorr.own"
-
-    def corrected_tilt_series_star(self) -> Path:
-        """Return the path to the motion-corrected tilt series star file."""
-        return self.path / "corrected_tilt_series.star"
+class MotionCorrBase(HasFrameJobDirectory):
+    def iter_movies(self) -> Iterator[Path]:
+        """Iterate over all motion-corrected movie files (SPA)."""
+        movies_dir = self.path / "Movies"
+        yield from movies_dir.glob("*_frameImage.mrc")
 
     def iter_tilt_series(self) -> Iterator[CorrectedTiltSeriesInfo]:
-        """Iterate over all motion correction info."""
-        fp = self.corrected_tilt_series_star()
+        """Iterate over all motion correction info (Tomo)."""
+        fp = self.path / "corrected_tilt_series.star"
         star = read_star(fp).first().trust_loop().to_pandas()
         for _, row in star.iterrows():
             yield CorrectedTiltSeriesInfo.from_series(row)
 
-    def corrected_tilt_series(self, tomoname: str) -> CorrectedTiltSeriesInfo:
-        """Return the first corrected tilt series info."""
-        fp = self.corrected_tilt_series_star()
-        star = read_star(fp).first().trust_loop().to_pandas()
-        star_filt = star[star["rlnTomoName"] == tomoname]
-        if len(star_filt) == 0:
-            raise ValueError(f"Tilt series {tomoname} not found in star file.")
-        row = star_filt.iloc[0]
-        return CorrectedTiltSeriesInfo.from_series(row)
+
+class MotionCorrJobDirectory(MotionCorrBase):
+    _job_type = "relion.motioncorr.motioncor2"
+
+
+class MotionCorrOwnJobDirectory(MotionCorrBase):
+    """Class for handling motion correction job directories in RELION."""
+
+    _job_type = "relion.motioncorr.own"
 
 
 class CtfCorrectedTiltSeriesInfo(CorrectedTiltSeriesInfo):

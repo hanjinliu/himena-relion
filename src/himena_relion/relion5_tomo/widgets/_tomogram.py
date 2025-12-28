@@ -20,9 +20,9 @@ _LOGGER = logging.getLogger(__name__)
 
 @register_job(_job_dir.TomogramJobDirectory)
 class QTomogramViewer(QJobScrollArea):
-    def __init__(self):
+    def __init__(self, job_dir: _job_dir.TomogramJobDirectory):
         super().__init__()
-        self._job_dir: _job_dir.TomogramJobDirectory = None
+        self._job_dir = job_dir
         layout = self._layout
 
         self._viewer = Q2DViewer()
@@ -95,9 +95,9 @@ class QTomogramViewer(QJobScrollArea):
 
 @register_job(_job_dir.DenoiseJobDirectory)
 class QDenoiseTomogramViewer(QJobScrollArea):
-    def __init__(self):
+    def __init__(self, job_dir: _job_dir.DenoiseJobDirectory):
         super().__init__()
-        self._job_dir: _job_dir.DenoiseJobDirectory = None
+        self._job_dir = job_dir
         layout = self._layout
 
         self._viewer = Q2DViewer()
@@ -149,9 +149,9 @@ class QDenoiseTomogramViewer(QJobScrollArea):
 
 @register_job(_job_dir.PickJobDirectory)
 class QPickViewer(QJobScrollArea):
-    def __init__(self):
+    def __init__(self, job_dir: _job_dir.PickJobDirectory):
         super().__init__()
-        self._job_dir: _job_dir.PickJobDirectory = None
+        self._job_dir = job_dir
         layout = self._layout
 
         self._viewer = Q2DViewer()
@@ -197,8 +197,6 @@ class QPickViewer(QJobScrollArea):
     def _on_tomo_changed(self, text: str):
         """Update the viewer when the selected tomogram changes."""
         job_dir = self._job_dir
-        if job_dir is None:
-            return
         for info in job_dir.iter_tomogram():
             if info.tomo_name == text:
                 break

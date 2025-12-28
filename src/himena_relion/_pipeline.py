@@ -146,6 +146,7 @@ class RelionPipeline:
     general: pd.DataFrame
     process_name: str
     process_type_label: str
+    process_type_label_depth: int | None = None
     process_alias: str | None = None
     status_label: str | None = None
     inputs: list[RelionJobPipelineNode] = field(default_factory=list)
@@ -196,18 +197,27 @@ class RelionPipeline:
             ]
         else:
             outputs = []
+        if (depth := pipeline.nodes.type_label_depth) is not None:
+            process_type_label_depth = depth.iloc[0]
+        else:
+            process_type_label_depth = None
         return cls(
             df_general,
             process_name,
-            process_type_label,
-            process_alias,
-            process_status_label,
-            inputs,
-            outputs,
+            process_type_label=process_type_label,
+            process_type_label_depth=process_type_label_depth,
+            process_alias=process_alias,
+            status_label=process_status_label,
+            inputs=inputs,
+            outputs=outputs,
         )
 
     def write_star(self, path: str | Path):
         nodes = self.inputs + self.outputs
+        if self.process_type_label_depth is None:
+            type_label_depth = None
+        else:
+            type_label_depth = [self.process_type_label_depth for _ in nodes]
         star = RelionPipelineModel(
             general=self.general,
             processes=RelionPipelineModel.Processes(
@@ -219,7 +229,7 @@ class RelionPipeline:
             nodes=RelionPipelineModel.Nodes(
                 name=[node.path.as_posix() for node in nodes],
                 type_label=[node.type_label or "" for node in nodes],
-                type_label_depth=[1 for _ in nodes],
+                type_label_depth=type_label_depth,
             ),
             input_edges=RelionPipelineModel.InputEdges(
                 from_node=[node.path.as_posix() for node in self.inputs],

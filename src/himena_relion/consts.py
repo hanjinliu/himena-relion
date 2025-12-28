@@ -39,19 +39,31 @@ class RelionNodeTypeLabels:
 
 JOB_ID_MAP = {
     # SPA
-    "relion.import": "Import",
+    "relion.import.movies": "Import Movies",
+    "relion.import.other": "Import Others",
     "relion.motioncorr.motioncor2": "Motion Corr.",
     "relion.motioncorr.own": "Motion Corr.",
     "relion.ctffind.ctffind4": "CTF Estimation",
     "relion.manualpick": "Manual Pick",
-    "relion.autopick": "Auto Pick",
+    "relion.autopick.log": "LoG Pick",
+    "relion.autopick.ref2d": "Template Pick",
+    "relion.autopick.topaz.train": "Topaz Train",
+    "relion.autopick.topaz.pick": "Topaz Pick",
     "relion.extract": "Extract",
+    "relion.extract.reextract": "Re-extract",
     "relion.class2d": "2D Class",
     "relion.initialmodel": "Initial Model",
     "relion.refine3d": "Auto Refine",
     "relion.class3d": "3D Class",
     "dynamight": "DynaMight",
     "modelangelo": "ModelAngelo",
+    "relion.multibody": "Multi-body Refinement",
+    "relion.ctfrefine": "CTF Refine",
+    "relion.ctfrefine.anisomag": "CTF Refine",
+    "relion.polish.train": "Bayesian Polish (Train)",
+    "relion.polish": "Bayesian Polish",
+    "relion.localres.own": "Local Resolution",
+    "relion.localres.resmap": "Local Resolution",
     # Tomo
     "relion.importtomo": "Import Tomo",
     "relion.excludetilts": "Exclude Tilts",
@@ -63,8 +75,8 @@ JOB_ID_MAP = {
     "relion.initialmodel.tomo": "Initial Model",
     "relion.refine3d.tomo": "Auto Refine",
     "relion.reconstructparticletomo": "Reconstruct Particles",
-    "relion.select.interactive": "Select Class (Interactive)",
-    "relion.select.class2dauto": "Select 2D Class (Class Ranker)",
+    "relion.select.interactive": "Select Class",
+    "relion.select.class2dauto": "Class Ranker",
     "relion.select.onvalue": "Select On Value",
     "relion.select.split": "Split Particles",
     "relion.select.filamentsdendrogram": "Select Filaments By Dendrogram",
@@ -75,8 +87,6 @@ JOB_ID_MAP = {
     "relion.joinstar.micrographs": "Join Micrographs",
     "relion.framealigntomo": "Frame Align",
     "relion.ctfrefinetomo": "CTF Refine",
-    "relion.multibody": "Multi-body Refinement",
-    "relion.localres.resmap": "Local Resolution",
 }
 
 JOB_IMPORT_PATH_FILE = "JOB_IMPORT_PATH.txt"

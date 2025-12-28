@@ -9,8 +9,9 @@ _LOGGER = logging.getLogger(__name__)
 
 @register_job(_job_dir.ImportJobDirectory)
 class QImportTiltSeriesViewer(QJobScrollArea):
-    def __init__(self):
+    def __init__(self, job_dir: _job_dir.ImportJobDirectory):
         super().__init__()
+        self._job_dir = job_dir
 
     def on_job_updated(self, job_dir: _job_dir.ImportJobDirectory, path: str):
         """Handle changes to the job directory."""

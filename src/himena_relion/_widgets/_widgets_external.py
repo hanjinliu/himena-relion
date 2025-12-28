@@ -9,7 +9,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class QExternalJobView(QtW.QScrollArea, JobWidgetBase):
-    def __init__(self):
+    def __init__(self, job_dir: _job_dir.ExternalJobDirectory):
         super().__init__()
         self.setWidgetResizable(True)
 

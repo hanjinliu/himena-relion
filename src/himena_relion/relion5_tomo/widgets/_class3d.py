@@ -17,7 +17,7 @@ _LOGGER = logging.getLogger(__name__)
 
 @register_job(_job_dir.Class3DJobDirectory)
 class QClass3DViewer(QJobScrollArea):
-    def __init__(self):
+    def __init__(self, job_dir: _job_dir.Class3DJobDirectory):
         super().__init__()
         self._text_edit = QtW.QTextEdit()
         self._text_edit.setReadOnly(True)
@@ -38,7 +38,7 @@ class QClass3DViewer(QJobScrollArea):
         hor_layout1.setContentsMargins(0, 0, 0, 0)
         self._layout.addLayout(hor_layout1)
         self._index_start = 1
-        self._job_dir: _job_dir.Class3DJobDirectory | None = None
+        self._job_dir = job_dir
 
         self._iter_choice.valueChanged.connect(self._on_iter_changed)
         self._class_choice.valueChanged.connect(self._on_class_changed)

@@ -20,9 +20,9 @@ _LOGGER = logging.getLogger(__name__)
 
 @register_job(_job_dir.CtfCorrectionJobDirectory)
 class QCtfFindViewer(QJobScrollArea):
-    def __init__(self):
+    def __init__(self, job_dir: _job_dir.CtfCorrectionJobDirectory):
         super().__init__()
-        self._job_dir: _job_dir.CtfCorrectionJobDirectory = None
+        self._job_dir = job_dir
         layout = self._layout
         self._defocus_canvas = QPlotCanvas(self)
         self._defocus_canvas.setFixedSize(360, 145)
@@ -82,8 +82,6 @@ class QCtfFindViewer(QJobScrollArea):
     def _ts_choice_changed(self, text: str):
         """Update the viewer when the selected tomogram changes."""
         job_dir = self._job_dir
-        if job_dir is None:
-            return
         for path in job_dir.iter_tilt_series_path():
             if path.stem == text:
                 break
@@ -139,9 +137,9 @@ class QCtfFindViewer(QJobScrollArea):
 
 @register_job(_job_dir.CtfRefineTomoJobDirectory)
 class QCtfRefineTomoViewer(QJobScrollArea):
-    def __init__(self):
+    def __init__(self, job_dir: _job_dir.CtfRefineTomoJobDirectory):
         super().__init__()
-        self._job_dir: _job_dir.CtfRefineTomoJobDirectory = None
+        self._job_dir = job_dir
         layout = self._layout
         self._defocus_canvas = QPlotCanvas(self)
         self._defocus_canvas.setFixedSize(360, 160)
@@ -184,8 +182,6 @@ class QCtfRefineTomoViewer(QJobScrollArea):
     def _ts_choice_changed(self, text: str):
         """Update the viewer when the selected tomogram changes."""
         job_dir = self._job_dir
-        if job_dir is None:
-            return
         for ts_path in job_dir.iter_tilt_series_path():
             if ts_path.stem == text:
                 df = read_star(ts_path).first().trust_loop().to_pandas()

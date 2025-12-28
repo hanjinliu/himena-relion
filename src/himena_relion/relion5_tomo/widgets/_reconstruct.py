@@ -19,7 +19,7 @@ _LOGGER = logging.getLogger(__name__)
 
 @register_job(_job_dir.ReconstructParticlesJobDirectory)
 class QReconstructViewer(QJobScrollArea):
-    def __init__(self):
+    def __init__(self, job_dir: _job_dir.ReconstructParticlesJobDirectory):
         super().__init__()
         self._viewer = Q3DViewer()
         self._num_particles_label = QNumParticlesLabel()

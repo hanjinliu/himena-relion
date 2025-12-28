@@ -21,7 +21,7 @@ _LOGGER = logging.getLogger(__name__)
 
 @register_job(_job_dir.Refine3DJobDirectory)
 class QRefine3DViewer(QJobScrollArea):
-    def __init__(self):
+    def __init__(self, job_dir: _job_dir.Refine3DJobDirectory):
         super().__init__()
         layout = self._layout
         self._viewer = Q3DViewer()
@@ -44,7 +44,7 @@ class QRefine3DViewer(QJobScrollArea):
         layout.addWidget(self._fsc_plot)
         layout.addWidget(spacer_widget())
         self._index_start = 1
-        self._job_dir: _job_dir.Refine3DJobDirectory | None = None
+        self._job_dir = job_dir
         self._worker: FunctionWorker | None = None
 
         self._iter_choice.valueChanged.connect(self._on_iter_changed)

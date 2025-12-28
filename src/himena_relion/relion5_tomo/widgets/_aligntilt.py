@@ -13,9 +13,9 @@ _LOGGER = logging.getLogger(__name__)
 
 @register_job(_job_dir.AlignTiltSeriesJobDirectory)
 class QAlignTiltSeriesViewer(QJobScrollArea):
-    def __init__(self):
+    def __init__(self, job_dir: _job_dir.AlignTiltSeriesJobDirectory):
         super().__init__()
-        self._job_dir: _job_dir.AlignTiltSeriesJobDirectory | None = None
+        self._job_dir = job_dir
         layout = self._layout
 
         self._viewer = Q2DViewer(zlabel="Tilt index")
@@ -56,9 +56,6 @@ class QAlignTiltSeriesViewer(QJobScrollArea):
     def _ts_choice_changed(self, text: str):
         """Update the viewer when the selected tomogram changes."""
         job_dir = self._job_dir
-        if job_dir is None:
-            return
-
         xf = job_dir.xf_file(text)
         if not xf.exists():
             return

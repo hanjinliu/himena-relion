@@ -18,7 +18,9 @@ class RelionPipelineProcesses(schema.LoopDataModel):
 class RelionPipelineNodes(schema.LoopDataModel):
     name: schema.Series[str] = schema.Field("rlnPipeLineNodeName")
     type_label: schema.Series[str] = schema.Field("rlnPipeLineNodeTypeLabel")
-    type_label_depth: schema.Series[int] = schema.Field("rlnPipeLineNodeTypeLabelDepth")
+    type_label_depth: schema.Series[int] = schema.Field(
+        "rlnPipeLineNodeTypeLabelDepth", default=None
+    )
 
 
 class RelionPipelineInputEdges(schema.LoopDataModel):

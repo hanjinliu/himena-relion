@@ -16,7 +16,7 @@ _LOGGER = logging.getLogger(__name__)
 
 @register_job(_job_dir.PostProcessJobDirectory)
 class QPostProcessViewer(QJobScrollArea):
-    def __init__(self):
+    def __init__(self, job_dir: _job_dir.PostProcessJobDirectory):
         super().__init__()
         self._viewer = Q3DViewer()
         self._use_mask = QToggleSwitch("Show masked map")
@@ -26,7 +26,7 @@ class QPostProcessViewer(QJobScrollArea):
         self._layout.addWidget(self._use_mask)
         self._layout.addWidget(self._canvas)
         self._layout.addWidget(spacer_widget())
-        self._job_dir: _job_dir.PostProcessJobDirectory | None = None
+        self._job_dir = job_dir
         self._use_mask.toggled.connect(self._on_use_mask_toggled)
 
     def on_job_updated(self, job_dir: _job_dir.PostProcessJobDirectory, path: str):
@@ -50,8 +50,7 @@ class QPostProcessViewer(QJobScrollArea):
 
     def _on_use_mask_toggled(self, *_):
         """Handle toggling between masked and unmasked maps."""
-        if self._job_dir is not None:
-            self.initialize(self._job_dir)
+        self.initialize(self._job_dir)
 
     def widget_added_callback(self):
         self._canvas.widget_added_callback()

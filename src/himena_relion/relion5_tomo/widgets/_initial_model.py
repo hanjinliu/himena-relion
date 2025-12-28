@@ -18,7 +18,7 @@ _LOGGER = logging.getLogger(__name__)
 
 @register_job(_job_dir.InitialModel3DJobDirectory)
 class QInitialModelViewer(QJobScrollArea):
-    def __init__(self):
+    def __init__(self, job_dir: _job_dir.InitialModel3DJobDirectory):
         super().__init__()
         layout = self._layout
         self._viewer = Q3DViewer()
@@ -42,7 +42,7 @@ class QInitialModelViewer(QJobScrollArea):
         self._class_choice.valueChanged.connect(self._on_class_changed)
         self._index_start = 1
         self._iter_current_value = 0
-        self._job_dir: _job_dir.InitialModel3DJobDirectory | None = None
+        self._job_dir = job_dir
 
     def on_job_updated(self, job_dir: _job_dir.InitialModel3DJobDirectory, path: str):
         """Handle changes to the job directory."""

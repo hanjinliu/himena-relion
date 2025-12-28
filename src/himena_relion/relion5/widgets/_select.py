@@ -18,9 +18,9 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class QSelectJobBase(QJobScrollArea):
-    def __init__(self):
+    def __init__(self, job_dir: _job_dir.SelectJobDirectory):
         super().__init__()
-        self._job_dir: _job_dir.SelectInteractiveJobDirectory = None
+        self._job_dir = job_dir
         self._text_edit = QtW.QTextEdit()
         self._text_edit.setReadOnly(True)
         self._text_edit.setWordWrapMode(QtGui.QTextOption.WrapMode.NoWrap)
