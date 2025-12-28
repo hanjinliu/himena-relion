@@ -47,6 +47,7 @@ class QCtfFindViewer(QJobScrollArea):
     def __init__(self, job_dir: _job_dir.CtfCorrectionJobDirectory):
         super().__init__()
         self._job_dir = job_dir
+        self._worker: GeneratorWorker | None = None
         layout = self._layout
         self._defocus_canvas = QPlotCanvas(self)
         self._defocus_canvas.setFixedSize(360, 145)
@@ -59,12 +60,11 @@ class QCtfFindViewer(QJobScrollArea):
 
         self._mic_list = QMicrographListWidget()
         self._mic_list.currentTextChanged.connect(self._mic_changed)
+
+        self._viewer = Q2DViewer(zlabel="Tilt index")
         splitter = QtW.QSplitter()
         splitter.addWidget(self._mic_list)
         splitter.addWidget(self._viewer)
-
-        self._viewer = Q2DViewer(zlabel="Tilt index")
-        self._worker: GeneratorWorker | None = None
         layout.addWidget(QtW.QLabel("<b>Defocus</b>"))
         layout.addWidget(self._defocus_canvas)
         layout.addWidget(QtW.QLabel("<b>Astigmatism</b>"))

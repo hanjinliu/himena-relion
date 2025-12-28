@@ -129,6 +129,9 @@ MCOR_DO_F16_TYPE = Annotated[bool, {"label": "Write output in float16", "group":
 MCOR_DO_DOSE_WEIGHTING_TYPE = Annotated[
     bool, {"label": "Do dose-weighting", "group": "I/O"}
 ]
+MCOR_DO_SAVE_NO_DW_TYPE = Annotated[
+    bool, {"label": "Save non-dose weighted as well", "group": "I/O"}
+]
 MCOR_DO_SAVE_PS_TYPE = Annotated[
     bool, {"label": "Save sum of power spectra", "group": "I/O"}
 ]
@@ -481,6 +484,7 @@ class MotionCorrOwnJob(_MotionCorrJobBase):
         eer_grouping: MCOR_EER_FRAC_TYPE = 32,
         do_float16: MCOR_DO_F16_TYPE = True,
         do_dose_weighting: MCOR_DO_DOSE_WEIGHTING_TYPE = True,
+        do_save_noDW: MCOR_DO_SAVE_NO_DW_TYPE = False,
         do_save_ps: MCOR_DO_SAVE_PS_TYPE = True,
         group_for_ps: MCOR_SUM_EVERY_E_TYPE = 4.0,
         # Motion correction
