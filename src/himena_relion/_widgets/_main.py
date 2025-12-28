@@ -201,6 +201,8 @@ def register_job(job_type: type[_job_dir.JobDirectory]) -> Callable[[_T], _T]:
     """Decorator to register a widget class for a specific job type."""
 
     def inner(widget_cls: _T) -> _T:
+        if job_type in RelionJobViewRegistry.instance()._registered:
+            raise ValueError(f"Job type {job_type} is already registered.")
         RelionJobViewRegistry.instance().register(job_type, widget_cls)
         return widget_cls
 
