@@ -81,19 +81,24 @@ class QClass3DViewer(QJobScrollArea):
     def _print_summary_table(self, niter):
         cursor = self._text_edit.textCursor()
         res = self._job_dir.get_result(niter)
-        df = res.summary_dataframe()
-        if df is None:
+        try:
+            gr = res.model_groups()
+        except Exception:
+            _LOGGER.warning(
+                "Failed to read model star for iteration %s", niter, exc_info=True
+            )
             return
-
-        nclasses = len(df)
+        nclasses = len(gr.classes.class_distribution)
         if texttable := cursor.insertTable(nclasses + 1, 3):
             _insert(texttable, 0, 0, "Class")
             _insert(texttable, 0, 1, "Distribution")
             _insert(texttable, 0, 2, "Resolution")
             for ith in range(nclasses):
+                dist = gr.classes.class_distribution[ith]
+                reso = gr.classes.resolution[ith]
                 _insert(texttable, ith + 1, 0, str(ith + 1))
-                _insert(texttable, ith + 1, 1, f"{df.iloc[ith, 1]:.2%}")
-                _insert(texttable, ith + 1, 2, f"{df.iloc[ith, 4]:.2f} Å")
+                _insert(texttable, ith + 1, 1, f"{dist:.2%}")
+                _insert(texttable, ith + 1, 2, f"{reso:.2f} Å")
         cursor.movePosition(QtGui.QTextCursor.MoveOperation.End)
         cursor.insertText("\n\n")
 

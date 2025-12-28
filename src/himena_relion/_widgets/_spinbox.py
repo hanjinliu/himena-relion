@@ -86,6 +86,8 @@ class QIntChoiceWidget(QIntWidget):
 
     def _on_iter_changed(self, value: int):
         niter_list = self._choices
+        if len(niter_list) == 0:
+            return
         if value in niter_list:
             self._iter_current_value = value
             self.current_changed.emit(value)

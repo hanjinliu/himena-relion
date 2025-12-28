@@ -44,3 +44,25 @@ class ParticlesModel(schema.LoopDataModel):
 
 class ParticleMetaModel(schema.StarModel):
     particles: ParticlesModel = schema.Field()
+
+
+class ModelClasses(schema.LoopDataModel):
+    ref_image: schema.Series[str] = schema.Field("rlnReferenceImage")
+    class_distribution: schema.Series[float] = schema.Field("rlnClassDistribution")
+    resolution: schema.Series[float] = schema.Field("rlnEstimatedResolution")
+
+
+class ModelGroups(schema.LoopDataModel):
+    number: schema.Series[int] = schema.Field("rlnGroupNumber")
+    name: schema.Series[str] = schema.Field("rlnGroupName")
+    num_particles: schema.Series[int] = schema.Field("rlnGroupNrParticles")
+    scale_correction: schema.Series[float] = schema.Field(
+        "rlnGroupScaleCorrection", default=None
+    )
+
+
+class ModelStarModel(schema.StarModel):
+    """Model for the run_it???_model.star files."""
+
+    classes: ModelClasses = schema.Field("model_classes")
+    groups: ModelGroups = schema.Field("model_groups")

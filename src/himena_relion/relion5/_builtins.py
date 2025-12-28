@@ -1168,15 +1168,17 @@ class Class2DJob(_Relion5Job):
     @classmethod
     def normalize_kwargs_inv(cls, **kwargs):
         kwargs = super().normalize_kwargs_inv(**kwargs)
+        nr_iter_em = kwargs.get("nr_iter_em", 25)
+        nr_iter_grad = kwargs.get("nr_iter_grad", 200)
         if kwargs.pop("do_em", False):
             kwargs["algorithm"] = {
                 "algorithm": "EM",
-                "niter": kwargs.pop("nr_iter_em", 25),
+                "niter": nr_iter_em,
             }
         else:
             kwargs["algorithm"] = {
                 "algorithm": "VDAM",
-                "niter": kwargs.pop("nr_iter_grad", 200),
+                "niter": nr_iter_grad,
             }
         # remove internal
         kwargs.pop("do_grad", None)

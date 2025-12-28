@@ -79,8 +79,8 @@ class QInitialModelViewer(QJobScrollArea):
         map0 = res.class_map(class_id - self._index_start)
         self._viewer.set_image(map0)
         try:
-            ptcl = res.particles_model()
-            n_particles = ptcl.particles.block.shape[0]
+            model_star = res.model_groups()
+            n_particles = model_star.groups.num_particles.sum()
         except Exception:
             n_particles = -1
             _LOGGER.warning(

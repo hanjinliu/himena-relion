@@ -34,8 +34,10 @@ class QMicrographListWidget(QtW.QTableWidget):
         self.resizeColumnsToContents()
 
     def _on_selection_changed(self):
-        selected_items = self.selectedItems()
-        if selected_items:
-            self.current_changed.emit(
-                tuple(selected_items[i].text() for i in range(self.columnCount()))
+        selected_rows = self.selectionModel().selectedRows()
+        if selected_rows:
+            to_emit = tuple(
+                self.item(selected_rows[0].row(), col).text()
+                for col in range(self.columnCount())
             )
+            self.current_changed.emit(to_emit)

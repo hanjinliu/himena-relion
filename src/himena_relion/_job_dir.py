@@ -26,6 +26,7 @@ from himena_relion.schemas import (
     RelionPipelineModel,
     TSModel,
     ParticleMetaModel,
+    ModelStarModel,
 )
 
 if TYPE_CHECKING:
@@ -800,10 +801,8 @@ class _3DResultsBase:
 
     #         angdist.append(data)
 
-    def particles_model(self) -> ParticleMetaModel:
-        """Return the particles DataFrame for this iteration."""
-        star_path = self._data_star()
-        return ParticleMetaModel.validate_file(star_path)
+    def model_groups(self) -> ModelStarModel:
+        return ModelStarModel.validate_file(self._model_star())
 
     def _data_star(self) -> Path:
         """Return the path to the data star file for this iteration."""
@@ -821,6 +820,10 @@ class _3DResultsBase:
         """Return the path to the sampling star file for this iteration."""
         return self.path / f"run{self.it_str}_sampling.star"
 
+    def _model_star(self) -> Path:
+        """Return the path to the model star file for this iteration."""
+        return self.path / f"run{self.it_str}_model.star"
+
 
 @dataclass
 class InitialModelResults(_3DResultsBase):
@@ -832,10 +835,6 @@ class InitialModelResults(_3DResultsBase):
 
 
 class InitialModel3DJobDirectory(JobDirectory):
-    """Class for handling initial model 3D job directories in RELION."""
-
-    _job_type = "relion.initialmodel.tomo"
-
     def initial_model_map(self) -> NDArray[np.floating]:
         """Return the image of the initial model."""
         path = self.path / "initial_model.mrc"
@@ -864,6 +863,16 @@ class InitialModel3DJobDirectory(JobDirectory):
             value = int(path.stem[6:-5])
             nums.append(value)
         return sorted(nums)
+
+
+class InitialModel3DSPAJobDirectory(JobDirectory):
+    _job_type = "relion.initialmodel"
+
+
+class InitialModel3DTomoJobDirectory(JobDirectory):
+    """Class for handling initial model 3D job directories in RELION."""
+
+    _job_type = "relion.initialmodel.tomo"
 
 
 @dataclass
@@ -977,22 +986,6 @@ class Class3DResults(_3DResultsBase):
         mrc_path = self.path / f"run{self.it_str}_class{class_id + 1:03d}.mrc"
         with mrcfile.open(mrc_path, mode="r") as mrc:
             return mrc.data
-
-    def value_ratio(self) -> dict[int, float]:
-        counts = (
-            self.particles_model().particles.class_number.value_counts().sort_index()
-        )
-        ratio = counts / counts.sum()
-        return {num: ratio.get(num, 0.0) for num in range(1, len(ratio) + 1)}
-
-    def summary_dataframe(self) -> pd.DataFrame | None:
-        starpath = self.path / f"run{self.it_str}_model.star"
-        try:
-            block = read_star_block(starpath, "model_classes")
-            return block.trust_loop().to_pandas()
-        except Exception as e:
-            _LOGGER.warning(f"Failed to read FSC data from {starpath}: {e}")
-            return None
 
     def fsc_dataframe(self, class_id: int) -> pd.DataFrame | None:
         starpath = self.path / f"run{self.it_str}_model.star"

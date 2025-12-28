@@ -31,11 +31,11 @@ class QManualPickViewer(QJobScrollArea):
         self._text_edit.setReadOnly(True)
         self._iter_choice = QIntChoiceWidget("Iteration", label_width=60)
 
-        layout.addWidget(QtW.QLabel("<b>2D Classes</b>"))
-        layout.addWidget(self._text_edit)
         self._iter_choice.current_changed.connect(self._iter_changed)
         self._worker: GeneratorWorker | None = None
-        self._class_images = []
+        layout.addWidget(QtW.QLabel("<b>2D Classes</b>"))
+        layout.addWidget(self._text_edit)
+        layout.addWidget(self._iter_choice)
 
     def on_job_updated(self, job_dir: _job_dir.JobDirectory, path: str):
         """Handle changes to the job directory."""
@@ -56,6 +56,7 @@ class QManualPickViewer(QJobScrollArea):
                 niters.append(iter_num)
         niters.sort()
         self._iter_choice.set_choices(niters)
+        self._iter_changed(niters[-1] if niters else 0)
 
     def _iter_changed(self, value: int):
         self.window_closed_callback()
