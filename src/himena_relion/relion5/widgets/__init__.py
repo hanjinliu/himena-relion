@@ -4,6 +4,8 @@ from himena_relion.relion5.widgets import (
     _select,
     _motioncor,
     _ctf,
+    _manual_pick,
+    _class2d,
 )
 
 del (
@@ -12,4 +14,6 @@ del (
     _select,
     _motioncor,
     _ctf,
+    _manual_pick,
+    _class2d,
 )

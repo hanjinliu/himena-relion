@@ -17,7 +17,7 @@ from ._shared import QNumParticlesLabel
 _LOGGER = logging.getLogger(__name__)
 
 
-@register_job(_job_dir.ReconstructParticlesJobDirectory)
+@register_job("relion.reconstructparticletomo", is_tomo=True)
 class QReconstructViewer(QJobScrollArea):
     def __init__(self, job_dir: _job_dir.ReconstructParticlesJobDirectory):
         super().__init__()

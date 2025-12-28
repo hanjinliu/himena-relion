@@ -55,7 +55,7 @@ class QRelionJobWidget(QtW.QWidget):
             raise TypeError(f"Expected JobDirectory, got {type(job_dir)}")
         self._watcher = self._watch_job_directory(job_dir.path)
 
-        if wcls := RelionJobViewRegistry.instance().get_widget_class(type(job_dir)):
+        if wcls := RelionJobViewRegistry.instance().get_widget_class(job_dir):
             _LOGGER.info(f"Adding job widget for {job_dir.path}: {wcls!r}")
             wdt = wcls(job_dir)
             self.add_job_widget(wdt)
@@ -170,7 +170,8 @@ class RelionJobViewRegistry:
     _instance = None
 
     def __init__(self):
-        self._registered = {}
+        self._registered_spa = {}
+        self._registered_tomo = {}
 
     @classmethod
     def instance(cls) -> RelionJobViewRegistry:
@@ -179,31 +180,44 @@ class RelionJobViewRegistry:
             cls._instance = RelionJobViewRegistry()
         return cls._instance
 
-    def register(
-        self,
-        job_type: type[_job_dir.JobDirectory],
-        widget_cls: Callable[..., JobWidgetBase],
-    ):
-        """Register a widget factory for a specific job type."""
-        self._registered[job_type] = widget_cls
-
     def get_widget_class(
-        self, job_type: type[_job_dir.JobDirectory]
+        self, job_dir: _job_dir.JobDirectory
     ) -> Callable[[_job_dir.JobDirectory], JobWidgetBase] | None:
         """Get the widget class for a specific job type."""
-        return self._registered.get(job_type, None)
+        label = job_dir.job_type_label()
+        if job_dir.is_tomo():
+            registries = [self._registered_tomo, self._registered_spa]
+        else:
+            registries = [self._registered_spa, self._registered_tomo]
+
+        # split by `.` and try each part
+        for reg in registries:
+            num_substrings = label.count(".") + 1
+            for i in range(label.count(".")):
+                label_sub = ".".join(label.split(".")[: num_substrings - i])
+                if factory := reg.get(label_sub, None):
+                    return factory
 
 
 _T = TypeVar("_T", bound=JobWidgetBase)
 
 
-def register_job(job_type: type[_job_dir.JobDirectory]) -> Callable[[_T], _T]:
+def register_job(
+    job_type: type[_job_dir.JobDirectory] | str,
+    is_tomo: bool = False,
+) -> Callable[[_T], _T]:
     """Decorator to register a widget class for a specific job type."""
+    if isinstance(job_type, type):
+        job_type_label = str(job_type._job_type)
+    else:
+        job_type_label = job_type
 
     def inner(widget_cls: _T) -> _T:
-        if job_type in RelionJobViewRegistry.instance()._registered:
-            raise ValueError(f"Job type {job_type} is already registered.")
-        RelionJobViewRegistry.instance().register(job_type, widget_cls)
+        ins = RelionJobViewRegistry.instance()
+        if is_tomo:
+            ins._registered_tomo[job_type_label] = widget_cls
+        else:
+            ins._registered_spa[job_type_label] = widget_cls
         return widget_cls
 
     return inner

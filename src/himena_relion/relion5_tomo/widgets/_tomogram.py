@@ -18,7 +18,7 @@ from himena_relion._image_readers import ArrayFilteredView
 _LOGGER = logging.getLogger(__name__)
 
 
-@register_job(_job_dir.TomogramJobDirectory)
+@register_job("relion.reconstructtomograms", is_tomo=True)
 class QTomogramViewer(QJobScrollArea):
     def __init__(self, job_dir: _job_dir.TomogramJobDirectory):
         super().__init__()
@@ -93,7 +93,7 @@ class QTomogramViewer(QJobScrollArea):
             )
 
 
-@register_job(_job_dir.DenoiseJobDirectory)
+@register_job("relion.denoisetomo", is_tomo=True)
 class QDenoiseTomogramViewer(QJobScrollArea):
     def __init__(self, job_dir: _job_dir.DenoiseJobDirectory):
         super().__init__()
@@ -147,7 +147,7 @@ class QDenoiseTomogramViewer(QJobScrollArea):
             self._viewer.set_array_view(tomo_view, self._viewer._last_clim)
 
 
-@register_job(_job_dir.PickJobDirectory)
+@register_job("relion.picktomo", is_tomo=True)
 class QPickViewer(QJobScrollArea):
     def __init__(self, job_dir: _job_dir.PickJobDirectory):
         super().__init__()

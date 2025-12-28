@@ -18,7 +18,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class QSelectJobBase(QJobScrollArea):
-    def __init__(self, job_dir: _job_dir.SelectJobDirectory):
+    def __init__(self, job_dir: _job_dir.JobDirectory):
         super().__init__()
         self._job_dir = job_dir
         self._text_edit = QtW.QTextEdit()
@@ -29,7 +29,6 @@ class QSelectJobBase(QJobScrollArea):
 
     def initialize(self, job_dir: _job_dir.SelectInteractiveJobDirectory):
         """Initialize the viewer with the job directory."""
-        self._job_dir = job_dir
         self._text_edit.clear()
         self._text_edit.setFixedHeight(400)
         if self._worker:
@@ -88,7 +87,7 @@ class QSelectJobBase(QJobScrollArea):
             cursor.insertText("\n\n")
 
 
-@register_job(_job_dir.RemoveDuplicatesJobDirectory)
+@register_job("relion.select.removeduplicates")
 class QRemoveDuplicatesViewer(QSelectJobBase):
     def insert_html(self, job_dir: _job_dir.RemoveDuplicatesJobDirectory):
         """Initialize the viewer with the job directory."""
@@ -108,7 +107,7 @@ class QRemoveDuplicatesViewer(QSelectJobBase):
         yield self._get_summary_table(n_selected, n_removed, n_all)
 
 
-@register_job(_job_dir.SelectInteractiveJobDirectory)
+@register_job("relion.select.interactive")
 class QSelectInteractiveViewer(QSelectJobBase):
     def insert_html(self, job_dir: _job_dir.SelectInteractiveJobDirectory):
         path_all = job_dir.particles_pre_star()
@@ -162,7 +161,7 @@ class QSelectInteractiveViewer(QSelectJobBase):
         yield from yield_projections(images_removed)
 
 
-@register_job(_job_dir.SplitParticlesJobDirectory)
+@register_job("relion.select.split")
 class SplitParticlesViewer(QSelectJobBase):
     def insert_html(self, job_dir: _job_dir.SplitParticlesJobDirectory):
         for path in job_dir.iter_particles_stars():

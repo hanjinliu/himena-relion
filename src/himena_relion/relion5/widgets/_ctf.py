@@ -34,19 +34,11 @@ def read_ctf_output_txt(path: Path) -> NDArray[np.float32]:
     return np.loadtxt(path, dtype=np.float32)
 
 
-@register_job(_job_dir.CtfCorrectionJobDirectory)
-def make_ctffind_viewer(job_dir: _job_dir.MotionCorrBase):
-    if job_dir.is_tomo():
-        from himena_relion.relion5_tomo.widgets import _ctf
-
-        return _ctf.QCtfFindViewer(job_dir)
-    return QCtfFindViewer(job_dir)
-
-
+@register_job("relion.ctffind.ctffind4", is_tomo=True)
 class QCtfFindViewer(QJobScrollArea):
-    def __init__(self, job_dir: _job_dir.CtfCorrectionJobDirectory):
+    def __init__(self, job_dir: _job_dir.JobDirectory):
         super().__init__()
-        self._job_dir = job_dir
+        self._job_dir = _job_dir.CtfCorrectionJobDirectory(job_dir.path)
         self._worker: GeneratorWorker | None = None
         layout = self._layout
         self._defocus_canvas = QPlotCanvas(self)
@@ -59,7 +51,7 @@ class QCtfFindViewer(QJobScrollArea):
         self._max_resolution_canvas.setFixedSize(360, 145)
 
         self._mic_list = QMicrographListWidget()
-        self._mic_list.currentTextChanged.connect(self._mic_changed)
+        self._mic_list.current_changed.connect(self._mic_changed)
 
         self._viewer = Q2DViewer(zlabel="Tilt index")
         splitter = QtW.QSplitter()
@@ -77,16 +69,15 @@ class QCtfFindViewer(QJobScrollArea):
         layout.addWidget(splitter)
         splitter.setSizes([200, 400])
 
-    def on_job_updated(self, job_dir: _job_dir.CtfCorrectionJobDirectory, path: str):
+    def on_job_updated(self, job_dir, path: str):
         """Handle changes to the job directory."""
         fp = Path(path)
         if fp.name.startswith("RELION_JOB_") or fp.suffix == ".ctf":
             self._process_update()
             _LOGGER.debug("%s Updated", self._job_dir.job_number)
 
-    def initialize(self, job_dir: _job_dir.CtfCorrectionJobDirectory):
+    def initialize(self, job_dir):
         """Initialize the viewer with the job directory."""
-        self._job_dir = job_dir
         self._process_update()
         self._viewer.auto_fit()
 
@@ -104,10 +95,7 @@ class QCtfFindViewer(QJobScrollArea):
             self._viewer.clear()
 
     @thread_worker
-    def _prep_data_to_plot(
-        self,
-        job_dir: _job_dir.CtfCorrectionJobDirectory,
-    ):
+    def _prep_data_to_plot(self, job_dir: _job_dir.JobDirectory):
         mov_dir = job_dir.path.joinpath("Movies")
         if not mov_dir.exists():
             return
@@ -132,7 +120,7 @@ class QCtfFindViewer(QJobScrollArea):
         yield self._astigmatism_canvas.plot_ctf_astigmatism, df
         yield self._defocus_angle_canvas.plot_ctf_defocus_angle, df
         yield self._max_resolution_canvas.plot_ctf_max_resolution, df
-        ctf_paths = [f.name for f in mov_dir.glob("*_frameImage_PS.ctf")]
+        ctf_paths = [(f.name,) for f in mov_dir.glob("*_frameImage_PS.ctf")]
         yield self._update_ctf_choices, ctf_paths
 
         self._worker = None
@@ -141,13 +129,13 @@ class QCtfFindViewer(QJobScrollArea):
         fn, df = yielded
         fn(df)
 
-    def _update_ctf_choices(self, mic_names: list[str]):
+    def _update_ctf_choices(self, mic_names: list[tuple[str]]):
         """Update the micrograph choices in the list widget."""
         self._mic_list.set_choices(mic_names)
 
-    def _mic_changed(self, text: str):
+    def _mic_changed(self, row: tuple[str]):
         """Handle changes to selected micrograph."""
-        mic_path = self._job_dir.path / "Movies" / text
+        mic_path = self._job_dir.path / "Movies" / row[0]
         movie_view = ArrayFilteredView.from_mrc(mic_path)
         had_image = self._viewer.has_image
         self._viewer.set_array_view(

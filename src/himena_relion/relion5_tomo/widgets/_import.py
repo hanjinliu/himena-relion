@@ -7,7 +7,7 @@ from himena_relion import _job_dir
 _LOGGER = logging.getLogger(__name__)
 
 
-@register_job(_job_dir.ImportJobDirectory)
+@register_job("relion.importtomo", is_tomo=True)
 class QImportTiltSeriesViewer(QJobScrollArea):
     def __init__(self, job_dir: _job_dir.ImportJobDirectory):
         super().__init__()

@@ -18,6 +18,7 @@ from himena_relion.schemas import TSModel
 _LOGGER = logging.getLogger(__name__)
 
 
+@register_job("relion.ctffind.ctffind4", is_tomo=True)
 class QCtfFindViewer(QJobScrollArea):
     def __init__(self, job_dir: _job_dir.CtfCorrectionJobDirectory):
         super().__init__()
@@ -134,7 +135,7 @@ class QCtfFindViewer(QJobScrollArea):
             self._worker = None
 
 
-@register_job(_job_dir.CtfRefineTomoJobDirectory)
+@register_job("relion.ctfrefinetomo", is_tomo=True)
 class QCtfRefineTomoViewer(QJobScrollArea):
     def __init__(self, job_dir: _job_dir.CtfRefineTomoJobDirectory):
         super().__init__()

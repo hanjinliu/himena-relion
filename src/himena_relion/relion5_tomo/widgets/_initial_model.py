@@ -8,6 +8,7 @@ from himena_relion._widgets import (
     Q3DViewer,
     register_job,
     QIntWidget,
+    QIntChoiceWidget,
     spacer_widget,
 )
 from himena_relion import _job_dir
@@ -16,7 +17,8 @@ from ._shared import QNumParticlesLabel
 _LOGGER = logging.getLogger(__name__)
 
 
-@register_job(_job_dir.InitialModel3DJobDirectory)
+@register_job("relion.initialmodel")
+@register_job("relion.initialmodel.tomo", is_tomo=True)
 class QInitialModelViewer(QJobScrollArea):
     def __init__(self, job_dir: _job_dir.InitialModel3DJobDirectory):
         super().__init__()
@@ -24,7 +26,7 @@ class QInitialModelViewer(QJobScrollArea):
         self._viewer = Q3DViewer()
 
         self._class_choice = QIntWidget("Class", label_width=50)
-        self._iter_choice = QIntWidget("Iteration", label_width=60)
+        self._iter_choice = QIntChoiceWidget("Iteration", label_width=60)
         self._class_choice.setMinimum(1)
         self._iter_choice.setMinimum(0)
         self._num_particles_label = QNumParticlesLabel()
@@ -38,7 +40,7 @@ class QInitialModelViewer(QJobScrollArea):
         hor_layout.setContentsMargins(0, 0, 0, 0)
         layout.addLayout(hor_layout)
         layout.addWidget(spacer_widget())
-        self._iter_choice.valueChanged.connect(self._on_iter_changed)
+        self._iter_choice.current_changed.connect(self._on_iter_changed)
         self._class_choice.valueChanged.connect(self._on_class_changed)
         self._index_start = 1
         self._iter_current_value = 0
@@ -67,24 +69,7 @@ class QInitialModelViewer(QJobScrollArea):
         self._viewer.auto_fit()
 
     def _on_iter_changed(self, value: int):
-        niter_list = self._job_dir.niter_list()
-        if value in niter_list:
-            self._update_for_value(value, self._class_choice.value())
-            self._iter_current_value = value
-        else:
-            if value > self._iter_current_value:
-                next_iters = [n for n in niter_list if n > self._iter_current_value]
-                if next_iters:
-                    nearest_iter = min(next_iters)
-                else:
-                    nearest_iter = max(niter_list)
-            else:
-                prev_iters = [n for n in niter_list if n < self._iter_current_value]
-                if prev_iters:
-                    nearest_iter = max(prev_iters)
-                else:
-                    nearest_iter = min(niter_list)
-            self._iter_choice.setValue(nearest_iter)
+        self._update_for_value(value, self._class_choice.value())
 
     def _on_class_changed(self, value: int):
         self._update_for_value(self._iter_choice.value(), value)

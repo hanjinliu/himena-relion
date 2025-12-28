@@ -15,7 +15,7 @@ from himena_relion import _job_dir
 _LOGGER = logging.getLogger(__name__)
 
 
-@register_job(_job_dir.Class3DJobDirectory)
+@register_job("relion.class3d", is_tomo=True)
 class QClass3DViewer(QJobScrollArea):
     def __init__(self, job_dir: _job_dir.Class3DJobDirectory):
         super().__init__()

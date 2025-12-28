@@ -17,7 +17,6 @@ class QIntWidget(QtW.QWidget):
         layout.addWidget(label)
         self._int_edit = QIntLineEdit()
         self._int_edit.setText("0")
-        # self._int_edit.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
         self._int_edit.setFixedWidth(40)
         self._max_edit = QtW.QLabel("/0")
         self._max_edit.setFixedWidth(40)
@@ -62,3 +61,45 @@ class QIntWidget(QtW.QWidget):
     def setRange(self, min_value: int, max_value: int):
         self.setMinimum(min_value)
         self.setMaximum(max_value)
+
+
+class QIntChoiceWidget(QIntWidget):
+    current_changed = QtCore.Signal(int)
+
+    def __init__(self, text: str, label_width: int | None = None):
+        super().__init__(text, label_width)
+        self.valueChanged.connect(self._on_iter_changed)
+        self._choices: list[int] = []
+        self._iter_current_value = 0
+
+    def set_choices(self, choices: list[int]):
+        self._choices = choices
+        if choices:
+            self.setMaximum(max(choices))
+            self.setMinimum(min(choices))
+            self.setValue(min(choices))
+            self._iter_current_value = max(choices)
+        else:
+            self.setMaximum(0)
+            self.setMinimum(0)
+            self.setValue(0)
+
+    def _on_iter_changed(self, value: int):
+        niter_list = self._choices
+        if value in niter_list:
+            self._iter_current_value = value
+            self.current_changed.emit(value)
+        else:
+            if value > self._iter_current_value:
+                next_iters = [n for n in niter_list if n > self._iter_current_value]
+                if next_iters:
+                    nearest_iter = min(next_iters)
+                else:
+                    nearest_iter = max(niter_list)
+            else:
+                prev_iters = [n for n in niter_list if n < self._iter_current_value]
+                if prev_iters:
+                    nearest_iter = max(prev_iters)
+                else:
+                    nearest_iter = min(niter_list)
+            self.setValue(nearest_iter)

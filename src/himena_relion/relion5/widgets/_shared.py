@@ -1,21 +1,42 @@
-from qtpy import QtWidgets as QtW
+from qtpy import QtWidgets as QtW, QtCore
 
 
-class QMicrographListWidget(QtW.QListWidget):
-    def __init__(self):
+class QMicrographListWidget(QtW.QTableWidget):
+    current_changed = QtCore.Signal(tuple)
+
+    def __init__(self, columns: list[str] = ("Micrograph",)):
         super().__init__()
         self.setSelectionMode(QtW.QAbstractItemView.SelectionMode.SingleSelection)
+        self.setSelectionBehavior(QtW.QAbstractItemView.SelectionBehavior.SelectRows)
+        self.setColumnCount(len(columns))
+        self.setHorizontalHeaderLabels(list(columns))
+        self.horizontalHeader().setStretchLastSection(True)
+        self.horizontalHeader().setVisible(len(columns) > 1)
+        self.setAlternatingRowColors(True)
+        self.itemSelectionChanged.connect(self._on_selection_changed)
 
-    def set_choices(self, mic_names: list[str]):
+    def set_choices(self, choices: list[tuple[str, ...]]):
         """Set the micrograph choices in the list widget."""
-        if self.count() > 0:
-            current_text = self.currentItem().text()
+        if self.rowCount() > 0 and self.currentItem():
+            current_text = self.item(self.currentRow(), 0).text()
         else:
             current_text = None
-        self.clear()
-        self.addItems(mic_names)
-        if current_text and current_text in mic_names:
-            ith = mic_names.index(current_text)
-            self.setCurrentIndex(ith)
-        elif mic_names:
-            self.setCurrentRow(0)
+        self.setRowCount(0)
+        self.setRowCount(len(choices))
+        choices_0 = []
+        for i, entry in enumerate(choices):
+            for j, name in enumerate(entry):
+                self.setItem(i, j, QtW.QTableWidgetItem(name))
+            choices_0.append(entry[0])
+        if current_text and current_text in current_text:
+            ith = current_text.index(current_text)
+            self.setCurrentCell(ith, 0)
+        elif choices:
+            self.setCurrentCell(0, 0)
+
+    def _on_selection_changed(self):
+        selected_items = self.selectedItems()
+        if selected_items:
+            self.current_changed.emit(
+                tuple(selected_items[i].text() for i in range(self.columnCount()))
+            )

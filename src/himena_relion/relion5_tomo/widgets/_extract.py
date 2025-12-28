@@ -13,7 +13,7 @@ from himena_relion import _job_dir
 _LOGGER = logging.getLogger(__name__)
 
 
-@register_job(_job_dir.ExtractJobDirectory)
+@register_job("relion.pseudosubtomo", is_tomo=True)
 class QExtractJobViewer(QJobScrollArea):
     def __init__(self, job_dir: _job_dir.ExtractJobDirectory):
         super().__init__()

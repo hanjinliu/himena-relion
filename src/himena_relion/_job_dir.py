@@ -1048,45 +1048,6 @@ class ReconstructParticlesJobDirectory(JobDirectory):
             return None
 
 
-class MaskCreateJobDirectory(JobDirectory):
-    """Class for handling mask creation job directories in RELION."""
-
-    _job_type = "relion.maskcreate"
-
-    def mask_mrc(self) -> NDArray[np.floating] | None:
-        """Return the mask MRC file."""
-        mask_path = self.path / "mask.mrc"
-        try:
-            with mrcfile.open(mask_path, mode="r") as mrc:
-                return mrc.data
-        except Exception:
-            return None
-
-
-class PostProcessJobDirectory(JobDirectory):
-    """Class for handling post-processing job directories in RELION."""
-
-    _job_type = "relion.postprocess"
-
-    def map_mrc_path(self, masked: bool = False) -> Path:
-        """Return the path to the post-processed map MRC file."""
-        name = "postprocess_masked.mrc" if masked else "postprocess.mrc"
-        return self.path / name
-
-    def map_mrc(self, masked: bool = False) -> NDArray[np.floating] | None:
-        """Return the post-processed map MRC file."""
-        mrc_path = self.map_mrc_path(masked=masked)
-        if mrc_path.exists():
-            with mrcfile.open(mrc_path, mode="r") as mrc:
-                return mrc.data
-
-    def fsc_dataframe(self) -> pd.DataFrame | None:
-        """Return the FSC DataFrame."""
-        star_path = self.path / "postprocess.star"
-        if star_path.exists():
-            return read_star_block(star_path, "fsc").trust_loop().to_pandas()
-
-
 class SelectInteractiveJobDirectory(JobDirectory):
     _job_type = "relion.select.interactive"
 

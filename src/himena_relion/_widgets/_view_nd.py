@@ -101,7 +101,7 @@ class Q2DViewer(QViewer):
         self._last_clim = clim
         num_slices = self._array_view.num_slices()
         self._dims_slider.blockSignals(True)
-        self._dims_slider.setVisible(num_slices > 1)
+        self._dims_slider.setVisible(bool(num_slices > 1))
         try:
             self._dims_slider.setRange(0, num_slices - 1)
             self._dims_slider.setValue(num_slices // 2)

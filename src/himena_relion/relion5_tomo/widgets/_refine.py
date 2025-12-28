@@ -19,7 +19,7 @@ from ._shared import QNumParticlesLabel
 _LOGGER = logging.getLogger(__name__)
 
 
-@register_job(_job_dir.Refine3DJobDirectory)
+@register_job("relion.refine3d.tomo", is_tomo=True)
 class QRefine3DViewer(QJobScrollArea):
     def __init__(self, job_dir: _job_dir.Refine3DJobDirectory):
         super().__init__()

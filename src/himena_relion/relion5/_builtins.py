@@ -584,13 +584,6 @@ class CtfEstimationJob(_Relion5Job):
             tuple[float, float, float],
             {"label": "Defocus search range min/max/step (A)", "group": "CTFFIND"},
         ] = (5000, 50000, 500),
-        localsearch_nominal_defocus: Annotated[
-            float, {"label": "Nominal defocus search range", "group": "CTFFIND"}
-        ] = 10000,
-        exp_factor_dose: Annotated[
-            float,
-            {"label": "Dose-dependent Thon ring fading (e/A^2)", "group": "CTFFIND"},
-        ] = 100,
         # Running
         nr_mpi: MPI_TYPE = 1,
         do_queue: DO_QUEUE_TYPE = False,
