@@ -33,6 +33,9 @@ class QMotionCorrViewer(QJobScrollArea):
         self._viewer = Q2DViewer(zlabel="")
         self._mic_list = QtW.QListWidget()
         self._mic_list.setFixedHeight(180)
+        self._mic_list.setSelectionMode(
+            QtW.QAbstractItemView.SelectionMode.SingleSelection
+        )
         self._mic_list.currentTextChanged.connect(self._param_changed)
         self._filter_widget = Q2DFilterWidget()
         layout.addWidget(QtW.QLabel("<b>Motion-corrected tilt series</b>"))
@@ -70,7 +73,15 @@ class QMotionCorrViewer(QJobScrollArea):
         self._viewer.auto_fit()
 
     def _process_update(self):
-        choices = [p.stem for p in self._job_dir.iter_movies()]
-        if choices:
-            self._mic_list.clear()
-            self._mic_list.addItems(choices)
+        if self._mic_list.count() > 0:
+            current_text = self._mic_list.currentItem().text()
+        else:
+            current_text = None
+        self._mic_list.clear()
+        choices = [p.name for p in self._job_dir.iter_movies()]
+        self._mic_list.addItems(choices)
+        if current_text and current_text in choices:
+            ith = choices.index(current_text)
+            self._mic_list.setCurrentIndex(ith)
+        elif choices:
+            self._mic_list.setCurrentRow(0)

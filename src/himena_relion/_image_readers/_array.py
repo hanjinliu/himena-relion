@@ -97,7 +97,11 @@ class ArrayFromMrc(ArrayViewBase):
 
     def get_slice(self, index: int) -> Arr:
         with mrcfile.mmap(self._path, mode="r") as mrc:
-            data = np.asarray(mrc.data[index])
+            mmap_data = mrc.data
+            if mmap_data.ndim == 2:
+                data = np.asarray(mmap_data)
+            else:
+                data = np.asarray(mrc.data[index])
         return data
 
     @lru_cache(maxsize=1)
