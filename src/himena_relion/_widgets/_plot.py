@@ -27,12 +27,19 @@ class QPlotCanvas(QModelMatplotlibCanvas):
         with self._plot_style():
             fig = hplt.figure()
 
-            tilt_angle = df["rlnTomoNominalStageTiltAngle"]
+            if "rlnTomoNominalStageTiltAngle" in df.columns:
+                # this is a tilt series
+                xvals = df["rlnTomoNominalStageTiltAngle"]
+                xlabel = "Nominal stage tilt angle (°)"
+            else:
+                # just micrographs
+                xvals = df.index
+                xlabel = "Micrograph"
             defocus_u_um = df["rlnDefocusU"] / 10000
             defocus_v_um = df["rlnDefocusV"] / 10000
-            fig.plot(tilt_angle, defocus_u_um, name="U", width=1)
-            fig.plot(tilt_angle, defocus_v_um, name="V", width=1)
-            fig.x.label = "Nominal stage tilt angle (°)"
+            fig.plot(xvals, defocus_u_um, name="U", width=1)
+            fig.plot(xvals, defocus_v_um, name="V", width=1)
+            fig.x.label = xlabel
             fig.y.label = "Def. (µm)"
             fig.set_legend(font_size=9.0, location="top_right")
             self.update_model(WidgetDataModel(value=fig, type=StandardType.PLOT))
@@ -54,10 +61,18 @@ class QPlotCanvas(QModelMatplotlibCanvas):
         with self._plot_style():
             fig = hplt.figure()
 
-            tilt_angle = df["rlnTomoNominalStageTiltAngle"]
-            yvals = df[ycol]
-            fig.plot(tilt_angle, yvals, width=1)
-            fig.x.label = "Nominal stage tilt angle (°)"
+            if "rlnTomoNominalStageTiltAngle" in df.columns:
+                # this is a tilt series
+                xvals = df["rlnTomoNominalStageTiltAngle"]
+                xlabel = "Nominal stage tilt angle (°)"
+            else:
+                # just micrographs
+                xvals = df.index
+                xlabel = "Micrograph"
+            if ycol not in df.columns:
+                yvals = df[ycol]
+                fig.plot(xvals, yvals, width=1)
+            fig.x.label = xlabel
             fig.y.label = ylabel
             self.update_model(WidgetDataModel(value=fig, type=StandardType.PLOT))
             self.tight_layout()

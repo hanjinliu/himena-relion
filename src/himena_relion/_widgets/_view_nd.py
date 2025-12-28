@@ -155,7 +155,7 @@ class Q2DViewer(QViewer):
                 self._last_future = self._executor.submit(self._get_image_slice, value)
                 self._last_future.add_done_callback(self._on_calc_slice_done)
         else:
-            self._canvas.image = np.zeros((2, 2), dtype=np.float32)
+            self._canvas.image = np.zeros((0, 0), dtype=np.float32)
             self._histogram_view.set_hist_for_array(
                 np.zeros((2, 2), dtype=np.float32), (0.0, 1.0)
             )

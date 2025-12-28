@@ -429,13 +429,9 @@ class CtfCorrectionJobDirectory(HasTiltSeriesJobDirectory):
 
     _job_type = "relion.ctffind.ctffind4"
 
-    def tilt_series_ctf_star(self) -> Path:
-        """Return the path to the CTF-corrected tilt series star file."""
-        return self.path / "tilt_series_ctf.star"
-
     def iter_tilt_series(self) -> Iterator[CtfCorrectedTiltSeriesInfo]:
         """Iterate over all CTF-corrected tilt series info."""
-        fp = self.tilt_series_ctf_star()
+        fp = self.path / "tilt_series_ctf.star"
         star = read_star(fp).first().trust_loop().to_pandas()
         for _, row in star.iterrows():
             yield CtfCorrectedTiltSeriesInfo.from_series(row)

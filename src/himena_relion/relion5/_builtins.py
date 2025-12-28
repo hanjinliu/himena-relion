@@ -109,7 +109,73 @@ CONTINUE_TYPE = Annotated[
         "group": "I/O",
     },
 ]
-
+# Motion correction
+MCOR_FIRST_FRAME_SUM_TYPE = Annotated[
+    int, {"label": "First frame for corrected sum", "group": "I/O"}
+]
+MCOR_LAST_FRAME_SUM_TYPE = Annotated[
+    int, {"label": "Last frame for corrected sum", "group": "I/O"}
+]
+MCOR_DOSE_PER_FRAME_TYPE = Annotated[
+    float, {"label": "Dose per frame (e/A^2)", "group": "I/O"}
+]
+MCOR_PRE_EXPOSURE_TYPE = Annotated[
+    float, {"label": "Pre-exposure (e/A^2)", "group": "I/O"}
+]
+MCOR_EER_FRAC_TYPE = Annotated[
+    int, {"label": "EER fractionation", "min": 1, "group": "I/O"}
+]
+MCOR_DO_F16_TYPE = Annotated[bool, {"label": "Write output in float16", "group": "I/O"}]
+MCOR_DO_DOSE_WEIGHTING_TYPE = Annotated[
+    bool, {"label": "Do dose-weighting", "group": "I/O"}
+]
+MCOR_DO_SAVE_PS_TYPE = Annotated[
+    bool, {"label": "Save sum of power spectra", "group": "I/O"}
+]
+MCOR_SUM_EVERY_E_TYPE = Annotated[
+    float, {"label": "Sum power spectra every (e/A^2)", "group": "I/O"}
+]
+MCOR_BFACTOR_TYPE = Annotated[float, {"label": "Bfactor", "group": "Motion Correction"}]
+MCOR_GROUP_FRAMES_TYPE = Annotated[
+    int, {"label": "Group frames", "min": 1, "group": "Motion Correction"}
+]
+MCOR_BIN_FACTOR_TYPE = Annotated[
+    int, {"label": "Binning factor", "min": 1, "group": "Motion Correction"}
+]
+MCOR_DEFECT_FILE_TYPE = Annotated[
+    str, {"label": "Defect file", "group": "Motion Correction"}
+]
+MCOR_GAIN_REF_TYPE = Annotated[
+    str, {"label": "Gain reference image", "group": "Motion Correction"}
+]
+MCOR_GAIN_ROT_TYPE = Annotated[
+    str,
+    {
+        "choices": [
+            "No flipping (0)",
+            "Flip upside down (1)",
+            "Flip left to right (2)",
+        ],
+        "label": "Gain reference flipping",
+        "group": "Motion Correction",
+    },
+]
+MCOR_GAIN_FLIP_TYPE = Annotated[
+    str,
+    {
+        "choices": [
+            "No flipping (0)",
+            "Flip upside down (1)",
+            "Flip left to right (2)",
+        ],
+        "label": "Gain reference flipping",
+        "group": "Motion Correction",
+    },
+]
+MCOR_PATCH_TYPE = Annotated[
+    tuple[int, int],
+    {"label": "Number of patches (X, Y)", "group": "Motion Correction"},
+]
 # CTF
 DO_CTF_TYPE = Annotated[bool, {"label": "Do CTF correction", "group": "CTF"}]
 IGNORE_CTF_TYPE = Annotated[
@@ -351,64 +417,29 @@ class MotionCorr2Job(_MotionCorrJobBase):
     def run(
         self,
         input_star_mics: IN_MOVIES = "",
-        eer_grouping: Annotated[
-            int, {"label": "EER fractionation", "min": 1, "group": "I/O"}
-        ] = 32,
-        do_even_odd_split: Annotated[
-            bool, {"label": "Save images for denoising", "group": "I/O"}
-        ] = False,
-        bfactor: Annotated[
-            float, {"label": "Bfactor", "group": "Motion Correction"}
-        ] = 150,
-        group_frames: Annotated[
-            int, {"label": "Group frames", "min": 1, "group": "Motion Correction"}
-        ] = 1,
-        bin_factor: Annotated[
-            int, {"label": "Binning factor", "min": 1, "group": "Motion Correction"}
-        ] = 1,
-        fn_defect: Annotated[
-            str, {"label": "Defect file", "group": "Motion Correction"}
-        ] = "",
-        fn_gain_ref: Annotated[
-            str, {"label": "Gain reference image", "group": "Motion Correction"}
-        ] = "",
-        gain_rot: Annotated[
-            str,
-            {
-                "choices": [
-                    "No rotation (0)",
-                    "90 degrees (1)",
-                    "180 degrees (2)",
-                    "270 degrees (3)",
-                ],
-                "label": "Gain reference rotation",
-                "group": "Motion Correction",
-            },
-        ] = "No rotation (0)",
-        gain_flip: Annotated[
-            str,
-            {
-                "choices": [
-                    "No flipping (0)",
-                    "Flip upside down (1)",
-                    "Flip left to right (2)",
-                ],
-                "label": "Gain reference flipping",
-                "group": "Motion Correction",
-            },
-        ] = "No flipping (0)",
-        other_motioncor2_args: Annotated[
-            str, {"label": "Other MotionCor2 arguments", "group": "Motion Correction"}
-        ] = "",
-        patch: Annotated[
-            tuple[int, int],
-            {"label": "Number of patches (X, Y)", "group": "Motion Correction"},
-        ] = (1, 1),
+        first_frame_sum: MCOR_FIRST_FRAME_SUM_TYPE = 1,
+        last_frame_sum: MCOR_LAST_FRAME_SUM_TYPE = -1,
+        dose_per_frame: MCOR_DOSE_PER_FRAME_TYPE = 1.0,
+        pre_exposure: MCOR_PRE_EXPOSURE_TYPE = 0.0,
+        eer_grouping: MCOR_EER_FRAC_TYPE = 32,
+        do_float16: MCOR_DO_F16_TYPE = True,
+        do_dose_weighting: MCOR_DO_DOSE_WEIGHTING_TYPE = True,
+        group_for_ps: MCOR_SUM_EVERY_E_TYPE = 4.0,
+        # Motion correction
+        bfactor: MCOR_BFACTOR_TYPE = 150,
+        group_frames: MCOR_GROUP_FRAMES_TYPE = 1,
+        bin_factor: MCOR_BIN_FACTOR_TYPE = 1,
+        fn_defect: MCOR_DEFECT_FILE_TYPE = "",
+        fn_gain_ref: MCOR_GAIN_REF_TYPE = "",
+        gain_rot: MCOR_GAIN_ROT_TYPE = "No rotation (0)",
+        gain_flip: MCOR_GAIN_FLIP_TYPE = "No flipping (0)",
+        patch: MCOR_PATCH_TYPE = (1, 1),
         gpu_ids: GPU_IDS_TYPE = "0",
         # Running
-        min_dedicated: MIN_DEDICATED_TYPE = 1,
         nr_mpi: MPI_TYPE = 1,
         nr_threads: THREAD_TYPE = 1,
+        do_queue: DO_QUEUE_TYPE = False,
+        min_dedicated: MIN_DEDICATED_TYPE = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -442,65 +473,24 @@ class MotionCorrOwnJob(_MotionCorrJobBase):
     def run(
         self,
         input_star_mics: IN_MOVIES = "",
-        do_even_odd_split: Annotated[
-            bool, {"label": "Save images for denoising", "group": "I/O"}
-        ] = False,
-        do_float16: Annotated[
-            bool, {"label": "Output in float16", "group": "I/O"}
-        ] = True,
-        eer_grouping: Annotated[
-            int, {"label": "EER fractionation", "min": 1, "group": "I/O"}
-        ] = 32,
-        do_save_ps: Annotated[
-            bool, {"label": "Save sum of power spectra", "group": "I/O"}
-        ] = True,
-        group_for_ps: Annotated[
-            int, {"label": "Save power spectra every n frames", "group": "I/O"}
-        ] = 4,
-        bfactor: Annotated[
-            float, {"label": "Bfactor", "group": "Motion Correction"}
-        ] = 150,
-        group_frames: Annotated[
-            int, {"label": "Group frames", "min": 1, "group": "Motion Correction"}
-        ] = 1,
-        bin_factor: Annotated[
-            int, {"label": "Binning factor", "min": 1, "group": "Motion Correction"}
-        ] = 1,
-        fn_defect: Annotated[
-            str, {"label": "Defect file", "group": "Motion Correction"}
-        ] = "",
-        fn_gain_ref: Annotated[
-            str, {"label": "Gain reference image", "group": "Motion Correction"}
-        ] = "",
-        gain_rot: Annotated[
-            str,
-            {
-                "choices": [
-                    "No rotation (0)",
-                    "90 degrees (1)",
-                    "180 degrees (2)",
-                    "270 degrees (3)",
-                ],
-                "label": "Gain reference rotation",
-                "group": "Motion Correction",
-            },
-        ] = "No rotation (0)",
-        gain_flip: Annotated[
-            str,
-            {
-                "choices": [
-                    "No flipping (0)",
-                    "Flip upside down (1)",
-                    "Flip left to right (2)",
-                ],
-                "label": "Gain reference flipping",
-                "group": "Motion Correction",
-            },
-        ] = "No flipping (0)",
-        patch: Annotated[
-            tuple[int, int],
-            {"label": "Number of patches (X, Y)", "group": "Motion Correction"},
-        ] = (1, 1),
+        first_frame_sum: MCOR_FIRST_FRAME_SUM_TYPE = 1,
+        last_frame_sum: MCOR_LAST_FRAME_SUM_TYPE = -1,
+        dose_per_frame: MCOR_DOSE_PER_FRAME_TYPE = 1.0,
+        pre_exposure: MCOR_PRE_EXPOSURE_TYPE = 0.0,
+        eer_grouping: MCOR_EER_FRAC_TYPE = 32,
+        do_float16: MCOR_DO_F16_TYPE = True,
+        do_dose_weighting: MCOR_DO_DOSE_WEIGHTING_TYPE = True,
+        do_save_ps: MCOR_DO_SAVE_PS_TYPE = True,
+        group_for_ps: MCOR_SUM_EVERY_E_TYPE = 4.0,
+        # Motion correction
+        bfactor: MCOR_BFACTOR_TYPE = 150,
+        group_frames: MCOR_GROUP_FRAMES_TYPE = 1,
+        bin_factor: MCOR_BIN_FACTOR_TYPE = 1,
+        fn_defect: MCOR_DEFECT_FILE_TYPE = "",
+        fn_gain_ref: MCOR_GAIN_REF_TYPE = "",
+        gain_rot: MCOR_GAIN_ROT_TYPE = "No rotation (0)",
+        gain_flip: MCOR_GAIN_FLIP_TYPE = "No flipping (0)",
+        patch: MCOR_PATCH_TYPE = (1, 1),
         # Running
         nr_mpi: MPI_TYPE = 1,
         nr_threads: THREAD_TYPE = 1,
@@ -553,7 +543,11 @@ class CtfEstimationJob(_Relion5Job):
 
     def run(
         self,
+        # I/O
         input_star_mics: IN_MICROGRAPHS = "",
+        use_noDW: Annotated[
+            bool, {"label": "Use micrographs without dose-weighting", "group": "I/O"}
+        ] = False,
         do_phaseshift: Annotated[
             bool, {"label": "Estimate phase shifts", "group": "I/O"}
         ] = False,
@@ -564,6 +558,7 @@ class CtfEstimationJob(_Relion5Job):
         dast: Annotated[
             float, {"label": "Amount of astigmatism (A)", "group": "I/O"}
         ] = 100,
+        # CTFFIND
         use_given_ps: Annotated[
             bool, {"label": "Use power spectra from MotionCorr", "group": "CTFFIND"}
         ] = True,
@@ -591,6 +586,7 @@ class CtfEstimationJob(_Relion5Job):
             float,
             {"label": "Dose-dependent Thon ring fading (e/A^2)", "group": "CTFFIND"},
         ] = 100,
+        # Running
         nr_mpi: MPI_TYPE = 1,
         do_queue: DO_QUEUE_TYPE = False,
         min_dedicated: MIN_DEDICATED_TYPE = 1,

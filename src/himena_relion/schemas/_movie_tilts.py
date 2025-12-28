@@ -1,6 +1,12 @@
 import starfile_rs.schema.pandas as schema
 
 
+class MicrographsModel(schema.LoopDataModel):
+    mic_name: schema.Series[str] = schema.Field("rlnMicrographName")
+    optics_group: schema.Series[int] = schema.Field("rlnOpticsGroup")
+    ctf_image: schema.Series[str] = schema.Field("rlnCtfImage", default=None)
+
+
 class TSModel(schema.LoopDataModel):
     """Star file content such as TS_01.star"""
 

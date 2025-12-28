@@ -3,6 +3,7 @@ from himena_relion.relion5.widgets import (
     _postprocess,
     _select,
     _motioncor,
+    _ctf,
 )
 
 del (
@@ -10,4 +11,5 @@ del (
     _postprocess,
     _select,
     _motioncor,
+    _ctf,
 )

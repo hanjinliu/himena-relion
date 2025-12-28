@@ -1,6 +1,6 @@
 from pathlib import Path
 import starfile_rs.schema.pandas as schema
-from himena_relion.schemas._tilt_series import TomogramsGroupModel
+from himena_relion.schemas._movie_tilts import TomogramsGroupModel
 
 
 class OptimisationSetModel(schema.SingleDataModel):

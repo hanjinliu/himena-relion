@@ -5,7 +5,11 @@ from himena_relion.schemas._misc import (
     ParticlesModel,
     ParticleMetaModel,
 )
-from himena_relion.schemas._tilt_series import TSModel, TomogramsGroupModel
+from himena_relion.schemas._movie_tilts import (
+    MicrographsModel,
+    TSModel,
+    TomogramsGroupModel,
+)
 
 __all__ = [
     "RelionPipelineModel",
@@ -13,6 +17,7 @@ __all__ = [
     "JobStarModel",
     "ParticlesModel",
     "ParticleMetaModel",
+    "MicrographsModel",
     "TSModel",
     "TomogramsGroupModel",
 ]

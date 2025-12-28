@@ -36,7 +36,7 @@ class QMotionCorrViewer(QJobScrollArea):
         self._mic_list.setSelectionMode(
             QtW.QAbstractItemView.SelectionMode.SingleSelection
         )
-        self._mic_list.currentTextChanged.connect(self._param_changed)
+        self._mic_list.currentTextChanged.connect(self._mic_changed)
         self._filter_widget = Q2DFilterWidget()
         layout.addWidget(QtW.QLabel("<b>Motion-corrected tilt series</b>"))
         layout.addWidget(self._filter_widget)

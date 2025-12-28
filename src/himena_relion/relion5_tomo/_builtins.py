@@ -11,6 +11,8 @@ from himena_relion._pipeline import RelionPipeline
 from himena_relion._widgets._magicgui import OptimisationSetEdit, DoseRateEdit
 from himena_relion._widgets._path_input import PathDrop
 from himena_relion.relion5._builtins import (
+    IN_MICROGRAPHS,
+    IN_MOVIES,
     IN_PARTICLES,
     ANG_SAMPLING_TYPE,
     CONTINUE_TYPE,
@@ -37,6 +39,17 @@ from himena_relion.relion5._builtins import (
     MASK_DIAMETER_TYPE,
     MASK_TYPE,
     MASK_WITH_ZEROS_TYPE,
+    MCOR_BFACTOR_TYPE,
+    MCOR_BIN_FACTOR_TYPE,
+    MCOR_DEFECT_FILE_TYPE,
+    MCOR_DO_F16_TYPE,
+    MCOR_DO_SAVE_PS_TYPE,
+    MCOR_EER_FRAC_TYPE,
+    MCOR_GAIN_FLIP_TYPE,
+    MCOR_GAIN_REF_TYPE,
+    MCOR_GAIN_ROT_TYPE,
+    MCOR_GROUP_FRAMES_TYPE,
+    MCOR_PATCH_TYPE,
     NUM_CLASS_TYPE,
     NUM_ITER_TYPE,
     NUM_POOL_TYPE,
@@ -85,6 +98,12 @@ IN_OPTIM = Annotated[
 TOMO_THICKNESS_TYPE = Annotated[
     float,
     {"label": "Estimated tomogram thickness (nm)", "min": 1.0, "group": "I/O"},
+]
+MCOR_ODD_EVEN_SPLIT_TYPE = Annotated[
+    bool, {"label": "Save images for denoising", "group": "I/O"}
+]
+MCOR_SUM_EVERY_N_TYPE = Annotated[
+    int, {"label": "Save power spectra every n frames", "group": "I/O"}
 ]
 
 
@@ -275,15 +294,106 @@ class ImportCoordinatesJob(_ImportTomoJob):
 
 
 class MotionCorr2TomoJob(_Relion5TomoJob, MotionCorr2Job):
-    pass
+    def run(
+        self,
+        input_star_mics: IN_MOVIES = "",
+        eer_grouping: MCOR_EER_FRAC_TYPE = 32,
+        do_even_odd_split: MCOR_ODD_EVEN_SPLIT_TYPE = False,
+        # Motion correction
+        bfactor: MCOR_BFACTOR_TYPE = 150,
+        group_frames: MCOR_GROUP_FRAMES_TYPE = 1,
+        bin_factor: MCOR_BIN_FACTOR_TYPE = 1,
+        fn_defect: MCOR_DEFECT_FILE_TYPE = "",
+        fn_gain_ref: MCOR_GAIN_REF_TYPE = "",
+        gain_rot: MCOR_GAIN_ROT_TYPE = "No rotation (0)",
+        gain_flip: MCOR_GAIN_FLIP_TYPE = "No flipping (0)",
+        patch: MCOR_PATCH_TYPE = (1, 1),
+        gpu_ids: GPU_IDS_TYPE = "0",
+        # Running
+        nr_mpi: MPI_TYPE = 1,
+        nr_threads: THREAD_TYPE = 1,
+        do_queue: DO_QUEUE_TYPE = False,
+        min_dedicated: MIN_DEDICATED_TYPE = 1,
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")
 
 
 class MotionCorrOwnTomoJob(_Relion5TomoJob, MotionCorrOwnJob):
-    pass
+    def run(
+        self,
+        input_star_mics: IN_MOVIES = "",
+        do_even_odd_split: MCOR_ODD_EVEN_SPLIT_TYPE = False,
+        do_float16: MCOR_DO_F16_TYPE = True,
+        eer_grouping: MCOR_EER_FRAC_TYPE = 32,
+        do_save_ps: MCOR_DO_SAVE_PS_TYPE = True,
+        group_for_ps: MCOR_SUM_EVERY_N_TYPE = 4,
+        # Motion correction
+        bfactor: MCOR_BFACTOR_TYPE = 150,
+        group_frames: MCOR_GROUP_FRAMES_TYPE = 1,
+        bin_factor: MCOR_BIN_FACTOR_TYPE = 1,
+        fn_defect: MCOR_DEFECT_FILE_TYPE = "",
+        fn_gain_ref: MCOR_GAIN_REF_TYPE = "",
+        gain_rot: MCOR_GAIN_ROT_TYPE = "No rotation (0)",
+        gain_flip: MCOR_GAIN_FLIP_TYPE = "No flipping (0)",
+        patch: MCOR_PATCH_TYPE = (1, 1),
+        # Running
+        nr_mpi: MPI_TYPE = 1,
+        nr_threads: THREAD_TYPE = 1,
+        do_queue: DO_QUEUE_TYPE = False,
+        min_dedicated: MIN_DEDICATED_TYPE = 1,
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")
 
 
 class CtfEstimationTomoJob(_Relion5TomoJob, CtfEstimationJob):
-    pass
+    def run(
+        self,
+        # I/O
+        input_star_mics: IN_MICROGRAPHS = "",
+        do_phaseshift: Annotated[
+            bool, {"label": "Estimate phase shifts", "group": "I/O"}
+        ] = False,
+        phase_range: Annotated[
+            tuple[float, float, float],
+            {"label": "Phase shift min/max/step (deg)", "group": "I/O"},
+        ] = (0, 180, 10),
+        dast: Annotated[
+            float, {"label": "Amount of astigmatism (A)", "group": "I/O"}
+        ] = 100,
+        # CTFFIND
+        use_given_ps: Annotated[
+            bool, {"label": "Use power spectra from MotionCorr", "group": "CTFFIND"}
+        ] = True,
+        slow_search: Annotated[
+            bool, {"label": "Use exhaustive search", "group": "CTFFIND"}
+        ] = False,
+        ctf_win: Annotated[
+            int, {"label": "CTF estimation window size (pix)", "group": "CTFFIND"}
+        ] = -1,
+        box: Annotated[int, {"label": "FFT box size (pix)", "group": "CTFFIND"}] = 512,
+        resmax: Annotated[
+            float, {"label": "Resolution max (A)", "group": "CTFFIND"}
+        ] = 5,
+        resmin: Annotated[
+            float, {"label": "Resolution min (A)", "group": "CTFFIND"}
+        ] = 30,
+        dfrange: Annotated[
+            tuple[float, float, float],
+            {"label": "Defocus search range min/max/step (A)", "group": "CTFFIND"},
+        ] = (5000, 50000, 500),
+        localsearch_nominal_defocus: Annotated[
+            float, {"label": "Nominal defocus search range", "group": "CTFFIND"}
+        ] = 10000,
+        exp_factor_dose: Annotated[
+            float,
+            {"label": "Dose-dependent Thon ring fading (e/A^2)", "group": "CTFFIND"},
+        ] = 100,
+        # Running
+        nr_mpi: MPI_TYPE = 1,
+        do_queue: DO_QUEUE_TYPE = False,
+        min_dedicated: MIN_DEDICATED_TYPE = 1,
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")
 
 
 class ExcludeTiltJob(_Relion5TomoJob):
