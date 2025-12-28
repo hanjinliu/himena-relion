@@ -152,9 +152,10 @@ MCOR_GAIN_ROT_TYPE = Annotated[
     str,
     {
         "choices": [
-            "No flipping (0)",
-            "Flip upside down (1)",
-            "Flip left to right (2)",
+            "No rotation (0)",
+            "90 degrees (1)",
+            "180 degrees (2)",
+            "270 degrees (3)",
         ],
         "label": "Gain reference flipping",
         "group": "Motion Correction",

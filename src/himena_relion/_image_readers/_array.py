@@ -36,6 +36,10 @@ class ArrayFilteredView:
         arr = self._view.get_slice(index)
         return self._post_filter(arr, index)
 
+    def get_scale(self) -> float:
+        """Get the scale of the array."""
+        return self._view.get_scale()
+
     def num_slices(self) -> int:
         """Get the number of slices in the array."""
         return self._view.num_slices()
@@ -73,6 +77,10 @@ class ArrayViewBase(ABC):
     def num_slices(self) -> int:
         """Get the number of slices in the array."""
 
+    @abstractmethod
+    def get_scale(self) -> float:
+        """Get the scale of the array."""
+
 
 class ArrayDirectView(ArrayViewBase):
     """Array view that directly wraps a numpy array."""
@@ -87,6 +95,9 @@ class ArrayDirectView(ArrayViewBase):
 
     def num_slices(self) -> int:
         return self._array.shape[0]
+
+    def get_scale(self) -> float:
+        return 1.0
 
 
 class ArrayFromMrc(ArrayViewBase):
@@ -104,6 +115,10 @@ class ArrayFromMrc(ArrayViewBase):
                 data = np.asarray(mrc.data[index])
         return data
 
+    def get_scale(self) -> float:
+        with mrcfile.open(self._path, header_only=True, mode="r") as mrc:
+            return mrc.voxel_size.x
+
     @lru_cache(maxsize=1)
     def num_slices(self) -> int:
         with mrcfile.open(self._path, mode="r") as mrc:
@@ -116,6 +131,10 @@ class ArrayFromMrcSplits(ArrayViewBase):
 
     def get_slice(self, index: int) -> Arr:
         return reduce(lambda a, b: a + b, self._iter_images(index))
+
+    def get_scale(self) -> float:
+        with mrcfile.open(self._paths[0], header_only=True, mode="r") as mrc:
+            return mrc.voxel_size.x
 
     @lru_cache(maxsize=1)
     def num_slices(self) -> int:
@@ -146,6 +165,12 @@ class ArrayFromFiles(ArrayViewBase):
 class ArrayFromMrcs(ArrayFromFiles):
     """Array view that reads slices from a list of MRC files."""
 
+    def get_scale(self) -> float:
+        if len(self._paths) == 0:
+            return 1.0
+        with mrcfile.open(self._paths[0], header_only=True, mode="r") as mrc:
+            return mrc.voxel_size.x
+
     def get_slice(self, index: int) -> Arr:
         path = self._paths[index]
         sl = slice(None)
@@ -165,3 +190,6 @@ class ArrayFromTifs(ArrayFromFiles):
         with tifffile.TiffFile(path) as tif:
             arr = tif.asarray()
         return arr
+
+    def get_scale(self) -> float:
+        return 1.0  # TODO: read from TIFF metadata

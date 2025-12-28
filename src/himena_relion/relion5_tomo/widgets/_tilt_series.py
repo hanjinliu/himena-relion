@@ -71,8 +71,8 @@ class QMotionCorrViewer(QJobScrollArea):
                 break
         else:
             return
-        self._filter_widget.set_image_scale(info.tomo_tilt_series_pixel_size)
         ts_view = info.read_tilt_series(job_dir.relion_project_dir)
+        self._filter_widget.set_image_scale(ts_view.get_scale())
         self._viewer.set_array_view(ts_view.with_filter(self._filter_widget.apply))
 
 

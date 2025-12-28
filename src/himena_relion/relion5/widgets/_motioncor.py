@@ -32,7 +32,7 @@ class QMotionCorrViewer(QJobScrollArea):
 
         self._viewer = Q2DViewer(zlabel="")
         self._mic_list = QtW.QListWidget()
-        self._mic_list.setFixedHeight(180)
+        self._mic_list.setFixedHeight(130)
         self._mic_list.setSelectionMode(
             QtW.QAbstractItemView.SelectionMode.SingleSelection
         )
@@ -55,7 +55,14 @@ class QMotionCorrViewer(QJobScrollArea):
         """Handle changes to selected micrograph."""
         mic_path = self._job_dir.path / "Movies" / text
         movie_view = ArrayFilteredView.from_mrc(mic_path)
-        self._viewer.set_array_view(movie_view.with_filter(self._filter_widget.apply))
+        had_image = self._viewer.has_image
+        self._filter_widget.set_image_scale(movie_view.get_scale())
+        self._viewer.set_array_view(
+            movie_view.with_filter(self._filter_widget.apply),
+            clim=self._viewer._last_clim,
+        )
+        if not had_image:
+            self._viewer._auto_contrast()
 
     def _param_changed(self):
         """Handle changes to filter parameters."""

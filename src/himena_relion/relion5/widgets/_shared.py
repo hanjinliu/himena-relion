@@ -4,7 +4,6 @@ from qtpy import QtWidgets as QtW
 class QMicrographListWidget(QtW.QListWidget):
     def __init__(self):
         super().__init__()
-        self.setFixedHeight(180)
         self.setSelectionMode(QtW.QAbstractItemView.SelectionMode.SingleSelection)
 
     def set_choices(self, mic_names: list[str]):

@@ -59,6 +59,9 @@ class QCtfFindViewer(QJobScrollArea):
 
         self._mic_list = QMicrographListWidget()
         self._mic_list.currentTextChanged.connect(self._mic_changed)
+        splitter = QtW.QSplitter()
+        splitter.addWidget(self._mic_list)
+        splitter.addWidget(self._viewer)
 
         self._viewer = Q2DViewer(zlabel="Tilt index")
         self._worker: GeneratorWorker | None = None
@@ -71,8 +74,8 @@ class QCtfFindViewer(QJobScrollArea):
         layout.addWidget(QtW.QLabel("<b>Max resolution</b>"))
         layout.addWidget(self._max_resolution_canvas)
         layout.addWidget(QtW.QLabel("<b>CTF spectra</b>"))
-        layout.addWidget(self._viewer)
-        layout.addWidget(self._mic_list)
+        layout.addWidget(splitter)
+        splitter.setSizes([200, 400])
 
     def on_job_updated(self, job_dir: _job_dir.CtfCorrectionJobDirectory, path: str):
         """Handle changes to the job directory."""
@@ -129,7 +132,8 @@ class QCtfFindViewer(QJobScrollArea):
         yield self._astigmatism_canvas.plot_ctf_astigmatism, df
         yield self._defocus_angle_canvas.plot_ctf_defocus_angle, df
         yield self._max_resolution_canvas.plot_ctf_max_resolution, df
-        yield self._update_ctf_choices, list(mov_dir.glob("*_frameImage_PS.ctf"))
+        ctf_paths = [f.name for f in mov_dir.glob("*_frameImage_PS.ctf")]
+        yield self._update_ctf_choices, ctf_paths
 
         self._worker = None
 
@@ -145,7 +149,13 @@ class QCtfFindViewer(QJobScrollArea):
         """Handle changes to selected micrograph."""
         mic_path = self._job_dir.path / "Movies" / text
         movie_view = ArrayFilteredView.from_mrc(mic_path)
-        self._viewer.set_array_view(movie_view)
+        had_image = self._viewer.has_image
+        self._viewer.set_array_view(
+            movie_view,
+            clim=self._viewer._last_clim,
+        )
+        if not had_image:
+            self._viewer._auto_contrast()
 
     def widget_added_callback(self):
         self._defocus_canvas.widget_added_callback()
