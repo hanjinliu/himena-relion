@@ -22,7 +22,7 @@ _LOGGER = logging.getLogger(__name__)
 @register_job("relion.refine3d")
 @register_job("relion.refine3d.tomo", is_tomo=True)
 class QRefine3DViewer(QJobScrollArea):
-    def __init__(self, job_dir: _job_dir.Refine3DJobDirectory):
+    def __init__(self, job_dir: _job_dir.JobDirectory):
         super().__init__()
         layout = self._layout
         self._viewer = Q3DViewer()
@@ -45,22 +45,21 @@ class QRefine3DViewer(QJobScrollArea):
         layout.addWidget(self._fsc_plot)
         layout.addWidget(spacer_widget())
         self._index_start = 1
-        self._job_dir = job_dir
+        self._job_dir = _job_dir.Refine3DJobDirectory(job_dir.path)
         self._worker: FunctionWorker | None = None
 
         self._iter_choice.valueChanged.connect(self._on_iter_changed)
 
-    def on_job_updated(self, job_dir: _job_dir.Refine3DJobDirectory, path: str):
+    def on_job_updated(self, job_dir: _job_dir.JobDirectory, path: str):
         """Handle changes to the job directory."""
         fp = Path(path)
         if fp.name.startswith("RELION_JOB_") or fp.suffix == ".mrc":
             self.initialize(job_dir)
             _LOGGER.debug("%s Updated", job_dir.job_number)
 
-    def initialize(self, job_dir: _job_dir.Refine3DJobDirectory):
+    def initialize(self, job_dir: _job_dir.JobDirectory):
         """Initialize the viewer with the job directory."""
-        self._job_dir = job_dir
-        niters = job_dir.num_iters()
+        niters = self._job_dir.num_iters()
         self._iter_choice.setMaximum(max(niters - 1, 0))
         self._iter_choice.setValue(self._iter_choice.maximum())
         self._on_iter_changed(self._iter_choice.value())

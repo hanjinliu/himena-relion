@@ -34,7 +34,7 @@ def read_ctf_output_txt(path: Path) -> NDArray[np.float32]:
     return np.loadtxt(path, dtype=np.float32)
 
 
-@register_job("relion.ctffind.ctffind4", is_tomo=True)
+@register_job("relion.ctffind.ctffind4")
 class QCtfFindViewer(QJobScrollArea):
     def __init__(self, job_dir: _job_dir.JobDirectory):
         super().__init__()
@@ -98,10 +98,10 @@ class QCtfFindViewer(QJobScrollArea):
 
     @thread_worker
     def _prep_data_to_plot(self, job_dir: _job_dir.JobDirectory):
+        mov_dir = job_dir.path.joinpath("Movies")
         if (final_path := job_dir.path.joinpath("micrographs_ctf.star")).exists():
             df = read_star(final_path).get("micrographs").trust_loop().to_pandas()
         else:
-            mov_dir = job_dir.path.joinpath("Movies")
             if not mov_dir.exists():
                 return
             it = mov_dir.glob("*_frameImage_PS.txt")

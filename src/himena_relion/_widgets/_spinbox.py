@@ -77,12 +77,13 @@ class QIntChoiceWidget(QIntWidget):
         if choices:
             self.setMaximum(max(choices))
             self.setMinimum(min(choices))
-            self.setValue(min(choices))
+            self.setValue(max(choices))
             self._iter_current_value = max(choices)
         else:
             self.setMaximum(0)
             self.setMinimum(0)
             self.setValue(0)
+        self._on_iter_changed(self._iter_current_value)
 
     def _on_iter_changed(self, value: int):
         niter_list = self._choices
