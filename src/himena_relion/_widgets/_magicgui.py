@@ -3,7 +3,7 @@ from __future__ import annotations
 from magicgui.widgets import RadioButtons
 from magicgui.widgets.bases import ValuedContainerWidget
 from magicgui.types import Undefined
-from himena.qt.magicgui import ToggleSwitch, FloatEdit
+from himena.qt.magicgui import ToggleSwitch, FloatEdit, IntEdit
 
 from himena_relion._job_class import parse_string
 from himena_relion._widgets._path_input import PathDrop
@@ -149,6 +149,53 @@ class BfactorEdit(ValuedContainerWidget):
                 self._toggle_switch.value = not parse_string(do_auto, bool)
                 self._auto_lowres.value = value.get("autob_lowres", 10.0)
                 self._user_bfactor.value = value.get("adhoc_bfac", -1000.0)
+            else:
+                raise ValueError("Value must be a dict or Undefined.")
+        self.changed.emit(self.get_value())
+
+
+class Class2DAlgorithmEdit(ValuedContainerWidget):
+    """Widget for selecting 2D classification algorithm."""
+
+    def __init__(self, **kwargs):
+        self._algorithm = RadioButtons(
+            label="Algorithm",
+            choices=["EM", "VDAM"],
+            value="VDAM",
+            orientation="horizontal",
+        )
+        self._niter_em = IntEdit(label="EM Iterations", value=25, min=1, max=100)
+        self._niter_grad = IntEdit(
+            label="VDAM mini-batches", value=200, min=1, max=1000
+        )
+        widgets = [self._algorithm, self._niter_em, self._niter_grad]
+        super().__init__(layout="vertical", labels=True, widgets=widgets, **kwargs)
+        self.margins = (0, 0, 0, 0)
+
+    def get_value(self):
+        return {
+            "algorithm": self._algorithm.value,
+            "niter": (
+                self._niter_em.value
+                if self._algorithm.value == "EM"
+                else self._niter_grad.value
+            ),
+        }
+
+    def set_value(self, value):
+        with self.changed.blocked():
+            if value == Undefined or value is None:
+                self._algorithm.value = "VDAM"
+                self._niter_em.value = 25
+                self._niter_grad.value = 200
+            elif isinstance(value, dict):
+                algorithm = value.get("algorithm", "VDAM")
+                self._algorithm.value = algorithm
+                niter = value.get("niter", 200 if algorithm == "VDAM" else 25)
+                if algorithm == "EM":
+                    self._niter_em.value = niter
+                else:
+                    self._niter_grad.value = niter
             else:
                 raise ValueError("Value must be a dict or Undefined.")
         self.changed.emit(self.get_value())

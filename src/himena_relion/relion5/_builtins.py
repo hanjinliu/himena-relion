@@ -4,7 +4,7 @@ from typing import Annotated, Any
 from magicgui.widgets.bases import ValueWidget
 from himena_relion._job_class import _RelionBuiltinJob, parse_string
 from himena_relion._job_dir import JobDirectory
-from himena_relion._widgets._magicgui import PathDrop, BfactorEdit
+from himena_relion._widgets._magicgui import PathDrop, BfactorEdit, Class2DAlgorithmEdit
 from himena_relion import _configs
 from himena_relion.schemas import OptimisationSetModel
 
@@ -149,6 +149,9 @@ DO_BLUSH_TYPE = Annotated[
     bool, {"label": "Use Blush regularisation", "group": "Optimisation"}
 ]
 # Sampling
+DONT_SKIP_ALIGN_TYPE = Annotated[
+    bool, {"label": "Perform image alignment", "group": "Sampling"}
+]
 SIGMA_TILT_TYPE = Annotated[
     float, {"label": "Prior width on tilt angle", "group": "Sampling"}
 ]
@@ -200,6 +203,9 @@ LOC_ANG_SAMPLING_TYPE = Annotated[
 DO_HELIX_TYPE = Annotated[
     bool, {"label": "Do helical reconstruction", "group": "Helix"}
 ]
+HELICAL_TUBE_DIAMETER_TYPE = Annotated[
+    float, {"label": "Tube diameter (A)", "group": "Helix"}
+]
 HELICAL_TUBE_DIAMETER_RANGE_TYPE = Annotated[
     tuple[float, float],
     {"label": "Inner/Outer tube diameter (A)", "group": "Helix"},
@@ -224,6 +230,7 @@ HELICAL_TWIST_RANGE_TYPE = Annotated[
     tuple[float, float, float],
     {"label": "Helical twist min/max/step (deg)", "group": "Helix"},
 ]
+HELICAL_RISE_TYPE = Annotated[float, {"label": "Helical rise (A)", "group": "Helix"}]
 HELICAL_RISE_INITIAL_TYPE = Annotated[
     float, {"label": "Initial helical rise (A)", "group": "Helix"}
 ]
@@ -599,6 +606,670 @@ class CtfEstimationJob(_Relion5Job):
         widgets["phase_range"].enabled = False
 
 
+class ManualPickJob(_Relion5Job):
+    """Manual particle picking."""
+
+    @classmethod
+    def type_label(cls) -> str:
+        return "relion.manualpick"
+
+    @classmethod
+    def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
+        kwargs = super().normalize_kwargs(**kwargs)
+        filt_method = kwargs.get("filter_method", "Band-pass")
+        kwargs["do_topaz_denoise"] = filt_method == "Topaz"
+        return kwargs
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
+        kwargs = super().normalize_kwargs_inv(**kwargs)
+        kwargs["filt_method"] = (
+            "Topaz" if kwargs.get("do_topaz_denoise", False) else "Band-pass"
+        )
+        return kwargs
+
+    def run(
+        self,
+        fn_in: IN_MICROGRAPHS = "",
+        do_startend: Annotated[
+            bool, {"label": "Pick star-end coordinates helices", "group": "I/O"}
+        ] = False,
+        do_fom_threshold: Annotated[
+            bool, {"label": "Use autopick FOM threshold", "group": "I/O"}
+        ] = False,
+        minimum_pick_fom: Annotated[
+            float,
+            {"label": "Minimum autopick FOM", "min": -10, "max": 10, "group": "I/O"},
+        ] = 5.0,
+        # Display
+        diameter: Annotated[
+            float, {"label": "Particle diameter (A)", "group": "Display"}
+        ] = 100,
+        micscale: Annotated[
+            float, {"label": "Scale for micrographs", "group": "Display"}
+        ] = 0.2,
+        sigma_contrast: Annotated[
+            float, {"label": "Sigma contrast", "group": "Display"}
+        ] = 3,
+        white_val: Annotated[float, {"label": "White value", "group": "Display"}] = 0,
+        black_val: Annotated[float, {"label": "Black value", "group": "Display"}] = 0,
+        angpix: Annotated[float, {"label": "Pixel size (A)", "group": "Display"}] = -1,
+        filter_method: Annotated[
+            str,
+            {
+                "label": "Denoising method",
+                "choices": ["Band-pass", "Topaz"],
+                "group": "Display",
+            },
+        ] = "Band-pass",
+        lowpass: Annotated[
+            float, {"label": "Lowpass filter (A)", "group": "Display"}
+        ] = 20,
+        highpass: Annotated[
+            float, {"label": "Highpass filter (A)", "group": "Display"}
+        ] = -1,
+        # Colors
+        do_color: Annotated[
+            bool, {"label": "Color particles by metadata", "group": "Colors"}
+        ] = False,
+        color_label: Annotated[
+            str, {"label": "Color by this label", "group": "Colors"}
+        ] = "rlnAutopickFigureOfMerit",
+        fn_color: Annotated[
+            str, {"label": "STAR file with color label", "group": "Colors"}
+        ] = "",
+        blue_value: Annotated[float, {"label": "Blue value", "group": "Colors"}] = 0,
+        red_value: Annotated[float, {"label": "Red value", "group": "Colors"}] = 2,
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")
+
+    @classmethod
+    def setup_widgets(self, widgets):
+        @widgets["filter_method"].changed.connect
+        def _on_filter_method_changed(value: str):
+            widgets["lowpass"].enabled = value == "Band-pass"
+            widgets["highpass"].enabled = value == "Band-pass"
+
+        _on_filter_method_changed(widgets["filter_method"].value)  # initialize
+
+        @widgets["do_fom_threshold"].changed.connect
+        def _on_do_fom_threshold_changed(value: bool):
+            widgets["minimum_pick_fom"].enabled = value
+
+        _on_do_fom_threshold_changed(widgets["do_fom_threshold"].value)  # initialize
+
+
+class _AutoPickJob(_Relion5Job):
+    @classmethod
+    def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
+        kwargs = super().normalize_kwargs(**kwargs)
+        kwargs["continue_manual"] = False
+        # template pick
+        kwargs["do_refs"] = False
+        kwargs["fn_refs_autopick"] = ""
+        kwargs["do_ref3d"] = False
+        kwargs["fn_ref3d_autopick"] = ""
+        kwargs["ref3d_symmetry"] = "C1"
+        kwargs["ref3d_sampling"] = "30 degrees"
+        kwargs["lowpass"] = 20
+        kwargs["highpass"] = -1
+        kwargs["angpix_ref"] = -1
+        kwargs["psi_sampling_autopick"] = 5
+        kwargs["do_invert_refs"] = True
+        kwargs["do_ctf_autopick"] = True
+        kwargs["do_ignore_first_ctfpeak_autopick"] = False
+
+        # LoG
+        kwargs["do_log"] = False
+        kwargs["log_diam_min"] = 200
+        kwargs["log_diam_max"] = 250
+        kwargs["log_invert"] = False
+        kwargs["log_maxres"] = 20
+        kwargs["log_adjust_thr"] = 0
+        kwargs["log_upper_thr"] = 999
+
+        # Topaz
+        kwargs["do_topaz"] = False
+        kwargs["do_topaz_filaments"] = False
+        kwargs["do_topaz_pick"] = False
+        kwargs["do_topaz_train"] = False
+        kwargs["do_topaz_train_parts"] = False
+        kwargs["fn_topaz_exe"] = "relion_python_topaz"
+        kwargs["topaz_filament_threshold"] = -5
+        kwargs["topaz_hough_length"] = -1
+        kwargs["topaz_model"] = ""
+        kwargs["topaz_nr_particles"] = -1
+        kwargs["topaz_other_args"] = ""
+        kwargs["topaz_particle_diameter"] = -1
+        kwargs["topaz_train_parts"] = ""
+        kwargs["topaz_train_picks"] = ""
+
+        # others
+        kwargs["use_gpu"] = kwargs["gpu_ids"] != ""
+        return kwargs
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs):
+        kwargs = super().normalize_kwargs_inv(**kwargs)
+        kwargs.pop("use_gpu", None)
+        return kwargs
+
+
+class AutoPickLogJob(_AutoPickJob):
+    """Automatic particle picking using Laplacian of Gaussian filter."""
+
+    @classmethod
+    def type_label(cls) -> str:
+        return "relion.autopick.log"
+
+    @classmethod
+    def job_title(cls):
+        return "LoG Pick"
+
+    @classmethod
+    def normalize_kwargs(cls, **kwargs):
+        kwargs = super().normalize_kwargs(**kwargs)
+        kwargs["do_log"] = True
+        kwargs["minavgnoise_autopick"] = -999
+        return kwargs
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs):
+        kwargs = super().normalize_kwargs_inv(**kwargs)
+        kwargs.pop("minavgnoise_autopick", None)
+        return kwargs
+
+    def run(
+        self,
+        fn_input_autopick: IN_MICROGRAPHS = "",
+        angpix: Annotated[
+            float, {"label": "Micrograph pixel size (A)", "group": "IO"}
+        ] = -1,
+        # Laplacian
+        log_diam_min: Annotated[
+            float, {"label": "Min diameter for LoG filter (A)", "group": "Laplacian"}
+        ] = 200,
+        log_diam_max: Annotated[
+            float, {"label": "Max diameter for LoG filter (A)", "group": "Laplacian"}
+        ] = 250,
+        log_invert: Annotated[
+            bool, {"label": "Dark background", "group": "Laplacian"}
+        ] = False,
+        log_maxres: Annotated[
+            float, {"label": "Max resolution to consider (A)", "group": "Laplacian"}
+        ] = 20,
+        log_adjust_thr: Annotated[
+            float, {"label": "Adjust default threshold (stddev)", "group": "Laplacian"}
+        ] = 0,
+        log_upper_thr: Annotated[
+            float, {"label": "Upper threshold (stddev)", "group": "Laplacian"}
+        ] = 999,
+        # Autopicking
+        threshold_autopick: Annotated[
+            float, {"label": "Picking threshold", "group": "Autopicking"}
+        ] = 0.05,
+        mindist_autopick: Annotated[
+            float, {"label": "Min inter-particle distance (A)", "group": "Autopicking"}
+        ] = 100,
+        maxstddevnoise_autopick: Annotated[
+            float, {"label": "Max stddev noise", "group": "Autopicking"}
+        ] = 1.1,
+        do_write_fom_maps: Annotated[
+            bool, {"label": "Write FOM maps", "group": "Autopicking"}
+        ] = False,
+        do_read_fom_maps: Annotated[
+            bool, {"label": "Read FOM maps", "group": "Autopicking"}
+        ] = False,
+        shrink: Annotated[
+            float, {"label": "Shrink factor", "group": "Autopicking"}
+        ] = 0,
+        gpu_ids: GPU_IDS_TYPE = "",
+        # Helical
+        do_pick_helical_segments: Annotated[
+            bool, {"label": "Pick 2D helical segments", "group": "Helix"}
+        ] = False,
+        helical_tube_outer_diameter: HELICAL_TUBE_DIAMETER_TYPE = 200,
+        helical_tube_length_min: Annotated[
+            float, {"label": "Minimum length (A)", "group": "Helix"}
+        ] = -1,
+        helical_tube_kappa_max: Annotated[
+            float, {"label": "Maximum curvature (kappa)", "group": "Helix"}
+        ] = 0.1,
+        helical_nr_asu: HELICAL_NR_ASU_TYPE = 1,
+        helical_rise: HELICAL_RISE_TYPE = -1,
+        do_amyloid: Annotated[
+            bool, {"label": "Pick amyloid segments", "group": "Helix"}
+        ] = False,
+        # Running
+        nr_mpi: MPI_TYPE = 1,
+        do_queue: DO_QUEUE_TYPE = False,
+        min_dedicated: MIN_DEDICATED_TYPE = 1,
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")
+
+
+class AutoPickTemplateJob(_AutoPickJob):
+    """Automatic particle picking using template matching."""
+
+    @classmethod
+    def type_label(cls) -> str:
+        return "relion.autopick.ref2d"
+
+    @classmethod
+    def job_title(cls):
+        return "Template Pick"
+
+    @classmethod
+    def normalize_kwargs(cls, **kwargs):
+        kwargs = super().normalize_kwargs(**kwargs)
+        kwargs["do_refs"] = True
+        return kwargs
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs):
+        kwargs = super().normalize_kwargs_inv(**kwargs)
+        return kwargs
+
+    def run(
+        self,
+        fn_input_autopick: IN_MICROGRAPHS = "",
+        angpix: Annotated[
+            float, {"label": "Micrograph pixel size (A)", "group": "IO"}
+        ] = -1,
+        # References
+        do_ref3d: Annotated[float, {"label": "", "group": "References"}] = False,
+        fn_refs_autopick: Annotated[
+            str, {"label": "2D reference", "group": "References"}
+        ] = "",
+        fn_ref3d_autopick: Annotated[
+            float, {"label": "3D reference", "group": "References"}
+        ] = "",
+        ref3d_symmetry: Annotated[
+            float, {"label": "Symmetry", "group": "References"}
+        ] = "C1",
+        ref3d_sampling: Annotated[
+            float, {"label": "3D angular sampling", "group": "References"}
+        ] = "30 degrees",
+        lowpass: Annotated[
+            float, {"label": "Lowpass filter references", "group": "References"}
+        ] = 20,
+        highpass: Annotated[
+            float, {"label": "Highpass filter micrographs", "group": "References"}
+        ] = -1,
+        angpix_ref: Annotated[
+            float, {"label": "Reference pixel size", "group": "References"}
+        ] = -1,
+        psi_sampling_autopick: Annotated[
+            float, {"label": "In-plane angular sampling (deg)", "group": "References"}
+        ] = 5,
+        do_invert_refs: Annotated[
+            float, {"label": "References have inverted contrast", "group": "References"}
+        ] = True,
+        do_ctf_autopick: Annotated[
+            float, {"label": "References are CTF corrected", "group": "References"}
+        ] = True,
+        do_ignore_first_ctfpeak_autopick: Annotated[
+            float, {"label": "Ignore CTFs until first peak", "group": "References"}
+        ] = False,
+        # Autopicking
+        threshold_autopick: Annotated[
+            float, {"label": "Picking threshold", "group": "Autopicking"}
+        ] = 0.05,
+        mindist_autopick: Annotated[
+            float, {"label": "Min inter-particle distance (A)", "group": "Autopicking"}
+        ] = 100,
+        maxstddevnoise_autopick: Annotated[
+            float, {"label": "Max stddev noise", "group": "Autopicking"}
+        ] = 1.1,
+        minavgnoise_autopick: Annotated[
+            float, {"label": "Min avg noise", "group": "Autopicking"}
+        ] = -999,
+        do_write_fom_maps: Annotated[
+            bool, {"label": "Write FOM maps", "group": "Autopicking"}
+        ] = False,
+        do_read_fom_maps: Annotated[
+            bool, {"label": "Read FOM maps", "group": "Autopicking"}
+        ] = False,
+        shrink: Annotated[
+            float, {"label": "Shrink factor", "group": "Autopicking"}
+        ] = 0,
+        gpu_ids: GPU_IDS_TYPE = "",
+        # Helical
+        do_pick_helical_segments: Annotated[
+            bool, {"label": "Pick 2D helical segments", "group": "Helix"}
+        ] = False,
+        helical_tube_outer_diameter: HELICAL_TUBE_DIAMETER_TYPE = 200,
+        helical_tube_length_min: Annotated[
+            float, {"label": "Minimum length (A)", "group": "Helix"}
+        ] = -1,
+        helical_tube_kappa_max: Annotated[
+            float, {"label": "Maximum curvature (kappa)", "group": "Helix"}
+        ] = 0.1,
+        helical_nr_asu: HELICAL_NR_ASU_TYPE = 1,
+        helical_rise: HELICAL_RISE_TYPE = -1,
+        do_amyloid: Annotated[
+            bool, {"label": "Pick amyloid segments", "group": "Helix"}
+        ] = False,
+        # Running
+        nr_mpi: MPI_TYPE = 1,
+        do_queue: DO_QUEUE_TYPE = False,
+        min_dedicated: MIN_DEDICATED_TYPE = 1,
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")
+
+
+class AutoPickTopazTrain(_AutoPickJob):
+    @classmethod
+    def type_label(cls) -> str:
+        return "relion.autopick.topaz.train"
+
+    @classmethod
+    def job_title(cls):
+        return "Topaz Train"
+
+    @classmethod
+    def normalize_kwargs(cls, **kwargs):
+        kwargs = super().normalize_kwargs(**kwargs)
+        kwargs["do_topaz"] = True
+        kwargs["do_topaz_train"] = True
+        return kwargs
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs):
+        kwargs = super().normalize_kwargs_inv(**kwargs)
+        return kwargs
+
+    def run(
+        self,
+        fn_input_autopick: IN_MICROGRAPHS = "",
+        angpix: Annotated[
+            float, {"label": "Micrograph pixel size (A)", "group": "IO"}
+        ] = -1,
+        # Topaz
+        fn_topaz_exe: Annotated[
+            str, {"label": "Topaz executable", "group": "Topaz"}
+        ] = "relion_python_topaz",
+        topaz_particle_diameter: Annotated[
+            float, {"label": "Particle diameter (A)", "group": "Topaz"}
+        ] = -1,
+        topaz_nr_particles: Annotated[
+            float, {"label": "Number of particles per micrographs", "group": "Topaz"}
+        ] = -1,
+        do_topaz_train_parts: Annotated[
+            bool, {"label": "Train on a set of particles", "group": "Topaz"}
+        ] = False,
+        topaz_train_picks: Annotated[
+            str, {"label": "Input picked coordinates for training", "group": "Topaz"}
+        ] = "",
+        topaz_train_parts: Annotated[
+            str, {"label": "Particles STAR file for training", "group": "Topaz"}
+        ] = "",
+        # Autopicking
+        threshold_autopick: Annotated[
+            float, {"label": "Picking threshold", "group": "Autopicking"}
+        ] = 0.05,
+        mindist_autopick: Annotated[
+            float, {"label": "Min inter-particle distance (A)", "group": "Autopicking"}
+        ] = 100,
+        maxstddevnoise_autopick: Annotated[
+            float, {"label": "Max stddev noise", "group": "Autopicking"}
+        ] = 1.1,
+        do_write_fom_maps: Annotated[
+            bool, {"label": "Write FOM maps", "group": "Autopicking"}
+        ] = False,
+        do_read_fom_maps: Annotated[
+            bool, {"label": "Read FOM maps", "group": "Autopicking"}
+        ] = False,
+        shrink: Annotated[
+            float, {"label": "Shrink factor", "group": "Autopicking"}
+        ] = 0,
+        gpu_ids: GPU_IDS_TYPE = "",
+        # Helical
+        do_pick_helical_segments: Annotated[
+            bool, {"label": "Pick 2D helical segments", "group": "Helix"}
+        ] = False,
+        helical_tube_outer_diameter: HELICAL_TUBE_DIAMETER_TYPE = 200,
+        helical_tube_length_min: Annotated[
+            float, {"label": "Minimum length (A)", "group": "Helix"}
+        ] = -1,
+        helical_tube_kappa_max: Annotated[
+            float, {"label": "Maximum curvature (kappa)", "group": "Helix"}
+        ] = 0.1,
+        helical_nr_asu: HELICAL_NR_ASU_TYPE = 1,
+        helical_rise: HELICAL_RISE_TYPE = -1,
+        do_amyloid: Annotated[
+            bool, {"label": "Pick amyloid segments", "group": "Helix"}
+        ] = False,
+        # Running
+        nr_mpi: MPI_TYPE = 1,
+        do_queue: DO_QUEUE_TYPE = False,
+        min_dedicated: MIN_DEDICATED_TYPE = 1,
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")
+
+    @classmethod
+    def setup_widgets(cls, widgets: dict[str, ValueWidget]) -> None:
+        @widgets["do_topaz_train_parts"].changed.connect
+        def _on_do_topaz_train_parts_changed(value: bool):
+            widgets["topaz_train_parts"].enabled = value
+            widgets["topaz_train_picks"].enabled = not value
+
+        _on_do_topaz_train_parts_changed(
+            widgets["do_topaz_train_parts"].value
+        )  # initialize
+
+
+class AutoPickTopazPick(_AutoPickJob):
+    @classmethod
+    def type_label(cls) -> str:
+        return "relion.autopick.topaz.pick"
+
+    @classmethod
+    def job_title(cls):
+        return "Topaz Pick"
+
+    @classmethod
+    def normalize_kwargs(cls, **kwargs):
+        kwargs = super().normalize_kwargs(**kwargs)
+        kwargs["do_topaz"] = True
+        kwargs["do_topaz_pick"] = True
+        return kwargs
+
+    def run(
+        self,
+        fn_input_autopick: IN_MICROGRAPHS = "",
+        angpix: Annotated[
+            float, {"label": "Micrograph pixel size (A)", "group": "IO"}
+        ] = -1,
+        # Topaz
+        fn_topaz_exe: Annotated[
+            str, {"label": "Topaz executable", "group": "Topaz"}
+        ] = "relion_python_topaz",
+        topaz_particle_diameter: Annotated[
+            float, {"label": "Particle diameter (A)", "group": "Topaz"}
+        ] = -1,
+        topaz_model: Annotated[
+            str, {"label": "Trained Topaz model", "group": "Topaz"}
+        ] = "",
+        do_topaz_filaments: Annotated[
+            bool, {"label": "Pick filaments", "group": "Topaz"}
+        ] = False,
+        topaz_filament_threshold: Annotated[
+            float, {"label": "Filament threshold", "group": "Topaz"}
+        ] = -5,
+        topaz_hough_length: Annotated[
+            float, {"label": "Hough length", "group": "Topaz"}
+        ] = -1,
+        topaz_other_args: Annotated[
+            str, {"label": "Additional Topaz arguments", "group": "Topaz"}
+        ] = "",
+        # Autopicking
+        threshold_autopick: Annotated[
+            float, {"label": "Picking threshold", "group": "Autopicking"}
+        ] = 0.05,
+        mindist_autopick: Annotated[
+            float, {"label": "Min inter-particle distance (A)", "group": "Autopicking"}
+        ] = 100,
+        maxstddevnoise_autopick: Annotated[
+            float, {"label": "Max stddev noise", "group": "Autopicking"}
+        ] = 1.1,
+        do_write_fom_maps: Annotated[
+            bool, {"label": "Write FOM maps", "group": "Autopicking"}
+        ] = False,
+        do_read_fom_maps: Annotated[
+            bool, {"label": "Read FOM maps", "group": "Autopicking"}
+        ] = False,
+        shrink: Annotated[
+            float, {"label": "Shrink factor", "group": "Autopicking"}
+        ] = 0,
+        gpu_ids: GPU_IDS_TYPE = "",
+        # Helical
+        do_pick_helical_segments: Annotated[
+            bool, {"label": "Pick 2D helical segments", "group": "Helix"}
+        ] = False,
+        helical_tube_outer_diameter: HELICAL_TUBE_DIAMETER_TYPE = 200,
+        helical_tube_length_min: Annotated[
+            float, {"label": "Minimum length (A)", "group": "Helix"}
+        ] = -1,
+        helical_tube_kappa_max: Annotated[
+            float, {"label": "Maximum curvature (kappa)", "group": "Helix"}
+        ] = 0.1,
+        helical_nr_asu: HELICAL_NR_ASU_TYPE = 1,
+        helical_rise: HELICAL_RISE_TYPE = -1,
+        do_amyloid: Annotated[
+            bool, {"label": "Pick amyloid segments", "group": "Helix"}
+        ] = False,
+        # Running
+        nr_mpi: MPI_TYPE = 1,
+        do_queue: DO_QUEUE_TYPE = False,
+        min_dedicated: MIN_DEDICATED_TYPE = 1,
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")
+
+
+class Class2DJob(_Relion5Job):
+    @classmethod
+    def type_label(cls) -> str:
+        return "relion.class2d"
+
+    @classmethod
+    def normalize_kwargs(cls, **kwargs):
+        kwargs = super().normalize_kwargs(**kwargs)
+        kwargs["fn_cont"] = ""
+        # default
+        kwargs["do_em"] = False
+        kwargs["nr_iter_em"] = 25
+        kwargs["do_grad"] = False
+        kwargs["nr_iter_grad"] = 200
+
+        algo = kwargs.pop("algorithm")
+        if algo["algorith"] == "EM":
+            kwargs["do_em"] = True
+            kwargs["nr_iter_em"] = algo["niter"]
+        else:
+            kwargs["do_grad"] = True
+            kwargs["nr_iter_grad"] = algo["niter"]
+        return kwargs
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs):
+        kwargs = super().normalize_kwargs_inv(**kwargs)
+        if kwargs.pop("do_em", False):
+            kwargs["algorithm"] = {
+                "algorithm": "EM",
+                "niter": kwargs.pop("nr_iter_em", 25),
+            }
+        else:
+            kwargs["algorithm"] = {
+                "algorithm": "VDAM",
+                "niter": kwargs.pop("nr_iter_grad", 200),
+            }
+        # remove internal
+        kwargs.pop("do_grad", None)
+        kwargs.pop("fn_cont", None)
+        return kwargs
+
+    def run(
+        self,
+        # I/O
+        fn_img: IMG_TYPE = "",
+        # CTF
+        do_ctf_correction: DO_CTF_TYPE = True,
+        ctf_intact_first_peak: IGNORE_CTF_TYPE = False,
+        # Optimisation
+        nr_classes: Annotated[
+            int, {"label": "Number of classes", "group": "Optimisation"}
+        ] = 50,
+        tau_fudge: T_TYPE = 2,
+        algorithm: Annotated[
+            dict,
+            {
+                "label": "Algorithm",
+                "widget_type": Class2DAlgorithmEdit,
+                "group": "Optimisation",
+            },
+        ] = {"algorithm": "VDAM", "niter": 200},
+        particle_diameter: MASK_DIAMETER_TYPE = 200,
+        do_zero_mask: MASK_WITH_ZEROS_TYPE = True,
+        highres_limit: Annotated[
+            float, {"label": "Limit resolution to (A)", "group": "Optimisation"}
+        ] = -1,
+        do_center: Annotated[
+            bool, {"label": "Center class averages", "group": "Optimisation"}
+        ] = True,
+        # Sampling
+        dont_skip_align: DONT_SKIP_ALIGN_TYPE = True,
+        psi_sampling: Annotated[
+            float, {"label": "In-plane angular sampling (deg)", "group": "Sampling"}
+        ] = 6,
+        offset_range: Annotated[float, {"label": "Offset search range (pix)"}] = 5,
+        offset_step: Annotated[float, {"label": "Offset search step (pix)"}] = 1,
+        allow_coarser: Annotated[
+            bool, {"label": "Allow coarser sampling", "group": "Sampling"}
+        ] = False,
+        # Helix
+        do_helix: Annotated[
+            bool, {"label": "Classify 2D helical segments", "group": "Helix"}
+        ] = False,
+        helical_tube_outer_diameter: HELICAL_TUBE_DIAMETER_TYPE = 200,
+        do_bimodal_psi: Annotated[
+            bool, {"label": "Do bimodal angular searches", "group": "Helix"}
+        ] = True,
+        range_psi: Annotated[
+            float, {"label": "Angular search range (deg)", "group": "Helix"}
+        ] = 6.0,
+        do_restrict_xoff: Annotated[
+            bool, {"label": "Restrict helical offsets to rise", "group": "Helix"}
+        ] = True,
+        helical_rise: HELICAL_RISE_TYPE = 4.75,
+        # Compute
+        do_parallel_discio: USE_PARALLEL_DISC_IO_TYPE = True,
+        nr_pool: NUM_POOL_TYPE = 3,
+        do_preread_images: DO_PREREAD_TYPE = False,
+        use_scratch: USE_SCRATCH_TYPE = False,
+        do_combine_thru_disc: DO_COMBINE_THRU_DISC_TYPE = False,
+        gpu_ids: GPU_IDS_TYPE = "",
+        # Running
+        nr_mpi: MPI_TYPE = 1,
+        nr_threads: THREAD_TYPE = 1,
+        do_queue: DO_QUEUE_TYPE = False,
+        min_dedicated: MIN_DEDICATED_TYPE = 1,
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")
+
+    @classmethod
+    def setup_widgets(self, widgets):
+        @widgets["do_helix"].changed.connect
+        def _on_do_helix_changed(value: bool):
+            widgets["helical_tube_outer_diameter"].enabled = value
+            widgets["do_bimodal_psi"].enabled = value
+            widgets["range_psi"].enabled = value
+            widgets["do_restrict_xoff"].enabled = value
+            widgets["helical_rise"].enabled = value
+
+        _on_do_helix_changed(widgets["do_helix"].value)  # initialize
+
+
 class Class3DJob(_Relion5Job):
     """3D classification."""
 
@@ -688,9 +1359,7 @@ class Class3DJob(_Relion5Job):
         ] = -1,
         do_blush: DO_BLUSH_TYPE = False,
         # Sampling
-        dont_skip_align: Annotated[
-            bool, {"label": "Perform image alignment", "group": "Sampling"}
-        ] = True,
+        dont_skip_align: DONT_SKIP_ALIGN_TYPE = True,
         sampling: ANG_SAMPLING_TYPE = "7.5 degrees",
         offset_range_step: OFFSET_RANGE_STEP_TYPE = (5, 1),
         allow_coarser: Annotated[

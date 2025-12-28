@@ -38,10 +38,22 @@ class RelionNodeTypeLabels:
 
 
 JOB_ID_MAP = {
-    "relion.importtomo": "Import Tomo",
+    # SPA
+    "relion.import": "Import",
     "relion.motioncorr.motioncor2": "Motion Corr.",
     "relion.motioncorr.own": "Motion Corr.",
     "relion.ctffind.ctffind4": "CTF Estimation",
+    "relion.manualpick": "Manual Pick",
+    "relion.autopick": "Auto Pick",
+    "relion.extract": "Extract",
+    "relion.class2d": "2D Class",
+    "relion.initialmodel": "Initial Model",
+    "relion.refine3d": "Auto Refine",
+    "relion.class3d": "3D Class",
+    "dynamight": "DynaMight",
+    "modelangelo": "ModelAngelo",
+    # Tomo
+    "relion.importtomo": "Import Tomo",
     "relion.excludetilts": "Exclude Tilts",
     "relion.aligntiltseries": "Align Tilts",
     "relion.reconstructtomograms": "Reconstruct Tomos",
@@ -50,7 +62,6 @@ JOB_ID_MAP = {
     "relion.pseudosubtomo": "Extract",
     "relion.initialmodel.tomo": "Initial Model",
     "relion.refine3d.tomo": "Auto Refine",
-    "relion.class3d": "3D Class",
     "relion.reconstructparticletomo": "Reconstruct Particles",
     "relion.select.interactive": "Select Class (Interactive)",
     "relion.select.class2dauto": "Select 2D Class (Class Ranker)",
@@ -64,8 +75,8 @@ JOB_ID_MAP = {
     "relion.joinstar.micrographs": "Join Micrographs",
     "relion.framealigntomo": "Frame Align",
     "relion.ctfrefinetomo": "CTF Refine",
+    "relion.multibody": "Multi-body Refinement",
     "relion.localres.resmap": "Local Resolution",
-    "modelangelo": "ModelAngelo",
 }
 
 JOB_IMPORT_PATH_FILE = "JOB_IMPORT_PATH.txt"
