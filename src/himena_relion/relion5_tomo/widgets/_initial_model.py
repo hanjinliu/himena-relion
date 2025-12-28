@@ -44,7 +44,7 @@ class QInitialModelViewer(QJobScrollArea):
         self._class_choice.valueChanged.connect(self._on_class_changed)
         self._index_start = 1
         self._iter_current_value = 0
-        self._job_dir = job_dir
+        self._job_dir = _job_dir.InitialModel3DJobDirectory(job_dir.path)
 
     def on_job_updated(self, job_dir: _job_dir.InitialModel3DJobDirectory, path: str):
         """Handle changes to the job directory."""
@@ -55,11 +55,10 @@ class QInitialModelViewer(QJobScrollArea):
 
     def initialize(self, job_dir: _job_dir.InitialModel3DJobDirectory):
         """Initialize the viewer with the job directory."""
-        self._job_dir = job_dir
-        nclasses = job_dir.num_classes()
+        nclasses = self._job_dir.num_classes()
         if nclasses == 0:
             return
-        niter_list = job_dir.niter_list()
+        niter_list = self._job_dir.niter_list()
         _LOGGER.info("Job with %s classes and %s iterations", nclasses, max(niter_list))
         self._class_choice.setMaximum(nclasses)
         self._iter_choice.setMaximum(max(niter_list + [0]))

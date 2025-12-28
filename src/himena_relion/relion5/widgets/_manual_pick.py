@@ -28,6 +28,7 @@ class QManualPickViewer(QJobScrollArea):
         self._viewer = Q2DViewer(zlabel="")
         self._mic_list = QMicrographListWidget(["Micrograph", "Picked", "Coordinates"])
         self._mic_list.setFixedHeight(130)
+        self._mic_list.setColumnHidden(2, True)
         self._mic_list.current_changed.connect(self._mic_changed)
         self._filter_widget = Q2DFilterWidget()
         layout.addWidget(QtW.QLabel("<b>Micrographs with picked particles</b>"))
@@ -46,8 +47,9 @@ class QManualPickViewer(QJobScrollArea):
 
     def _mic_changed(self, row: tuple[str, str, str]):
         """Handle changes to selected micrograph."""
-        mic_path = self._job_dir.path / row[0]
-        df_coords = read_star(row[2]).first().trust_loop().to_pandas()
+        rln_dir = self._job_dir.relion_project_dir
+        mic_path = rln_dir / row[0]
+        df_coords = read_star(rln_dir / row[2]).first().trust_loop().to_pandas()
         movie_view = ArrayFilteredView.from_mrc(mic_path)
         had_image = self._viewer.has_image
         self._filter_widget.set_image_scale(movie_view.get_scale())

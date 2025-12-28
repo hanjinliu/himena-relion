@@ -54,7 +54,7 @@ class QManualPickViewer(QJobScrollArea):
                 continue
             else:
                 niters.append(iter_num)
-        niters.sort(key=lambda x: x[0])
+        niters.sort()
         self._iter_choice.set_choices(niters)
 
     def _iter_changed(self, value: int):

@@ -10,9 +10,7 @@ class QMicrographListWidget(QtW.QTableWidget):
         self.setSelectionBehavior(QtW.QAbstractItemView.SelectionBehavior.SelectRows)
         self.setColumnCount(len(columns))
         self.setHorizontalHeaderLabels(list(columns))
-        self.horizontalHeader().setStretchLastSection(True)
         self.horizontalHeader().setVisible(len(columns) > 1)
-        self.setAlternatingRowColors(True)
         self.itemSelectionChanged.connect(self._on_selection_changed)
 
     def set_choices(self, choices: list[tuple[str, ...]]):
@@ -33,6 +31,7 @@ class QMicrographListWidget(QtW.QTableWidget):
             self.setCurrentCell(ith, 0)
         elif choices:
             self.setCurrentCell(0, 0)
+        self.resizeColumnsToContents()
 
     def _on_selection_changed(self):
         selected_items = self.selectedItems()
