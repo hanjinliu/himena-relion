@@ -13,8 +13,6 @@ from himena_relion import _job_dir
 _LOGGER = logging.getLogger(__name__)
 
 
-@register_job(_job_dir.MotionCorrJobDirectory)
-@register_job(_job_dir.MotionCorrOwnJobDirectory)
 class QMotionCorrViewer(QJobScrollArea):
     def __init__(self, job_dir: _job_dir.MotionCorrBase):
         super().__init__()
