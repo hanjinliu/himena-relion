@@ -149,21 +149,22 @@ class QSelectInteractiveViewer(QSelectJobBase):
             return
 
         # print selected and removed HTML images in the text edit
-        images_selected: list[str] = []
-        images_removed: list[str] = []
+        images_selected: list[tuple[np.ndarray, str]] = []
+        images_removed: list[tuple[np.ndarray, str]] = []
         for ith in range(len(class2d_arr)):
+            img = class2d_arr[ith]
             if ith in class2d_selected:
-                img = class2d_arr[ith]
-                images_selected.append(self._text_edit.image_to_base64(img, str(ith)))
+                images_selected.append((img, str(ith)))
             else:
-                images_removed.append(self._text_edit.image_to_base64(img, str(ith)))
+                images_removed.append((img, str(ith)))
 
         for images, msg in [
             (images_selected, "<h2>Selected Images</h2><br>"),
             (images_removed, "<br><h2>Removed Images</h2><br>"),
         ]:
             yield msg
-            for img_str in images:
+            for img, text in images:
+                img_str = self._text_edit.image_to_base64(img, text)
                 yield f'<img src="data:image/png;base64,{img_str}"/>'
 
     def _insert_html_class3d(self, job_dir: _job_dir.SelectInteractiveJobDirectory):
@@ -191,35 +192,36 @@ class QSelectInteractiveViewer(QSelectJobBase):
             return
 
         # print selected and removed HTML images in the text edit
-        images_selected: list[tuple[str, list[str]]] = []
-        images_removed: list[tuple[str, list[str]]] = []
+        images_selected: list[tuple[str, np.ndarray]] = []
+        images_removed: list[tuple[str, np.ndarray]] = []
         texts = ["XY", "XZ", "YZ"]
         for path, is_sel in zip(job_dir.class_map_paths(is_selected.size), is_selected):
             if path is not None:
                 with mrcfile.open(path) as mrc:
                     array = np.asarray(mrc.data)
-
-                projs = [
-                    self._text_edit.image_to_base64(array.max(axis=axis), texts[axis])
-                    for axis in range(3)
-                ]
             else:
-                projs = []
+                array = None
             path_rel = job_dir.make_relative_path(path)
             if is_sel:
-                images_selected.append((path_rel, projs))
+                images_selected.append((path_rel, array))
             else:
-                images_removed.append((path_rel, projs))
+                images_removed.append((path_rel, array))
 
         for images, msg in [
             (images_selected, "<h2>Selected Images</h2><br>"),
             (images_removed, "<br><h2>Removed Images</h2><br>"),
         ]:
             yield msg
-            for path, projs in images:
+            for path, array in images:
                 yield f"<b>{path}</b><br>"
-                for proj in projs:
-                    yield f'<img src="data:image/png;base64,{proj}"/>'
+                if array is None:
+                    yield "No image data."
+                else:
+                    for axis in range(3):
+                        proj = self._text_edit.image_to_base64(
+                            array.max(axis=axis), texts[axis]
+                        )
+                        yield f'<img src="data:image/png;base64,{proj}"/>'
                 yield "<br>"
 
 
