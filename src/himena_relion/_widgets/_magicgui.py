@@ -171,6 +171,7 @@ class Class2DAlgorithmEdit(ValuedContainerWidget):
         widgets = [self._algorithm, self._niter_em, self._niter_grad]
         super().__init__(layout="vertical", labels=True, widgets=widgets, **kwargs)
         self.margins = (0, 0, 0, 0)
+        self._algorithm.changed.connect(self._on_algorithm_changed)
 
     def get_value(self):
         return {
@@ -199,3 +200,7 @@ class Class2DAlgorithmEdit(ValuedContainerWidget):
             else:
                 raise ValueError("Value must be a dict or Undefined.")
         self.changed.emit(self.get_value())
+
+    def _on_algorithm_changed(self, algorithm: str):
+        self._niter_em.visible = algorithm == "EM"
+        self._niter_grad.visible = algorithm == "VDAM"

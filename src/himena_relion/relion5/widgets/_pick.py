@@ -80,7 +80,6 @@ class QManualPickViewer(QJobScrollArea):
         arr = np.column_stack(
             [np.zeros(len(self._coords.x)), self._coords.y, self._coords.x]
         )
-        print("update points:", arr.shape)
         image_scale = self._filter_widget._image_scale
         bins = self._filter_widget.bin_factor()
         try:
@@ -144,7 +143,7 @@ class QTemplatePick3DViewer(QAutopickViewerBase):
     def _get_diameter(self) -> float:
         path = self._job_dir.path / "reference_projections.mrcs"
         with mrcfile.open(path, header_only=True) as mrc:
-            return float(mrc.voxel_size.x)
+            return float(mrc.voxel_size.x * mrc.header.nx)
 
 
 @register_job("relion.autopick.log")

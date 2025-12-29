@@ -829,7 +829,7 @@ class AutoPickLogJob(_AutoPickJob):
             "ref3d_symmetry",
         ]
         for key in kwargs:
-            if key.startswith(("do_topaz_", "topaz_")):
+            if key.startswith(("do_topaz", "topaz_")):
                 keys_to_pop.append(key)
         for key in keys_to_pop:
             kwargs.pop(key, None)
@@ -932,7 +932,7 @@ class AutoPickTemplate2DJob(_AutoPickJob):
             "do_refs",
         ]
         for key in kwargs:
-            if key.startswith(("do_topaz_", "topaz_", "log_")):
+            if key.startswith(("do_topaz", "topaz_", "log_")):
                 keys_to_pop.append(key)
         for key in keys_to_pop:
             kwargs.pop(key, None)
@@ -961,13 +961,13 @@ class AutoPickTemplate2DJob(_AutoPickJob):
             float, {"label": "In-plane angular sampling (deg)", "group": "References"}
         ] = 5,
         do_invert_refs: Annotated[
-            float, {"label": "References have inverted contrast", "group": "References"}
+            bool, {"label": "References have inverted contrast", "group": "References"}
         ] = True,
         do_ctf_autopick: Annotated[
-            float, {"label": "References are CTF corrected", "group": "References"}
+            bool, {"label": "References are CTF corrected", "group": "References"}
         ] = True,
         do_ignore_first_ctfpeak_autopick: Annotated[
-            float, {"label": "Ignore CTFs until first peak", "group": "References"}
+            bool, {"label": "Ignore CTFs until first peak", "group": "References"}
         ] = False,
         # Autopicking
         threshold_autopick: Annotated[
@@ -1057,7 +1057,7 @@ class AutoPickTemplate3DJob(_AutoPickJob):
             "fn_topaz_exe",
         ]
         for key in kwargs:
-            if key.startswith(("do_topaz_", "topaz_")):
+            if key.startswith(("do_topaz", "topaz_", "log_")):
                 keys_to_pop.append(key)
         for key in keys_to_pop:
             kwargs.pop(key, None)
@@ -1533,7 +1533,7 @@ class Class2DJob(_Relion5Job):
             kwargs.setdefault(key, value)
 
         algo = kwargs.pop("algorithm")
-        if algo["algorith"] == "EM":
+        if algo["algorithm"] == "EM":
             kwargs["do_em"] = True
             kwargs["nr_iter_em"] = algo["niter"]
         else:
@@ -1564,7 +1564,7 @@ class Class2DJob(_Relion5Job):
     def run(
         self,
         # I/O
-        fn_img: IMG_TYPE = "",
+        fn_img: IN_PARTICLES = "",
         # CTF
         do_ctf_correction: DO_CTF_TYPE = True,
         ctf_intact_first_peak: IGNORE_CTF_TYPE = False,
@@ -1594,8 +1594,12 @@ class Class2DJob(_Relion5Job):
         psi_sampling: Annotated[
             float, {"label": "In-plane angular sampling (deg)", "group": "Sampling"}
         ] = 6,
-        offset_range: Annotated[float, {"label": "Offset search range (pix)"}] = 5,
-        offset_step: Annotated[float, {"label": "Offset search step (pix)"}] = 1,
+        offset_range: Annotated[
+            float, {"label": "Offset search range (pix)", "group": "Sampling"}
+        ] = 5,
+        offset_step: Annotated[
+            float, {"label": "Offset search step (pix)", "group": "Sampling"}
+        ] = 1,
         allow_coarser: ALLOW_COARSER_SAMPLING_TYPE = False,
         # Helix
         do_helix: Annotated[
@@ -1702,7 +1706,7 @@ class InitialModelJob(_Relion5Job):
         widgets["ctf_intact_first_peak"].enabled = widgets["do_ctf_correction"].value
 
 
-class Class3DJobBase(_Relion5Job):
+class _Class3DJobBase(_Relion5Job):
     """3D classification."""
 
     @classmethod
@@ -1785,7 +1789,7 @@ class Class3DJobBase(_Relion5Job):
         _setup_helix_params(widgets)
 
 
-class Class3DNoAlignmentJob(Class3DJobBase):
+class Class3DNoAlignmentJob(_Class3DJobBase):
     @classmethod
     def command_id(cls):
         return super().command_id() + ".noalignment"
@@ -1864,7 +1868,7 @@ class Class3DNoAlignmentJob(Class3DJobBase):
         raise NotImplementedError("This is a builtin job placeholder.")
 
 
-class Class3DJob(Class3DJobBase):
+class Class3DJob(_Class3DJobBase):
     @classmethod
     def command_id(cls):
         return super().command_id() + ".alignment"
@@ -2247,6 +2251,10 @@ class SelectParticlesJob(_SelectValuesJob):
         return super().command_id() + "-particles"
 
     @classmethod
+    def job_title(cls):
+        return "Select Particles by Value"
+
+    @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
         kwargs = super().normalize_kwargs(**kwargs)
         kwargs["do_select_values"] = True
@@ -2272,6 +2280,10 @@ class SelectMicrographsJob(_SelectValuesJob):
     @classmethod
     def command_id(cls):
         return super().command_id() + "-micrographs"
+
+    @classmethod
+    def job_title(cls):
+        return "Select Micrographs by Value"
 
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:

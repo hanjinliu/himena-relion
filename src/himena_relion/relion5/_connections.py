@@ -62,17 +62,17 @@ for autopick_job in [
             "autopick.star": "coords_suffix",
         },
     )
-
-connect_jobs(
-    _spa.ExtractJob,
-    _spa.InitialModelJob,
-    node_mapping={"particles.star": "fn_img"},
-)
-connect_jobs(
-    _spa.ReExtractJob,
-    _spa.InitialModelJob,
-    node_mapping={"particles.star": "fn_img"},
-)
+for extract_job in [_spa.ExtractJob, _spa.ReExtractJob]:
+    connect_jobs(
+        extract_job,
+        _spa.Class2DJob,
+        node_mapping={"particles.star": "fn_img"},
+    )
+    connect_jobs(
+        extract_job,
+        _spa.InitialModelJob,
+        node_mapping={"particles.star": "fn_img"},
+    )
 connect_jobs(
     _spa.ReExtractJob,
     _spa.Refine3DJob,
@@ -98,19 +98,29 @@ def _make_get_template_angpix(filename: str):
     return _func
 
 
-connect_jobs(
-    _spa.Class2DJob,
-    _spa.SelectClassesInteractiveJob,
-    node_mapping={_optimiser_last_iter: "fn_classes"},
-)
-connect_jobs(
-    _spa.Class2DJob,
-    _spa.SelectClassesAutoJob,
-    node_mapping={_optimiser_last_iter: "fn_classes"},
-)
-connect_jobs(
-    _spa.SelectClassesInteractiveJob, _spa.InitialModelJob, {"particles.star": "fn_img"}
-)
+for sel_class_job in [_spa.SelectClassesInteractiveJob, _spa.SelectClassesAutoJob]:
+    connect_jobs(
+        _spa.Class2DJob,
+        sel_class_job,
+        node_mapping={_optimiser_last_iter: "fn_classes"},
+    )
+    connect_jobs(
+        sel_class_job,
+        _spa.AutoPickTemplate2DJob,
+        # node_mapping={"particles.star": "fn_img"},
+        # value_mapping={_make_get_template_angpix("particles.star"): "angpix_ref"},
+    )
+    connect_jobs(
+        sel_class_job,
+        _spa.InitialModelJob,
+        node_mapping={"particles.star": "fn_img"},
+    )
+    connect_jobs(
+        sel_class_job,
+        _spa.Refine3DJob,
+        node_mapping={"particles.star": "fn_img"},
+    )
+
 for class3d_job in [_spa.Class3DJob, _spa.Class3DNoAlignmentJob]:
     connect_jobs(
         _spa.InitialModelJob,
@@ -156,9 +166,6 @@ connect_jobs(
         _particles_last_iter: "fn_img",
         "initial_model.mrc": "fn_ref",
     },
-)
-connect_jobs(
-    _spa.SelectClassesInteractiveJob, _spa.Refine3DJob, {"particles.star": "fn_img"}
 )
 connect_jobs(
     _spa.Refine3DJob,
