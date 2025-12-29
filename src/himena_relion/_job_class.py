@@ -8,7 +8,16 @@ import logging
 import subprocess
 import tempfile
 from types import NoneType, UnionType
-from typing import Any, Callable, Generator, Union, get_args, get_origin, TYPE_CHECKING
+from typing import (
+    Any,
+    Callable,
+    Generator,
+    Literal,
+    Union,
+    get_args,
+    get_origin,
+    TYPE_CHECKING,
+)
 from pathlib import Path
 from magicgui.widgets.bases import ValueWidget
 
@@ -413,7 +422,8 @@ def _split_list_and_arg(typ: Any) -> tuple[Any, Any]:
 def parse_string(s: Any, typ: Any) -> Any:
     if isinstance(typ, str):
         raise TypeError("Type annotation cannot be a string instance")
-    if get_origin(typ) in (Union, UnionType):
+    orig = get_origin(typ)
+    if orig in (Union, UnionType):
         args = get_args(typ)
         if len(args) == 2 and NoneType in args:
             # Union[T, None] or T | None
@@ -421,7 +431,11 @@ def parse_string(s: Any, typ: Any) -> Any:
             if s in ("", "None", None):
                 return None
             return parse_string(s, non_none_type)
-    if typ is str:
+        else:
+            raise TypeError(f"Unsupported Union type for parsing: {typ}")
+    elif orig is Literal:
+        return s  # just trust
+    elif typ is str:
         return s
     elif typ is int:
         return int(s)
@@ -436,14 +450,14 @@ def parse_string(s: Any, typ: Any) -> Any:
             return bool(s)
     elif typ is Path:
         return Path(s)
-    elif get_origin(typ) is list:
+    elif orig is list:
         _, elem = _split_list_and_arg(typ)
         if isinstance(s, str):
             parts = s.split(",")
         else:
             parts = s
         return [parse_string(part, elem) for part in parts]
-    elif get_origin(typ) is tuple:
+    elif orig is tuple:
         args = typ.__args__
         if isinstance(s, str):
             parts = s.split(",")
@@ -454,7 +468,7 @@ def parse_string(s: Any, typ: Any) -> Any:
                 f"Cannot parse tuple from string: {s}, expected {len(args)} elements"
             )
         return tuple(parse_string(part, arg) for part, arg in zip(parts, args))
-    elif get_origin(typ) is dict or typ is dict:
+    elif orig is dict or typ is dict:
         return dict(s)
     else:
         raise TypeError(f"Unsupported type for parsing: {typ}")

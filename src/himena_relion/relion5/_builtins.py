@@ -894,6 +894,10 @@ class AutoPickTemplateJob(_AutoPickJob):
     def normalize_kwargs(cls, **kwargs):
         kwargs = super().normalize_kwargs(**kwargs)
         kwargs["do_refs"] = True
+        kwargs["do_ref3d"] = False
+        kwargs["fn_ref3d_autopick"] = ""
+        kwargs["ref3d_symmetry"] = "C1"
+        kwargs["ref3d_sampling"] = "30 degrees"
         return kwargs
 
     @classmethod
@@ -905,21 +909,127 @@ class AutoPickTemplateJob(_AutoPickJob):
         self,
         fn_input_autopick: IN_MICROGRAPHS = "",
         angpix: Annotated[
-            float, {"label": "Micrograph pixel size (A)", "group": "IO"}
+            float, {"label": "Micrograph pixel size (A)", "group": "I/O"}
         ] = -1,
         # References
-        do_ref3d: Annotated[float, {"label": "", "group": "References"}] = False,
         fn_refs_autopick: Annotated[
             str, {"label": "2D reference", "group": "References"}
         ] = "",
-        fn_ref3d_autopick: Annotated[
-            float, {"label": "3D reference", "group": "References"}
-        ] = "",
+        lowpass: Annotated[
+            float, {"label": "Lowpass filter references", "group": "References"}
+        ] = 20,
+        highpass: Annotated[
+            float, {"label": "Highpass filter micrographs", "group": "References"}
+        ] = -1,
+        angpix_ref: Annotated[
+            float, {"label": "Reference pixel size", "group": "References"}
+        ] = -1,
+        psi_sampling_autopick: Annotated[
+            float, {"label": "In-plane angular sampling (deg)", "group": "References"}
+        ] = 5,
+        do_invert_refs: Annotated[
+            float, {"label": "References have inverted contrast", "group": "References"}
+        ] = True,
+        do_ctf_autopick: Annotated[
+            float, {"label": "References are CTF corrected", "group": "References"}
+        ] = True,
+        do_ignore_first_ctfpeak_autopick: Annotated[
+            float, {"label": "Ignore CTFs until first peak", "group": "References"}
+        ] = False,
+        # Autopicking
+        threshold_autopick: Annotated[
+            float, {"label": "Picking threshold", "group": "Autopicking"}
+        ] = 0.05,
+        mindist_autopick: Annotated[
+            float, {"label": "Min inter-particle distance (A)", "group": "Autopicking"}
+        ] = 100,
+        maxstddevnoise_autopick: Annotated[
+            float, {"label": "Max stddev noise", "group": "Autopicking"}
+        ] = 1.1,
+        minavgnoise_autopick: Annotated[
+            float, {"label": "Min avg noise", "group": "Autopicking"}
+        ] = -999,
+        do_write_fom_maps: Annotated[
+            bool, {"label": "Write FOM maps", "group": "Autopicking"}
+        ] = False,
+        do_read_fom_maps: Annotated[
+            bool, {"label": "Read FOM maps", "group": "Autopicking"}
+        ] = False,
+        shrink: Annotated[
+            float, {"label": "Shrink factor", "group": "Autopicking"}
+        ] = 0,
+        gpu_ids: GPU_IDS_TYPE = "",
+        # Helical
+        do_pick_helical_segments: Annotated[
+            bool, {"label": "Pick 2D helical segments", "group": "Helix"}
+        ] = False,
+        helical_tube_outer_diameter: HELICAL_TUBE_DIAMETER_TYPE = 200,
+        helical_tube_length_min: Annotated[
+            float, {"label": "Minimum length (A)", "group": "Helix"}
+        ] = -1,
+        helical_tube_kappa_max: Annotated[
+            float, {"label": "Maximum curvature (kappa)", "group": "Helix"}
+        ] = 0.1,
+        helical_nr_asu: HELICAL_NR_ASU_TYPE = 1,
+        helical_rise: HELICAL_RISE_TYPE = -1,
+        do_amyloid: Annotated[
+            bool, {"label": "Pick amyloid segments", "group": "Helix"}
+        ] = False,
+        # Running
+        nr_mpi: MPI_TYPE = 1,
+        do_queue: DO_QUEUE_TYPE = False,
+        min_dedicated: MIN_DEDICATED_TYPE = 1,
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")
+
+
+REF3D_SAMPLING = Literal[
+    "30 degrees",
+    "15 degrees",
+    "7.5 degrees",
+    "3.7 degrees",
+    "1.8 degrees",
+    "0.9 degrees",
+    "0.5 degrees",
+    "0.2 degrees",
+    "0.1 degrees",
+]
+
+
+class AutoPickTemplate3DJob(_AutoPickJob):
+    @classmethod
+    def type_label(cls) -> str:
+        return "relion.autopick.ref3d"
+
+    @classmethod
+    def job_title(cls):
+        return "Template Pick 3D"
+
+    @classmethod
+    def normalize_kwargs(cls, **kwargs):
+        kwargs = super().normalize_kwargs(**kwargs)
+        kwargs["do_refs"] = kwargs["do_ref3d"] = True
+        kwargs["fn_refs_autopick"] = ""
+        return kwargs
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs):
+        kwargs = super().normalize_kwargs_inv(**kwargs)
+        return kwargs
+
+    def run(
+        self,
+        fn_input_autopick: IN_MICROGRAPHS = "",
+        angpix: Annotated[
+            float, {"label": "Micrograph pixel size (A)", "group": "I/O"}
+        ] = -1,
+        # References
+        fn_ref3d_autopick: REF_TYPE = "",
         ref3d_symmetry: Annotated[
-            float, {"label": "Symmetry", "group": "References"}
+            str, {"label": "Symmetry", "group": "References"}
         ] = "C1",
         ref3d_sampling: Annotated[
-            float, {"label": "3D angular sampling", "group": "References"}
+            REF3D_SAMPLING, {"label": "3D angular sampling", "group": "References"}
         ] = "30 degrees",
         lowpass: Annotated[
             float, {"label": "Lowpass filter references", "group": "References"}
