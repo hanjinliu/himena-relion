@@ -77,6 +77,7 @@ from himena_relion.relion5._builtins import (
     MotionCorr2Job,
     MotionCorrOwnJob,
     PostProcessJob,
+    InitialModelJob,
     Refine3DJob,
 )
 
@@ -925,7 +926,7 @@ class DenoisePredict(_DenoiseJobBase):
         raise NotImplementedError("This is a builtin job placeholder.")
 
 
-class InitialModelTomoJob(_Relion5TomoJob):
+class InitialModelTomoJob(_Relion5TomoJob, InitialModelJob):
     @classmethod
     def type_label(cls) -> str:
         return "relion.initialmodel.tomo"

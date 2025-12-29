@@ -47,6 +47,8 @@ class ParticleMetaModel(schema.StarModel):
 
 
 class ModelClasses(schema.LoopDataModel):
+    """This is also used for class_averages.star of select interactive job."""
+
     ref_image: schema.Series[str] = schema.Field("rlnReferenceImage")
     class_distribution: schema.Series[float] = schema.Field("rlnClassDistribution")
     resolution: schema.Series[float] = schema.Field("rlnEstimatedResolution")

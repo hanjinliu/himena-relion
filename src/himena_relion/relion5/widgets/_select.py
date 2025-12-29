@@ -13,6 +13,7 @@ from superqt.utils import thread_worker, GeneratorWorker
 
 from himena_relion._widgets import QJobScrollArea, register_job
 from himena_relion import _job_dir
+from himena_relion.schemas import ModelClasses
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -110,6 +111,24 @@ class QRemoveDuplicatesViewer(QSelectJobBase):
 @register_job("relion.select.interactive")
 class QSelectInteractiveViewer(QSelectJobBase):
     def insert_html(self, job_dir: _job_dir.SelectInteractiveJobDirectory):
+        is_2d = job_dir.path.joinpath("class_averages.star").exists()
+        if is_2d:
+            self._insert_html_class2d(job_dir)
+        else:
+            self._insert_html_class3d(job_dir)
+
+    def _insert_html_class2d(self, job_dir: _job_dir.SelectInteractiveJobDirectory):
+        class_avg_path = job_dir.path.joinpath("class_averages.star")
+        if not class_avg_path.exists():
+            return "Not enough output files to display results."
+        model = ModelClasses.validate_file(class_avg_path)
+        model.ref_image
+        model.class_distribution
+        model.resolution
+        # plot accepted and rejected 2D classes
+
+    def _insert_html_class3d(self, job_dir: _job_dir.SelectInteractiveJobDirectory):
+        # TODO: use _model.star instead of particles.star
         path_all = job_dir.particles_pre_star()
         path_sel = job_dir.particles_star()
         if path_all is None or not (path_sel.exists() and path_all.exists()):

@@ -234,6 +234,9 @@ DONT_SKIP_ALIGN_TYPE = Annotated[
 SIGMA_TILT_TYPE = Annotated[
     float, {"label": "Prior width on tilt angle", "group": "Sampling"}
 ]
+ALLOW_COARSER_SAMPLING_TYPE = Annotated[
+    bool, {"label": "Allow coarser sampling", "group": "Sampling"}
+]
 ANG_SAMPLING_TYPE = Annotated[
     str,
     {
@@ -1310,9 +1313,7 @@ class Class2DJob(_Relion5Job):
         ] = 6,
         offset_range: Annotated[float, {"label": "Offset search range (pix)"}] = 5,
         offset_step: Annotated[float, {"label": "Offset search step (pix)"}] = 1,
-        allow_coarser: Annotated[
-            bool, {"label": "Allow coarser sampling", "group": "Sampling"}
-        ] = False,
+        allow_coarser: ALLOW_COARSER_SAMPLING_TYPE = False,
         # Helix
         do_helix: Annotated[
             bool, {"label": "Classify 2D helical segments", "group": "Helix"}
@@ -1354,6 +1355,68 @@ class Class2DJob(_Relion5Job):
             widgets["helical_rise"].enabled = value
 
         _on_do_helix_changed(widgets["do_helix"].value)  # initialize
+
+
+class InitialModelJob(_Relion5Job):
+    @classmethod
+    def type_label(cls) -> str:
+        return "relion.initialmodel"
+
+    @classmethod
+    def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
+        kwargs["fn_cont"] = ""
+        return super().normalize_kwargs(**kwargs)
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
+        kwargs.pop("fn_cont", None)
+        return super().normalize_kwargs_inv(**kwargs)
+
+    def run(
+        self,
+        fn_img: IN_PARTICLES = None,
+        # CTF
+        do_ctf_correction: DO_CTF_TYPE = True,
+        ctf_intact_first_peak: IGNORE_CTF_TYPE = False,
+        # Optimisation
+        nr_iter: NUM_ITER_TYPE = 200,
+        tau_fudge: T_TYPE = 4,
+        nr_classes: NUM_CLASS_TYPE = 1,
+        particle_diameter: MASK_DIAMETER_TYPE = 200,
+        do_solvent: Annotated[
+            bool,
+            {
+                "label": "Flatten and enforce non-negative solvent",
+                "group": "Optimisation",
+            },
+        ] = True,
+        sym_name: Annotated[str, {"label": "Symmetry", "group": "Optimisation"}] = "C1",
+        do_run_C1: Annotated[
+            bool,
+            {"label": "Run in C1 and apply symmetry later", "group": "Optimisation"},
+        ] = True,
+        # Compute
+        do_parallel_discio: USE_PARALLEL_DISC_IO_TYPE = True,
+        nr_pool: NUM_POOL_TYPE = 3,
+        do_preread_images: DO_PREREAD_TYPE = False,
+        use_scratch: USE_SCRATCH_TYPE = False,
+        do_combine_thru_disc: DO_COMBINE_THRU_DISC_TYPE = False,
+        gpu_ids: GPU_IDS_TYPE = "",
+        # Running
+        nr_mpi: MPI_TYPE = 1,
+        nr_threads: THREAD_TYPE = 1,
+        do_queue: DO_QUEUE_TYPE = False,
+        min_dedicated: MIN_DEDICATED_TYPE = 1,
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")
+
+    @classmethod
+    def setup_widgets(self, widgets):
+        @widgets["do_ctf_correction"].changed.connect
+        def _on_do_ctf_correction_changed(value: bool):
+            widgets["ctf_intact_first_peak"].enabled = value
+
+        widgets["ctf_intact_first_peak"].enabled = widgets["do_ctf_correction"].value
 
 
 class Class3DJob(_Relion5Job):
@@ -1448,9 +1511,6 @@ class Class3DJob(_Relion5Job):
         dont_skip_align: DONT_SKIP_ALIGN_TYPE = True,
         sampling: ANG_SAMPLING_TYPE = "7.5 degrees",
         offset_range_step: OFFSET_RANGE_STEP_TYPE = (5, 1),
-        allow_coarser: Annotated[
-            bool, {"label": "Allow coarser sampling", "group": "Sampling"}
-        ] = False,
         do_local_ang_searches: Annotated[
             bool, {"label": "Perform local angular searches", "group": "Sampling"}
         ] = False,
@@ -1458,7 +1518,7 @@ class Class3DJob(_Relion5Job):
             float, {"label": "Local angular search range", "group": "Sampling"}
         ] = 5,
         relax_sym: RELAX_SYMMETRY_TYPE = "",
-        sigma_tilt: SIGMA_TILT_TYPE = -1,
+        allow_coarser: ALLOW_COARSER_SAMPLING_TYPE = False,
         # Helix
         do_helix: DO_HELIX_TYPE = False,
         helical_tube_diameter_range: HELICAL_TUBE_DIAMETER_RANGE_TYPE = (-1, -1),
@@ -1596,7 +1656,9 @@ class Refine3DJob(_Relion5Job):
         offset_range_step: OFFSET_RANGE_STEP_TYPE = (5, 1),
         auto_local_sampling: LOC_ANG_SAMPLING_TYPE = "1.8 degrees",
         relax_sym: RELAX_SYMMETRY_TYPE = "",
-        sigma_tilt: SIGMA_TILT_TYPE = -1,
+        auto_faster: Annotated[
+            bool, {"label": "Use finer angular sampling faster", "group": "Sampling"}
+        ] = False,
         # Helix
         do_helix: DO_HELIX_TYPE = False,
         helical_tube_diameter_range: HELICAL_TUBE_DIAMETER_RANGE_TYPE = (-1, -1),

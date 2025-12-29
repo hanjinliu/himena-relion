@@ -1,3 +1,4 @@
+from pathlib import Path
 from himena_relion._job_class import connect_jobs
 from himena_relion.relion5 import _builtins as _spa
 
@@ -33,20 +34,31 @@ for autopick_job in [
         node_mapping={"micrographs_ctf.star": "fn_input_autopick"},
     )
 
+
+def _optimiser_last_iter(path: Path) -> str:
+    files = sorted(path.glob("run_it???_optimiser.star"))
+    return str(files[-1]) if files else ""
+
+
 connect_jobs(
     _spa.Class2DJob,
     _spa.SelectClassesInteractiveJob,
-    node_mapping={"run_it001_classes.mrc": "fn_classes"},
+    node_mapping={_optimiser_last_iter: "fn_classes"},
 )
-# connect_jobs(
-#     _spa.Class2DJob,
-#     _spa.SelectClassesClassRanker,
-#     node_mapping={"run_it001_classes.mrc": "fn_classes"},
-# )
-# connect_jobs(
-#     _spa.SelectClassesInteractiveJob,
-#     _spa.InitialModel,
-# )
+connect_jobs(
+    _spa.Class2DJob,
+    _spa.SelectClassesAutoJob,
+    node_mapping={_optimiser_last_iter: "fn_classes"},
+)
+connect_jobs(
+    _spa.SelectClassesInteractiveJob,
+    _spa.InitialModelJob,
+)
+connect_jobs(
+    _spa.Class3DJob,
+    _spa.SelectClassesInteractiveJob,
+    node_mapping={_optimiser_last_iter: "fn_classes"},
+)
 connect_jobs(
     _spa.Class3DJob,
     _spa.Refine3DJob,
