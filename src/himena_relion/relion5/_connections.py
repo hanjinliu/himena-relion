@@ -61,6 +61,22 @@ for autopick_job in [
         },
     )
 
+connect_jobs(
+    _spa.ExtractJob,
+    _spa.InitialModelJob,
+    node_mapping={"particles.star": "fn_img"},
+)
+connect_jobs(
+    _spa.ReExtractJob,
+    _spa.InitialModelJob,
+    node_mapping={"particles.star": "fn_img"},
+)
+connect_jobs(
+    _spa.ReExtractJob,
+    _spa.Refine3DJob,
+    node_mapping={"particles.star": "fn_img"},
+)
+
 
 def _optimiser_last_iter(path: Path) -> str:
     files = sorted(path.glob("run_it???_optimiser.star"))

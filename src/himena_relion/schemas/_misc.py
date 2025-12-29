@@ -68,3 +68,18 @@ class ModelStarModel(schema.StarModel):
 
     classes: ModelClasses = schema.Field("model_classes")
     groups: ModelGroups = schema.Field("model_groups")
+
+
+class MicCoordSetModel(schema.LoopDataModel):
+    """Model for coordinate star files."""
+
+    micrographs: schema.Series[str] = schema.Field("rlnMicrographName")
+    coords: schema.Series[str] = schema.Field("rlnMicrographCoordinates")
+
+
+class CoordsModel(schema.LoopDataModel):
+    """Model for coordinate files inside Movies/ directory."""
+
+    x: schema.Series[float] = schema.Field("rlnCoordinateX")
+    y: schema.Series[float] = schema.Field("rlnCoordinateY")
+    fom: schema.Series[float] = schema.Field("rlnAutopickFigureOfMerit", default=None)

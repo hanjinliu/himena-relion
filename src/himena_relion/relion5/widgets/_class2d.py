@@ -4,10 +4,6 @@ from pathlib import Path
 import uuid
 import mrcfile
 import numpy as np
-from PIL import Image, ImageDraw, ImageFont
-from scipy import ndimage as ndi
-from io import BytesIO
-import base64
 from starfile_rs import read_star
 from superqt.utils import thread_worker, GeneratorWorker
 from qtpy import QtWidgets as QtW
@@ -16,20 +12,20 @@ from himena_relion._widgets import (
     QIntChoiceWidget,
     register_job,
 )
+from ._shared import QImageViewTextEdit
 from himena_relion import _job_dir
 
 _LOGGER = logging.getLogger(__name__)
 
 
 @register_job("relion.class2d")
-class QManualPickViewer(QJobScrollArea):
+class QClass2DViewer(QJobScrollArea):
     def __init__(self, job_dir: _job_dir.JobDirectory):
         super().__init__()
         self._job_dir = job_dir
         layout = self._layout
 
-        self._text_edit = QtW.QTextEdit()
-        self._text_edit.setReadOnly(True)
+        self._text_edit = QImageViewTextEdit()
         self._iter_choice = QIntChoiceWidget("Iteration", label_width=60)
 
         self._iter_choice.current_changed.connect(self._iter_changed)
@@ -38,7 +34,7 @@ class QManualPickViewer(QJobScrollArea):
         layout.addWidget(self._text_edit)
         layout.addWidget(self._iter_choice)
 
-        self._plot_session_id = uuid.uuid4()
+        self._plot_session_id = self._text_edit.prep_uuid()
 
     def on_job_updated(self, job_dir: _job_dir.JobDirectory, path: str):
         """Handle changes to the job directory."""
@@ -63,7 +59,7 @@ class QManualPickViewer(QJobScrollArea):
     def _iter_changed(self, value: int):
         self.window_closed_callback()
         self._text_edit.clear()
-        self._plot_session_id = uuid.uuid4()
+        self._plot_session_id = self._text_edit.prep_uuid()
         self._worker = self.plot_classes(value, self._plot_session_id)
         self._worker.yielded.connect(self._on_class_yielded)
         self._worker.start()
@@ -80,33 +76,17 @@ class QManualPickViewer(QJobScrollArea):
         for ith, img_slice in enumerate(img):
             distribution = dist_percent.iloc[ith]
             resolution = resolutions.iloc[ith]
-            img_slice_256 = ndi.zoom(img_slice, 96 / img_slice.shape[0], order=1)
-            img_slice_normed = (
-                (img_slice_256 - img_slice_256.min())
-                / (img_slice_256.max() - img_slice_256.min())
-                * 255
-            )
-            img_slice = img_slice_normed.astype(np.uint8)
-
-            pil_img = Image.fromarray(img_slice).convert("RGB")
-            draw = ImageDraw.Draw(pil_img)
             text = f"{ith + 1}\n{distribution:.1f}%\n{resolution:.1f} A"
-            font = ImageFont.load_default()
-            font.size = 9
-            draw.text((5, 5), text, fill=(0, 255, 0), font=font)
+            img_str = self._text_edit.image_to_base64(img_slice, text)
+            yield img_str, session
 
-            buffer = BytesIO()
-            pil_img.save(buffer, format="PNG")
-            img_str = base64.b64encode(buffer.getvalue()).decode()
-            yield img_str, ith, session
-
-    def _on_class_yielded(self, value: tuple[str, int, uuid.UUID]):
+    def _on_class_yielded(self, value: tuple[str, uuid.UUID]):
         if self._worker is None:
             return
-        img_str, ith, my_uuid = value
+        img_str, my_uuid = value
         if my_uuid != self._plot_session_id:
             return
-        self._text_edit.insertHtml(f'<img src="data:image/png;base64,{img_str}"/>')
+        self._text_edit.insert_base64_image(img_str)
 
     def window_closed_callback(self):
         if self._worker:

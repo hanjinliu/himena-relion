@@ -1,4 +1,10 @@
+import base64
+import uuid
+import numpy as np
 from qtpy import QtWidgets as QtW, QtCore
+from PIL import Image, ImageDraw, ImageFont
+from scipy import ndimage as ndi
+from io import BytesIO
 
 
 class QMicrographListWidget(QtW.QTableWidget):
@@ -45,3 +51,42 @@ class QMicrographListWidget(QtW.QTableWidget):
                 for col in range(self.columnCount())
             )
             self.current_changed.emit(to_emit)
+
+
+class QImageViewTextEdit(QtW.QTextEdit):
+    def __init__(self, font_size: int = 9):
+        super().__init__()
+        self.setReadOnly(True)
+        self._image_size_pixel = 96
+        self._font_size = font_size
+
+    def image_to_base64(self, img_slice: np.ndarray, text: str):
+        img_slice_256 = ndi.zoom(
+            img_slice,
+            self._image_size_pixel / img_slice.shape[0],
+            order=1,
+            prefilter=False,
+        )
+        img_slice_normed = (
+            (img_slice_256 - img_slice_256.min())
+            / (img_slice_256.max() - img_slice_256.min())
+            * 255
+        )
+        img_slice = img_slice_normed.astype(np.uint8)
+
+        pil_img = Image.fromarray(img_slice).convert("RGB")
+        draw = ImageDraw.Draw(pil_img)
+        font = ImageFont.load_default()
+        font.size = self._font_size
+        draw.text((5, 5), text, fill=(0, 255, 0), font=font)
+
+        buffer = BytesIO()
+        pil_img.save(buffer, format="PNG")
+        img_str = base64.b64encode(buffer.getvalue()).decode()
+        return img_str
+
+    def insert_base64_image(self, img_str: str):
+        self.insertHtml(f'<img src="data:image/png;base64,{img_str}"/>')
+
+    def prep_uuid(self) -> uuid.UUID:
+        return uuid.uuid4()

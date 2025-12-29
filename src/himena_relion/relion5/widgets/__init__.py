@@ -1,11 +1,12 @@
 from himena_relion.relion5.widgets import (
     _mask_create,
+    _pick,
     _postprocess,
     _select,
     _motioncor,
     _ctf,
-    _manual_pick,
     _class2d,
+    _extract,
 )
 
 del (
@@ -14,6 +15,7 @@ del (
     _select,
     _motioncor,
     _ctf,
-    _manual_pick,
+    _pick,
     _class2d,
+    _extract,
 )

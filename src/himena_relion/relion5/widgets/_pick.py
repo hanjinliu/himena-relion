@@ -13,6 +13,7 @@ from himena_relion._widgets import (
     register_job,
 )
 from himena_relion import _job_dir
+from himena_relion.schemas import MicCoordSetModel, CoordsModel
 from ._shared import QMicrographListWidget
 
 _LOGGER = logging.getLogger(__name__)
@@ -37,7 +38,7 @@ class QManualPickViewer(QJobScrollArea):
         layout.addWidget(self._mic_list)
         self._filter_widget.value_changed.connect(self._filter_param_changed)
         self._binsize_old = -1
-        self._coords_df = None
+        self._coords: CoordsModel | None = None
 
     def on_job_updated(self, job_dir: _job_dir.JobDirectory, path: str):
         """Handle changes to the job directory."""
@@ -58,7 +59,7 @@ class QManualPickViewer(QJobScrollArea):
             movie_view.with_filter(self._filter_widget.apply),
             clim=self._viewer._last_clim,
         )
-        self._coords_df = read_star(rln_dir / row[2]).first().trust_loop().to_pandas()
+        self._coords = CoordsModel.validate_file(rln_dir / row[2])
 
         self._update_points()
         if not had_image:
@@ -74,15 +75,16 @@ class QManualPickViewer(QJobScrollArea):
         self._update_points()
 
     def _update_points(self):
-        if self._coords_df is None:
+        if self._coords is None:
             return
-        arr = self._coords_df[["rlnCoordinateY", "rlnCoordinateX"]].to_numpy()
-        arr = np.column_stack((np.zeros(arr.shape[0], dtype=arr.dtype), arr))
+        arr = np.column_stack(
+            [np.zeros(len(self._coords.x)), self._coords.y, self._coords.x]
+        )
         image_scale = self._filter_widget._image_scale
         bins = self._filter_widget.bin_factor()
         self._viewer.set_points(
             arr / bins,
-            size=float(self._job_dir.get_job_param("diameter")) / image_scale / bins,
+            size=self._get_diameter() / image_scale / bins,
         )
         self._viewer.redraw()
 
@@ -100,29 +102,25 @@ class QManualPickViewer(QJobScrollArea):
             choices.append((mic_path, str(num), coords_path))
         self._mic_list.set_choices(choices)
 
+    def _get_diameter(self) -> float:
+        return float(self._job_dir.get_job_param("diameter"))
+
 
 def iter_micrograph_and_coordinates(
     job_dir: _job_dir.JobDirectory,
+    filename: str = "manualpick.star",
 ) -> Iterator[tuple[str, str]]:
-    star_path = job_dir.path / "manualpick.star"
+    star_path = job_dir.path / filename
     if star_path.exists():
-        df = read_star(star_path).first().trust_loop().to_pandas()
-        for _, row in df.iterrows():
-            full_path, coord_path, *_ = row
+        model = MicCoordSetModel.validate_file(star_path)
+        for full_path, coord_path in zip(model.micrographs, model.coords):
             yield (
                 job_dir.resolve_path(full_path).as_posix(),
                 job_dir.resolve_path(coord_path).as_posix(),
             )
 
 
-def iter_local_selection(job_dir: _job_dir.JobDirectory) -> Iterator[tuple]:
-    # micrograph path, picked number, is selected, full path
-    local_selection_path = job_dir.path / "local_selection.star"
-    if local_selection_path.exists():
-        df = read_star(local_selection_path).first().trust_loop().to_pandas()
-        for _, row in df.iterrows():
-            full_path, is_selected, *_ = row
-            full_path = Path(full_path)
-            name = full_path.name
-            job_dir.path / "Movies" / f"{full_path.stem}_manualpick.star"
-            yield name, 0, bool(is_selected), str(full_path)
+@register_job("relion.autopick.ref2d")
+@register_job("relion.autopick.ref3d")
+class QTemplatePickViewer(QManualPickViewer):
+    """Viewer for template-based autopicking jobs."""

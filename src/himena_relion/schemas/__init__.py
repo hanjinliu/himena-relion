@@ -6,6 +6,8 @@ from himena_relion.schemas._misc import (
     ParticleMetaModel,
     ModelClasses,
     ModelStarModel,
+    MicCoordSetModel,
+    CoordsModel,
 )
 from himena_relion.schemas._movie_tilts import (
     MicrographsModel,
@@ -24,4 +26,6 @@ __all__ = [
     "MicrographsModel",
     "TSModel",
     "TomogramsGroupModel",
+    "MicCoordSetModel",
+    "CoordsModel",
 ]
