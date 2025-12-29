@@ -879,7 +879,7 @@ class AutoPickLogJob(_AutoPickJob):
         raise NotImplementedError("This is a builtin job placeholder.")
 
 
-class AutoPickTemplateJob(_AutoPickJob):
+class AutoPickTemplate2DJob(_AutoPickJob):
     """Automatic particle picking using template matching."""
 
     @classmethod
@@ -1020,11 +1020,11 @@ class AutoPickTemplate3DJob(_AutoPickJob):
     def run(
         self,
         fn_input_autopick: IN_MICROGRAPHS = "",
+        fn_ref3d_autopick: REF_TYPE = "",
         angpix: Annotated[
             float, {"label": "Micrograph pixel size (A)", "group": "I/O"}
         ] = -1,
         # References
-        fn_ref3d_autopick: REF_TYPE = "",
         ref3d_symmetry: Annotated[
             str, {"label": "Symmetry", "group": "References"}
         ] = "C1",
@@ -1032,25 +1032,25 @@ class AutoPickTemplate3DJob(_AutoPickJob):
             REF3D_SAMPLING, {"label": "3D angular sampling", "group": "References"}
         ] = "30 degrees",
         lowpass: Annotated[
-            float, {"label": "Lowpass filter references", "group": "References"}
+            float, {"label": "Lowpass filter references (A)", "group": "References"}
         ] = 20,
         highpass: Annotated[
-            float, {"label": "Highpass filter micrographs", "group": "References"}
+            float, {"label": "Highpass filter micrographs (A)", "group": "References"}
         ] = -1,
         angpix_ref: Annotated[
-            float, {"label": "Reference pixel size", "group": "References"}
+            float, {"label": "Reference pixel size (A)", "group": "References"}
         ] = -1,
         psi_sampling_autopick: Annotated[
             float, {"label": "In-plane angular sampling (deg)", "group": "References"}
         ] = 5,
         do_invert_refs: Annotated[
-            float, {"label": "References have inverted contrast", "group": "References"}
+            bool, {"label": "References have inverted contrast", "group": "References"}
         ] = True,
         do_ctf_autopick: Annotated[
-            float, {"label": "References are CTF corrected", "group": "References"}
+            bool, {"label": "References are CTF corrected", "group": "References"}
         ] = True,
         do_ignore_first_ctfpeak_autopick: Annotated[
-            float, {"label": "Ignore CTFs until first peak", "group": "References"}
+            bool, {"label": "Ignore CTFs until first peak", "group": "References"}
         ] = False,
         # Autopicking
         threshold_autopick: Annotated[

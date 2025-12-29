@@ -80,13 +80,13 @@ class QPathDropWidget(QtW.QWidget):
         )
         if path:
             path_abs = Path(path).resolve()
-            # .Node/ is not resolved yet
-            if ".Node" in path_abs.parts:
-                # path/to/.Node/<type label>/DIR/JOB/file.ext
+            # .Nodes/ is not resolved yet
+            if ".Nodes" in path_abs.parts:
+                # path/to/.Nodes/<type label>/DIR/JOB/file.ext
                 # should be reformatted to
                 # path/to/DIR/JOB/file.ext
                 parts = path_abs.parts
-                node_index = parts.index(".Node")
+                node_index = parts.index(".Nodes")
                 path_real = Path(*parts[:node_index], *parts[node_index + 2 :])
                 if path_real.exists():
                     path_abs = path_real

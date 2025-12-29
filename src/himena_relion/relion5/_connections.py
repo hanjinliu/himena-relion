@@ -41,7 +41,8 @@ def _get_micrograph_ctf_star(path: Path) -> str | None:
 
 
 for autopick_job in [
-    _spa.AutoPickTemplateJob,
+    _spa.AutoPickTemplate2DJob,
+    _spa.AutoPickTemplate3DJob,
     _spa.AutoPickLogJob,
     _spa.AutoPickTopazTrain,
     _spa.AutoPickTopazPick,
@@ -105,29 +106,18 @@ for class3d_job in [_spa.Class3DJob, _spa.Class3DNoAlignmentJob]:
     )
     connect_jobs(
         class3d_job,
-        _spa.AutoPickTemplateJob,
+        _spa.AutoPickTemplate3DJob,
         node_mapping={"run_class001.mrc": "fn_ref3d_autopick"},
-        value_mapping={"do_ref3d": True},
     )
 connect_jobs(
     _spa.InitialModelJob,
-    _spa.AutoPickTemplateJob,
-    connect_jobs(
-        class3d_job,
-        _spa.AutoPickTemplateJob,
-        node_mapping={"initial_model.mrc": "fn_ref3d_autopick"},
-        value_mapping={"do_ref3d": True},
-    ),
+    _spa.AutoPickTemplate2DJob,
+    node_mapping={"initial_model.mrc": "fn_ref3d_autopick"},
 )
 connect_jobs(
     _spa.Refine3DJob,
-    _spa.AutoPickTemplateJob,
-    connect_jobs(
-        class3d_job,
-        _spa.AutoPickTemplateJob,
-        node_mapping={"run_class001.mrc": "fn_ref3d_autopick"},
-        value_mapping={"do_ref3d": True},
-    ),
+    _spa.AutoPickTemplate2DJob,
+    node_mapping={"run_class001.mrc": "fn_ref3d_autopick"},
 )
 connect_jobs(
     _spa.InitialModelJob,
