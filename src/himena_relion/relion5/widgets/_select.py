@@ -104,13 +104,14 @@ class QRemoveDuplicatesViewer(QSelectJobBase):
 
 
 @register_job("relion.select.interactive")
+@register_job("relion.select.class2dauto")
 class QSelectInteractiveViewer(QSelectJobBase):
     def insert_html(self, job_dir: _job_dir.SelectInteractiveJobDirectory):
         is_2d = job_dir.path.joinpath("class_averages.star").exists()
         if is_2d:
-            self._insert_html_class2d(job_dir)
+            yield from self._insert_html_class2d(job_dir)
         else:
-            self._insert_html_class3d(job_dir)
+            yield from self._insert_html_class3d(job_dir)
 
     def _insert_html_class2d(self, job_dir: _job_dir.SelectInteractiveJobDirectory):
         class_avg_path = job_dir.path.joinpath("class_averages.star")
@@ -192,15 +193,14 @@ class QSelectInteractiveViewer(QSelectJobBase):
         # print selected and removed HTML images in the text edit
         images_selected: list[tuple[str, list[str]]] = []
         images_removed: list[tuple[str, list[str]]] = []
-        for ith, (path, is_sel) in enumerate(
-            zip(job_dir.class_map_paths(is_selected.size), is_selected)
-        ):
+        texts = ["XY", "XZ", "YZ"]
+        for path, is_sel in zip(job_dir.class_map_paths(is_selected.size), is_selected):
             if path is not None:
                 with mrcfile.open(path) as mrc:
                     array = np.asarray(mrc.data)
 
                 projs = [
-                    self._text_edit.image_to_base64(array.max(axis=axis), str(ith))
+                    self._text_edit.image_to_base64(array.max(axis=axis), texts[axis])
                     for axis in range(3)
                 ]
             else:
