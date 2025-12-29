@@ -809,6 +809,18 @@ class AutoPickLogJob(_AutoPickJob):
     def normalize_kwargs_inv(cls, **kwargs):
         kwargs = super().normalize_kwargs_inv(**kwargs)
         kwargs.pop("minavgnoise_autopick", None)
+        keys_to_pop = [
+            "continue_manual",
+            "do_log",
+            "do_ref3d",
+            "do_refs",
+            "log_upper_thr",
+        ]
+        for key in kwargs:
+            if key.startswith(("do_topaz", "topaz_")):
+                keys_to_pop.append(key)
+        for key in keys_to_pop:
+            kwargs.pop(key, None)
         return kwargs
 
     def run(
@@ -901,6 +913,18 @@ class AutoPickTemplate2DJob(_AutoPickJob):
     @classmethod
     def normalize_kwargs_inv(cls, **kwargs):
         kwargs = super().normalize_kwargs_inv(**kwargs)
+        keys_to_pop = [
+            "continue_manual",
+            "do_log",
+            "do_ref3d",
+            "do_refs",
+            "log_upper_thr",
+        ]
+        for key in kwargs:
+            if key.startswith(("do_topaz", "topaz_")):
+                keys_to_pop.append(key)
+        for key in keys_to_pop:
+            kwargs.pop(key, None)
         return kwargs
 
     def run(

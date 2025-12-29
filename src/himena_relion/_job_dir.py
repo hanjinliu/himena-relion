@@ -105,6 +105,14 @@ class JobDirectory:
         """Return the path to the RELION project directory."""
         return self.path.parent.parent
 
+    def resolve_path(self, path: str | Path) -> Path:
+        """Resolve a path relative to the RELION project directory."""
+        p = Path(path)
+        if p.is_absolute():
+            return p
+        if (fp := self.relion_project_dir.joinpath(p)).exists():
+            return fp
+
     def job_normal_id(self) -> str:
         return normalize_job_id(self.path.relative_to(self.relion_project_dir))
 

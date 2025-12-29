@@ -315,7 +315,7 @@ class _Vispy2DBase:
         self._image.visible = False
         self._markers = VispyMarkers(
             pos=np.ones((1, 2), dtype=np.float32), scaling=True, face_color=np.zeros(4),
-            edge_color="lime", size=10, parent=self._viewbox.scene
+            edge_color="lime", size=10, parent=self._viewbox.scene,
         )  # fmt: skip
         self._markers.update_gl_state(depth_test=False)
         self._markers.visible = False

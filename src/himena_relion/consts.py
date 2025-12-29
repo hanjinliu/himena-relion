@@ -47,6 +47,7 @@ JOB_ID_MAP = {
     "relion.manualpick": "Manual Pick",
     "relion.autopick.log": "LoG Pick",
     "relion.autopick.ref2d": "Template Pick",
+    "relion.autopick.ref3d": "Template Pick 3D",
     "relion.autopick.topaz.train": "Topaz Train",
     "relion.autopick.topaz.pick": "Topaz Pick",
     "relion.extract": "Extract",

@@ -37,6 +37,7 @@ class QManualPickViewer(QJobScrollArea):
         layout.addWidget(self._mic_list)
         self._filter_widget.value_changed.connect(self._filter_param_changed)
         self._binsize_old = -1
+        self._coords_df = None
 
     def on_job_updated(self, job_dir: _job_dir.JobDirectory, path: str):
         """Handle changes to the job directory."""
@@ -49,23 +50,17 @@ class QManualPickViewer(QJobScrollArea):
         """Handle changes to selected micrograph."""
         rln_dir = self._job_dir.relion_project_dir
         mic_path = rln_dir / row[0]
-        df_coords = read_star(rln_dir / row[2]).first().trust_loop().to_pandas()
         movie_view = ArrayFilteredView.from_mrc(mic_path)
         had_image = self._viewer.has_image
-        self._filter_widget.set_image_scale(movie_view.get_scale())
+        image_scale = movie_view.get_scale()
+        self._filter_widget.set_image_scale(image_scale)
         self._viewer.set_array_view(
             movie_view.with_filter(self._filter_widget.apply),
             clim=self._viewer._last_clim,
         )
+        self._coords_df = read_star(rln_dir / row[2]).first().trust_loop().to_pandas()
 
-        arr = df_coords[["rlnCoordinateY", "rlnCoordinateX"]].to_numpy()
-        arr = np.column_stack((np.zeros(arr.shape[0], dtype=arr.dtype), arr))
-        # TODO: use correct size
-        print(arr.shape)
-        self._viewer.set_points(
-            arr,
-            size=10,
-        )
+        self._update_points()
         if not had_image:
             self._viewer._auto_contrast()
 
@@ -76,6 +71,20 @@ class QManualPickViewer(QJobScrollArea):
         if self._binsize_old != new_binsize:
             self._binsize_old = new_binsize
             self._viewer.auto_fit()
+        self._update_points()
+
+    def _update_points(self):
+        if self._coords_df is None:
+            return
+        arr = self._coords_df[["rlnCoordinateY", "rlnCoordinateX"]].to_numpy()
+        arr = np.column_stack((np.zeros(arr.shape[0], dtype=arr.dtype), arr))
+        image_scale = self._filter_widget._image_scale
+        bins = self._filter_widget.bin_factor()
+        self._viewer.set_points(
+            arr / bins,
+            size=float(self._job_dir.get_job_param("diameter")) / image_scale / bins,
+        )
+        self._viewer.redraw()
 
     def initialize(self, job_dir: _job_dir.JobDirectory):
         """Initialize the viewer with the job directory."""
@@ -100,7 +109,10 @@ def iter_micrograph_and_coordinates(
         df = read_star(star_path).first().trust_loop().to_pandas()
         for _, row in df.iterrows():
             full_path, coord_path, *_ = row
-            yield full_path, coord_path
+            yield (
+                job_dir.resolve_path(full_path).as_posix(),
+                job_dir.resolve_path(coord_path).as_posix(),
+            )
 
 
 def iter_local_selection(job_dir: _job_dir.JobDirectory) -> Iterator[tuple]:

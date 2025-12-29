@@ -197,7 +197,7 @@ class Q2DViewer(QViewer):
                 result.points[:, [2, 1]],
                 face_color=result.face_colors,
                 edge_color=result.edge_colors,
-                edge_width=0.5,
+                edge_width_rel=0.15,
                 size=result.sizes,
             )
             self._canvas.markers_visual.visible = True
@@ -393,7 +393,7 @@ class Q2DFilterWidget(QtW.QWidget):
         if factor > 1:
             img = _utils.bin_image(img, factor)
         if cutoff > 0.0:
-            cutoff_rel = self._image_scale / cutoff
+            cutoff_rel = self._image_scale / cutoff * factor
             img = _utils.lowpass_filter(img, cutoff_rel)
 
         return img
