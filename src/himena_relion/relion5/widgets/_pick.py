@@ -50,8 +50,7 @@ class QManualPickViewer(QJobScrollArea):
 
     def _mic_changed(self, row: tuple[str, str, str]):
         """Handle changes to selected micrograph."""
-        rln_dir = self._job_dir.relion_project_dir
-        mic_path = rln_dir / row[0]
+        mic_path = self._job_dir.resolve_path(row[0])
         movie_view = ArrayFilteredView.from_mrc(mic_path)
         had_image = self._viewer.has_image
         image_scale = movie_view.get_scale()
@@ -60,7 +59,7 @@ class QManualPickViewer(QJobScrollArea):
             movie_view.with_filter(self._filter_widget.apply),
             clim=self._viewer._last_clim,
         )
-        self._coords = CoordsModel.validate_file(rln_dir / row[2])
+        self._coords = CoordsModel.validate_file(self._job_dir.resolve_path(row[2]))
 
         self._update_points()
         if not had_image:
@@ -115,11 +114,7 @@ def iter_micrograph_and_coordinates(
     star_path = job_dir.path / filename
     if star_path.exists():
         model = MicCoordSetModel.validate_file(star_path)
-        for full_path, coord_path in zip(model.micrographs, model.coords):
-            yield (
-                job_dir.resolve_path(full_path).as_posix(),
-                job_dir.resolve_path(coord_path).as_posix(),
-            )
+        yield from zip(model.micrographs, model.coords)
 
 
 class QAutopickViewerBase(QManualPickViewer):

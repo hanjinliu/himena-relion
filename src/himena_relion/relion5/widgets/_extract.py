@@ -56,7 +56,7 @@ class QExtractViewer(QJobScrollArea):
         choices = []
         movies_dir = self._job_dir.path / "Movies"
         for mrcs_path in movies_dir.glob("*.mrcs"):
-            choices.append((mrcs_path.as_posix(),))
+            choices.append((self._job_dir.make_relative_path(mrcs_path).as_posix(),))
         self._mic_list.set_choices(choices)
 
     def _mic_changed(self, row: tuple[str]):
@@ -67,7 +67,7 @@ class QExtractViewer(QJobScrollArea):
             nz = mrc.header.nz
         self._current_num_extracts = nz
         self._slider.setRange(1, nz - self._num_page + 1)
-        self._slider_value_changed(1, udpate_slider=True)
+        self._slider_value_changed(self._slider.maximum(), udpate_slider=True)
 
     def _slider_value_changed(self, value: int, *, udpate_slider: bool = False):
         self.window_closed_callback()
