@@ -1356,7 +1356,9 @@ class ExtractJobBase(_Relion5Job):
         kwargs["recenter_x"], kwargs["recenter_y"], kwargs["recenter_z"] = (0, 0, 0)
 
         # normalize
-        kwargs["do_rescale"] = kwargs["extract_size"] != kwargs.get["rescale"]
+        kwargs["do_rescale"] = kwargs["extract_size"] != kwargs.get(
+            "rescale", (0, 0, 0)
+        )
         kwargs["do_fom_threshold"] = kwargs.get("minimum_pick_fom", None) is not None
         return kwargs
 
@@ -1365,7 +1367,7 @@ class ExtractJobBase(_Relion5Job):
         kwargs = super().normalize_kwargs_inv(**kwargs)
         kwargs.pop("do_reextract", None)
         kwargs.pop("do_recenter", None)
-        if kwargs.pop("do_fom_threshold"):
+        if kwargs.pop("do_fom_threshold", False):
             pass
         else:
             kwargs["minimum_pick_fom"] = None
@@ -1421,7 +1423,7 @@ class ExtractJob(ExtractJobBase):
             bool, {"label": "Coordinates are star-end only", "group": "Helix"}
         ] = True,
         do_cut_into_segments: Annotated[
-            bool, {"label": "Cut helical tubes into segments"}
+            bool, {"label": "Cut helical tubes into segments", "group": "Helix"}
         ] = True,
         helical_nr_asu: HELICAL_NR_ASU_TYPE = 1,
         helical_rise: HELICAL_RISE_TYPE = 1,
@@ -1488,7 +1490,7 @@ class ReExtractJob(ExtractJobBase):
             bool, {"label": "Coordinates are star-end only", "group": "Helix"}
         ] = True,
         do_cut_into_segments: Annotated[
-            bool, {"label": "Cut helical tubes into segments"}
+            bool, {"label": "Cut helical tubes into segments", "group": "Helix"}
         ] = True,
         helical_nr_asu: HELICAL_NR_ASU_TYPE = 1,
         helical_rise: HELICAL_RISE_TYPE = 1,
