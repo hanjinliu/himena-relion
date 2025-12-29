@@ -28,13 +28,18 @@ class QExtractViewer(QJobScrollArea):
         self._worker: GeneratorWorker | None = None
         self._text_edit = QImageViewTextEdit(font_size=11)
         self._slider = QtW.QSlider(QtCore.Qt.Orientation.Horizontal)
-        self._slider.setSingleStep(self._num_page)
-        self._slider.setTickInterval(self._num_page)
+        self._slider_display_range = QtW.QLabel("?? - ??")
         self._mic_list = QMicrographListWidget(["Micrograph"])
         self._mic_list.setFixedHeight(130)
         self._mic_list.current_changed.connect(self._mic_changed)
         layout.addWidget(QtW.QLabel("<b>Extracted Micrographs</b>"))
-        layout.addWidget(self._slider)
+        hlayout = QtW.QHBoxLayout()
+        hlayout.setContentsMargins(0, 0, 0, 0)
+        hlayout.addWidget(QtW.QLabel("Display Range:"))
+        hlayout.addWidget(self._slider)
+        hlayout.addWidget(self._slider_display_range)
+
+        layout.addLayout(hlayout)
         layout.addWidget(self._text_edit)
         layout.addWidget(self._mic_list)
         self._slider.valueChanged.connect(self._slider_value_changed)
@@ -66,8 +71,10 @@ class QExtractViewer(QJobScrollArea):
         with mrcfile.open(self._current_extract_path, header_only=True) as mrc:
             nz = mrc.header.nz
         self._current_num_extracts = nz
-        self._slider.setRange(1, nz - self._num_page + 1)
-        self._slider_value_changed(self._slider.maximum(), udpate_slider=True)
+        current_pos = self._slider.value()
+        self._slider.setRange(1, nz // self._num_page)
+        current_pos = min(current_pos, self._slider.maximum())
+        self._slider_value_changed(current_pos, udpate_slider=True)
 
     def _slider_value_changed(self, value: int, *, udpate_slider: bool = False):
         self.window_closed_callback()
@@ -75,7 +82,12 @@ class QExtractViewer(QJobScrollArea):
             self._slider.setValue(value)
         self._text_edit.clear()
         self._plot_session_id = self._text_edit.prep_uuid()
-        self._worker = self.plot_extracts(value, self._plot_session_id)
+        start = value * self._num_page
+        # Adjust for 1-based indexing
+        self._slider_display_range.setText(
+            f"{start + 1} - {min(start + self._num_page, self._current_num_extracts)}"
+        )
+        self._worker = self.plot_extracts(start, self._plot_session_id)
         self._worker.yielded.connect(self._on_yielded)
         self._worker.start()
 

@@ -16,7 +16,7 @@ from himena_relion._widgets import (
 from himena_relion import _job_dir
 from himena_relion.relion5._connections import _get_template_last_iter
 from himena_relion.schemas import MicCoordSetModel, CoordsModel
-from ._shared import QMicrographListWidget
+from ._shared import QImageViewTextEdit, QMicrographListWidget
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -45,7 +45,7 @@ class QManualPickViewer(QJobScrollArea):
     def on_job_updated(self, job_dir: _job_dir.JobDirectory, path: str):
         """Handle changes to the job directory."""
         fp = Path(path)
-        if fp.name.startswith("RELION_JOB_") or fp.suffix == ".star":
+        if fp.name.startswith("RELION_JOB_") or fp.suffix in (".star", ".mrcs"):
             self._process_update()
             _LOGGER.debug("%s Updated", job_dir.job_number)
 
@@ -148,10 +148,27 @@ class QTemplatePick2DViewer(QAutopickViewerBase):
 
 @register_job("relion.autopick.ref3d")
 class QTemplatePick3DViewer(QAutopickViewerBase):
+    def __init__(self, job_dir: _job_dir.JobDirectory):
+        super().__init__(job_dir)
+        self._text_edit = QImageViewTextEdit()
+        self._text_edit.setFixedHeight(100)
+        self._layout.insertWidget(0, QtW.QLabel("<b>Reference Projections</b>"))
+        self._layout.insertWidget(1, self._text_edit)
+
     def _get_diameter(self) -> float:
         path = self._job_dir.path / "reference_projections.mrcs"
         with mrcfile.open(path, header_only=True) as mrc:
             return float(mrc.voxel_size.x * mrc.header.nx)
+
+    def _process_update(self):
+        super()._process_update()
+        ref_proj_path = self._job_dir.path / "reference_projections.mrcs"
+        if ref_proj_path.exists():
+            with mrcfile.open(ref_proj_path) as mrc:
+                images = np.asarray(mrc.data, dtype=np.float32)
+            for img_slice in images:
+                img_str = self._text_edit.image_to_base64(img_slice)
+                self._text_edit.insert_base64_image(img_str)
 
 
 @register_job("relion.autopick.log")

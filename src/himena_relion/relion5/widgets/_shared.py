@@ -62,7 +62,7 @@ class QImageViewTextEdit(QtW.QTextEdit):
         self._image_size_pixel = 96
         self._font_size = font_size
 
-    def image_to_base64(self, img_slice: np.ndarray, text: str):
+    def image_to_base64(self, img_slice: np.ndarray, text: str = "") -> str:
         img_slice_256 = ndi.zoom(
             img_slice,
             self._image_size_pixel / img_slice.shape[0],

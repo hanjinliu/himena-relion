@@ -1059,6 +1059,7 @@ class AutoPickTemplate3DJob(_AutoPickJob):
             "do_refs",
             "log_upper_thr",
             "fn_topaz_exe",
+            "fn_refs_autopick",
         ]
         for key in kwargs:
             if key.startswith(("do_topaz", "topaz_", "log_")):

@@ -125,12 +125,12 @@ def abort_relion_job(ui: MainWindow, model: WidgetDataModel):
 @register_function(
     menus=[MenuId.RELION_UTILS],
     types=[Type.RELION_JOB],
-    title="Edit",
-    command_id="himena-relion:edit-job",
+    title="Overwrite",
+    command_id="himena-relion:overwrite-job",
     group="07-job-operation",
 )
-def edit_relion_job(ui: MainWindow, model: WidgetDataModel):
-    """Edit this RELION job's parameters and overwrite."""
+def overwrite_relion_job(ui: MainWindow, model: WidgetDataModel):
+    """Overwrite this RELION job's parameters and execute again."""
     job_dir = assert_job(model)
     job_cls = job_dir._to_job_class()
     if job_cls is None:
