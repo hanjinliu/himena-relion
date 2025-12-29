@@ -4,6 +4,7 @@ import mrcfile
 from himena_relion._job_class import connect_jobs
 from himena_relion._job_dir import JobDirectory
 from himena_relion.relion5 import _builtins as _spa
+from himena_relion.schemas import ModelClasses
 
 connect_jobs(
     _spa.MotionCorr2Job,
@@ -90,6 +91,22 @@ def _particles_last_iter(path: Path) -> str:
     return str(files[-1]) if files else ""
 
 
+def _get_template_last_iter(path: Path) -> str:
+    job_dir = JobDirectory(path)
+    class_avg_path = job_dir.path.joinpath("class_averages.star")
+    model = ModelClasses.validate_file(class_avg_path)
+    class_mrcs_path = model.ref_image[0].split("@")[1]
+    return job_dir.make_relative_path(job_dir.resolve_path(class_mrcs_path))
+
+
+def _get_angpix_from_template_pick(path: Path) -> float | None:
+    job_dir = JobDirectory(path)
+    path_refs = _get_template_last_iter(path)
+    path = job_dir.resolve_path(path_refs)
+    with mrcfile.open(path, header_only=True) as mrc:
+        return float(mrc.voxel_size.x)
+
+
 def _make_get_template_angpix(filename: str):
     def _func(path: Path) -> float | None:
         with mrcfile.open(path / filename, header_only=True) as mrc:
@@ -107,8 +124,11 @@ for sel_class_job in [_spa.SelectClassesInteractiveJob, _spa.SelectClassesAutoJo
     connect_jobs(
         sel_class_job,
         _spa.AutoPickTemplate2DJob,
-        # node_mapping={"particles.star": "fn_img"},
-        # value_mapping={_make_get_template_angpix("particles.star"): "angpix_ref"},
+        # node_mapping={"particles.star": "fn_input_autopick"},
+        value_mapping={
+            _get_template_last_iter: "fn_refs_autopick",
+            _get_angpix_from_template_pick: "angpix_ref",
+        },
     )
     connect_jobs(
         sel_class_job,

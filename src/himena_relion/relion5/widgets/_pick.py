@@ -14,6 +14,7 @@ from himena_relion._widgets import (
     register_job,
 )
 from himena_relion import _job_dir
+from himena_relion.relion5._connections import _get_template_last_iter
 from himena_relion.schemas import MicCoordSetModel, CoordsModel
 from ._shared import QMicrographListWidget
 
@@ -131,11 +132,18 @@ class QAutopickViewerBase(QManualPickViewer):
 
 
 # fallback for relion.autopick
-@register_job("relion.autopick.ref2d")
 @register_job("relion.autopick")
-class QTemplatePick2DViewer(QAutopickViewerBase):
+class QAutoViewer(QAutopickViewerBase):
     def _get_diameter(self) -> float:
         return 50.0
+
+
+@register_job("relion.autopick.ref2d")
+class QTemplatePick2DViewer(QAutopickViewerBase):
+    def _get_diameter(self) -> float:
+        path = self._job_dir.resolve_path(_get_template_last_iter(self._job_dir.path))
+        with mrcfile.open(path, header_only=True) as mrc:
+            return float(mrc.voxel_size.x * mrc.header.nx)
 
 
 @register_job("relion.autopick.ref3d")

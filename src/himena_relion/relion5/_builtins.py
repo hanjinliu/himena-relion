@@ -913,7 +913,7 @@ class AutoPickTemplate2DJob(_AutoPickJob):
 
     @classmethod
     def job_title(cls):
-        return "Template Pick"
+        return "Template Pick (2D Reference)"
 
     @classmethod
     def normalize_kwargs(cls, **kwargs):
@@ -930,6 +930,10 @@ class AutoPickTemplate2DJob(_AutoPickJob):
             "do_log",
             "do_ref3d",
             "do_refs",
+            "fn_ref3d_autopick",
+            "ref3d_sampling",
+            "ref3d_symmetry",
+            "fn_topaz_exe",
         ]
         for key in kwargs:
             if key.startswith(("do_topaz", "topaz_", "log_")):
@@ -1036,7 +1040,7 @@ class AutoPickTemplate3DJob(_AutoPickJob):
 
     @classmethod
     def job_title(cls):
-        return "Template Pick 3D"
+        return "Template Pick (3D Reference)"
 
     @classmethod
     def normalize_kwargs(cls, **kwargs):
