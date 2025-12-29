@@ -6,7 +6,7 @@ import mrcfile
 import numpy as np
 from starfile_rs import read_star
 from superqt.utils import thread_worker, GeneratorWorker
-from qtpy import QtWidgets as QtW
+from qtpy import QtWidgets as QtW, QtCore
 from himena_relion._widgets import (
     QJobScrollArea,
     QIntChoiceWidget,
@@ -24,13 +24,25 @@ class QClass2DViewer(QJobScrollArea):
         super().__init__()
         self._job_dir = job_dir
         layout = self._layout
-
+        self._sort_by = QtW.QComboBox()
+        self._sort_by.addItems(["No", "Particle number", "Resolution"])
+        self._sort_by.setCurrentIndex(0)
+        self._sort_by.setFixedWidth(120)
         self._text_edit = QImageViewTextEdit()
         self._iter_choice = QIntChoiceWidget("Iteration", label_width=60)
 
         self._iter_choice.current_changed.connect(self._iter_changed)
+        self._sort_by.currentIndexChanged.connect(self._sort_by_changed)
         self._worker: GeneratorWorker | None = None
         layout.addWidget(QtW.QLabel("<b>2D Classes</b>"))
+        hlayout = QtW.QHBoxLayout()
+        hlayout.setContentsMargins(0, 0, 0, 0)
+        label = QtW.QLabel("Sort by:")
+        label.setMaximumWidth(80)
+        hlayout.addWidget(label)
+        hlayout.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
+        hlayout.addWidget(self._sort_by)
+        layout.addLayout(hlayout)
         layout.addWidget(self._text_edit)
         layout.addWidget(self._iter_choice)
 
@@ -56,6 +68,9 @@ class QClass2DViewer(QJobScrollArea):
         niters.sort()
         self._iter_choice.set_choices(niters)
 
+    def _sort_by_changed(self):
+        self._iter_changed(self._iter_choice.value())
+
     def _iter_changed(self, value: int):
         self.window_closed_callback()
         self._text_edit.clear()
@@ -73,9 +88,17 @@ class QClass2DViewer(QJobScrollArea):
         df = read_star(path_model)["model_classes"].trust_loop().to_pandas()
         dist_percent = df["rlnClassDistribution"] * 100
         resolutions = df["rlnEstimatedResolution"]
-        for ith, img_slice in enumerate(img):
+        # sorting
+        if self._sort_by.currentIndex() == 1:
+            sort_indices = np.argsort(-dist_percent.values)
+        elif self._sort_by.currentIndex() == 2:
+            sort_indices = np.argsort(resolutions.values)
+        else:
+            sort_indices = np.arange(len(dist_percent))
+        for ith in sort_indices:
             distribution = dist_percent.iloc[ith]
             resolution = resolutions.iloc[ith]
+            img_slice = img[ith]
             text = f"{ith + 1}\n{distribution:.1f}%\n{resolution:.1f} A"
             img_str = self._text_edit.image_to_base64(img_slice, text)
             yield img_str, session

@@ -2,6 +2,7 @@ from __future__ import annotations
 from pathlib import Path
 import logging
 from typing import Iterator
+import mrcfile
 import numpy as np
 from starfile_rs import read_star
 from qtpy import QtWidgets as QtW
@@ -82,10 +83,11 @@ class QManualPickViewer(QJobScrollArea):
         )
         image_scale = self._filter_widget._image_scale
         bins = self._filter_widget.bin_factor()
-        self._viewer.set_points(
-            arr / bins,
-            size=self._get_diameter() / image_scale / bins,
-        )
+        try:
+            diameter = self._get_diameter()
+        except Exception:
+            diameter = 50.0
+        self._viewer.set_points(arr / bins, size=diameter / image_scale / bins)
         self._viewer.redraw()
 
     def initialize(self, job_dir: _job_dir.JobDirectory):
@@ -120,7 +122,36 @@ def iter_micrograph_and_coordinates(
             )
 
 
-@register_job("relion.autopick.ref2d")
-@register_job("relion.autopick.ref3d")
-class QTemplatePickViewer(QManualPickViewer):
+class QAutopickViewerBase(QManualPickViewer):
     """Viewer for template-based autopicking jobs."""
+
+    def _process_update(self):
+        choices = []
+        for mic_path, coords_path in iter_micrograph_and_coordinates(
+            self._job_dir, "autopick.star"
+        ):
+            num = read_star(coords_path).first().trust_loop().shape[0]
+            choices.append((mic_path, str(num), coords_path))
+        self._mic_list.set_choices(choices)
+
+
+# fallback for relion.autopick
+@register_job("relion.autopick.ref2d")
+@register_job("relion.autopick")
+class QTemplatePick2DViewer(QAutopickViewerBase):
+    def _get_diameter(self) -> float:
+        return 50.0
+
+
+@register_job("relion.autopick.ref3d")
+class QTemplatePick3DViewer(QAutopickViewerBase):
+    def _get_diameter(self) -> float:
+        path = self._job_dir.path / "reference_projections.mrcs"
+        with mrcfile.open(path, header_only=True) as mrc:
+            return float(mrc.voxel_size.x)
+
+
+@register_job("relion.autopick.log")
+class QLoGPickViewer(QAutopickViewerBase):
+    def _get_diameter(self) -> float:
+        return float(self._job_dir.get_job_param("log_diam_max"))

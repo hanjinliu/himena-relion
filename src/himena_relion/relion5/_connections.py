@@ -1,4 +1,6 @@
 from pathlib import Path
+
+import mrcfile
 from himena_relion._job_class import connect_jobs
 from himena_relion._job_dir import JobDirectory
 from himena_relion.relion5 import _builtins as _spa
@@ -88,6 +90,14 @@ def _particles_last_iter(path: Path) -> str:
     return str(files[-1]) if files else ""
 
 
+def _make_get_template_angpix(filename: str):
+    def _func(path: Path) -> float | None:
+        with mrcfile.open(path / filename, header_only=True) as mrc:
+            return float(mrc.voxel_size.x)
+
+    return _func
+
+
 connect_jobs(
     _spa.Class2DJob,
     _spa.SelectClassesInteractiveJob,
@@ -124,17 +134,20 @@ for class3d_job in [_spa.Class3DJob, _spa.Class3DNoAlignmentJob]:
         class3d_job,
         _spa.AutoPickTemplate3DJob,
         node_mapping={"run_class001.mrc": "fn_ref3d_autopick"},
+        value_mapping={_make_get_template_angpix("run_class001.mrc"): "angpix_ref"},
     )
 # TODO: implement the way to fill input_micrographs.
 connect_jobs(
     _spa.InitialModelJob,
     _spa.AutoPickTemplate3DJob,
     node_mapping={"initial_model.mrc": "fn_ref3d_autopick"},
+    value_mapping={_make_get_template_angpix("initial_model.mrc"): "angpix_ref"},
 )
 connect_jobs(
     _spa.Refine3DJob,
     _spa.AutoPickTemplate3DJob,
     node_mapping={"run_class001.mrc": "fn_ref3d_autopick"},
+    value_mapping={_make_get_template_angpix("run_class001.mrc"): "angpix_ref"},
 )
 connect_jobs(
     _spa.InitialModelJob,

@@ -808,13 +808,25 @@ class AutoPickLogJob(_AutoPickJob):
     @classmethod
     def normalize_kwargs_inv(cls, **kwargs):
         kwargs = super().normalize_kwargs_inv(**kwargs)
-        kwargs.pop("minavgnoise_autopick", None)
         keys_to_pop = [
             "continue_manual",
+            "minavgnoise_autopick",
             "do_log",
             "do_ref3d",
             "do_refs",
             "log_upper_thr",
+            "angpix_ref",
+            "do_ctf_autopick",
+            "do_ignore_first_ctfpeak_autopick",
+            "do_invert_refs",
+            "fn_ref3d_autopick",
+            "fn_refs_autopick",
+            "fn_topaz_exe",
+            "highpass",
+            "lowpass",
+            "psi_sampling_autopick",
+            "ref3d_sampling",
+            "ref3d_symmetry",
         ]
         for key in kwargs:
             if key.startswith(("do_topaz", "topaz_")):

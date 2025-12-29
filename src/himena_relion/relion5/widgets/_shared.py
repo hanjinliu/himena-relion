@@ -19,6 +19,8 @@ class QMicrographListWidget(QtW.QTableWidget):
         self.horizontalHeader().setVisible(len(columns) > 1)
         self.horizontalHeader().setStretchLastSection(True)
         self.horizontalHeader().setFixedHeight(15)
+        self.setVerticalScrollMode(QtW.QAbstractItemView.ScrollMode.ScrollPerPixel)
+        self.setHorizontalScrollMode(QtW.QAbstractItemView.ScrollMode.ScrollPerPixel)
         self.setEditTriggers(QtW.QAbstractItemView.EditTrigger.NoEditTriggers)
         self.itemSelectionChanged.connect(self._on_selection_changed)
 

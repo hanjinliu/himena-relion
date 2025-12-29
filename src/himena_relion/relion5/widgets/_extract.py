@@ -15,6 +15,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 @register_job("relion.extract")
+@register_job("relion.extract.reextract")
 class QExtractViewer(QJobScrollArea):
     def __init__(self, job_dir: _job_dir.JobDirectory):
         super().__init__()
