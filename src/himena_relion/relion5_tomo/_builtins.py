@@ -684,7 +684,7 @@ class ReconstructTomogramJob(_Relion5TomoJob):
         raise NotImplementedError("This is a builtin job placeholder.")
 
     @classmethod
-    def setup_widgets(self, widgets):
+    def setup_widgets(cls, widgets):
         @widgets["do_proj"].changed.connect
         def _on_do_proj_changed(value: bool):
             widgets["centre_proj"].enabled = value
@@ -981,7 +981,7 @@ class InitialModelTomoJob(_Relion5TomoJob, InitialModelJob):
         raise NotImplementedError("This is a builtin job placeholder.")
 
     @classmethod
-    def setup_widgets(self, widgets):
+    def setup_widgets(cls, widgets):
         @widgets["do_ctf_correction"].changed.connect
         def _on_do_ctf_correction_changed(value: bool):
             widgets["ctf_intact_first_peak"].enabled = value
@@ -1292,7 +1292,7 @@ class ReconstructParticlesJob(_Relion5TomoJob):
         return None
 
     @classmethod
-    def setup_widgets(self, widgets):
+    def setup_widgets(cls, widgets):
         @widgets["do_helix"].changed.connect
         def _on_do_helix_changed(value: bool):
             for name, child in widgets.items():

@@ -66,6 +66,11 @@ def _optimiser_last_iter(path: Path) -> str:
     return str(files[-1]) if files else ""
 
 
+def _particles_last_iter(path: Path) -> str:
+    files = sorted(path.glob("run_it???_data.star"))
+    return str(files[-1]) if files else ""
+
+
 connect_jobs(
     _spa.Class2DJob,
     _spa.SelectClassesInteractiveJob,
@@ -77,18 +82,63 @@ connect_jobs(
     node_mapping={_optimiser_last_iter: "fn_classes"},
 )
 connect_jobs(
-    _spa.SelectClassesInteractiveJob,
+    _spa.SelectClassesInteractiveJob, _spa.InitialModelJob, {"particles.star": "fn_img"}
+)
+for class3d_job in [_spa.Class3DJob, _spa.Class3DNoAlignmentJob]:
+    connect_jobs(
+        _spa.InitialModelJob,
+        class3d_job,
+        {
+            _particles_last_iter: "fn_img",
+            "initial_model.mrc": "fn_ref",
+        },
+    )
+    connect_jobs(
+        class3d_job,
+        _spa.SelectClassesInteractiveJob,
+        node_mapping={_optimiser_last_iter: "fn_classes"},
+    )
+    connect_jobs(
+        class3d_job,
+        _spa.Refine3DJob,
+        node_mapping={"run_class001.mrc": "fn_ref"},
+    )
+    connect_jobs(
+        class3d_job,
+        _spa.AutoPickTemplateJob,
+        node_mapping={"run_class001.mrc": "fn_ref3d_autopick"},
+        value_mapping={"do_ref3d": True},
+    )
+connect_jobs(
     _spa.InitialModelJob,
+    _spa.AutoPickTemplateJob,
+    connect_jobs(
+        class3d_job,
+        _spa.AutoPickTemplateJob,
+        node_mapping={"initial_model.mrc": "fn_ref3d_autopick"},
+        value_mapping={"do_ref3d": True},
+    ),
 )
 connect_jobs(
-    _spa.Class3DJob,
-    _spa.SelectClassesInteractiveJob,
-    node_mapping={_optimiser_last_iter: "fn_classes"},
-)
-connect_jobs(
-    _spa.Class3DJob,
     _spa.Refine3DJob,
-    node_mapping={"run_class001.mrc": "fn_ref"},
+    _spa.AutoPickTemplateJob,
+    connect_jobs(
+        class3d_job,
+        _spa.AutoPickTemplateJob,
+        node_mapping={"run_class001.mrc": "fn_ref3d_autopick"},
+        value_mapping={"do_ref3d": True},
+    ),
+)
+connect_jobs(
+    _spa.InitialModelJob,
+    _spa.Refine3DJob,
+    {
+        _particles_last_iter: "fn_img",
+        "initial_model.mrc": "fn_ref",
+    },
+)
+connect_jobs(
+    _spa.SelectClassesInteractiveJob, _spa.Refine3DJob, {"particles.star": "fn_img"}
 )
 connect_jobs(
     _spa.Refine3DJob,
@@ -99,4 +149,49 @@ connect_jobs(
     _spa.Refine3DJob,
     _spa.PostProcessJob,
     node_mapping={"run_half1_class001_unfil.mrc": "fn_in"},
+)
+
+
+def mask_create_search_halfmap(path: Path) -> str | None:
+    parents = JobDirectory(path).parent_jobs()
+    for p in parents:
+        type_label = p.job_type_label()
+        if type_label.startswith("relion.refine3d"):
+            half_map_path = p.path / "run_half1_class001_unfil.mrc"
+            if half_map_path.exists():
+                return str(half_map_path)
+        elif type_label == "relion.reconstructparticletomo":
+            half_map_path = p.path / "half1.mrc"
+            if half_map_path.exists():
+                return str(half_map_path)
+    return None
+
+
+def postprocess_search_particles(path: Path) -> str | None:
+    parents = JobDirectory(path).parent_jobs()
+    for p in parents:
+        type_label = p.job_type_label()
+        if type_label.startswith("relion.refine3d"):
+            particles_path = p.path / "run_data.star"
+            if particles_path.exists():
+                return str(particles_path)
+    return None
+
+
+connect_jobs(
+    _spa.MaskCreationJob,
+    _spa.PostProcessJob,
+    node_mapping={
+        mask_create_search_halfmap: "fn_in",
+        "mask.mrc": "fn_mask",
+    },
+)
+
+connect_jobs(
+    _spa.PostProcessJob,
+    _spa.CtfRefineJob,
+    node_mapping={
+        postprocess_search_particles: "fn_data",
+        "postprocess.star": "fn_post",
+    },
 )

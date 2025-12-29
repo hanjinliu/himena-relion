@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from magicgui.widgets.bases import ValueWidget
 from himena_relion._job_class import _RelionBuiltinJob, parse_string
@@ -372,6 +372,13 @@ GPU_IDS_TYPE = Annotated[str, {"label": "GPU IDs to use", "group": "Compute"}]
 USE_FAST_SUBSET_TYPE = Annotated[
     bool, {"label": "Use fast subsets", "group": "Compute"}
 ]
+# class 3d
+LOCAL_ANG_SEARCH_TYPE = Annotated[
+    bool, {"label": "Perform local angular searches", "group": "Sampling"}
+]
+HIGH_RES_LIMIT_TYPE = Annotated[
+    float, {"label": "High-resolution limit (A)", "group": "Optimisation"}
+]
 # sharpen
 B_FACTOR_TYPE = Annotated[
     dict,
@@ -714,7 +721,7 @@ class ManualPickJob(_Relion5Job):
         raise NotImplementedError("This is a builtin job placeholder.")
 
     @classmethod
-    def setup_widgets(self, widgets):
+    def setup_widgets(cls, widgets):
         @widgets["filter_method"].changed.connect
         def _on_filter_method_changed(value: str):
             widgets["lowpass"].enabled = value == "Band-pass"
@@ -1441,7 +1448,7 @@ class Class2DJob(_Relion5Job):
         raise NotImplementedError("This is a builtin job placeholder.")
 
     @classmethod
-    def setup_widgets(self, widgets):
+    def setup_widgets(cls, widgets):
         @widgets["do_helix"].changed.connect
         def _on_do_helix_changed(value: bool):
             widgets["helical_tube_outer_diameter"].enabled = value
@@ -1507,7 +1514,7 @@ class InitialModelJob(_Relion5Job):
         raise NotImplementedError("This is a builtin job placeholder.")
 
     @classmethod
-    def setup_widgets(self, widgets):
+    def setup_widgets(cls, widgets):
         @widgets["do_ctf_correction"].changed.connect
         def _on_do_ctf_correction_changed(value: bool):
             widgets["ctf_intact_first_peak"].enabled = value
@@ -1515,7 +1522,7 @@ class InitialModelJob(_Relion5Job):
         widgets["ctf_intact_first_peak"].enabled = widgets["do_ctf_correction"].value
 
 
-class Class3DJob(_Relion5Job):
+class Class3DJobBase(_Relion5Job):
     """3D classification."""
 
     @classmethod
@@ -1580,9 +1587,53 @@ class Class3DJob(_Relion5Job):
         kwargs.pop("fn_cont", None)
         return super().normalize_kwargs_inv(**kwargs)
 
+    @classmethod
+    def setup_widgets(cls, widgets):
+        @widgets["do_local_ang_searches"].changed.connect
+        def _on_do_local_ang_searches_changed(value: bool):
+            widgets["sigma_angles"].enabled = value
+            widgets["relax_sym"].enabled = value
+
+        @widgets["do_ctf_correction"].changed.connect
+        def _on_do_ctf_correction_changed(value: bool):
+            widgets["ctf_intact_first_peak"].enabled = value
+
+        widgets["sigma_angles"].enabled = widgets["do_local_ang_searches"].value
+        widgets["relax_sym"].enabled = widgets["do_local_ang_searches"].value
+        widgets["ctf_intact_first_peak"].enabled = widgets["do_ctf_correction"].value
+
+        _setup_helix_params(widgets)
+
+
+class Class3DNoAlignmentJob(Class3DJobBase):
+    @classmethod
+    def command_id(cls):
+        return super().command_id() + ".noalignment"
+
+    @classmethod
+    def param_matches(cls, job_params: dict[str, str]) -> bool:
+        return job_params.get("dont_skip_align", "Yes") == "No"
+
+    @classmethod
+    def job_title(cls):
+        return "3D Class (No Alignment)"
+
+    @classmethod
+    def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
+        kwargs = super().normalize_kwargs(**kwargs)
+        # force no alignment
+        kwargs["dont_skip_align"] = False
+        return kwargs
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
+        kwargs = super().normalize_kwargs_inv(**kwargs)
+        kwargs.pop("dont_skip_align", None)
+        return kwargs
+
     def run(
         self,
-        fn_img: IMG_TYPE = "",
+        fn_img: IN_PARTICLES = "",
         fn_ref: REF_TYPE = "",
         fn_mask: MASK_TYPE = "",
         # Reference
@@ -1599,17 +1650,87 @@ class Class3DJob(_Relion5Job):
         tau_fudge: T_TYPE = 1,
         particle_diameter: MASK_DIAMETER_TYPE = 200,
         do_zero_mask: MASK_WITH_ZEROS_TYPE = True,
-        highres_limit: Annotated[
-            float, {"label": "High-resolution limit (A)", "group": "Optimisation"}
-        ] = -1,
+        highres_limit: HIGH_RES_LIMIT_TYPE = -1,
+        do_blush: DO_BLUSH_TYPE = False,
+        # Helix
+        do_helix: DO_HELIX_TYPE = False,
+        helical_tube_diameter_range: HELICAL_TUBE_DIAMETER_RANGE_TYPE = (-1, -1),
+        rot_tilt_psi_range: ROT_TILT_PSI_RANGE_TYPE = (-1, 15, 10),
+        helical_range_distance: HELICAL_RANGE_DIST_TYPE = -1,
+        keep_tilt_prior_fixed: KEEP_TILT_PRIOR_FIXED_TYPE = True,
+        do_apply_helical_symmetry: DO_APPLY_HELICAL_SYMMETRY_TYPE = True,
+        helical_twist_initial: HELICAL_TWIST_INITIAL_TYPE = 0,
+        helical_rise_initial: HELICAL_RISE_INITIAL_TYPE = 0,
+        helical_nr_asu: HELICAL_NR_ASU_TYPE = 1,
+        helical_z_percentage: HELICAL_Z_PERCENTAGE_TYPE = 30,
+        do_local_search_helical_symmetry: DO_LOCAL_SEARCH_HELICAL_SYMMETRY_TYPE = False,
+        helical_twist_range: HELICAL_TWIST_RANGE_TYPE = (0, 0, 0),
+        helical_rise_range: HELICAL_RISE_RANGE_TYPE = (0, 0, 0),
+        # Compute
+        do_fast_subsets: USE_FAST_SUBSET_TYPE = False,
+        do_parallel_discio: USE_PARALLEL_DISC_IO_TYPE = True,
+        use_scratch: USE_SCRATCH_TYPE = False,
+        nr_pool: NUM_POOL_TYPE = 3,
+        do_pad1: Annotated[bool, {"label": "Skip padding", "group": "Compute"}] = False,
+        do_preread_images: DO_PREREAD_TYPE = False,
+        do_combine_thru_disc: DO_COMBINE_THRU_DISC_TYPE = False,
+        gpu_ids: GPU_IDS_TYPE = "",
+        # Running
+        nr_mpi: MPI_TYPE = 1,
+        nr_threads: THREAD_TYPE = 1,
+        do_queue: DO_QUEUE_TYPE = False,
+        min_dedicated: MIN_DEDICATED_TYPE = 1,
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")
+
+
+class Class3DJob(Class3DJobBase):
+    @classmethod
+    def command_id(cls):
+        return super().command_id() + ".alignment"
+
+    @classmethod
+    def param_matches(cls, job_params: dict[str, str]) -> bool:
+        return job_params.get("dont_skip_align", "Yes") == "Yes"
+
+    @classmethod
+    def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
+        kwargs = super().normalize_kwargs(**kwargs)
+        # force no alignment
+        kwargs["dont_skip_align"] = True
+        return kwargs
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
+        kwargs = super().normalize_kwargs_inv(**kwargs)
+        kwargs.pop("dont_skip_align", None)
+        return kwargs
+
+    def run(
+        self,
+        fn_img: IN_PARTICLES = "",
+        fn_ref: REF_TYPE = "",
+        fn_mask: MASK_TYPE = "",
+        # Reference
+        ref_correct_greyscale: REF_CORRECT_GRAY_TYPE = False,
+        trust_ref_size: TRUST_REF_SIZE_TYPE = True,
+        ini_high: INITIAL_LOWPASS_TYPE = 60,
+        sym_name: REF_SYMMETRY_TYPE = "C1",
+        # CTF
+        do_ctf_correction: DO_CTF_TYPE = True,
+        ctf_intact_first_peak: IGNORE_CTF_TYPE = False,
+        # Optimisation
+        nr_classes: NUM_CLASS_TYPE = 1,
+        nr_iter: NUM_ITER_TYPE = 25,
+        tau_fudge: T_TYPE = 1,
+        particle_diameter: MASK_DIAMETER_TYPE = 200,
+        do_zero_mask: MASK_WITH_ZEROS_TYPE = True,
+        highres_limit: HIGH_RES_LIMIT_TYPE = -1,
         do_blush: DO_BLUSH_TYPE = False,
         # Sampling
-        dont_skip_align: DONT_SKIP_ALIGN_TYPE = True,
         sampling: ANG_SAMPLING_TYPE = "7.5 degrees",
         offset_range_step: OFFSET_RANGE_STEP_TYPE = (5, 1),
-        do_local_ang_searches: Annotated[
-            bool, {"label": "Perform local angular searches", "group": "Sampling"}
-        ] = False,
+        do_local_ang_searches: LOCAL_ANG_SEARCH_TYPE = False,
         sigma_angles: Annotated[
             float, {"label": "Local angular search range", "group": "Sampling"}
         ] = 5,
@@ -1645,23 +1766,6 @@ class Class3DJob(_Relion5Job):
         min_dedicated: MIN_DEDICATED_TYPE = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
-
-    @classmethod
-    def setup_widgets(self, widgets):
-        @widgets["do_local_ang_searches"].changed.connect
-        def _on_do_local_ang_searches_changed(value: bool):
-            widgets["sigma_angles"].enabled = value
-            widgets["relax_sym"].enabled = value
-
-        @widgets["do_ctf_correction"].changed.connect
-        def _on_do_ctf_correction_changed(value: bool):
-            widgets["ctf_intact_first_peak"].enabled = value
-
-        widgets["sigma_angles"].enabled = widgets["do_local_ang_searches"].value
-        widgets["relax_sym"].enabled = widgets["do_local_ang_searches"].value
-        widgets["ctf_intact_first_peak"].enabled = widgets["do_ctf_correction"].value
-
-        _setup_helix_params(widgets)
 
 
 class Refine3DJob(_Relion5Job):
@@ -1731,7 +1835,7 @@ class Refine3DJob(_Relion5Job):
 
     def run(
         self,
-        fn_img: IMG_TYPE = "",
+        fn_img: IN_PARTICLES = "",
         fn_ref: REF_TYPE = "",
         fn_mask: MASK_TYPE = "",
         # Reference
@@ -1786,7 +1890,7 @@ class Refine3DJob(_Relion5Job):
         raise NotImplementedError("This is a builtin job placeholder.")
 
     @classmethod
-    def setup_widgets(self, widgets):
+    def setup_widgets(cls, widgets):
         @widgets["do_ctf_correction"].changed.connect
         def _on_do_ctf_correction_changed(value: bool):
             widgets["ctf_intact_first_peak"].enabled = value
@@ -2173,3 +2277,77 @@ class PostProcessJob(_Relion5Job):
         min_dedicated: MIN_DEDICATED_TYPE = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
+
+
+FIT_CTF_CHOICES = Literal["No", "Per-micrograph", "Per-particle"]
+
+
+class CtfRefineJob(_Relion5Job):
+    _do_ctf_args = ("do_defocus", "do_astig", "do_bfactor", "do_phase")
+
+    @classmethod
+    def type_label(cls) -> str:
+        return "relion.ctfrefine"
+
+    @classmethod
+    def normalize_kwargs(cls, **kwargs):
+        kwargs = super().normalize_kwargs(**kwargs)
+        kwargs["do_ctf"] = any(kwargs[name] != "No" for name in cls._do_ctf_args)
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs):
+        kwargs = super().normalize_kwargs_inv(**kwargs)
+        do_ctf = kwargs.pop("do_ctf", False)
+        if not do_ctf:
+            for name in cls._do_ctf_args:
+                kwargs[name] = "No"
+        return kwargs
+
+    def run(
+        self,
+        fn_data: IN_PARTICLES = "",
+        fn_post: PROCESS_TYPE = "",
+        # Fit
+        do_aniso_mag: Annotated[
+            bool, {"label": "Estimate anisotropic magnification", "group": "Fit"}
+        ] = False,
+        do_defocus: Annotated[
+            FIT_CTF_CHOICES, {"label": "Fit defocus", "group": "Fit"}
+        ] = "No",
+        do_astig: Annotated[
+            FIT_CTF_CHOICES, {"label": "Fit astigmatism", "group": "Fit"}
+        ] = "No",
+        do_bfactor: Annotated[
+            FIT_CTF_CHOICES, {"label": "Fit B-factor", "group": "Fit"}
+        ] = "No",
+        do_phase: Annotated[
+            FIT_CTF_CHOICES, {"label": "Fit phase shift", "group": "Fit"}
+        ] = "No",
+        do_tilt: Annotated[
+            bool, {"label": "Estimate beam tilt", "group": "Fit"}
+        ] = False,
+        do_trefoil: Annotated[
+            bool, {"label": "Estimate trefoil", "group": "Fit"}
+        ] = False,
+        do_4thorder: Annotated[
+            bool, {"label": "Estimate 4th order aberrations", "group": "Fit"}
+        ] = False,
+        minres: Annotated[
+            float, {"label": "Minimum resolution for fitting (A)", "group": "Fit"}
+        ] = 30,
+        # Running
+        nr_mpi: MPI_TYPE = 1,
+        nr_threads: THREAD_TYPE = 1,
+        do_queue: DO_QUEUE_TYPE = False,
+        min_dedicated: MIN_DEDICATED_TYPE = 1,
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")
+
+    @classmethod
+    def setup_widgets(cls, widgets):
+        @widgets["do_aniso_mag"].changed.connect
+        def _on_do_aniso_mag_changed(value: bool):
+            for name in cls._do_ctf_args:
+                widgets[name].enabled = not value
+
+        _on_do_aniso_mag_changed(widgets["do_aniso_mag"].value)

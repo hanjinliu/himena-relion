@@ -1,6 +1,7 @@
 from pathlib import Path
 import logging
 from himena_relion.relion5 import _builtins as _spa
+from himena_relion.relion5._connections import mask_create_search_halfmap
 from himena_relion.relion5_tomo import _builtins as _tomo
 from himena_relion._job_dir import JobDirectory
 from himena_relion._job_class import connect_jobs
@@ -297,21 +298,6 @@ connect_jobs(
 )
 
 
-def _mask_create_search_halfmap(path: Path) -> str | None:
-    parents = JobDirectory(path).parent_jobs()
-    for p in parents:
-        match p.job_type_label():
-            case "relion.refine3d.tomo":
-                half_map_path = p.path / "run_half1_class001_unfil.mrc"
-                if half_map_path.exists():
-                    return str(half_map_path)
-            case "relion.reconstructparticletomo":
-                half_map_path = p.path / "half1.mrc"
-                if half_map_path.exists():
-                    return str(half_map_path)
-    return None
-
-
 def _mask_create_search_optim(path: Path) -> str | None:
     parents = JobDirectory(path).parent_jobs()
     for p in parents:
@@ -330,7 +316,7 @@ connect_jobs(
     _spa.MaskCreationJob,
     _tomo.PostProcessTomoJob,
     node_mapping={
-        _mask_create_search_halfmap: "fn_in",
+        mask_create_search_halfmap: "fn_in",
         "mask.mrc": "fn_mask",
     },
 )
@@ -341,7 +327,7 @@ def _postprocess_search_optim(path: Path) -> str | None:
     for p in parents:
         match p.job_type_label():
             case "relion.refine3d.tomo":
-                optim_path = p.path / "optimisation_set.star"
+                optim_path = p.path / "run_optimisation_set.star"
                 if optim_path.exists():
                     return str(optim_path)
             case "relion.reconstructparticletomo":
@@ -353,35 +339,35 @@ def _postprocess_search_optim(path: Path) -> str | None:
     return None
 
 
-def _postprocess_search_halfmaps(path: Path) -> str | None:
+def postprocess_search_halfmaps(path: Path) -> str | None:
     parents = JobDirectory(path).parent_jobs()
     for p in parents:
-        match p.job_type_label():
-            case "relion.refine3d.tomo":
-                half_map_path = p.path / "run_half1_class001_unfil.mrc"
-                if half_map_path.exists():
-                    return str(half_map_path)
-            case "relion.maskcreate":
-                if out := _mask_create_search_halfmap(p.path):
-                    return out
-            case "relion.reconstructparticletomo":
-                half_map_path = p.path / "half1.mrc"
-                if half_map_path.exists():
-                    return str(half_map_path)
+        type_label = p.job_type_label()
+        if type_label.startswith("relion.refine3d"):
+            half_map_path = p.path / "run_half1_class001_unfil.mrc"
+            if half_map_path.exists():
+                return str(half_map_path)
+        elif type_label.startswith("relion.maskcreate"):
+            if out := mask_create_search_halfmap(p.path):
+                return out
+        elif type_label.startswith("relion.reconstructparticletomo"):
+            half_map_path = p.path / "half1.mrc"
+            if half_map_path.exists():
+                return str(half_map_path)
     return None
 
 
-def _postprocess_search_refmask(path: Path) -> str | None:
+def postprocess_search_refmask(path: Path) -> str | None:
     parents = JobDirectory(path).parent_jobs()
     for p in parents:
-        match p.job_type_label():
-            case "relion.maskcreate":
-                mask_path = p.path / "mask.mrc"
-                if mask_path.exists():
-                    return str(mask_path)
-            case "relion.refine3d.tomo":
-                if mask_path := p.get_job_params_as_dict().get("fn_mask", None):
-                    return mask_path
+        type_label = p.job_type_label()
+        if type_label.startswith("relion.maskcreate"):
+            mask_path = p.path / "mask.mrc"
+            if mask_path.exists():
+                return str(mask_path)
+        elif type_label.startswith("relion.refine3d"):
+            if mask_path := p.get_job_params_as_dict().get("fn_mask", None):
+                return mask_path
     return None
 
 
@@ -390,8 +376,8 @@ connect_jobs(
     _tomo.CtfRefineTomoJob,
     node_mapping={
         _postprocess_search_optim: "in_optim.in_optimisation",
-        _postprocess_search_halfmaps: "in_halfmaps",
-        _postprocess_search_refmask: "in_refmask",
+        postprocess_search_halfmaps: "in_halfmaps",
+        postprocess_search_refmask: "in_refmask",
         "postprocess.star": "in_post",
     },
 )

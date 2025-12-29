@@ -82,7 +82,7 @@ class RelionJob(ABC):
         """Run this job."""
 
     @classmethod
-    def setup_widgets(self, widgets: dict[str, ValueWidget]):
+    def setup_widgets(cls, widgets: dict[str, ValueWidget]):
         """Setup the magicgui widgets for this job.
 
         This methods is called after all the widgets are created.
