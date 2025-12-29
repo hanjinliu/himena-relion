@@ -24,7 +24,7 @@ IN_MICROGRAPHS = Annotated[
     {
         "label": "Input micrographs",
         "widget_type": PathDrop,
-        "type_label": "MicrographsData",
+        "type_label": ["MicrographsData", "MicrographGroupMetadata"],
         "group": "I/O",
     },
 ]
@@ -736,44 +736,45 @@ class _AutoPickJob(_Relion5Job):
         kwargs = super().normalize_kwargs(**kwargs)
         kwargs["continue_manual"] = False
         # template pick
-        kwargs["do_refs"] = False
-        kwargs["fn_refs_autopick"] = ""
-        kwargs["do_ref3d"] = False
-        kwargs["fn_ref3d_autopick"] = ""
-        kwargs["ref3d_symmetry"] = "C1"
-        kwargs["ref3d_sampling"] = "30 degrees"
-        kwargs["lowpass"] = 20
-        kwargs["highpass"] = -1
-        kwargs["angpix_ref"] = -1
-        kwargs["psi_sampling_autopick"] = 5
-        kwargs["do_invert_refs"] = True
-        kwargs["do_ctf_autopick"] = True
-        kwargs["do_ignore_first_ctfpeak_autopick"] = False
-
-        # LoG
-        kwargs["do_log"] = False
-        kwargs["log_diam_min"] = 200
-        kwargs["log_diam_max"] = 250
-        kwargs["log_invert"] = False
-        kwargs["log_maxres"] = 20
-        kwargs["log_adjust_thr"] = 0
-        kwargs["log_upper_thr"] = 999
-
-        # Topaz
-        kwargs["do_topaz"] = False
-        kwargs["do_topaz_filaments"] = False
-        kwargs["do_topaz_pick"] = False
-        kwargs["do_topaz_train"] = False
-        kwargs["do_topaz_train_parts"] = False
-        kwargs["fn_topaz_exe"] = "relion_python_topaz"
-        kwargs["topaz_filament_threshold"] = -5
-        kwargs["topaz_hough_length"] = -1
-        kwargs["topaz_model"] = ""
-        kwargs["topaz_nr_particles"] = -1
-        kwargs["topaz_other_args"] = ""
-        kwargs["topaz_particle_diameter"] = -1
-        kwargs["topaz_train_parts"] = ""
-        kwargs["topaz_train_picks"] = ""
+        for key, value in [
+            ("do_refs", False),
+            ("fn_refs_autopick", ""),
+            ("do_ref3d", False),
+            ("fn_ref3d_autopick", ""),
+            ("ref3d_symmetry", "C1"),
+            ("ref3d_sampling", "30 degrees"),
+            ("lowpass", 20),
+            ("highpass", -1),
+            ("angpix_ref", -1),
+            ("psi_sampling_autopick", 5),
+            ("do_invert_refs", True),
+            ("do_ctf_autopick", True),
+            ("do_ignore_first_ctfpeak_autopick", False),
+            # LoG
+            ("do_log", False),
+            ("log_diam_min", 200),
+            ("log_diam_max", 250),
+            ("log_invert", False),
+            ("log_maxres", 20),
+            ("log_adjust_thr", 0),
+            ("log_upper_thr", 999),
+            # Topaz
+            ("do_topaz", False),
+            ("do_topaz_filaments", False),
+            ("do_topaz_pick", False),
+            ("do_topaz_train", False),
+            ("do_topaz_train_parts", False),
+            ("fn_topaz_exe", "relion_python_topaz"),
+            ("topaz_filament_threshold", -5),
+            ("topaz_hough_length", -1),
+            ("topaz_model", ""),
+            ("topaz_nr_particles", -1),
+            ("topaz_other_args", ""),
+            ("topaz_particle_diameter", -1),
+            ("topaz_train_parts", ""),
+            ("topaz_train_picks", ""),
+        ]:
+            kwargs.setdefault(key, value)
 
         # others
         kwargs["use_gpu"] = kwargs["gpu_ids"] != ""
@@ -895,9 +896,6 @@ class AutoPickTemplate2DJob(_AutoPickJob):
         kwargs = super().normalize_kwargs(**kwargs)
         kwargs["do_refs"] = True
         kwargs["do_ref3d"] = False
-        kwargs["fn_ref3d_autopick"] = ""
-        kwargs["ref3d_symmetry"] = "C1"
-        kwargs["ref3d_sampling"] = "30 degrees"
         return kwargs
 
     @classmethod
@@ -1098,6 +1096,21 @@ class AutoPickTemplate3DJob(_AutoPickJob):
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
+    @classmethod
+    def setup_widgets(cls, widgets):
+        @widgets["do_pick_helical_segments"].changed.connect
+        def _on_do_pick_helical_segments_changed(value: bool):
+            widgets["helical_tube_outer_diameter"].enabled = value
+            widgets["helical_tube_length_min"].enabled = value
+            widgets["helical_tube_kappa_max"].enabled = value
+            widgets["helical_nr_asu"].enabled = value
+            widgets["helical_rise"].enabled = value
+            widgets["do_amyloid"].enabled = value
+
+        _on_do_pick_helical_segments_changed(
+            widgets["do_pick_helical_segments"].value
+        )  # initialize
+
 
 class AutoPickTopazTrain(_AutoPickJob):
     @classmethod
@@ -1294,12 +1307,16 @@ class ExtractJobBase(_Relion5Job):
         kwargs = super().normalize_kwargs(**kwargs)
 
         # common defaults
-        kwargs["star_mics"] = ""
-        kwargs["coords_suffix"] = ""
-        kwargs["do_reextract"] = False
-        kwargs["fndata_reextract"] = ""
-        kwargs["do_reset_offsets"] = False
-        kwargs["do_recenter"] = True
+        for key, value in [
+            ("star_mics", ""),
+            ("coords_suffix", ""),
+            ("do_reextract", False),
+            ("fndata_reextract", ""),
+            ("do_reset_offsets", False),
+            ("do_recenter", True),
+        ]:
+            kwargs.setdefault(key, value)
+
         kwargs["recenter_x"], kwargs["recenter_y"], kwargs["recenter_z"] = (0, 0, 0)
 
         # normalize
@@ -1457,10 +1474,13 @@ class Class2DJob(_Relion5Job):
         kwargs = super().normalize_kwargs(**kwargs)
         kwargs["fn_cont"] = ""
         # default
-        kwargs["do_em"] = False
-        kwargs["nr_iter_em"] = 25
-        kwargs["do_grad"] = False
-        kwargs["nr_iter_grad"] = 200
+        for key, value in [
+            ("do_em", False),
+            ("nr_iter_em", 25),
+            ("do_grad", True),
+            ("nr_iter_grad", 200),
+        ]:
+            kwargs.setdefault(key, value)
 
         algo = kwargs.pop("algorithm")
         if algo["algorith"] == "EM":

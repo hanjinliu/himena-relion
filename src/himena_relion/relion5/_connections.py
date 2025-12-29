@@ -111,12 +111,12 @@ for class3d_job in [_spa.Class3DJob, _spa.Class3DNoAlignmentJob]:
     )
 connect_jobs(
     _spa.InitialModelJob,
-    _spa.AutoPickTemplate2DJob,
+    _spa.AutoPickTemplate3DJob,
     node_mapping={"initial_model.mrc": "fn_ref3d_autopick"},
 )
 connect_jobs(
     _spa.Refine3DJob,
-    _spa.AutoPickTemplate2DJob,
+    _spa.AutoPickTemplate3DJob,
     node_mapping={"run_class001.mrc": "fn_ref3d_autopick"},
 )
 connect_jobs(
