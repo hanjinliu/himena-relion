@@ -829,7 +829,7 @@ class AutoPickLogJob(_AutoPickJob):
             "ref3d_symmetry",
         ]
         for key in kwargs:
-            if key.startswith(("do_topaz", "topaz_")):
+            if key.startswith(("do_topaz_", "topaz_")):
                 keys_to_pop.append(key)
         for key in keys_to_pop:
             kwargs.pop(key, None)
@@ -930,10 +930,9 @@ class AutoPickTemplate2DJob(_AutoPickJob):
             "do_log",
             "do_ref3d",
             "do_refs",
-            "log_upper_thr",
         ]
         for key in kwargs:
-            if key.startswith(("do_topaz", "topaz_")):
+            if key.startswith(("do_topaz_", "topaz_", "log_")):
                 keys_to_pop.append(key)
         for key in keys_to_pop:
             kwargs.pop(key, None)
@@ -1049,6 +1048,19 @@ class AutoPickTemplate3DJob(_AutoPickJob):
     @classmethod
     def normalize_kwargs_inv(cls, **kwargs):
         kwargs = super().normalize_kwargs_inv(**kwargs)
+        keys_to_pop = [
+            "continue_manual",
+            "do_log",
+            "do_ref3d",
+            "do_refs",
+            "log_upper_thr",
+            "fn_topaz_exe",
+        ]
+        for key in kwargs:
+            if key.startswith(("do_topaz_", "topaz_")):
+                keys_to_pop.append(key)
+        for key in keys_to_pop:
+            kwargs.pop(key, None)
         return kwargs
 
     def run(

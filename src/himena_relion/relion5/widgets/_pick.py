@@ -80,6 +80,7 @@ class QManualPickViewer(QJobScrollArea):
         arr = np.column_stack(
             [np.zeros(len(self._coords.x)), self._coords.y, self._coords.x]
         )
+        print("update points:", arr.shape)
         image_scale = self._filter_widget._image_scale
         bins = self._filter_widget.bin_factor()
         try:
