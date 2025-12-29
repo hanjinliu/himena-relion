@@ -194,6 +194,26 @@ DO_CTF_TYPE = Annotated[bool, {"label": "Do CTF correction", "group": "CTF"}]
 IGNORE_CTF_TYPE = Annotated[
     bool, {"label": "Ignore CTFs until first peak", "group": "CTF"}
 ]
+# Extract
+EXTRACT_SIZE_TYPE = Annotated[
+    int, {"label": "Particle box size (pix)", "group": "Extract"}
+]
+EXTRACT_RESCALE_TYPE = Annotated[
+    int, {"label": "Rescaled box size (pix)", "group": "Extract"}
+]
+EXTRACT_INVERT_TYPE = Annotated[bool, {"label": "Invert contrast", "group": "Extract"}]
+EXTRACT_NORM_TYPE = Annotated[
+    bool, {"label": "Normalize particles", "group": "Extract"}
+]
+EXTRACT_DIAMETER_TYPE = Annotated[
+    float, {"label": "Diameter of background circle (pix)", "group": "Extract"}
+]
+EXTRACT_WIGHT_DUST_TYPE = Annotated[
+    float, {"label": "Stddev for white dust removal", "group": "Extract"}
+]
+EXTRACT_BLACK_DUST_TYPE = Annotated[
+    float, {"label": "Stddev for black dust removal", "group": "Extract"}
+]
 # Reference
 REF_SYMMETRY_TYPE = Annotated[str, {"label": "Symmetry", "group": "Reference"}]
 REF_CORRECT_GRAY_TYPE = Annotated[
@@ -622,16 +642,23 @@ class ManualPickJob(_Relion5Job):
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
         kwargs = super().normalize_kwargs(**kwargs)
-        filt_method = kwargs.get("filter_method", "Band-pass")
-        kwargs["do_topaz_denoise"] = filt_method == "Topaz"
+        filter_method = kwargs.pop("filter_method", "Band-pass")
+        kwargs["do_topaz_denoise"] = filter_method == "Topaz"
+        kwargs["do_fom_threshold"] = kwargs["minimum_pick_fom"] is not None
+        if kwargs["do_fom_threshold"]:
+            kwargs["minimum_pick_fom"] = 0
         return kwargs
 
     @classmethod
     def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
         kwargs = super().normalize_kwargs_inv(**kwargs)
-        kwargs["filt_method"] = (
-            "Topaz" if kwargs.get("do_topaz_denoise", False) else "Band-pass"
+        kwargs["filter_method"] = (
+            "Topaz" if kwargs.pop("do_topaz_denoise", False) else "Band-pass"
         )
+        if not kwargs.pop("do_fom_threshold", False):
+            kwargs["minimum_pick_fom"] = None
+        for name in ["do_queue", "min_dedicated"]:
+            kwargs.pop(name, None)
         return kwargs
 
     def run(
@@ -640,13 +667,10 @@ class ManualPickJob(_Relion5Job):
         do_startend: Annotated[
             bool, {"label": "Pick star-end coordinates helices", "group": "I/O"}
         ] = False,
-        do_fom_threshold: Annotated[
-            bool, {"label": "Use autopick FOM threshold", "group": "I/O"}
-        ] = False,
         minimum_pick_fom: Annotated[
-            float,
+            float | None,
             {"label": "Minimum autopick FOM", "min": -10, "max": 10, "group": "I/O"},
-        ] = 5.0,
+        ] = None,
         # Display
         diameter: Annotated[
             float, {"label": "Particle diameter (A)", "group": "Display"}
@@ -697,12 +721,6 @@ class ManualPickJob(_Relion5Job):
             widgets["highpass"].enabled = value == "Band-pass"
 
         _on_filter_method_changed(widgets["filter_method"].value)  # initialize
-
-        @widgets["do_fom_threshold"].changed.connect
-        def _on_do_fom_threshold_changed(value: bool):
-            widgets["minimum_pick_fom"].enabled = value
-
-        _on_do_fom_threshold_changed(widgets["do_fom_threshold"].value)  # initialize
 
 
 class _AutoPickJob(_Relion5Job):
@@ -1153,21 +1171,121 @@ class AutoPickTopazPick(_AutoPickJob):
         raise NotImplementedError("This is a builtin job placeholder.")
 
 
-class ExtractJob(_Relion5Job):
+class ExtractJobBase(_Relion5Job):
+    @classmethod
+    def normalize_kwargs(cls, **kwargs):
+        kwargs = super().normalize_kwargs(**kwargs)
+
+        # common defaults
+        kwargs["star_mics"] = ""
+        kwargs["coords_suffix"] = ""
+        kwargs["do_reextract"] = False
+        kwargs["fndata_reextract"] = ""
+        kwargs["do_reset_offsets"] = False
+        kwargs["do_recenter"] = True
+        kwargs["recenter_x"], kwargs["recenter_y"], kwargs["recenter_z"] = (0, 0, 0)
+
+        # normalize
+        kwargs["do_rescale"] = kwargs["extract_size"] != kwargs.get["rescale"]
+        kwargs["do_fom_threshold"] = kwargs.get("minimum_pick_fom", None) is not None
+        return kwargs
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs):
+        kwargs = super().normalize_kwargs_inv(**kwargs)
+        kwargs.pop("do_reextract", None)
+        kwargs.pop("do_recenter", None)
+        if kwargs.pop("do_fom_threshold"):
+            pass
+        else:
+            kwargs["minimum_pick_fom"] = None
+        return kwargs
+
+
+class ExtractJob(ExtractJobBase):
     """Particle extraction from micrographs."""
 
     @classmethod
     def type_label(cls) -> str:
         return "relion.extract"
 
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs):
+        kwargs = super().normalize_kwargs_inv(**kwargs)
+        for name in [
+            "fndata_reextract",
+            "do_reset_offsets",
+            "do_recenter",
+            "recenter_x",
+            "recenter_y",
+            "recenter_z",
+            "do_rescale",
+        ]:
+            kwargs.pop(name, None)
+        return kwargs
+
     def run(
         self,
         # I/O
         star_mics: IN_MICROGRAPHS = "",
         coords_suffix: IN_COORDINATES = "",
-        do_reextract: Annotated[
-            bool, {"label": "Re-extract refined particles", "group": "I/O"}
-        ] = False,
+        do_float16: DO_F16_TYPE = True,
+        # Extract
+        extract_size: EXTRACT_SIZE_TYPE = 128,
+        rescale: EXTRACT_RESCALE_TYPE = 128,
+        do_invert: EXTRACT_INVERT_TYPE = True,
+        do_norm: EXTRACT_NORM_TYPE = True,
+        bg_diameter: EXTRACT_DIAMETER_TYPE = -1,
+        white_dust: EXTRACT_WIGHT_DUST_TYPE = -1,
+        black_dust: EXTRACT_BLACK_DUST_TYPE = -1,
+        minimum_pick_fom: Annotated[
+            float | None, {"label": "Minimum autopick FOM", "group": "Extract"}
+        ] = None,
+        # Helix
+        do_extract_helix: DO_HELIX_TYPE = False,
+        helical_tube_outer_diameter: HELICAL_TUBE_DIAMETER_TYPE = 200,
+        helical_bimodal_angular_priors: Annotated[
+            bool, {"label": "Use bimodal angular priors", "group": "Helix"}
+        ] = True,
+        do_extract_helical_tubes: Annotated[
+            bool, {"label": "Coordinates are star-end only", "group": "Helix"}
+        ] = True,
+        do_cut_into_segments: Annotated[
+            bool, {"label": "Cut helical tubes into segments"}
+        ] = True,
+        helical_nr_asu: HELICAL_NR_ASU_TYPE = 1,
+        helical_rise: HELICAL_RISE_TYPE = 1,
+        # Running
+        nr_mpi: MPI_TYPE = 1,
+        do_queue: DO_QUEUE_TYPE = False,
+        min_dedicated: MIN_DEDICATED_TYPE = 1,
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")
+
+
+class ReExtractJob(ExtractJobBase):
+    """Particle re-extraction from micrographs."""
+
+    @classmethod
+    def type_label(cls) -> str:
+        return "relion.extract.reextract"
+
+    @classmethod
+    def normalize_kwargs(cls, **kwargs):
+        kwargs = super().normalize_kwargs(**kwargs)
+        kwargs["do_reextract"] = True
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs):
+        kwargs = super().normalize_kwargs_inv(**kwargs)
+        for name in ["star_mics", "coords_suffix", "do_rescale"]:
+            kwargs.pop(name, None)
+        kwargs["recenter"] = tuple(kwargs.pop(f"recenter_{x}", 0) for x in "xyz")
+        return kwargs
+
+    def run(
+        self,
+        # I/O
         fndata_reextract: Annotated[
             str, {"label": "STAR file with refined particles", "group": "I/O"}
         ] = "",
@@ -1177,41 +1295,19 @@ class ExtractJob(_Relion5Job):
         do_recenter: Annotated[
             bool, {"label": "Recenter refined coordinates", "group": "I/O"}
         ] = True,
-        recenter_x: Annotated[int, {"group": "I/O"}] = 0,
-        recenter_y: Annotated[int, {"group": "I/O"}] = 0,
-        recenter_z: Annotated[int, {"group": "I/O"}] = 0,
+        recenter: Annotated[tuple[float], {"group": "I/O"}] = (0, 0, 0),
         do_float16: DO_F16_TYPE = True,
         # Extract
-        extract_size: Annotated[
-            int, {"label": "Particle box size (pix)", "group": "Extract"}
-        ] = 128,
-        do_invert: Annotated[
-            bool, {"label": "Invert contrast", "group": "Extract"}
-        ] = True,
-        do_norm: Annotated[
-            bool, {"label": "Normalize particles", "group": "Extract"}
-        ] = True,
-        bg_diameter: Annotated[
-            float, {"label": "Diameter of background circle (pix)", "group": "Extract"}
-        ] = -1,
-        white_dust: Annotated[
-            float, {"label": "Stddev for white dust removal", "group": "Extract"}
-        ] = -1,
-        black_dust: Annotated[
-            float, {"label": "Stddev for black dust removal", "group": "Extract"}
-        ] = -1,
-        do_rescale: Annotated[
-            bool, {"label": "Rescale particles", "group": "Extract"}
-        ] = False,
-        rescale: Annotated[
-            int, {"label": "Rescaled box size (pix)", "group": "Extract"}
-        ] = 128,
-        do_fom_threshold: Annotated[
-            bool, {"label": "Use autopick FOM threshold", "group": "Extract"}
-        ] = False,
+        extract_size: EXTRACT_SIZE_TYPE = 128,
+        rescale: EXTRACT_RESCALE_TYPE = 128,
+        do_invert: EXTRACT_INVERT_TYPE = True,
+        do_norm: EXTRACT_NORM_TYPE = True,
+        bg_diameter: EXTRACT_DIAMETER_TYPE = -1,
+        white_dust: EXTRACT_WIGHT_DUST_TYPE = -1,
+        black_dust: EXTRACT_BLACK_DUST_TYPE = -1,
         minimum_pick_fom: Annotated[
-            float, {"label": "Minimum autopick FOM", "group": "Extract"}
-        ] = 0,
+            float | None, {"label": "Minimum autopick FOM", "group": "Extract"}
+        ] = None,
         # Helix
         do_extract_helix: DO_HELIX_TYPE = False,
         helical_tube_outer_diameter: HELICAL_TUBE_DIAMETER_TYPE = 200,
@@ -1261,8 +1357,8 @@ class Class2DJob(_Relion5Job):
     @classmethod
     def normalize_kwargs_inv(cls, **kwargs):
         kwargs = super().normalize_kwargs_inv(**kwargs)
-        nr_iter_em = kwargs.get("nr_iter_em", 25)
-        nr_iter_grad = kwargs.get("nr_iter_grad", 200)
+        nr_iter_em = kwargs.pop("nr_iter_em", 25)
+        nr_iter_grad = kwargs.pop("nr_iter_grad", 200)
         if kwargs.pop("do_em", False):
             kwargs["algorithm"] = {
                 "algorithm": "EM",

@@ -12,6 +12,8 @@ class QMicrographListWidget(QtW.QTableWidget):
         self.setHorizontalHeaderLabels(list(columns))
         self.horizontalHeader().setVisible(len(columns) > 1)
         self.horizontalHeader().setStretchLastSection(True)
+        self.horizontalHeader().setFixedHeight(15)
+        self.setEditTriggers(QtW.QAbstractItemView.EditTrigger.NoEditTriggers)
         self.itemSelectionChanged.connect(self._on_selection_changed)
 
     def set_choices(self, choices: list[tuple[str, ...]]):

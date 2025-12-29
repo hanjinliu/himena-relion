@@ -1,5 +1,6 @@
 from pathlib import Path
 from himena_relion._job_class import connect_jobs
+from himena_relion._job_dir import JobDirectory
 from himena_relion.relion5 import _builtins as _spa
 
 connect_jobs(
@@ -22,6 +23,23 @@ connect_jobs(
     _spa.ManualPickJob,
     node_mapping={"micrographs_ctf.star": "fn_in"},
 )
+connect_jobs(
+    _spa.ManualPickJob,
+    _spa.ExtractJob,
+    node_mapping={
+        "micrographs_selected.star": "star_mics",
+        "manualpick.star": "coords_suffix",
+    },
+)
+
+
+# Autopick connections
+def _get_micrograph_ctf_star(path: Path) -> str | None:
+    pipeline = JobDirectory(path).parse_job_pipeline()
+    if in0 := pipeline.get_input_by_type("MicrographGroupMetadata"):
+        return str(in0.path)
+
+
 for autopick_job in [
     _spa.AutoPickTemplateJob,
     _spa.AutoPickLogJob,
@@ -32,6 +50,14 @@ for autopick_job in [
         _spa.CtfEstimationJob,
         autopick_job,
         node_mapping={"micrographs_ctf.star": "fn_input_autopick"},
+    )
+    connect_jobs(
+        autopick_job,
+        _spa.ExtractJob,
+        node_mapping={
+            _get_micrograph_ctf_star: "star_mics",
+            "autopick.star": "coords_suffix",
+        },
     )
 
 

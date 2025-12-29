@@ -7,7 +7,8 @@ import inspect
 import logging
 import subprocess
 import tempfile
-from typing import Any, Callable, Generator, get_origin, TYPE_CHECKING
+from types import NoneType, UnionType
+from typing import Any, Callable, Generator, Union, get_args, get_origin, TYPE_CHECKING
 from pathlib import Path
 from magicgui.widgets.bases import ValueWidget
 
@@ -412,6 +413,14 @@ def _split_list_and_arg(typ: Any) -> tuple[Any, Any]:
 def parse_string(s: Any, typ: Any) -> Any:
     if isinstance(typ, str):
         raise TypeError("Type annotation cannot be a string instance")
+    if get_origin(typ) in (Union, UnionType):
+        args = get_args(typ)
+        if len(args) == 2 and NoneType in args:
+            # Union[T, None] or T | None
+            non_none_type = args[0] if args[1] is NoneType else args[1]
+            if s in ("", "None", None):
+                return None
+            return parse_string(s, non_none_type)
     if typ is str:
         return s
     elif typ is int:

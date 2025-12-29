@@ -61,6 +61,7 @@ class QManualPickViewer(QJobScrollArea):
         arr = df_coords[["rlnCoordinateY", "rlnCoordinateX"]].to_numpy()
         arr = np.column_stack((np.zeros(arr.shape[0], dtype=arr.dtype), arr))
         # TODO: use correct size
+        print(arr.shape)
         self._viewer.set_points(
             arr,
             size=10,
