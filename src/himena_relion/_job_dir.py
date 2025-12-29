@@ -113,6 +113,14 @@ class JobDirectory:
         if (fp := self.relion_project_dir.joinpath(p)).exists():
             return fp
 
+    def make_relative_path(self, path: str | Path) -> Path:
+        """Make a path relative to the RELION project directory."""
+        p = Path(path).resolve()
+        try:
+            return p.relative_to(self.relion_project_dir)
+        except ValueError:
+            return p
+
     def job_normal_id(self) -> str:
         return normalize_job_id(self.path.relative_to(self.relion_project_dir))
 
@@ -1058,11 +1066,10 @@ class SelectInteractiveJobDirectory(JobDirectory):
 
     def particles_pre_star(self) -> Path | None:
         """Return the path to the pre-selection particles star file."""
-        path_opt_star = self._opt_star()
-        if not path_opt_star.exists():
-            return None
-        opt_dict = read_star(path_opt_star).first().trust_single().to_dict()
-        return self.relion_project_dir / opt_dict["rlnTomoParticlesFile"]
+        pipeline = RelionPipelineModel.validate_file(self.path / "job_pipeline.star")
+        optimizer_star_path = Path(pipeline.input_edges.from_node.iloc[0])
+        new_stem = optimizer_star_path.stem[: -len("optimiser")] + "data"
+        return self.resolve_path(optimizer_star_path.parent / f"{new_stem}.star")
 
     def is_selected_array(self) -> NDArray[np.bool_] | None:
         try:

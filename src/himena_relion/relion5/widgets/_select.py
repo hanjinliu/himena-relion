@@ -3,15 +3,12 @@ from pathlib import Path
 import logging
 import mrcfile
 import numpy as np
-import base64
-from io import BytesIO
-from PIL import Image
-from qtpy import QtWidgets as QtW, QtGui
+from qtpy import QtGui
 from starfile_rs import read_star, read_star_block
-from scipy import ndimage as ndi
 from superqt.utils import thread_worker, GeneratorWorker
 
 from himena_relion._widgets import QJobScrollArea, register_job
+from ._shared import QImageViewTextEdit
 from himena_relion import _job_dir
 from himena_relion.schemas import ModelClasses
 
@@ -22,9 +19,7 @@ class QSelectJobBase(QJobScrollArea):
     def __init__(self, job_dir: _job_dir.JobDirectory):
         super().__init__()
         self._job_dir = job_dir
-        self._text_edit = QtW.QTextEdit()
-        self._text_edit.setReadOnly(True)
-        self._text_edit.setWordWrapMode(QtGui.QTextOption.WrapMode.NoWrap)
+        self._text_edit = QImageViewTextEdit()
         self._layout.addWidget(self._text_edit)
         self._worker: GeneratorWorker | None = None
 
@@ -95,7 +90,7 @@ class QRemoveDuplicatesViewer(QSelectJobBase):
         path_sel = job_dir.particles_star()
         path_rem = job_dir.particles_removed_star()
         if not (path_sel.exists() and path_rem.exists()):
-            return "Not enough output files to display results."
+            return _NOT_ENOUGH_MSG
         yield "<h2>Summary</h2>"
         try:
             block_selected = read_star_block(path_sel, "particles").trust_loop()
@@ -120,19 +115,20 @@ class QSelectInteractiveViewer(QSelectJobBase):
     def _insert_html_class2d(self, job_dir: _job_dir.SelectInteractiveJobDirectory):
         class_avg_path = job_dir.path.joinpath("class_averages.star")
         if not class_avg_path.exists():
-            return "Not enough output files to display results."
-        model = ModelClasses.validate_file(class_avg_path)
-        model.ref_image
-        model.class_distribution
-        model.resolution
-        # plot accepted and rejected 2D classes
-
-    def _insert_html_class3d(self, job_dir: _job_dir.SelectInteractiveJobDirectory):
-        # TODO: use _model.star instead of particles.star
+            yield _NOT_ENOUGH_MSG
+            return
         path_all = job_dir.particles_pre_star()
         path_sel = job_dir.particles_star()
         if path_all is None or not (path_sel.exists() and path_all.exists()):
-            return "Not enough output files to display results."
+            yield _NOT_ENOUGH_MSG
+            return
+        model = ModelClasses.validate_file(class_avg_path)
+        class2d_path = model.ref_image[0].split("@")[1]
+        class2d_selected = {int(_id.split("@")[0]) - 1 for _id in model.ref_image}
+
+        with mrcfile.open(self._job_dir.resolve_path(class2d_path)) as mrc:
+            class2d_arr = np.asarray(mrc.data, dtype=np.float32)
+
         yield "<h2>Summary</h2>"
         try:
             block_all = read_star_block(path_all, "particles").trust_loop()
@@ -151,33 +147,80 @@ class QSelectInteractiveViewer(QSelectJobBase):
         if is_selected is None:
             return
 
-        # print selected and removed images in the text edit
-        images_selected: list[tuple[Path, np.ndarray | None]] = []
-        images_removed: list[tuple[Path, np.ndarray | None]] = []
-        for path, is_sel in zip(job_dir.class_map_paths(is_selected.size), is_selected):
+        # print selected and removed HTML images in the text edit
+        images_selected: list[str] = []
+        images_removed: list[str] = []
+        for ith in range(len(class2d_arr)):
+            if ith in class2d_selected:
+                img = class2d_arr[ith]
+                images_selected.append(self._text_edit.image_to_base64(img, str(ith)))
+            else:
+                images_removed.append(self._text_edit.image_to_base64(img, str(ith)))
+
+        for images, msg in [
+            (images_selected, "<h2>Selected Images</h2><br>"),
+            (images_removed, "<br><h2>Removed Images</h2><br>"),
+        ]:
+            yield msg
+            for img_str in images:
+                yield f'<img src="data:image/png;base64,{img_str}"/>'
+
+    def _insert_html_class3d(self, job_dir: _job_dir.SelectInteractiveJobDirectory):
+        path_all = job_dir.particles_pre_star()
+        path_sel = job_dir.particles_star()
+        if path_all is None or not (path_sel.exists() and path_all.exists()):
+            yield _NOT_ENOUGH_MSG
+            return
+        yield "<h2>Summary</h2>"
+        try:
+            block_all = read_star_block(path_all, "particles").trust_loop()
+            block_selected = read_star_block(path_sel, "particles").trust_loop()
+        except Exception:
+            return "Output file is broken or missing."
+        n_all = len(block_all)
+        if n_all == 0:
+            return
+        n_selected = len(block_selected)
+        n_removed = n_all - n_selected
+
+        yield self._get_summary_table(n_selected, n_removed, n_all)
+
+        is_selected = job_dir.is_selected_array()
+        if is_selected is None:
+            return
+
+        # print selected and removed HTML images in the text edit
+        images_selected: list[tuple[str, list[str]]] = []
+        images_removed: list[tuple[str, list[str]]] = []
+        for ith, (path, is_sel) in enumerate(
+            zip(job_dir.class_map_paths(is_selected.size), is_selected)
+        ):
             if path is not None:
                 with mrcfile.open(path) as mrc:
                     array = np.asarray(mrc.data)
-                # Calculate zoom factor to rescale to 128x128
-                current_shape = array.shape
-                zoom_factor = [96 / s for s in current_shape]
-                array = ndi.zoom(array, zoom_factor, order=1)
-                min0, max0 = array.min(), array.max()
-                _array_rescaled = (
-                    (array.clip(min0, max0) - min0) / (max0 - min0) * 255.0
-                )
-                array = _array_rescaled.astype(np.uint8)
-            else:
-                array = None
-            if is_sel:
-                images_selected.append((path, array))
-            else:
-                images_removed.append((path, array))
 
-        yield "<h2>Selected Images</h2><br>"
-        yield from yield_projections(images_selected)
-        yield "<br><h2>Removed Images</h2><br>"
-        yield from yield_projections(images_removed)
+                projs = [
+                    self._text_edit.image_to_base64(array.max(axis=axis), str(ith))
+                    for axis in range(3)
+                ]
+            else:
+                projs = []
+            path_rel = job_dir.make_relative_path(path)
+            if is_sel:
+                images_selected.append((path_rel, projs))
+            else:
+                images_removed.append((path_rel, projs))
+
+        for images, msg in [
+            (images_selected, "<h2>Selected Images</h2><br>"),
+            (images_removed, "<br><h2>Removed Images</h2><br>"),
+        ]:
+            yield msg
+            for path, projs in images:
+                yield f"<b>{path}</b><br>"
+                for proj in projs:
+                    yield f'<img src="data:image/png;base64,{proj}"/>'
+                yield "<br>"
 
 
 @register_job("relion.select.split")
@@ -197,20 +240,4 @@ class SplitParticlesViewer(QSelectJobBase):
             yield "<br><br>"
 
 
-def yield_projections(images: list[tuple[Path, np.ndarray | None]]):
-    for path, img in images:
-        pathname = "/".join(path.parts[-3:])
-        yield f"<b>{pathname}</b><br>"
-        if img is None:
-            yield "No Image<br>"
-        else:
-            for axis in range(3):
-                proj = img.max(axis=axis)
-
-                pil_img = Image.fromarray(proj)
-                buffer = BytesIO()
-                pil_img.save(buffer, format="PNG")
-                img_str = base64.b64encode(buffer.getvalue()).decode()
-                yield f'<img src="data:image/png;base64,{img_str}"/>'
-
-            yield "<br>"
+_NOT_ENOUGH_MSG = "Not enough output files to display results."

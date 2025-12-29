@@ -25,8 +25,8 @@ class QClass2DViewer(QJobScrollArea):
         self._job_dir = job_dir
         layout = self._layout
         self._sort_by = QtW.QComboBox()
-        self._sort_by.addItems(["No", "Particle number", "Resolution"])
-        self._sort_by.setCurrentIndex(0)
+        self._sort_by.addItems(["Index", "Particle number", "Resolution"])
+        self._sort_by.setCurrentIndex(1)
         self._sort_by.setFixedWidth(120)
         self._text_edit = QImageViewTextEdit()
         self._iter_choice = QIntChoiceWidget("Iteration", label_width=60)

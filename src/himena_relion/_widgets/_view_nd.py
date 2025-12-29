@@ -197,7 +197,7 @@ class Q2DViewer(QViewer):
                 result.points[:, [2, 1]],
                 face_color=result.face_colors,
                 edge_color=result.edge_colors,
-                edge_width_rel=0.15,
+                edge_width_rel=0.1 * self.devicePixelRatioF(),
                 size=result.sizes,
             )
             self._canvas.markers_visual.visible = True

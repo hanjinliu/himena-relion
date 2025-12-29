@@ -1465,7 +1465,7 @@ class ReExtractJob(ExtractJobBase):
         do_recenter: Annotated[
             bool, {"label": "Recenter refined coordinates", "group": "I/O"}
         ] = True,
-        recenter: Annotated[tuple[float], {"group": "I/O"}] = (0, 0, 0),
+        recenter: Annotated[tuple[float, float, float], {"group": "I/O"}] = (0, 0, 0),
         do_float16: DO_F16_TYPE = True,
         # Extract
         extract_size: EXTRACT_SIZE_TYPE = 128,
