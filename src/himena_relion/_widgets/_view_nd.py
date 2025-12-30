@@ -67,8 +67,8 @@ class Q2DViewer(QViewer):
         self._zpos_box.setFixedWidth(90)
         self._zpos_box.setMaximum(0)
         self._auto_contrast_btn.update_color("gray")
-
-        layout.addWidget(labeled(zlabel, self._dims_slider, self._zpos_box))
+        self._dims_slider_widget = labeled(zlabel, self._dims_slider, self._zpos_box)
+        layout.addWidget(self._dims_slider_widget)
         hlayout = QtW.QHBoxLayout()
         hlayout.addWidget(self._auto_contrast_btn)
         hlayout.addWidget(self._histogram_view)
@@ -101,7 +101,7 @@ class Q2DViewer(QViewer):
         self._last_clim = clim
         num_slices = self._array_view.num_slices()
         self._dims_slider.blockSignals(True)
-        self._dims_slider.setVisible(bool(num_slices > 1))
+        self._dims_slider_widget.setVisible(bool(num_slices > 1))
         try:
             self._dims_slider.setRange(0, num_slices - 1)
             self._dims_slider.setValue(num_slices // 2)

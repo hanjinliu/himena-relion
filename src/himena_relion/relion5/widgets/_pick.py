@@ -54,7 +54,6 @@ class QManualPickViewer(QJobScrollArea):
         """Handle changes to selected micrograph."""
         mic_path = self._job_dir.resolve_path(row[0])
         movie_view = ArrayFilteredView.from_mrc(mic_path)
-        had_image = self._viewer.has_image
         image_scale = movie_view.get_scale()
         self._filter_widget.set_image_scale(image_scale)
         self._viewer.set_array_view(
@@ -67,8 +66,7 @@ class QManualPickViewer(QJobScrollArea):
             self._coords = None
 
         self._update_points()
-        if not had_image:
-            self._viewer._auto_contrast()
+        self._viewer._auto_contrast()
 
     def _filter_param_changed(self):
         """Handle changes to filter parameters."""
@@ -81,7 +79,7 @@ class QManualPickViewer(QJobScrollArea):
 
     def _update_points(self):
         if self._coords is None:
-            self._viewer.set_points(np.empty((0, 3)), size=10.0)
+            self._viewer.set_points(np.empty((0, 3)))
         else:
             arr = np.column_stack(
                 [np.zeros(len(self._coords.x)), self._coords.y, self._coords.x]
@@ -112,6 +110,7 @@ class QManualPickViewer(QJobScrollArea):
                 num = read_star(coords_path).first().trust_loop().shape[0]
             choices.append((mic_path, str(num), coords_path or ""))
         self._mic_list.set_choices(choices)
+        self._update_points()
 
     def _get_diameter(self) -> float:
         return float(self._job_dir.get_job_param("diameter"))
