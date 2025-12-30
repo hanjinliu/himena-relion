@@ -1484,7 +1484,7 @@ class ReExtractJob(ExtractJobBase):
     @classmethod
     def normalize_kwargs_inv(cls, **kwargs):
         kwargs = super().normalize_kwargs_inv(**kwargs)
-        for name in ["star_mics", "coords_suffix", "do_rescale"]:
+        for name in ["coords_suffix", "do_rescale"]:
             kwargs.pop(name, None)
         kwargs["recenter"] = tuple(kwargs.pop(f"recenter_{x}", 0) for x in "xyz")
         return kwargs
@@ -1492,6 +1492,7 @@ class ReExtractJob(ExtractJobBase):
     def run(
         self,
         # I/O
+        star_mics: IN_MICROGRAPHS = "",
         fndata_reextract: IN_PARTICLES = "",
         do_reset_offsets: Annotated[
             bool, {"label": "Reset refined offsets to zero", "group": "I/O"}
