@@ -553,7 +553,6 @@ def _node_mapping_to_context(
             return {}
         # NOTE: the from_ file does NOT have to exist at this point.
         out = {}
-        rln_dir = val.relion_project_dir
         for from_, to_ in node_mapping.items():
             try:
                 if isinstance(from_, str):
@@ -565,8 +564,7 @@ def _node_mapping_to_context(
                     file_path = Path(returned_value)
                 else:
                     raise TypeError(f"Unsupported from_ type: {type(from_)}")
-                if file_path.is_relative_to(rln_dir):
-                    file_path = file_path.relative_to(rln_dir)
+                file_path = val.make_relative_path(file_path)
                 file_path_rel = file_path.as_posix()
                 if "." in to_:  # dict valule
                     to_, subkey = to_.split(".", 1)

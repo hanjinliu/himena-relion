@@ -35,7 +35,7 @@ class QRelionPipelineFlowChartView(QFlowChartView):
 
         # If the flowchart has been dragged, item positions are different from default.
         # Restore old positions
-        new_infos = []
+        new_infos: list[RelionJobInfo] = []
         for info in pipeline._nodes:
             if info.path in old_positions:
                 self._add_job_node_item(info)

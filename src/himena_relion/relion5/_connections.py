@@ -209,13 +209,13 @@ def mask_create_search_halfmap(path: Path) -> str | None:
     for p in parents:
         type_label = p.job_type_label()
         if type_label.startswith("relion.refine3d"):
+            # NOTE: don't add exists() check here, because the file may not be ready
+            # if the job is still running. Same for below.
             half_map_path = p.path / "run_half1_class001_unfil.mrc"
-            if half_map_path.exists():
-                return str(half_map_path)
+            return str(half_map_path)
         elif type_label == "relion.reconstructparticletomo":
             half_map_path = p.path / "half1.mrc"
-            if half_map_path.exists():
-                return str(half_map_path)
+            return str(half_map_path)
     return None
 
 
@@ -225,8 +225,7 @@ def postprocess_search_particles(path: Path) -> str | None:
         type_label = p.job_type_label()
         if type_label.startswith("relion.refine3d"):
             particles_path = p.path / "run_data.star"
-            if particles_path.exists():
-                return str(particles_path)
+            return str(particles_path)
     return None
 
 

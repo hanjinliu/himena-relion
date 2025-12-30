@@ -345,15 +345,13 @@ def postprocess_search_halfmaps(path: Path) -> str | None:
         type_label = p.job_type_label()
         if type_label.startswith("relion.refine3d"):
             half_map_path = p.path / "run_half1_class001_unfil.mrc"
-            if half_map_path.exists():
-                return str(half_map_path)
+            return str(half_map_path)
         elif type_label.startswith("relion.maskcreate"):
             if out := mask_create_search_halfmap(p.path):
                 return out
         elif type_label.startswith("relion.reconstructparticletomo"):
             half_map_path = p.path / "half1.mrc"
-            if half_map_path.exists():
-                return str(half_map_path)
+            return str(half_map_path)
     return None
 
 

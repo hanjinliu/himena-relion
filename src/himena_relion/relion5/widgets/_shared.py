@@ -17,7 +17,6 @@ class QMicrographListWidget(QtW.QTableWidget):
         self.setColumnCount(len(columns))
         self.setHorizontalHeaderLabels(list(columns))
         self.horizontalHeader().setVisible(len(columns) > 1)
-        self.horizontalHeader().setStretchLastSection(True)
         self.horizontalHeader().setFixedHeight(15)
         self.setVerticalScrollMode(QtW.QAbstractItemView.ScrollMode.ScrollPerPixel)
         self.setHorizontalScrollMode(QtW.QAbstractItemView.ScrollMode.ScrollPerPixel)
@@ -40,7 +39,11 @@ class QMicrographListWidget(QtW.QTableWidget):
             choices_0.append(entry[0])
         if current_text and current_text in choices_0:
             ith = current_text.index(current_text)
-            self.setCurrentCell(ith, 0)
+            self.blockSignals(True)
+            try:
+                self.setCurrentCell(ith, 0)
+            finally:
+                self.blockSignals(False)
         elif choices:
             self.setCurrentCell(0, 0)
         self.resizeColumnsToContents()

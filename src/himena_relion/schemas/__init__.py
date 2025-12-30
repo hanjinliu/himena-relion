@@ -11,6 +11,7 @@ from himena_relion.schemas._misc import (
 )
 from himena_relion.schemas._movie_tilts import (
     MicrographsModel,
+    MicrographGroupMetaModel,
     TSModel,
     TomogramsGroupModel,
 )
@@ -24,6 +25,7 @@ __all__ = [
     "ModelClasses",
     "ModelStarModel",
     "MicrographsModel",
+    "MicrographGroupMetaModel",
     "TSModel",
     "TomogramsGroupModel",
     "MicCoordSetModel",

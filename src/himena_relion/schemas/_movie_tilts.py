@@ -1,10 +1,29 @@
 import starfile_rs.schema.pandas as schema
 
 
+class MicrographOpticsModel(schema.SingleDataModel):
+    optics_group_name: str = schema.Field("rlnOpticsGroupName")
+    optics_group: int = schema.Field("rlnOpticsGroup")
+    mtf_file_name: str = schema.Field("rlnMtfFileName", default="")
+    mic_orig_pixel_size: float = schema.Field(
+        "rlnMicrographOriginalPixelSize", default=None
+    )
+    voltage: float = schema.Field("rlnVoltage", default=300.0)
+    cs: float = schema.Field("rlnSphericalAberration", default=2.7)
+    amplitude_contrast: float = schema.Field("rlnAmplitudeContrast", default=0.1)
+    mc_pixel_size: float = schema.Field("rlnMicrographMoviePixelSize", default=None)
+
+
 class MicrographsModel(schema.LoopDataModel):
     mic_name: schema.Series[str] = schema.Field("rlnMicrographName")
+    """Path to the micrograph file."""
     optics_group: schema.Series[int] = schema.Field("rlnOpticsGroup")
     ctf_image: schema.Series[str] = schema.Field("rlnCtfImage", default=None)
+
+
+class MicrographGroupMetaModel(schema.StarModel):
+    optics: MicrographOpticsModel = schema.Field()
+    micrographs: MicrographsModel = schema.Field()
 
 
 class TSModel(schema.LoopDataModel):
