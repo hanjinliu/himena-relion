@@ -99,8 +99,11 @@ class QRefine3DViewer(QJobScrollArea):
             num_particles = 0
         yield self._set_num_particles, num_particles
 
-        filename = f"run_it{niter:0>3}_data.star"
-        model = ParticleMetaModel.validate_file(self._job_dir.path / filename)
+        path_data = self._job_dir.path / f"run_it{niter:0>3}_data.star"
+        if not path_data.exists():
+            yield self._set_ang_dist, None
+            return
+        model = ParticleMetaModel.validate_file(path_data)
         part = model.particles
         if part.angle_rot is not None and part.angle_tilt is not None:
             rot = part.angle_rot.fillna(0.0)

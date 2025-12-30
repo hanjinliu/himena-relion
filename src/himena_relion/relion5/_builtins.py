@@ -4,196 +4,8 @@ from typing import Annotated, Any, Literal
 from magicgui.widgets.bases import ValueWidget
 from himena_relion._job_class import _RelionBuiltinJob, parse_string
 from himena_relion._job_dir import JobDirectory
-from himena_relion._widgets._magicgui import PathDrop, BfactorEdit, Class2DAlgorithmEdit
 from himena_relion import _configs, _annotated as _a
 from himena_relion.schemas import OptimisationSetModel
-
-
-# I/O
-IN_MOVIES = Annotated[
-    str,
-    {
-        "label": "Input movies",
-        "widget_type": PathDrop,
-        "type_label": "MicrographMoviesData",
-        "group": "I/O",
-    },
-]
-IN_MICROGRAPHS = Annotated[
-    str,
-    {
-        "label": "Input micrographs",
-        "widget_type": PathDrop,
-        "type_label": ["MicrographsData", "MicrographGroupMetadata"],
-        "group": "I/O",
-    },
-]
-IN_COORDINATES = Annotated[
-    str,
-    {
-        "label": "Input coordinates",
-        "widget_type": PathDrop,
-        "type_label": "MicrographsCoords",
-        "group": "I/O",
-    },
-]
-IN_PARTICLES = Annotated[
-    str,
-    {
-        "label": "Input particles",
-        "widget_type": PathDrop,
-        "type_label": ["ParticlesData", "ParticleGroupMetadata"],
-        "group": "I/O",
-    },
-]
-IMG_TYPE = Annotated[
-    str,
-    {
-        "label": "Input images",
-        "widget_type": PathDrop,
-        "type_label": "ParticlesData",
-        "group": "I/O",
-    },
-]
-REF_TYPE = Annotated[
-    str,
-    {
-        "label": "Reference map",
-        "widget_type": PathDrop,
-        "type_label": "DensityMap",
-        "group": "I/O",
-    },
-]
-MAP_TYPE = Annotated[
-    str,
-    {
-        "label": "Input 3D map",
-        "widget_type": PathDrop,
-        "type_label": "DensityMap",
-        "group": "I/O",
-    },
-]
-HALFMAP_TYPE = Annotated[
-    str,
-    {
-        "label": "One of the half-maps",
-        "widget_type": PathDrop,
-        "type_label": "DensityMap",
-        "group": "I/O",
-    },
-]
-MASK_TYPE = Annotated[
-    str,
-    {
-        "label": "Reference mask (optional)",
-        "widget_type": PathDrop,
-        "type_label": "Mask3D",
-        "group": "I/O",
-    },
-]
-PROCESS_TYPE = Annotated[
-    str,
-    {
-        "label": "Input postprocess STAR",
-        "widget_type": PathDrop,
-        "type_label": "ProcessData",
-        "group": "I/O",
-    },
-]
-IN_OPTIMISER = Annotated[
-    str,
-    {
-        "label": "Input optimiser STAR",
-        "widget_type": PathDrop,
-        "type_label": "OptimiserData",
-        "group": "I/O",
-    },
-]
-CONTINUE_TYPE = Annotated[
-    str,
-    {
-        "label": "Continue from here",
-        "widget_type": PathDrop,
-        "type_label": "ProcessData",
-        "group": "I/O",
-    },
-]
-# CTF
-DO_CTF_TYPE = Annotated[bool, {"label": "Do CTF correction", "group": "CTF"}]
-IGNORE_CTF_TYPE = Annotated[
-    bool, {"label": "Ignore CTFs until first peak", "group": "CTF"}
-]
-# Extract
-EXTRACT_SIZE_TYPE = Annotated[
-    int, {"label": "Particle box size (pix)", "group": "Extract"}
-]
-EXTRACT_RESCALE_TYPE = Annotated[
-    int, {"label": "Rescaled box size (pix)", "group": "Extract"}
-]
-EXTRACT_INVERT_TYPE = Annotated[bool, {"label": "Invert contrast", "group": "Extract"}]
-EXTRACT_NORM_TYPE = Annotated[
-    bool, {"label": "Normalize particles", "group": "Extract"}
-]
-EXTRACT_DIAMETER_TYPE = Annotated[
-    float, {"label": "Diameter of background circle (pix)", "group": "Extract"}
-]
-EXTRACT_WIGHT_DUST_TYPE = Annotated[
-    float, {"label": "Stddev for white dust removal", "group": "Extract"}
-]
-EXTRACT_BLACK_DUST_TYPE = Annotated[
-    float, {"label": "Stddev for black dust removal", "group": "Extract"}
-]
-# Reference
-REF_SYMMETRY_TYPE = Annotated[str, {"label": "Symmetry", "group": "Reference"}]
-REF_CORRECT_GRAY_TYPE = Annotated[
-    bool, {"label": "Reference is on absolute grayscale", "group": "Reference"}
-]
-INITIAL_LOWPASS_TYPE = Annotated[
-    float, {"label": "Initial low-pass filter (A)", "group": "Reference"}
-]
-TRUST_REF_SIZE_TYPE = Annotated[
-    bool, {"label": "Resize reference if needed", "group": "Reference"}
-]
-# Optimisation
-T_TYPE = Annotated[
-    float, {"label": "Regularisation parameter T", "min": 0.1, "group": "Optimisation"}
-]
-NUM_ITER_TYPE = Annotated[
-    int, {"label": "Number of iterations", "min": 1, "group": "Optimisation"}
-]
-NUM_CLASS_TYPE = Annotated[
-    int, {"label": "Number of classes", "min": 1, "group": "Optimisation"}
-]
-MASK_DIAMETER_TYPE = Annotated[
-    float, {"label": "Mask diameter (A)", "group": "Optimisation"}
-]
-MASK_WITH_ZEROS_TYPE = Annotated[
-    bool, {"label": "Mask individual particles with zeros", "group": "Optimisation"}
-]
-SOLVENT_FLATTEN_FSC_TYPE = Annotated[
-    bool, {"label": "Use solvent-flattened FSCs", "group": "Optimisation"}
-]
-DO_BLUSH_TYPE = Annotated[
-    bool, {"label": "Use Blush regularisation", "group": "Optimisation"}
-]
-# Sampling
-
-# class 3d
-LOCAL_ANG_SEARCH_TYPE = Annotated[
-    bool, {"label": "Perform local angular searches", "group": "Sampling"}
-]
-HIGH_RES_LIMIT_TYPE = Annotated[
-    float, {"label": "High-resolution limit (A)", "group": "Optimisation"}
-]
-# sharpen
-B_FACTOR_TYPE = Annotated[
-    dict,
-    {
-        "label": "B-factor",
-        "widget_type": BfactorEdit,
-        "group": "Sharpen",
-    },
-]
 
 
 class _Relion5Job(_RelionBuiltinJob):
@@ -243,13 +55,13 @@ class MotionCorr2Job(_MotionCorrJobBase):
 
     def run(
         self,
-        input_star_mics: IN_MOVIES = "",
+        input_star_mics: _a.io.IN_MOVIES = "",
         first_frame_sum: _a.mcor.FIRST_FRAME_SUM = 1,
         last_frame_sum: _a.mcor.LAST_FRAME_SUM = -1,
         dose_per_frame: _a.mcor.DOSE_PER_FRAME = 1.0,
         pre_exposure: _a.mcor.PRE_EXPOSURE = 0.0,
         eer_grouping: _a.mcor.EER_FRAC = 32,
-        do_float16: _a.mcor.DO_F16 = True,
+        do_float16: _a.io.DO_F16 = True,
         do_dose_weighting: _a.mcor.DO_DOSE_WEIGHTING = True,
         group_for_ps: _a.mcor.SUM_EVERY_E = 4.0,
         # Motion correction
@@ -299,13 +111,13 @@ class MotionCorrOwnJob(_MotionCorrJobBase):
 
     def run(
         self,
-        input_star_mics: IN_MOVIES = "",
+        input_star_mics: _a.io.IN_MOVIES = "",
         first_frame_sum: _a.mcor.FIRST_FRAME_SUM = 1,
         last_frame_sum: _a.mcor.LAST_FRAME_SUM = -1,
         dose_per_frame: _a.mcor.DOSE_PER_FRAME = 1.0,
         pre_exposure: _a.mcor.PRE_EXPOSURE = 0.0,
         eer_grouping: _a.mcor.EER_FRAC = 32,
-        do_float16: _a.mcor.DO_F16 = True,
+        do_float16: _a.io.DO_F16 = True,
         do_dose_weighting: _a.mcor.DO_DOSE_WEIGHTING = True,
         do_save_noDW: _a.mcor.DO_SAVE_NO_DW = False,
         do_save_ps: _a.mcor.DO_SAVE_PS = True,
@@ -372,41 +184,19 @@ class CtfEstimationJob(_Relion5Job):
     def run(
         self,
         # I/O
-        input_star_mics: IN_MICROGRAPHS = "",
-        use_noDW: Annotated[
-            bool, {"label": "Use micrographs without dose-weighting", "group": "I/O"}
-        ] = False,
-        do_phaseshift: Annotated[
-            bool, {"label": "Estimate phase shifts", "group": "I/O"}
-        ] = False,
-        phase_range: Annotated[
-            tuple[float, float, float],
-            {"label": "Phase shift min/max/step (deg)", "group": "I/O"},
-        ] = (0, 180, 10),
-        dast: Annotated[
-            float, {"label": "Amount of astigmatism (A)", "group": "I/O"}
-        ] = 100,
+        input_star_mics: _a.io.IN_MICROGRAPHS = "",
+        use_noDW: _a.ctffind.USE_NODW = False,
+        do_phaseshift: _a.ctffind.DO_PHASESHIFT = False,
+        phase_range: _a.ctffind.PHASE_RANGE = (0, 180, 10),
+        dast: _a.ctffind.DAST = 100,
         # CTFFIND
-        use_given_ps: Annotated[
-            bool, {"label": "Use power spectra from MotionCorr", "group": "CTFFIND"}
-        ] = True,
-        slow_search: Annotated[
-            bool, {"label": "Use exhaustive search", "group": "CTFFIND"}
-        ] = False,
-        ctf_win: Annotated[
-            int, {"label": "CTF estimation window size (pix)", "group": "CTFFIND"}
-        ] = -1,
-        box: Annotated[int, {"label": "FFT box size (pix)", "group": "CTFFIND"}] = 512,
-        resmax: Annotated[
-            float, {"label": "Resolution max (A)", "group": "CTFFIND"}
-        ] = 5,
-        resmin: Annotated[
-            float, {"label": "Resolution min (A)", "group": "CTFFIND"}
-        ] = 30,
-        dfrange: Annotated[
-            tuple[float, float, float],
-            {"label": "Defocus search range min/max/step (A)", "group": "CTFFIND"},
-        ] = (5000, 50000, 500),
+        use_given_ps: _a.ctffind.USE_GIVEN_PS = True,
+        slow_search: _a.ctffind.SLOW_SEARCH = False,
+        ctf_win: _a.ctffind.CTF_WIN = -1,
+        box: _a.ctffind.BOX = 512,
+        resmax: _a.ctffind.RESMAX = 5,
+        resmin: _a.ctffind.RESMIN = 30,
+        dfrange: _a.ctffind.DFRANGE = (5000, 50000, 500),
         # Running
         nr_mpi: _a.running.MPI_TYPE = 1,
         do_queue: _a.running.DO_QUEUE_TYPE = False,
@@ -454,7 +244,7 @@ class ManualPickJob(_Relion5Job):
 
     def run(
         self,
-        fn_in: IN_MICROGRAPHS = "",
+        fn_in: _a.io.IN_MICROGRAPHS = "",
         do_startend: Annotated[
             bool, {"label": "Pick star-end coordinates helices", "group": "I/O"}
         ] = False,
@@ -621,7 +411,7 @@ class AutoPickLogJob(_AutoPickJob):
 
     def run(
         self,
-        fn_input_autopick: IN_MICROGRAPHS = "",
+        fn_input_autopick: _a.io.IN_MICROGRAPHS = "",
         angpix: Annotated[
             float, {"label": "Micrograph pixel size (A)", "group": "IO"}
         ] = -1,
@@ -728,7 +518,7 @@ class AutoPickTemplate2DJob(_AutoPickJob):
 
     def run(
         self,
-        fn_input_autopick: IN_MICROGRAPHS = "",
+        fn_input_autopick: _a.io.IN_MICROGRAPHS = "",
         angpix: Annotated[
             float, {"label": "Micrograph pixel size (A)", "group": "I/O"}
         ] = -1,
@@ -854,8 +644,8 @@ class AutoPickTemplate3DJob(_AutoPickJob):
 
     def run(
         self,
-        fn_input_autopick: IN_MICROGRAPHS = "",
-        fn_ref3d_autopick: REF_TYPE = "",
+        fn_input_autopick: _a.io.IN_MICROGRAPHS = "",
+        fn_ref3d_autopick: _a.io.REF_TYPE = "",
         angpix: Annotated[
             float, {"label": "Micrograph pixel size (A)", "group": "I/O"}
         ] = -1,
@@ -972,7 +762,7 @@ class AutoPickTopazTrain(_AutoPickJob):
 
     def run(
         self,
-        fn_input_autopick: IN_MICROGRAPHS = "",
+        fn_input_autopick: _a.io.IN_MICROGRAPHS = "",
         angpix: Annotated[
             float, {"label": "Micrograph pixel size (A)", "group": "IO"}
         ] = -1,
@@ -1068,7 +858,7 @@ class AutoPickTopazPick(_AutoPickJob):
 
     def run(
         self,
-        fn_input_autopick: IN_MICROGRAPHS = "",
+        fn_input_autopick: _a.io.IN_MICROGRAPHS = "",
         angpix: Annotated[
             float, {"label": "Micrograph pixel size (A)", "group": "IO"}
         ] = -1,
@@ -1218,20 +1008,18 @@ class ExtractJob(ExtractJobBase):
     def run(
         self,
         # I/O
-        star_mics: IN_MICROGRAPHS = "",
-        coords_suffix: IN_COORDINATES = "",
+        star_mics: _a.io.IN_MICROGRAPHS = "",
+        coords_suffix: _a.io.IN_COORDINATES = "",
         do_float16: _a.mcor.DO_F16 = True,
         # Extract
-        extract_size: EXTRACT_SIZE_TYPE = 128,
-        rescale: EXTRACT_RESCALE_TYPE = 128,
-        do_invert: EXTRACT_INVERT_TYPE = True,
-        do_norm: EXTRACT_NORM_TYPE = True,
-        bg_diameter: EXTRACT_DIAMETER_TYPE = -1,
-        white_dust: EXTRACT_WIGHT_DUST_TYPE = -1,
-        black_dust: EXTRACT_BLACK_DUST_TYPE = -1,
-        minimum_pick_fom: Annotated[
-            float | None, {"label": "Minimum autopick FOM", "group": "Extract"}
-        ] = None,
+        extract_size: _a.extract.SIZE = 128,
+        rescale: _a.extract.DO_RESCALE = 128,
+        do_invert: _a.extract.DO_INVERT = True,
+        do_norm: _a.extract.DO_NORM = True,
+        bg_diameter: _a.extract.DIAMETER = -1,
+        white_dust: _a.extract.WIGHT_DUST = -1,
+        black_dust: _a.extract.BLACK_DUST = -1,
+        minimum_pick_fom: _a.extract.MINIMUM_PICK_FOM = None,
         # Helix
         do_extract_helix: _a.helix.DO_HELIX = False,
         helical_tube_outer_diameter: _a.helix.HELICAL_TUBE_DIAMETER = 200,
@@ -1278,27 +1066,21 @@ class ReExtractJob(ExtractJobBase):
     def run(
         self,
         # I/O
-        star_mics: IN_MICROGRAPHS = "",
-        fndata_reextract: IN_PARTICLES = "",
-        do_reset_offsets: Annotated[
-            bool, {"label": "Reset refined offsets to zero", "group": "I/O"}
-        ] = False,
-        do_recenter: Annotated[
-            bool, {"label": "Recenter refined coordinates", "group": "I/O"}
-        ] = True,
-        recenter: Annotated[tuple[float, float, float], {"group": "I/O"}] = (0, 0, 0),
-        do_float16: _a.mcor.DO_F16 = True,
+        star_mics: _a.io.IN_MICROGRAPHS = "",
+        fndata_reextract: _a.io.IN_PARTICLES = "",
+        do_reset_offsets: _a.extract.DO_RESET_OFFSET = False,
+        do_recenter: _a.extract.DO_RECENTER = True,
+        recenter: _a.extract.RECENTER = (0, 0, 0),
+        do_float16: _a.io.DO_F16 = True,
         # Extract
-        extract_size: EXTRACT_SIZE_TYPE = 128,
-        rescale: EXTRACT_RESCALE_TYPE = 128,
-        do_invert: EXTRACT_INVERT_TYPE = True,
-        do_norm: EXTRACT_NORM_TYPE = True,
-        bg_diameter: EXTRACT_DIAMETER_TYPE = -1,
-        white_dust: EXTRACT_WIGHT_DUST_TYPE = -1,
-        black_dust: EXTRACT_BLACK_DUST_TYPE = -1,
-        minimum_pick_fom: Annotated[
-            float | None, {"label": "Minimum autopick FOM", "group": "Extract"}
-        ] = None,
+        extract_size: _a.extract.SIZE = 128,
+        rescale: _a.extract.DO_RESCALE = 128,
+        do_invert: _a.extract.DO_INVERT = True,
+        do_norm: _a.extract.DO_NORM = True,
+        bg_diameter: _a.extract.DIAMETER = -1,
+        white_dust: _a.extract.WIGHT_DUST = -1,
+        black_dust: _a.extract.BLACK_DUST = -1,
+        minimum_pick_fom: _a.extract.MINIMUM_PICK_FOM = None,
         # Helix
         do_extract_helix: _a.helix.DO_HELIX = False,
         helical_tube_outer_diameter: _a.helix.HELICAL_TUBE_DIAMETER = 200,
@@ -1339,6 +1121,11 @@ class Class2DJob(_Relion5Job):
         ]:
             kwargs.setdefault(key, value)
 
+        if "offset_range_step" in kwargs:
+            kwargs["offset_range"], kwargs["offset_step"] = kwargs.pop(
+                "offset_range_step"
+            )
+
         algo = kwargs.pop("algorithm")
         if algo["algorithm"] == "EM":
             kwargs["do_em"] = True
@@ -1363,6 +1150,11 @@ class Class2DJob(_Relion5Job):
                 "algorithm": "VDAM",
                 "niter": nr_iter_grad,
             }
+
+        kwargs["offset_range_step"] = (
+            kwargs.pop("offset_range", 5),
+            kwargs.pop("offset_step", 1),
+        )
         # remove internal
         kwargs.pop("do_grad", None)
         kwargs.pop("fn_cont", None)
@@ -1371,57 +1163,29 @@ class Class2DJob(_Relion5Job):
     def run(
         self,
         # I/O
-        fn_img: IN_PARTICLES = "",
+        fn_img: _a.io.IN_PARTICLES = "",
         # CTF
-        do_ctf_correction: DO_CTF_TYPE = True,
-        ctf_intact_first_peak: IGNORE_CTF_TYPE = False,
+        do_ctf_correction: _a.misc.DO_CTF = True,
+        ctf_intact_first_peak: _a.misc.IGNORE_CTF = False,
         # Optimisation
-        nr_classes: Annotated[
-            int, {"label": "Number of classes", "group": "Optimisation"}
-        ] = 50,
-        tau_fudge: T_TYPE = 2,
-        algorithm: Annotated[
-            dict,
-            {
-                "label": "Algorithm",
-                "widget_type": Class2DAlgorithmEdit,
-                "group": "Optimisation",
-            },
-        ] = {"algorithm": "VDAM", "niter": 200},
-        particle_diameter: MASK_DIAMETER_TYPE = 200,
-        do_zero_mask: MASK_WITH_ZEROS_TYPE = True,
-        highres_limit: Annotated[
-            float, {"label": "Limit resolution to (A)", "group": "Optimisation"}
-        ] = -1,
-        do_center: Annotated[
-            bool, {"label": "Center class averages", "group": "Optimisation"}
-        ] = True,
+        nr_classes: _a.class_.NUM_CLASS = 50,
+        tau_fudge: _a.misc.TAU_FUDGE = 2,
+        algorithm: _a.class_.OPTIM_ALGORIGHM = {"algorithm": "VDAM", "niter": 200},
+        particle_diameter: _a.misc.MASK_DIAMETER = 200,
+        do_zero_mask: _a.misc.MASK_WITH_ZEROS = True,
+        highres_limit: _a.class_.HIGH_RES_LIMIT = -1,
+        do_center: _a.class_.DO_CENTER = True,
         # Sampling
         dont_skip_align: _a.sampling.DONT_SKIP_ALIGN = True,
-        psi_sampling: Annotated[
-            float, {"label": "In-plane angular sampling (deg)", "group": "Sampling"}
-        ] = 6,
-        offset_range: Annotated[
-            float, {"label": "Offset search range (pix)", "group": "Sampling"}
-        ] = 5,
-        offset_step: Annotated[
-            float, {"label": "Offset search step (pix)", "group": "Sampling"}
-        ] = 1,
+        psi_sampling: _a.class_.PSI_SAMPLING = 6,
+        offset_range_step: _a.sampling.OFFSET_RANGE_STEP = (5, 1),
         allow_coarser: _a.sampling.ALLOW_COARSER_SAMPLING = False,
         # Helix
-        do_helix: Annotated[
-            bool, {"label": "Classify 2D helical segments", "group": "Helix"}
-        ] = False,
+        do_helix: _a.class_.DO_HELIX = False,
         helical_tube_outer_diameter: _a.helix.HELICAL_TUBE_DIAMETER = 200,
-        do_bimodal_psi: Annotated[
-            bool, {"label": "Do bimodal angular searches", "group": "Helix"}
-        ] = True,
-        range_psi: Annotated[
-            float, {"label": "Angular search range (deg)", "group": "Helix"}
-        ] = 6.0,
-        do_restrict_xoff: Annotated[
-            bool, {"label": "Restrict helical offsets to rise", "group": "Helix"}
-        ] = True,
+        do_bimodal_psi: _a.class_.DO_BIMODAL_PSI = True,
+        range_psi: _a.class_.RANGE_PSI = 6.0,
+        do_restrict_xoff: _a.class_.DO_RESTRICT_XOFF = True,
         helical_rise: _a.helix.HELICAL_RISE = 4.75,
         # Compute
         do_parallel_discio: _a.compute.USE_PARALLEL_DISC_IO = True,
@@ -1468,27 +1232,18 @@ class InitialModelJob(_Relion5Job):
 
     def run(
         self,
-        fn_img: IN_PARTICLES = None,
+        fn_img: _a.io.IN_PARTICLES = None,
         # CTF
-        do_ctf_correction: DO_CTF_TYPE = True,
-        ctf_intact_first_peak: IGNORE_CTF_TYPE = False,
+        do_ctf_correction: _a.misc.DO_CTF = True,
+        ctf_intact_first_peak: _a.misc.IGNORE_CTF = False,
         # Optimisation
-        nr_iter: NUM_ITER_TYPE = 200,
-        tau_fudge: T_TYPE = 4,
-        nr_classes: NUM_CLASS_TYPE = 1,
-        particle_diameter: MASK_DIAMETER_TYPE = 200,
-        do_solvent: Annotated[
-            bool,
-            {
-                "label": "Flatten and enforce non-negative solvent",
-                "group": "Optimisation",
-            },
-        ] = True,
-        sym_name: Annotated[str, {"label": "Symmetry", "group": "Optimisation"}] = "C1",
-        do_run_C1: Annotated[
-            bool,
-            {"label": "Run in C1 and apply symmetry later", "group": "Optimisation"},
-        ] = True,
+        nr_iter: _a.inimodel.NUM_ITER = 200,
+        tau_fudge: _a.misc.TAU_FUDGE = 4,
+        nr_classes: _a.inimodel.NUM_CLASS = 1,
+        particle_diameter: _a.misc.MASK_DIAMETER = 200,
+        do_solvent: _a.inimodel.DO_SOLVENT = True,
+        sym_name: _a.inimodel.SYM_NAME = "C1",
+        do_run_C1: _a.inimodel.DO_RUN_C1 = True,
         # Compute
         do_parallel_discio: _a.compute.USE_PARALLEL_DISC_IO = True,
         nr_pool: _a.compute.NUM_POOL = 3,
@@ -1614,35 +1369,36 @@ class Class3DNoAlignmentJob(_Class3DJobBase):
         kwargs = super().normalize_kwargs(**kwargs)
         # force no alignment
         kwargs["dont_skip_align"] = False
+        kwargs["highres_limit"] = -1
         return kwargs
 
     @classmethod
     def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
         kwargs = super().normalize_kwargs_inv(**kwargs)
         kwargs.pop("dont_skip_align", None)
+        kwargs.pop("highres_limit", None)
         return kwargs
 
     def run(
         self,
-        fn_img: IN_PARTICLES = "",
-        fn_ref: REF_TYPE = "",
-        fn_mask: MASK_TYPE = "",
+        fn_img: _a.io.IN_PARTICLES = "",
+        fn_ref: _a.io.REF_TYPE = "",
+        fn_mask: _a.io.MASK_TYPE = "",
         # Reference
-        ref_correct_greyscale: REF_CORRECT_GRAY_TYPE = False,
-        trust_ref_size: TRUST_REF_SIZE_TYPE = True,
-        ini_high: INITIAL_LOWPASS_TYPE = 60,
-        sym_name: REF_SYMMETRY_TYPE = "C1",
+        ref_correct_greyscale: _a.misc.REF_CORRECT_GRAY = False,
+        trust_ref_size: _a.misc.TRUST_REF_SIZE = True,
+        ini_high: _a.misc.INITIAL_LOWPASS = 60,
+        sym_name: _a.misc.REF_SYMMETRY = "C1",
         # CTF
-        do_ctf_correction: DO_CTF_TYPE = True,
-        ctf_intact_first_peak: IGNORE_CTF_TYPE = False,
+        do_ctf_correction: _a.misc.DO_CTF = True,
+        ctf_intact_first_peak: _a.misc.IGNORE_CTF = False,
         # Optimisation
-        nr_classes: NUM_CLASS_TYPE = 1,
-        nr_iter: NUM_ITER_TYPE = 25,
-        tau_fudge: T_TYPE = 1,
-        particle_diameter: MASK_DIAMETER_TYPE = 200,
-        do_zero_mask: MASK_WITH_ZEROS_TYPE = True,
-        highres_limit: HIGH_RES_LIMIT_TYPE = -1,
-        do_blush: DO_BLUSH_TYPE = False,
+        nr_classes: _a.class_.NUM_CLASS = 1,
+        nr_iter: _a.class_.NUM_ITER = 25,
+        tau_fudge: _a.misc.TAU_FUDGE = 1,
+        particle_diameter: _a.misc.MASK_DIAMETER = 200,
+        do_zero_mask: _a.misc.MASK_WITH_ZEROS = True,
+        do_blush: _a.misc.DO_BLUSH = False,
         # Helix
         do_helix: _a.helix.DO_HELIX = False,
         helical_tube_diameter_range: _a.helix.HELICAL_TUBE_DIAMETER_RANGE = (-1, -1),
@@ -1699,32 +1455,30 @@ class Class3DJob(_Class3DJobBase):
 
     def run(
         self,
-        fn_img: IN_PARTICLES = "",
-        fn_ref: REF_TYPE = "",
-        fn_mask: MASK_TYPE = "",
+        fn_img: _a.io.IN_PARTICLES = "",
+        fn_ref: _a.io.REF_TYPE = "",
+        fn_mask: _a.io.MASK_TYPE = "",
         # Reference
-        ref_correct_greyscale: REF_CORRECT_GRAY_TYPE = False,
-        trust_ref_size: TRUST_REF_SIZE_TYPE = True,
-        ini_high: INITIAL_LOWPASS_TYPE = 60,
-        sym_name: REF_SYMMETRY_TYPE = "C1",
+        ref_correct_greyscale: _a.misc.REF_CORRECT_GRAY = False,
+        trust_ref_size: _a.misc.TRUST_REF_SIZE = True,
+        ini_high: _a.misc.INITIAL_LOWPASS = 60,
+        sym_name: _a.misc.REF_SYMMETRY = "C1",
         # CTF
-        do_ctf_correction: DO_CTF_TYPE = True,
-        ctf_intact_first_peak: IGNORE_CTF_TYPE = False,
+        do_ctf_correction: _a.misc.DO_CTF = True,
+        ctf_intact_first_peak: _a.misc.IGNORE_CTF = False,
         # Optimisation
-        nr_classes: NUM_CLASS_TYPE = 1,
-        nr_iter: NUM_ITER_TYPE = 25,
-        tau_fudge: T_TYPE = 1,
-        particle_diameter: MASK_DIAMETER_TYPE = 200,
-        do_zero_mask: MASK_WITH_ZEROS_TYPE = True,
-        highres_limit: HIGH_RES_LIMIT_TYPE = -1,
-        do_blush: DO_BLUSH_TYPE = False,
+        nr_classes: _a.class_.NUM_CLASS = 1,
+        nr_iter: _a.class_.NUM_ITER = 25,
+        tau_fudge: _a.misc.TAU_FUDGE = 1,
+        particle_diameter: _a.misc.MASK_DIAMETER = 200,
+        do_zero_mask: _a.misc.MASK_WITH_ZEROS = True,
+        highres_limit: _a.class_.HIGH_RES_LIMIT = -1,
+        do_blush: _a.misc.DO_BLUSH = False,
         # Sampling
         sampling: _a.sampling.ANG_SAMPLING = "7.5 degrees",
         offset_range_step: _a.sampling.OFFSET_RANGE_STEP = (5, 1),
-        do_local_ang_searches: LOCAL_ANG_SEARCH_TYPE = False,
-        sigma_angles: Annotated[
-            float, {"label": "Local angular search range", "group": "Sampling"}
-        ] = 5,
+        do_local_ang_searches: _a.sampling.LOCAL_ANG_SEARCH = False,
+        sigma_angles: _a.sampling.SIGMA_ANGLES = 5,
         relax_sym: _a.sampling.RELAX_SYMMETRY = "",
         allow_coarser: _a.sampling.ALLOW_COARSER_SAMPLING = False,
         # Helix
@@ -1746,7 +1500,7 @@ class Class3DJob(_Class3DJobBase):
         do_parallel_discio: _a.compute.USE_PARALLEL_DISC_IO = True,
         use_scratch: _a.compute.USE_SCRATCH = False,
         nr_pool: _a.compute.NUM_POOL = 3,
-        do_pad1: Annotated[bool, {"label": "Skip padding", "group": "Compute"}] = False,
+        do_pad1: _a.compute.DO_PAD1 = False,
         do_preread_images: _a.compute.DO_PREREAD = False,
         do_combine_thru_disc: _a.compute.DO_COMBINE_THRU_DISC = False,
         gpu_ids: _a.compute.GPU_IDS = "",
@@ -1826,30 +1580,28 @@ class Refine3DJob(_Relion5Job):
 
     def run(
         self,
-        fn_img: IN_PARTICLES = "",
-        fn_ref: REF_TYPE = "",
-        fn_mask: MASK_TYPE = "",
+        fn_img: _a.io.IN_PARTICLES = "",
+        fn_ref: _a.io.REF_TYPE = "",
+        fn_mask: _a.io.MASK_TYPE = "",
         # Reference
-        ref_correct_greyscale: REF_CORRECT_GRAY_TYPE = False,
-        trust_ref_size: TRUST_REF_SIZE_TYPE = True,
-        ini_high: INITIAL_LOWPASS_TYPE = 60,
-        sym_name: REF_SYMMETRY_TYPE = "C1",
+        ref_correct_greyscale: _a.misc.REF_CORRECT_GRAY = False,
+        trust_ref_size: _a.misc.TRUST_REF_SIZE = True,
+        ini_high: _a.misc.INITIAL_LOWPASS = 60,
+        sym_name: _a.misc.REF_SYMMETRY = "C1",
         # CTF
-        do_ctf_correction: DO_CTF_TYPE = True,
-        ctf_intact_first_peak: IGNORE_CTF_TYPE = False,
+        do_ctf_correction: _a.misc.DO_CTF = True,
+        ctf_intact_first_peak: _a.misc.IGNORE_CTF = False,
         # Optimisation
-        particle_diameter: MASK_DIAMETER_TYPE = 200,
-        do_zero_mask: MASK_WITH_ZEROS_TYPE = True,
-        do_solvent_fsc: SOLVENT_FLATTEN_FSC_TYPE = False,
-        do_blush: DO_BLUSH_TYPE = False,
+        particle_diameter: _a.misc.MASK_DIAMETER = 200,
+        do_zero_mask: _a.misc.MASK_WITH_ZEROS = True,
+        do_solvent_fsc: _a.misc.SOLVENT_FLATTEN_FSC = False,
+        do_blush: _a.misc.DO_BLUSH = False,
         # Sampling
         sampling: _a.sampling.ANG_SAMPLING = "7.5 degrees",
         offset_range_step: _a.sampling.OFFSET_RANGE_STEP = (5, 1),
         auto_local_sampling: _a.sampling.LOC_ANG_SAMPLING = "1.8 degrees",
         relax_sym: _a.sampling.RELAX_SYMMETRY = "",
-        auto_faster: Annotated[
-            bool, {"label": "Use finer angular sampling faster", "group": "Sampling"}
-        ] = False,
+        auto_faster: _a.sampling.AUTO_FASTER = False,
         # Helix
         do_helix: _a.helix.DO_HELIX = False,
         helical_tube_diameter_range: _a.helix.HELICAL_TUBE_DIAMETER_RANGE = (-1, -1),
@@ -1868,7 +1620,7 @@ class Refine3DJob(_Relion5Job):
         do_parallel_discio: _a.compute.USE_PARALLEL_DISC_IO = True,
         nr_pool: _a.compute.NUM_POOL = 3,
         use_scratch: _a.compute.USE_SCRATCH = False,
-        do_pad1: Annotated[bool, {"label": "Skip padding", "group": "Compute"}] = False,
+        do_pad1: _a.compute.DO_PAD1 = False,
         do_preread_images: _a.compute.DO_PREREAD = False,
         do_combine_thru_disc: _a.compute.DO_COMBINE_THRU_DISC = False,
         gpu_ids: _a.compute.GPU_IDS = "",
@@ -1981,7 +1733,7 @@ class SelectClassesInteractiveJob(_SelectJob):
     def type_label(cls):
         return "relion.select.interactive"
 
-    def run(self, fn_model: IN_OPTIMISER = ""):
+    def run(self, fn_model: _a.io.IN_OPTIMISER = ""):
         raise NotImplementedError("This is a builtin job placeholder.")
 
     @classmethod
@@ -2029,7 +1781,7 @@ class SelectClassesAutoJob(_SelectJob):
 
     def run(
         self,
-        fn_model: IN_OPTIMISER = "",
+        fn_model: _a.io.IN_OPTIMISER = "",
         rank_threshold: Annotated[
             float, {"label": "Minimum threshold for auto selection"}
         ] = 0.5,
@@ -2069,7 +1821,7 @@ class SelectParticlesJob(_SelectValuesJob):
 
     def run(
         self,
-        fn_data: IN_PARTICLES = "",
+        fn_data: _a.io.IN_PARTICLES = "",
         select_label: Annotated[
             str, {"label": "Metadata label for selection"}
         ] = "rlnCtfMaxResolution",
@@ -2100,7 +1852,7 @@ class SelectMicrographsJob(_SelectValuesJob):
 
     def run(
         self,
-        fn_mic: IN_MICROGRAPHS = "",
+        fn_mic: _a.io.IN_MICROGRAPHS = "",
         select_label: Annotated[
             str, {"label": "Metadata label for selection"}
         ] = "rlnCtfMaxResolution",
@@ -2129,7 +1881,7 @@ class SelectRemoveDuplicatesJob(_SelectJob):
 
     def run(
         self,
-        fn_data: IN_PARTICLES = "",
+        fn_data: _a.io.IN_PARTICLES = "",
         duplicate_threshold: Annotated[
             float, {"label": "Minimum inter-particle distance (A)"}
         ] = 30,
@@ -2153,7 +1905,7 @@ class SelectSplitJob(_SelectJob):
 
     def run(
         self,
-        fn_data: IN_PARTICLES = "",
+        fn_data: _a.io.IN_PARTICLES = "",
         do_random: Annotated[
             bool, {"label": "Randomise order before making subsets"}
         ] = False,
@@ -2176,7 +1928,7 @@ class SelectFilamentsJob(_SelectJob):
 
     def run(
         self,
-        fn_model: IN_OPTIMISER = "",
+        fn_model: _a.io.IN_OPTIMISER = "",
         dendrogram_threshold: Annotated[
             float, {"label": "Dendrogram threshold"}
         ] = 0.85,
@@ -2194,7 +1946,7 @@ class MaskCreationJob(_Relion5Job):
 
     def run(
         self,
-        fn_in: MAP_TYPE = "",
+        fn_in: _a.io.MAP_TYPE = "",
         lowpass_filter: Annotated[
             float, {"label": "Lowpass filter (A)", "group": "Mask"}
         ] = 15,
@@ -2252,13 +2004,13 @@ class PostProcessJob(_Relion5Job):
     def run(
         self,
         # I/O
-        fn_in: HALFMAP_TYPE = "",
-        fn_mask: MASK_TYPE = "",
+        fn_in: _a.io.HALFMAP_TYPE = "",
+        fn_mask: _a.io.MASK_TYPE = "",
         angpix: Annotated[
             float, {"label": "Calibrated pixel size (A)", "group": "I/O"}
         ] = -1,
         # Sharpen
-        b_factor: B_FACTOR_TYPE = None,
+        b_factor: _a.misc.B_FACTOR = None,
         do_skip_fsc_weighting: Annotated[
             bool, {"label": "Skip FSC-weighting", "group": "Sharpen"}
         ] = False,
@@ -2304,8 +2056,8 @@ class CtfRefineJob(_Relion5Job):
 
     def run(
         self,
-        fn_data: IN_PARTICLES = "",
-        fn_post: PROCESS_TYPE = "",
+        fn_data: _a.io.IN_PARTICLES = "",
+        fn_post: _a.io.PROCESS_TYPE = "",
         # Fit
         do_aniso_mag: Annotated[
             bool, {"label": "Estimate anisotropic magnification", "group": "Fit"}

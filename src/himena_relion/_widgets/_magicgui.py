@@ -111,13 +111,45 @@ class BfactorEdit(ValuedContainerWidget):
 
     def __init__(self, **kwargs):
         self._toggle_switch = ToggleSwitch(
-            text="Use user-provided B-factor", value=False
+            text="Use user-provided B-factor",
+            value=False,
+            tooltip=(
+                "If set to No, then the program will use the automated procedure "
+                "described by Rosenthal and Henderson (2003, JMB) to estimate an "
+                "overall B-factor for your map, and sharpen it accordingly. Note that "
+                "your map must extend well beyond the lowest resolution included in "
+                "the procedure below, which should not be set to resolutions much "
+                "lower than 10 Angstroms. \n\n"
+                "Otherwise, instead of using the automated B-factor estimation, "
+                "provide your own value. Use negative values for sharpening the map. "
+                "This option is useful if your map does not extend beyond the 10A "
+                "needed for the automated procedure, or when the automated procedure "
+                "does not give a suitable value (e.g. in more disordered parts of the "
+                "map)."
+            ),
         )
         self._auto_lowres = FloatEdit(
-            label="Lowest resolution (A)", value=10.0, min=8, max=15
+            label="Lowest resolution (A)",
+            value=10.0,
+            min=8,
+            max=15,
+            tooltip=(
+                "This is the lowest frequency (in Angstroms) that will be included in "
+                "the linear fit of the Guinier plot as described in Rosenthal and "
+                "Henderson (2003, JMB). Dont use values much lower or higher than 10 "
+                "Angstroms. If your map does not extend beyond 10 Angstroms, then "
+                "instead of the automated procedure use your own B-factor."
+            ),
         )
         self._user_bfactor = FloatEdit(
-            label="B-factor (A^2)", value=-1000.0, min=-2000, max=0
+            label="B-factor (A^2)",
+            value=-1000.0,
+            min=-2000,
+            max=0,
+            tooltip=(
+                "Use negative values for sharpening. Be careful: if you over-sharpen "
+                "your map, you may end up interpreting noise for signal!"
+            ),
         )
 
         widgets = [self._toggle_switch, self._auto_lowres, self._user_bfactor]
@@ -163,10 +195,36 @@ class Class2DAlgorithmEdit(ValuedContainerWidget):
             choices=["EM", "VDAM"],
             value="VDAM",
             orientation="horizontal",
+            tooltip=(
+                "EM: the slower expectation-maximization algorithm will be used. This "
+                "was the default option in releases prior to 4.0-beta.\n"
+                "VDAM: the faster VDAM algorithm will be used. This algorithm was "
+                "introduced with relion-4.0."
+            ),
         )
-        self._niter_em = IntEdit(label="EM Iterations", value=25, min=1, max=100)
+        self._niter_em = IntEdit(
+            label="EM Iterations",
+            value=25,
+            min=1,
+            max=100,
+            tooltip=(
+                "Number of EM iterations to be performed. Note that the current "
+                "implementation of 2D class averaging and 3D classification does NOT "
+                "comprise a convergence criterium. Therefore, the calculations will "
+                "need to be stopped by the user if further iterations do not yield "
+                "improvements in resolution or classes."
+            ),
+        )
         self._niter_grad = IntEdit(
-            label="VDAM mini-batches", value=200, min=1, max=1000
+            label="VDAM mini-batches",
+            value=200,
+            min=1,
+            max=1000,
+            tooltip=(
+                "Number of mini-batches to be processed using the VDAM algorithm. "
+                "Using 200 has given good results for many data sets. Using 100 will "
+                "run faster, at the expense of some quality in the results."
+            ),
         )
         widgets = [self._algorithm, self._niter_em, self._niter_grad]
         super().__init__(layout="vertical", labels=True, widgets=widgets, **kwargs)

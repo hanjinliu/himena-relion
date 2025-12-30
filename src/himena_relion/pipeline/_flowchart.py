@@ -21,6 +21,7 @@ class QRelionPipelineFlowChartView(QFlowChartView):
         self.item_left_double_clicked.connect(self._on_item_double_clicked)
         self.item_left_clicked.connect(self._update_selection_rect)
         self._last_selection_highlight_rect = None
+        self._dodge_distance = 64
 
     def set_pipeline(self, pipeline: RelionDefaultPipeline) -> None:
         if not isinstance(pipeline, RelionDefaultPipeline):

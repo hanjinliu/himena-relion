@@ -9,7 +9,8 @@ from starfile_rs import as_star, read_star
 from himena_relion import _job_dir
 from himena_relion.external import RelionExternalJob
 from himena_relion._job_class import connect_jobs
-from himena_relion.relion5_tomo._builtins import ReconstructTomogramJob, IN_TILT_TYPE
+from himena_relion.relion5_tomo._builtins import ReconstructTomogramJob
+from himena_relion._annotated.io import IN_TILT
 from himena_relion.relion5_tomo.extensions.erase_gold.widgets import (
     QFindBeads3DViewer,
     QEraseGoldViewer,
@@ -41,7 +42,7 @@ class FindBeads3D(RelionExternalJob):
 
     def run(
         self,
-        in_mics: IN_TILT_TYPE,  # path
+        in_mics: IN_TILT,  # path
         gold_nm: Annotated[float, {"label": "Gold diameter (nm)"}] = 10.0,
         findbeads3d_exe: Annotated[
             str, {"label": "findbeads3d executable"}
@@ -96,7 +97,7 @@ class EraseGold(RelionExternalJob):
 
     def run(
         self,
-        in_mics: IN_TILT_TYPE,  # path
+        in_mics: IN_TILT,  # path
         seed: Annotated[int, {"label": "Random seed"}] = 1427,
         mask_expand_factor: Annotated[float, {"label": "Mask expansion factor"}] = 1.2,
         process_halves: Annotated[

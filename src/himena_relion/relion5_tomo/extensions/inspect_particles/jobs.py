@@ -4,19 +4,18 @@ from starfile_rs import empty_star
 from himena_relion._job_class import connect_jobs
 from himena_relion.external import RelionExternalJob
 from himena_relion.relion5._builtins import (
-    IN_PARTICLES,
     SelectSplitJob,
     SelectRemoveDuplicatesJob,
     SelectClassesInteractiveJob,
 )
 from himena_relion.relion5_tomo._builtins import (
-    IN_TILT_TYPE,
     Refine3DTomoJob,
     ExtractParticlesTomoJob,
     InitialModelTomoJob,
     ReconstructParticlesJob,
     Class3DTomoJob,
 )
+from himena_relion._annotated.io import IN_TILT, IN_PARTICLES
 from himena_relion.schemas import OptimisationSetModel
 from .widgets import QInspectViewer
 
@@ -45,7 +44,7 @@ class InspectParticles(RelionExternalJob):
 
     def run(
         self,
-        in_mics: IN_TILT_TYPE,  # path
+        in_mics: IN_TILT,  # path
         in_parts: IN_PARTICLES,  # path
     ):
         star = empty_star()

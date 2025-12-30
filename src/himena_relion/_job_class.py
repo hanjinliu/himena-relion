@@ -298,7 +298,7 @@ class _RelionBuiltinContinue(_RelionBuiltinJob):
 
     @classmethod
     def command_id(cls) -> str:
-        return cls.original_class.type_label() + ".continue"
+        return cls.original_class.command_id() + ".continue"
 
     @classmethod
     def command_palette_title_prefix(cls) -> str:
@@ -393,6 +393,7 @@ class RelionJobExecution:
 
 
 def iter_relion_jobs() -> Generator[type[RelionJob], None, None]:
+    # Used for finding the proper job class from existing job directories.
     yield from _iter_subclasses_recursive(RelionJob)
 
 

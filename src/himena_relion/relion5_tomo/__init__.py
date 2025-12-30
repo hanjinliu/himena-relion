@@ -1,4 +1,4 @@
-from himena_relion.relion5_tomo import widgets, _builtins, _connections
+from himena_relion.relion5_tomo import widgets, _builtins, _connections, _continues
 from himena_relion.relion5_tomo.extensions import (
     FindBeads3D,
     EraseGold,
@@ -6,7 +6,7 @@ from himena_relion.relion5_tomo.extensions import (
 )
 
 
-del widgets, _builtins, _connections
+del widgets, _builtins, _connections, _continues
 
 __all__ = [
     "FindBeads3D",

@@ -121,3 +121,49 @@ LOC_ANG_SAMPLING = Annotated[
         "group": "Sampling",
     },
 ]
+
+LOCAL_ANG_SEARCH = Annotated[
+    bool,
+    {
+        "label": "Perform local angular searches",
+        "tooltip": (
+            "If set to Yes, then rather than performing exhaustive angular searches, "
+            "local searches within the range given below will be performed. A prior "
+            "Gaussian distribution centered at the optimal orientation in the previous "
+            "iteration and with a stddev of 1/3 of the range given below will be "
+            "enforced."
+        ),
+        "group": "Sampling",
+    },
+]
+SIGMA_ANGLES = Annotated[
+    float,
+    {
+        "label": "Local angular search range",
+        "tooltip": (
+            "searches will be performed within +/- the given amount (in degrees) from "
+            "the optimal orientation in the previous iteration. A Gaussian prior (also "
+            "see previous option) will be applied, so that orientations closer to the "
+            "optimal orientation in the previous iteration will get higher weights "
+            "than those further away."
+        ),
+        "group": "Sampling",
+    },
+]
+AUTO_FASTER = Annotated[
+    bool,
+    {
+        "label": "Use finer angular sampling faster",
+        "tooltip": (
+            "If set to Yes, then let auto-refinement proceed faster with finer angular "
+            "samplings. Two additional command-line options will be passed to the "
+            "refine program:\n\n--auto_ignore_angles lets angular sampling go down "
+            "despite changes still happening in the angles\n\n--auto_resol_angles lets "
+            "angular sampling go down if the current resolution already requires that "
+            "sampling at the edge of the particle.\n\nThis option will make the "
+            "computation faster, but hasn't been tested for many cases for potential "
+            "loss in reconstruction quality upon convergence."
+        ),
+        "group": "Sampling",
+    },
+]

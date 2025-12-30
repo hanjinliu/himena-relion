@@ -25,20 +25,32 @@
 #  ***************************************************************************/
 
 from himena_relion._annotated import (
+    class_,
+    io,
     import_,
+    inimodel,
+    extract,
+    misc,
     mcor,
     ctffind,
     compute,
     helix,
+    tomo,
     sampling,
     running,
 )
 
 __all__ = [
+    "io",
     "import_",
+    "inimodel",
+    "extract",
+    "class_",
+    "misc",
     "mcor",
     "ctffind",
     "helix",
+    "tomo",
     "sampling",
     "compute",
     "running",
