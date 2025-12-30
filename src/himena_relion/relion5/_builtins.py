@@ -5,7 +5,7 @@ from magicgui.widgets.bases import ValueWidget
 from himena_relion._job_class import _RelionBuiltinJob, parse_string
 from himena_relion._job_dir import JobDirectory
 from himena_relion._widgets._magicgui import PathDrop, BfactorEdit, Class2DAlgorithmEdit
-from himena_relion import _configs
+from himena_relion import _configs, _annotated as _a
 from himena_relion.schemas import OptimisationSetModel
 
 
@@ -118,77 +118,6 @@ CONTINUE_TYPE = Annotated[
         "group": "I/O",
     },
 ]
-# Motion correction
-MCOR_FIRST_FRAME_SUM_TYPE = Annotated[
-    int, {"label": "First frame for corrected sum", "group": "I/O"}
-]
-MCOR_LAST_FRAME_SUM_TYPE = Annotated[
-    int, {"label": "Last frame for corrected sum", "group": "I/O"}
-]
-MCOR_DOSE_PER_FRAME_TYPE = Annotated[
-    float, {"label": "Dose per frame (e/A^2)", "group": "I/O"}
-]
-MCOR_PRE_EXPOSURE_TYPE = Annotated[
-    float, {"label": "Pre-exposure (e/A^2)", "group": "I/O"}
-]
-MCOR_EER_FRAC_TYPE = Annotated[
-    int, {"label": "EER fractionation", "min": 1, "group": "I/O"}
-]
-DO_F16_TYPE = Annotated[bool, {"label": "Write output in float16", "group": "I/O"}]
-MCOR_DO_DOSE_WEIGHTING_TYPE = Annotated[
-    bool, {"label": "Do dose-weighting", "group": "I/O"}
-]
-MCOR_DO_SAVE_NO_DW_TYPE = Annotated[
-    bool, {"label": "Save non-dose weighted as well", "group": "I/O"}
-]
-MCOR_DO_SAVE_PS_TYPE = Annotated[
-    bool, {"label": "Save sum of power spectra", "group": "I/O"}
-]
-MCOR_SUM_EVERY_E_TYPE = Annotated[
-    float, {"label": "Sum power spectra every (e/A^2)", "group": "I/O"}
-]
-MCOR_BFACTOR_TYPE = Annotated[float, {"label": "Bfactor", "group": "Motion Correction"}]
-MCOR_GROUP_FRAMES_TYPE = Annotated[
-    int, {"label": "Group frames", "min": 1, "group": "Motion Correction"}
-]
-MCOR_BIN_FACTOR_TYPE = Annotated[
-    int, {"label": "Binning factor", "min": 1, "group": "Motion Correction"}
-]
-MCOR_DEFECT_FILE_TYPE = Annotated[
-    str, {"label": "Defect file", "group": "Motion Correction"}
-]
-MCOR_GAIN_REF_TYPE = Annotated[
-    str, {"label": "Gain reference image", "group": "Motion Correction"}
-]
-MCOR_GAIN_ROT_TYPE = Annotated[
-    str,
-    {
-        "choices": [
-            "No rotation (0)",
-            "90 degrees (1)",
-            "180 degrees (2)",
-            "270 degrees (3)",
-        ],
-        "label": "Gain reference flipping",
-        "group": "Motion Correction",
-    },
-]
-MCOR_GAIN_FLIP_TYPE = Annotated[
-    str,
-    {
-        "choices": [
-            "No flipping (0)",
-            "Flip upside down (1)",
-            "Flip left to right (2)",
-        ],
-        "label": "Gain reference flipping",
-        "group": "Motion Correction",
-    },
-]
-MCOR_PATCH_TYPE = Annotated[
-    tuple[int, int],
-    {"label": "Number of patches (X, Y)", "group": "Motion Correction"},
-]
 # CTF
 DO_CTF_TYPE = Annotated[bool, {"label": "Do CTF correction", "group": "CTF"}]
 IGNORE_CTF_TYPE = Annotated[
@@ -248,130 +177,7 @@ DO_BLUSH_TYPE = Annotated[
     bool, {"label": "Use Blush regularisation", "group": "Optimisation"}
 ]
 # Sampling
-DONT_SKIP_ALIGN_TYPE = Annotated[
-    bool, {"label": "Perform image alignment", "group": "Sampling"}
-]
-SIGMA_TILT_TYPE = Annotated[
-    float, {"label": "Prior width on tilt angle", "group": "Sampling"}
-]
-ALLOW_COARSER_SAMPLING_TYPE = Annotated[
-    bool, {"label": "Allow coarser sampling", "group": "Sampling"}
-]
-ANG_SAMPLING_TYPE = Annotated[
-    str,
-    {
-        "label": "Angular sampling interval",
-        "choices": [
-            "30 degrees",
-            "15 degrees",
-            "7.5 degrees",
-            "3.7 degrees",
-            "1.8 degrees",
-            "0.9 degrees",
-            "0.5 degrees",
-            "0.2 degrees",
-            "0.1 degrees",
-        ],
-        "group": "Sampling",
-    },
-]
-OFFSET_RANGE_STEP_TYPE = Annotated[
-    tuple[float, float],
-    {"label": "Offset search range/step (pix)", "group": "Sampling"},
-]
-RELAX_SYMMETRY_TYPE = Annotated[str, {"label": "Relax symmetry", "group": "Sampling"}]
-KEEP_TILT_PRIOR_FIXED_TYPE = Annotated[
-    bool, {"label": "Keep tilt-prior fixed", "group": "Helix"}
-]
-LOC_ANG_SAMPLING_TYPE = Annotated[
-    str,
-    {
-        "label": "Local angular sampling interval",
-        "choices": [
-            "30 degrees",
-            "15 degrees",
-            "7.5 degrees",
-            "3.7 degrees",
-            "1.8 degrees",
-            "0.9 degrees",
-            "0.5 degrees",
-            "0.2 degrees",
-            "0.1 degrees",
-        ],
-        "group": "Sampling",
-    },
-]
-# Helix
-DO_HELIX_TYPE = Annotated[
-    bool, {"label": "Do helical reconstruction", "group": "Helix"}
-]
-HELICAL_TUBE_DIAMETER_TYPE = Annotated[
-    float, {"label": "Tube diameter (A)", "group": "Helix"}
-]
-HELICAL_TUBE_DIAMETER_RANGE_TYPE = Annotated[
-    tuple[float, float],
-    {"label": "Inner/Outer tube diameter (A)", "group": "Helix"},
-]
-ROT_TILT_PSI_RANGE_TYPE = Annotated[
-    tuple[float, float, float],
-    {"label": "Angular search ranges (rot, tilt, psi) (deg)", "group": "Helix"},
-]
-DO_APPLY_HELICAL_SYMMETRY_TYPE = Annotated[
-    bool, {"label": "Apply helical symmetry", "group": "Helix"}
-]
-DO_LOCAL_SEARCH_HELICAL_SYMMETRY_TYPE = Annotated[
-    bool, {"label": "Do local searches of symmetry", "group": "Helix"}
-]
-HELICAL_RANGE_DIST_TYPE = Annotated[
-    float, {"label": "Range factor of local averaging", "group": "Helix"}
-]
-HELICAL_TWIST_INITIAL_TYPE = Annotated[
-    float, {"label": "Initial helical twist (deg)", "group": "Helix"}
-]
-HELICAL_TWIST_RANGE_TYPE = Annotated[
-    tuple[float, float, float],
-    {"label": "Helical twist min/max/step (deg)", "group": "Helix"},
-]
-HELICAL_RISE_TYPE = Annotated[float, {"label": "Helical rise (A)", "group": "Helix"}]
-HELICAL_RISE_INITIAL_TYPE = Annotated[
-    float, {"label": "Initial helical rise (A)", "group": "Helix"}
-]
-HELICAL_RISE_RANGE_TYPE = Annotated[
-    tuple[float, float, float],
-    {"label": "Helical rise min/max/step (A)", "group": "Helix"},
-]
-HELICAL_NR_ASU_TYPE = Annotated[
-    int, {"label": "Number of asymmetrical units", "group": "Helix"}
-]
-HELICAL_Z_PERCENTAGE_TYPE = Annotated[
-    float, {"label": "Central Z length (%)", "group": "Helix"}
-]
 
-# Compute
-USE_PARALLEL_DISC_IO_TYPE = Annotated[
-    bool, {"label": "Use parallel disc I/O", "group": "Compute"}
-]
-NUM_POOL_TYPE = Annotated[
-    int, {"label": "Number of pooled particles", "min": 1, "group": "Compute"}
-]
-DO_PREREAD_TYPE = Annotated[
-    bool, {"label": "Pre-read all particles into RAM", "group": "Compute"}
-]
-USE_SCRATCH_TYPE = Annotated[
-    bool,
-    {
-        "label": "Copy particles to scratch directory",
-        "tooltip": "Preload particles to scratch directory to improve I/O performance during computation.",
-        "group": "Compute",
-    },
-]
-DO_COMBINE_THRU_DISC_TYPE = Annotated[
-    bool, {"label": "Combine iterations through disc", "group": "Compute"}
-]
-GPU_IDS_TYPE = Annotated[str, {"label": "GPU IDs to use", "group": "Compute"}]
-USE_FAST_SUBSET_TYPE = Annotated[
-    bool, {"label": "Use fast subsets", "group": "Compute"}
-]
 # class 3d
 LOCAL_ANG_SEARCH_TYPE = Annotated[
     bool, {"label": "Perform local angular searches", "group": "Sampling"}
@@ -386,28 +192,6 @@ B_FACTOR_TYPE = Annotated[
         "label": "B-factor",
         "widget_type": BfactorEdit,
         "group": "Sharpen",
-    },
-]
-# running
-MPI_TYPE = Annotated[
-    int,
-    {"label": "Number of MPI processes", "min": 1, "max": 64, "group": "Running"},
-]
-THREAD_TYPE = Annotated[
-    int,
-    {"label": "Number of threads", "min": 1, "max": 64, "group": "Running"},
-]
-DO_QUEUE_TYPE = Annotated[
-    bool,
-    {"label": "Submit to queue", "group": "Running"},
-]
-MIN_DEDICATED_TYPE = Annotated[
-    int,
-    {
-        "label": "Minimum dedicated cores per node",
-        "min": 1,
-        "max": 64,
-        "group": "Running",
     },
 ]
 
@@ -460,29 +244,29 @@ class MotionCorr2Job(_MotionCorrJobBase):
     def run(
         self,
         input_star_mics: IN_MOVIES = "",
-        first_frame_sum: MCOR_FIRST_FRAME_SUM_TYPE = 1,
-        last_frame_sum: MCOR_LAST_FRAME_SUM_TYPE = -1,
-        dose_per_frame: MCOR_DOSE_PER_FRAME_TYPE = 1.0,
-        pre_exposure: MCOR_PRE_EXPOSURE_TYPE = 0.0,
-        eer_grouping: MCOR_EER_FRAC_TYPE = 32,
-        do_float16: DO_F16_TYPE = True,
-        do_dose_weighting: MCOR_DO_DOSE_WEIGHTING_TYPE = True,
-        group_for_ps: MCOR_SUM_EVERY_E_TYPE = 4.0,
+        first_frame_sum: _a.mcor.FIRST_FRAME_SUM = 1,
+        last_frame_sum: _a.mcor.LAST_FRAME_SUM = -1,
+        dose_per_frame: _a.mcor.DOSE_PER_FRAME = 1.0,
+        pre_exposure: _a.mcor.PRE_EXPOSURE = 0.0,
+        eer_grouping: _a.mcor.EER_FRAC = 32,
+        do_float16: _a.mcor.DO_F16 = True,
+        do_dose_weighting: _a.mcor.DO_DOSE_WEIGHTING = True,
+        group_for_ps: _a.mcor.SUM_EVERY_E = 4.0,
         # Motion correction
-        bfactor: MCOR_BFACTOR_TYPE = 150,
-        group_frames: MCOR_GROUP_FRAMES_TYPE = 1,
-        bin_factor: MCOR_BIN_FACTOR_TYPE = 1,
-        fn_defect: MCOR_DEFECT_FILE_TYPE = "",
-        fn_gain_ref: MCOR_GAIN_REF_TYPE = "",
-        gain_rot: MCOR_GAIN_ROT_TYPE = "No rotation (0)",
-        gain_flip: MCOR_GAIN_FLIP_TYPE = "No flipping (0)",
-        patch: MCOR_PATCH_TYPE = (1, 1),
-        gpu_ids: GPU_IDS_TYPE = "0",
+        bfactor: _a.mcor.BFACTOR = 150,
+        group_frames: _a.mcor.GROUP_FRAMES = 1,
+        bin_factor: _a.mcor.BIN_FACTOR = 1,
+        fn_defect: _a.mcor.DEFECT_FILE = "",
+        fn_gain_ref: _a.mcor.GAIN_REF = "",
+        gain_rot: _a.mcor.GAIN_ROT = "No rotation (0)",
+        gain_flip: _a.mcor.GAIN_FLIP = "No flipping (0)",
+        patch: _a.mcor.PATCH = (1, 1),
+        gpu_ids: _a.compute.GPU_IDS = "0",
         # Running
-        nr_mpi: MPI_TYPE = 1,
-        nr_threads: THREAD_TYPE = 1,
-        do_queue: DO_QUEUE_TYPE = False,
-        min_dedicated: MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.MPI_TYPE = 1,
+        nr_threads: _a.running.THREAD_TYPE = 1,
+        do_queue: _a.running.DO_QUEUE_TYPE = False,
+        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -516,30 +300,30 @@ class MotionCorrOwnJob(_MotionCorrJobBase):
     def run(
         self,
         input_star_mics: IN_MOVIES = "",
-        first_frame_sum: MCOR_FIRST_FRAME_SUM_TYPE = 1,
-        last_frame_sum: MCOR_LAST_FRAME_SUM_TYPE = -1,
-        dose_per_frame: MCOR_DOSE_PER_FRAME_TYPE = 1.0,
-        pre_exposure: MCOR_PRE_EXPOSURE_TYPE = 0.0,
-        eer_grouping: MCOR_EER_FRAC_TYPE = 32,
-        do_float16: DO_F16_TYPE = True,
-        do_dose_weighting: MCOR_DO_DOSE_WEIGHTING_TYPE = True,
-        do_save_noDW: MCOR_DO_SAVE_NO_DW_TYPE = False,
-        do_save_ps: MCOR_DO_SAVE_PS_TYPE = True,
-        group_for_ps: MCOR_SUM_EVERY_E_TYPE = 4.0,
+        first_frame_sum: _a.mcor.FIRST_FRAME_SUM = 1,
+        last_frame_sum: _a.mcor.LAST_FRAME_SUM = -1,
+        dose_per_frame: _a.mcor.DOSE_PER_FRAME = 1.0,
+        pre_exposure: _a.mcor.PRE_EXPOSURE = 0.0,
+        eer_grouping: _a.mcor.EER_FRAC = 32,
+        do_float16: _a.mcor.DO_F16 = True,
+        do_dose_weighting: _a.mcor.DO_DOSE_WEIGHTING = True,
+        do_save_noDW: _a.mcor.DO_SAVE_NO_DW = False,
+        do_save_ps: _a.mcor.DO_SAVE_PS = True,
+        group_for_ps: _a.mcor.SUM_EVERY_E = 4.0,
         # Motion correction
-        bfactor: MCOR_BFACTOR_TYPE = 150,
-        group_frames: MCOR_GROUP_FRAMES_TYPE = 1,
-        bin_factor: MCOR_BIN_FACTOR_TYPE = 1,
-        fn_defect: MCOR_DEFECT_FILE_TYPE = "",
-        fn_gain_ref: MCOR_GAIN_REF_TYPE = "",
-        gain_rot: MCOR_GAIN_ROT_TYPE = "No rotation (0)",
-        gain_flip: MCOR_GAIN_FLIP_TYPE = "No flipping (0)",
-        patch: MCOR_PATCH_TYPE = (1, 1),
+        bfactor: _a.mcor.BFACTOR = 150,
+        group_frames: _a.mcor.GROUP_FRAMES = 1,
+        bin_factor: _a.mcor.BIN_FACTOR = 1,
+        fn_defect: _a.mcor.DEFECT_FILE = "",
+        fn_gain_ref: _a.mcor.GAIN_REF = "",
+        gain_rot: _a.mcor.GAIN_ROT = "No rotation (0)",
+        gain_flip: _a.mcor.GAIN_FLIP = "No flipping (0)",
+        patch: _a.mcor.PATCH = (1, 1),
         # Running
-        nr_mpi: MPI_TYPE = 1,
-        nr_threads: THREAD_TYPE = 1,
-        do_queue: DO_QUEUE_TYPE = False,
-        min_dedicated: MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.MPI_TYPE = 1,
+        nr_threads: _a.running.THREAD_TYPE = 1,
+        do_queue: _a.running.DO_QUEUE_TYPE = False,
+        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -624,9 +408,9 @@ class CtfEstimationJob(_Relion5Job):
             {"label": "Defocus search range min/max/step (A)", "group": "CTFFIND"},
         ] = (5000, 50000, 500),
         # Running
-        nr_mpi: MPI_TYPE = 1,
-        do_queue: DO_QUEUE_TYPE = False,
-        min_dedicated: MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.MPI_TYPE = 1,
+        do_queue: _a.running.DO_QUEUE_TYPE = False,
+        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -652,7 +436,7 @@ class ManualPickJob(_Relion5Job):
         filter_method = kwargs.pop("filter_method", "Band-pass")
         kwargs["do_topaz_denoise"] = filter_method == "Topaz"
         kwargs["do_fom_threshold"] = kwargs["minimum_pick_fom"] is not None
-        if kwargs["do_fom_threshold"]:
+        if kwargs["minimum_pick_fom"] is None:
             kwargs["minimum_pick_fom"] = 0
         return kwargs
 
@@ -879,27 +663,27 @@ class AutoPickLogJob(_AutoPickJob):
         shrink: Annotated[
             float, {"label": "Shrink factor", "group": "Autopicking"}
         ] = 0,
-        gpu_ids: GPU_IDS_TYPE = "",
+        gpu_ids: _a.compute.GPU_IDS = "",
         # Helical
         do_pick_helical_segments: Annotated[
             bool, {"label": "Pick 2D helical segments", "group": "Helix"}
         ] = False,
-        helical_tube_outer_diameter: HELICAL_TUBE_DIAMETER_TYPE = 200,
+        helical_tube_outer_diameter: _a.helix.HELICAL_TUBE_DIAMETER = 200,
         helical_tube_length_min: Annotated[
             float, {"label": "Minimum length (A)", "group": "Helix"}
         ] = -1,
         helical_tube_kappa_max: Annotated[
             float, {"label": "Maximum curvature (kappa)", "group": "Helix"}
         ] = 0.1,
-        helical_nr_asu: HELICAL_NR_ASU_TYPE = 1,
-        helical_rise: HELICAL_RISE_TYPE = -1,
+        helical_nr_asu: _a.helix.HELICAL_NR_ASU = 1,
+        helical_rise: _a.helix.HELICAL_RISE = -1,
         do_amyloid: Annotated[
             bool, {"label": "Pick amyloid segments", "group": "Helix"}
         ] = False,
         # Running
-        nr_mpi: MPI_TYPE = 1,
-        do_queue: DO_QUEUE_TYPE = False,
-        min_dedicated: MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.MPI_TYPE = 1,
+        do_queue: _a.running.DO_QUEUE_TYPE = False,
+        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -995,27 +779,27 @@ class AutoPickTemplate2DJob(_AutoPickJob):
         shrink: Annotated[
             float, {"label": "Shrink factor", "group": "Autopicking"}
         ] = 0,
-        gpu_ids: GPU_IDS_TYPE = "",
+        gpu_ids: _a.compute.GPU_IDS = "",
         # Helical
         do_pick_helical_segments: Annotated[
             bool, {"label": "Pick 2D helical segments", "group": "Helix"}
         ] = False,
-        helical_tube_outer_diameter: HELICAL_TUBE_DIAMETER_TYPE = 200,
+        helical_tube_outer_diameter: _a.helix.HELICAL_TUBE_DIAMETER = 200,
         helical_tube_length_min: Annotated[
             float, {"label": "Minimum length (A)", "group": "Helix"}
         ] = -1,
         helical_tube_kappa_max: Annotated[
             float, {"label": "Maximum curvature (kappa)", "group": "Helix"}
         ] = 0.1,
-        helical_nr_asu: HELICAL_NR_ASU_TYPE = 1,
-        helical_rise: HELICAL_RISE_TYPE = -1,
+        helical_nr_asu: _a.helix.HELICAL_NR_ASU = 1,
+        helical_rise: _a.helix.HELICAL_RISE = -1,
         do_amyloid: Annotated[
             bool, {"label": "Pick amyloid segments", "group": "Helix"}
         ] = False,
         # Running
-        nr_mpi: MPI_TYPE = 1,
-        do_queue: DO_QUEUE_TYPE = False,
-        min_dedicated: MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.MPI_TYPE = 1,
+        do_queue: _a.running.DO_QUEUE_TYPE = False,
+        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -1125,27 +909,27 @@ class AutoPickTemplate3DJob(_AutoPickJob):
         shrink: Annotated[
             float, {"label": "Shrink factor", "group": "Autopicking"}
         ] = 0,
-        gpu_ids: GPU_IDS_TYPE = "",
+        gpu_ids: _a.compute.GPU_IDS = "",
         # Helical
         do_pick_helical_segments: Annotated[
             bool, {"label": "Pick 2D helical segments", "group": "Helix"}
         ] = False,
-        helical_tube_outer_diameter: HELICAL_TUBE_DIAMETER_TYPE = 200,
+        helical_tube_outer_diameter: _a.helix.HELICAL_TUBE_DIAMETER = 200,
         helical_tube_length_min: Annotated[
             float, {"label": "Minimum length (A)", "group": "Helix"}
         ] = -1,
         helical_tube_kappa_max: Annotated[
             float, {"label": "Maximum curvature (kappa)", "group": "Helix"}
         ] = 0.1,
-        helical_nr_asu: HELICAL_NR_ASU_TYPE = 1,
-        helical_rise: HELICAL_RISE_TYPE = -1,
+        helical_nr_asu: _a.helix.HELICAL_NR_ASU = 1,
+        helical_rise: _a.helix.HELICAL_RISE = -1,
         do_amyloid: Annotated[
             bool, {"label": "Pick amyloid segments", "group": "Helix"}
         ] = False,
         # Running
-        nr_mpi: MPI_TYPE = 1,
-        do_queue: DO_QUEUE_TYPE = False,
-        min_dedicated: MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.MPI_TYPE = 1,
+        do_queue: _a.running.DO_QUEUE_TYPE = False,
+        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -1230,27 +1014,27 @@ class AutoPickTopazTrain(_AutoPickJob):
         shrink: Annotated[
             float, {"label": "Shrink factor", "group": "Autopicking"}
         ] = 0,
-        gpu_ids: GPU_IDS_TYPE = "",
+        gpu_ids: _a.compute.GPU_IDS = "",
         # Helical
         do_pick_helical_segments: Annotated[
             bool, {"label": "Pick 2D helical segments", "group": "Helix"}
         ] = False,
-        helical_tube_outer_diameter: HELICAL_TUBE_DIAMETER_TYPE = 200,
+        helical_tube_outer_diameter: _a.helix.HELICAL_TUBE_DIAMETER = 200,
         helical_tube_length_min: Annotated[
             float, {"label": "Minimum length (A)", "group": "Helix"}
         ] = -1,
         helical_tube_kappa_max: Annotated[
             float, {"label": "Maximum curvature (kappa)", "group": "Helix"}
         ] = 0.1,
-        helical_nr_asu: HELICAL_NR_ASU_TYPE = 1,
-        helical_rise: HELICAL_RISE_TYPE = -1,
+        helical_nr_asu: _a.helix.HELICAL_NR_ASU = 1,
+        helical_rise: _a.helix.HELICAL_RISE = -1,
         do_amyloid: Annotated[
             bool, {"label": "Pick amyloid segments", "group": "Helix"}
         ] = False,
         # Running
-        nr_mpi: MPI_TYPE = 1,
-        do_queue: DO_QUEUE_TYPE = False,
-        min_dedicated: MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.MPI_TYPE = 1,
+        do_queue: _a.running.DO_QUEUE_TYPE = False,
+        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -1329,27 +1113,27 @@ class AutoPickTopazPick(_AutoPickJob):
         shrink: Annotated[
             float, {"label": "Shrink factor", "group": "Autopicking"}
         ] = 0,
-        gpu_ids: GPU_IDS_TYPE = "",
+        gpu_ids: _a.compute.GPU_IDS = "",
         # Helical
         do_pick_helical_segments: Annotated[
             bool, {"label": "Pick 2D helical segments", "group": "Helix"}
         ] = False,
-        helical_tube_outer_diameter: HELICAL_TUBE_DIAMETER_TYPE = 200,
+        helical_tube_outer_diameter: _a.helix.HELICAL_TUBE_DIAMETER = 200,
         helical_tube_length_min: Annotated[
             float, {"label": "Minimum length (A)", "group": "Helix"}
         ] = -1,
         helical_tube_kappa_max: Annotated[
             float, {"label": "Maximum curvature (kappa)", "group": "Helix"}
         ] = 0.1,
-        helical_nr_asu: HELICAL_NR_ASU_TYPE = 1,
-        helical_rise: HELICAL_RISE_TYPE = -1,
+        helical_nr_asu: _a.helix.HELICAL_NR_ASU = 1,
+        helical_rise: _a.helix.HELICAL_RISE = -1,
         do_amyloid: Annotated[
             bool, {"label": "Pick amyloid segments", "group": "Helix"}
         ] = False,
         # Running
-        nr_mpi: MPI_TYPE = 1,
-        do_queue: DO_QUEUE_TYPE = False,
-        min_dedicated: MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.MPI_TYPE = 1,
+        do_queue: _a.running.DO_QUEUE_TYPE = False,
+        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -1377,6 +1161,8 @@ class ExtractJobBase(_Relion5Job):
             "rescale", (0, 0, 0)
         )
         kwargs["do_fom_threshold"] = kwargs.get("minimum_pick_fom", None) is not None
+        if kwargs["minimum_pick_fom"] is None:
+            kwargs["minimum_pick_fom"] = 0.0
         return kwargs
 
     @classmethod
@@ -1434,7 +1220,7 @@ class ExtractJob(ExtractJobBase):
         # I/O
         star_mics: IN_MICROGRAPHS = "",
         coords_suffix: IN_COORDINATES = "",
-        do_float16: DO_F16_TYPE = True,
+        do_float16: _a.mcor.DO_F16 = True,
         # Extract
         extract_size: EXTRACT_SIZE_TYPE = 128,
         rescale: EXTRACT_RESCALE_TYPE = 128,
@@ -1447,8 +1233,8 @@ class ExtractJob(ExtractJobBase):
             float | None, {"label": "Minimum autopick FOM", "group": "Extract"}
         ] = None,
         # Helix
-        do_extract_helix: DO_HELIX_TYPE = False,
-        helical_tube_outer_diameter: HELICAL_TUBE_DIAMETER_TYPE = 200,
+        do_extract_helix: _a.helix.DO_HELIX = False,
+        helical_tube_outer_diameter: _a.helix.HELICAL_TUBE_DIAMETER = 200,
         helical_bimodal_angular_priors: Annotated[
             bool, {"label": "Use bimodal angular priors", "group": "Helix"}
         ] = True,
@@ -1458,12 +1244,12 @@ class ExtractJob(ExtractJobBase):
         do_cut_into_segments: Annotated[
             bool, {"label": "Cut helical tubes into segments", "group": "Helix"}
         ] = True,
-        helical_nr_asu: HELICAL_NR_ASU_TYPE = 1,
-        helical_rise: HELICAL_RISE_TYPE = 1,
+        helical_nr_asu: _a.helix.HELICAL_NR_ASU = 1,
+        helical_rise: _a.helix.HELICAL_RISE = 1,
         # Running
-        nr_mpi: MPI_TYPE = 1,
-        do_queue: DO_QUEUE_TYPE = False,
-        min_dedicated: MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.MPI_TYPE = 1,
+        do_queue: _a.running.DO_QUEUE_TYPE = False,
+        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -1501,7 +1287,7 @@ class ReExtractJob(ExtractJobBase):
             bool, {"label": "Recenter refined coordinates", "group": "I/O"}
         ] = True,
         recenter: Annotated[tuple[float, float, float], {"group": "I/O"}] = (0, 0, 0),
-        do_float16: DO_F16_TYPE = True,
+        do_float16: _a.mcor.DO_F16 = True,
         # Extract
         extract_size: EXTRACT_SIZE_TYPE = 128,
         rescale: EXTRACT_RESCALE_TYPE = 128,
@@ -1514,8 +1300,8 @@ class ReExtractJob(ExtractJobBase):
             float | None, {"label": "Minimum autopick FOM", "group": "Extract"}
         ] = None,
         # Helix
-        do_extract_helix: DO_HELIX_TYPE = False,
-        helical_tube_outer_diameter: HELICAL_TUBE_DIAMETER_TYPE = 200,
+        do_extract_helix: _a.helix.DO_HELIX = False,
+        helical_tube_outer_diameter: _a.helix.HELICAL_TUBE_DIAMETER = 200,
         helical_bimodal_angular_priors: Annotated[
             bool, {"label": "Use bimodal angular priors", "group": "Helix"}
         ] = True,
@@ -1525,12 +1311,12 @@ class ReExtractJob(ExtractJobBase):
         do_cut_into_segments: Annotated[
             bool, {"label": "Cut helical tubes into segments", "group": "Helix"}
         ] = True,
-        helical_nr_asu: HELICAL_NR_ASU_TYPE = 1,
-        helical_rise: HELICAL_RISE_TYPE = 1,
+        helical_nr_asu: _a.helix.HELICAL_NR_ASU = 1,
+        helical_rise: _a.helix.HELICAL_RISE = 1,
         # Running
-        nr_mpi: MPI_TYPE = 1,
-        do_queue: DO_QUEUE_TYPE = False,
-        min_dedicated: MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.MPI_TYPE = 1,
+        do_queue: _a.running.DO_QUEUE_TYPE = False,
+        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -1611,7 +1397,7 @@ class Class2DJob(_Relion5Job):
             bool, {"label": "Center class averages", "group": "Optimisation"}
         ] = True,
         # Sampling
-        dont_skip_align: DONT_SKIP_ALIGN_TYPE = True,
+        dont_skip_align: _a.sampling.DONT_SKIP_ALIGN = True,
         psi_sampling: Annotated[
             float, {"label": "In-plane angular sampling (deg)", "group": "Sampling"}
         ] = 6,
@@ -1621,12 +1407,12 @@ class Class2DJob(_Relion5Job):
         offset_step: Annotated[
             float, {"label": "Offset search step (pix)", "group": "Sampling"}
         ] = 1,
-        allow_coarser: ALLOW_COARSER_SAMPLING_TYPE = False,
+        allow_coarser: _a.sampling.ALLOW_COARSER_SAMPLING = False,
         # Helix
         do_helix: Annotated[
             bool, {"label": "Classify 2D helical segments", "group": "Helix"}
         ] = False,
-        helical_tube_outer_diameter: HELICAL_TUBE_DIAMETER_TYPE = 200,
+        helical_tube_outer_diameter: _a.helix.HELICAL_TUBE_DIAMETER = 200,
         do_bimodal_psi: Annotated[
             bool, {"label": "Do bimodal angular searches", "group": "Helix"}
         ] = True,
@@ -1636,19 +1422,19 @@ class Class2DJob(_Relion5Job):
         do_restrict_xoff: Annotated[
             bool, {"label": "Restrict helical offsets to rise", "group": "Helix"}
         ] = True,
-        helical_rise: HELICAL_RISE_TYPE = 4.75,
+        helical_rise: _a.helix.HELICAL_RISE = 4.75,
         # Compute
-        do_parallel_discio: USE_PARALLEL_DISC_IO_TYPE = True,
-        nr_pool: NUM_POOL_TYPE = 3,
-        do_preread_images: DO_PREREAD_TYPE = False,
-        use_scratch: USE_SCRATCH_TYPE = False,
-        do_combine_thru_disc: DO_COMBINE_THRU_DISC_TYPE = False,
-        gpu_ids: GPU_IDS_TYPE = "",
+        do_parallel_discio: _a.compute.USE_PARALLEL_DISC_IO = True,
+        nr_pool: _a.compute.NUM_POOL = 3,
+        do_preread_images: _a.compute.DO_PREREAD = False,
+        use_scratch: _a.compute.USE_SCRATCH = False,
+        do_combine_thru_disc: _a.compute.DO_COMBINE_THRU_DISC = False,
+        gpu_ids: _a.compute.GPU_IDS = "",
         # Running
-        nr_mpi: MPI_TYPE = 1,
-        nr_threads: THREAD_TYPE = 1,
-        do_queue: DO_QUEUE_TYPE = False,
-        min_dedicated: MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.MPI_TYPE = 1,
+        nr_threads: _a.running.THREAD_TYPE = 1,
+        do_queue: _a.running.DO_QUEUE_TYPE = False,
+        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -1704,17 +1490,17 @@ class InitialModelJob(_Relion5Job):
             {"label": "Run in C1 and apply symmetry later", "group": "Optimisation"},
         ] = True,
         # Compute
-        do_parallel_discio: USE_PARALLEL_DISC_IO_TYPE = True,
-        nr_pool: NUM_POOL_TYPE = 3,
-        do_preread_images: DO_PREREAD_TYPE = False,
-        use_scratch: USE_SCRATCH_TYPE = False,
-        do_combine_thru_disc: DO_COMBINE_THRU_DISC_TYPE = False,
-        gpu_ids: GPU_IDS_TYPE = "",
+        do_parallel_discio: _a.compute.USE_PARALLEL_DISC_IO = True,
+        nr_pool: _a.compute.NUM_POOL = 3,
+        do_preread_images: _a.compute.DO_PREREAD = False,
+        use_scratch: _a.compute.USE_SCRATCH = False,
+        do_combine_thru_disc: _a.compute.DO_COMBINE_THRU_DISC = False,
+        gpu_ids: _a.compute.GPU_IDS = "",
         # Running
-        nr_mpi: MPI_TYPE = 1,
-        nr_threads: THREAD_TYPE = 1,
-        do_queue: DO_QUEUE_TYPE = False,
-        min_dedicated: MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.MPI_TYPE = 1,
+        nr_threads: _a.running.THREAD_TYPE = 1,
+        do_queue: _a.running.DO_QUEUE_TYPE = False,
+        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -1858,33 +1644,33 @@ class Class3DNoAlignmentJob(_Class3DJobBase):
         highres_limit: HIGH_RES_LIMIT_TYPE = -1,
         do_blush: DO_BLUSH_TYPE = False,
         # Helix
-        do_helix: DO_HELIX_TYPE = False,
-        helical_tube_diameter_range: HELICAL_TUBE_DIAMETER_RANGE_TYPE = (-1, -1),
-        rot_tilt_psi_range: ROT_TILT_PSI_RANGE_TYPE = (-1, 15, 10),
-        helical_range_distance: HELICAL_RANGE_DIST_TYPE = -1,
-        keep_tilt_prior_fixed: KEEP_TILT_PRIOR_FIXED_TYPE = True,
-        do_apply_helical_symmetry: DO_APPLY_HELICAL_SYMMETRY_TYPE = True,
-        helical_twist_initial: HELICAL_TWIST_INITIAL_TYPE = 0,
-        helical_rise_initial: HELICAL_RISE_INITIAL_TYPE = 0,
-        helical_nr_asu: HELICAL_NR_ASU_TYPE = 1,
-        helical_z_percentage: HELICAL_Z_PERCENTAGE_TYPE = 30,
-        do_local_search_helical_symmetry: DO_LOCAL_SEARCH_HELICAL_SYMMETRY_TYPE = False,
-        helical_twist_range: HELICAL_TWIST_RANGE_TYPE = (0, 0, 0),
-        helical_rise_range: HELICAL_RISE_RANGE_TYPE = (0, 0, 0),
+        do_helix: _a.helix.DO_HELIX = False,
+        helical_tube_diameter_range: _a.helix.HELICAL_TUBE_DIAMETER_RANGE = (-1, -1),
+        rot_tilt_psi_range: _a.helix.ROT_TILT_PSI_RANGE = (-1, 15, 10),
+        helical_range_distance: _a.helix.HELICAL_RANGE_DIST = -1,
+        keep_tilt_prior_fixed: _a.helix.KEEP_TILT_PRIOR_FIXED = True,
+        do_apply_helical_symmetry: _a.helix.DO_APPLY_HELICAL_SYMMETRY = True,
+        helical_twist_initial: _a.helix.HELICAL_TWIST_INITIAL = 0,
+        helical_rise_initial: _a.helix.HELICAL_RISE_INITIAL = 0,
+        helical_nr_asu: _a.helix.HELICAL_NR_ASU = 1,
+        helical_z_percentage: _a.helix.HELICAL_Z_PERCENTAGE = 30,
+        do_local_search_helical_symmetry: _a.helix.DO_LOCAL_SEARCH_H_SYM = False,
+        helical_twist_range: _a.helix.HELICAL_TWIST_RANGE = (0, 0, 0),
+        helical_rise_range: _a.helix.HELICAL_RISE_RANGE = (0, 0, 0),
         # Compute
-        do_fast_subsets: USE_FAST_SUBSET_TYPE = False,
-        do_parallel_discio: USE_PARALLEL_DISC_IO_TYPE = True,
-        use_scratch: USE_SCRATCH_TYPE = False,
-        nr_pool: NUM_POOL_TYPE = 3,
-        do_pad1: Annotated[bool, {"label": "Skip padding", "group": "Compute"}] = False,
-        do_preread_images: DO_PREREAD_TYPE = False,
-        do_combine_thru_disc: DO_COMBINE_THRU_DISC_TYPE = False,
-        gpu_ids: GPU_IDS_TYPE = "",
+        do_fast_subsets: _a.compute.USE_FAST_SUBSET = False,
+        do_parallel_discio: _a.compute.USE_PARALLEL_DISC_IO = True,
+        use_scratch: _a.compute.USE_SCRATCH = False,
+        nr_pool: _a.compute.NUM_POOL = 3,
+        do_pad1: _a.compute.DO_PAD1 = False,
+        do_preread_images: _a.compute.DO_PREREAD = False,
+        do_combine_thru_disc: _a.compute.DO_COMBINE_THRU_DISC = False,
+        gpu_ids: _a.compute.GPU_IDS = "",
         # Running
-        nr_mpi: MPI_TYPE = 1,
-        nr_threads: THREAD_TYPE = 1,
-        do_queue: DO_QUEUE_TYPE = False,
-        min_dedicated: MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.MPI_TYPE = 1,
+        nr_threads: _a.running.THREAD_TYPE = 1,
+        do_queue: _a.running.DO_QUEUE_TYPE = False,
+        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -1933,42 +1719,42 @@ class Class3DJob(_Class3DJobBase):
         highres_limit: HIGH_RES_LIMIT_TYPE = -1,
         do_blush: DO_BLUSH_TYPE = False,
         # Sampling
-        sampling: ANG_SAMPLING_TYPE = "7.5 degrees",
-        offset_range_step: OFFSET_RANGE_STEP_TYPE = (5, 1),
+        sampling: _a.sampling.ANG_SAMPLING = "7.5 degrees",
+        offset_range_step: _a.sampling.OFFSET_RANGE_STEP = (5, 1),
         do_local_ang_searches: LOCAL_ANG_SEARCH_TYPE = False,
         sigma_angles: Annotated[
             float, {"label": "Local angular search range", "group": "Sampling"}
         ] = 5,
-        relax_sym: RELAX_SYMMETRY_TYPE = "",
-        allow_coarser: ALLOW_COARSER_SAMPLING_TYPE = False,
+        relax_sym: _a.sampling.RELAX_SYMMETRY = "",
+        allow_coarser: _a.sampling.ALLOW_COARSER_SAMPLING = False,
         # Helix
-        do_helix: DO_HELIX_TYPE = False,
-        helical_tube_diameter_range: HELICAL_TUBE_DIAMETER_RANGE_TYPE = (-1, -1),
-        rot_tilt_psi_range: ROT_TILT_PSI_RANGE_TYPE = (-1, 15, 10),
-        helical_range_distance: HELICAL_RANGE_DIST_TYPE = -1,
-        keep_tilt_prior_fixed: KEEP_TILT_PRIOR_FIXED_TYPE = True,
-        do_apply_helical_symmetry: DO_APPLY_HELICAL_SYMMETRY_TYPE = True,
-        helical_twist_initial: HELICAL_TWIST_INITIAL_TYPE = 0,
-        helical_rise_initial: HELICAL_RISE_INITIAL_TYPE = 0,
-        helical_nr_asu: HELICAL_NR_ASU_TYPE = 1,
-        helical_z_percentage: HELICAL_Z_PERCENTAGE_TYPE = 30,
-        do_local_search_helical_symmetry: DO_LOCAL_SEARCH_HELICAL_SYMMETRY_TYPE = False,
-        helical_twist_range: HELICAL_TWIST_RANGE_TYPE = (0, 0, 0),
-        helical_rise_range: HELICAL_RISE_RANGE_TYPE = (0, 0, 0),
+        do_helix: _a.helix.DO_HELIX = False,
+        helical_tube_diameter_range: _a.helix.HELICAL_TUBE_DIAMETER_RANGE = (-1, -1),
+        rot_tilt_psi_range: _a.helix.ROT_TILT_PSI_RANGE = (-1, 15, 10),
+        helical_range_distance: _a.helix.HELICAL_RANGE_DIST = -1,
+        keep_tilt_prior_fixed: _a.helix.KEEP_TILT_PRIOR_FIXED = True,
+        do_apply_helical_symmetry: _a.helix.DO_APPLY_HELICAL_SYMMETRY = True,
+        helical_twist_initial: _a.helix.HELICAL_TWIST_INITIAL = 0,
+        helical_rise_initial: _a.helix.HELICAL_RISE_INITIAL = 0,
+        helical_nr_asu: _a.helix.HELICAL_NR_ASU = 1,
+        helical_z_percentage: _a.helix.HELICAL_Z_PERCENTAGE = 30,
+        do_local_search_helical_symmetry: _a.helix.DO_LOCAL_SEARCH_H_SYM = False,
+        helical_twist_range: _a.helix.HELICAL_TWIST_RANGE = (0, 0, 0),
+        helical_rise_range: _a.helix.HELICAL_RISE_RANGE = (0, 0, 0),
         # Compute
-        do_fast_subsets: USE_FAST_SUBSET_TYPE = False,
-        do_parallel_discio: USE_PARALLEL_DISC_IO_TYPE = True,
-        use_scratch: USE_SCRATCH_TYPE = False,
-        nr_pool: NUM_POOL_TYPE = 3,
+        do_fast_subsets: _a.compute.USE_FAST_SUBSET = False,
+        do_parallel_discio: _a.compute.USE_PARALLEL_DISC_IO = True,
+        use_scratch: _a.compute.USE_SCRATCH = False,
+        nr_pool: _a.compute.NUM_POOL = 3,
         do_pad1: Annotated[bool, {"label": "Skip padding", "group": "Compute"}] = False,
-        do_preread_images: DO_PREREAD_TYPE = False,
-        do_combine_thru_disc: DO_COMBINE_THRU_DISC_TYPE = False,
-        gpu_ids: GPU_IDS_TYPE = "",
+        do_preread_images: _a.compute.DO_PREREAD = False,
+        do_combine_thru_disc: _a.compute.DO_COMBINE_THRU_DISC = False,
+        gpu_ids: _a.compute.GPU_IDS = "",
         # Running
-        nr_mpi: MPI_TYPE = 1,
-        nr_threads: THREAD_TYPE = 1,
-        do_queue: DO_QUEUE_TYPE = False,
-        min_dedicated: MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.MPI_TYPE = 1,
+        nr_threads: _a.running.THREAD_TYPE = 1,
+        do_queue: _a.running.DO_QUEUE_TYPE = False,
+        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -2057,40 +1843,40 @@ class Refine3DJob(_Relion5Job):
         do_solvent_fsc: SOLVENT_FLATTEN_FSC_TYPE = False,
         do_blush: DO_BLUSH_TYPE = False,
         # Sampling
-        sampling: ANG_SAMPLING_TYPE = "7.5 degrees",
-        offset_range_step: OFFSET_RANGE_STEP_TYPE = (5, 1),
-        auto_local_sampling: LOC_ANG_SAMPLING_TYPE = "1.8 degrees",
-        relax_sym: RELAX_SYMMETRY_TYPE = "",
+        sampling: _a.sampling.ANG_SAMPLING = "7.5 degrees",
+        offset_range_step: _a.sampling.OFFSET_RANGE_STEP = (5, 1),
+        auto_local_sampling: _a.sampling.LOC_ANG_SAMPLING = "1.8 degrees",
+        relax_sym: _a.sampling.RELAX_SYMMETRY = "",
         auto_faster: Annotated[
             bool, {"label": "Use finer angular sampling faster", "group": "Sampling"}
         ] = False,
         # Helix
-        do_helix: DO_HELIX_TYPE = False,
-        helical_tube_diameter_range: HELICAL_TUBE_DIAMETER_RANGE_TYPE = (-1, -1),
-        rot_tilt_psi_range: ROT_TILT_PSI_RANGE_TYPE = (-1, 15, 10),
-        helical_range_distance: HELICAL_RANGE_DIST_TYPE = -1,
-        do_apply_helical_symmetry: DO_APPLY_HELICAL_SYMMETRY_TYPE = True,
-        helical_nr_asu: HELICAL_NR_ASU_TYPE = 1,
-        helical_twist_initial: HELICAL_TWIST_INITIAL_TYPE = 0,
-        helical_rise_initial: HELICAL_RISE_INITIAL_TYPE = 0,
-        helical_z_percentage: HELICAL_Z_PERCENTAGE_TYPE = 30,
-        keep_tilt_prior_fixed: KEEP_TILT_PRIOR_FIXED_TYPE = True,
-        do_local_search_helical_symmetry: DO_LOCAL_SEARCH_HELICAL_SYMMETRY_TYPE = False,
-        helical_twist_range: HELICAL_TWIST_RANGE_TYPE = (0, 0, 0),
-        helical_rise_range: HELICAL_RISE_RANGE_TYPE = (0, 0, 0),
+        do_helix: _a.helix.DO_HELIX = False,
+        helical_tube_diameter_range: _a.helix.HELICAL_TUBE_DIAMETER_RANGE = (-1, -1),
+        rot_tilt_psi_range: _a.helix.ROT_TILT_PSI_RANGE = (-1, 15, 10),
+        helical_range_distance: _a.helix.HELICAL_RANGE_DIST = -1,
+        do_apply_helical_symmetry: _a.helix.DO_APPLY_HELICAL_SYMMETRY = True,
+        helical_nr_asu: _a.helix.HELICAL_NR_ASU = 1,
+        helical_twist_initial: _a.helix.HELICAL_TWIST_INITIAL = 0,
+        helical_rise_initial: _a.helix.HELICAL_RISE_INITIAL = 0,
+        helical_z_percentage: _a.helix.HELICAL_Z_PERCENTAGE = 30,
+        keep_tilt_prior_fixed: _a.helix.KEEP_TILT_PRIOR_FIXED = True,
+        do_local_search_helical_symmetry: _a.helix.DO_LOCAL_SEARCH_H_SYM = False,
+        helical_twist_range: _a.helix.HELICAL_TWIST_RANGE = (0, 0, 0),
+        helical_rise_range: _a.helix.HELICAL_RISE_RANGE = (0, 0, 0),
         # Compute
-        do_parallel_discio: USE_PARALLEL_DISC_IO_TYPE = True,
-        nr_pool: NUM_POOL_TYPE = 3,
-        use_scratch: USE_SCRATCH_TYPE = False,
+        do_parallel_discio: _a.compute.USE_PARALLEL_DISC_IO = True,
+        nr_pool: _a.compute.NUM_POOL = 3,
+        use_scratch: _a.compute.USE_SCRATCH = False,
         do_pad1: Annotated[bool, {"label": "Skip padding", "group": "Compute"}] = False,
-        do_preread_images: DO_PREREAD_TYPE = False,
-        do_combine_thru_disc: DO_COMBINE_THRU_DISC_TYPE = False,
-        gpu_ids: GPU_IDS_TYPE = "",
+        do_preread_images: _a.compute.DO_PREREAD = False,
+        do_combine_thru_disc: _a.compute.DO_COMBINE_THRU_DISC = False,
+        gpu_ids: _a.compute.GPU_IDS = "",
         # Running
-        nr_mpi: MPI_TYPE = 3,
-        nr_threads: THREAD_TYPE = 1,
-        do_queue: DO_QUEUE_TYPE = False,
-        min_dedicated: MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.MPI_TYPE = 3,
+        nr_threads: _a.running.THREAD_TYPE = 1,
+        do_queue: _a.running.DO_QUEUE_TYPE = False,
+        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -2422,12 +2208,12 @@ class MaskCreationJob(_Relion5Job):
         width_mask_edge: Annotated[
             int, {"label": "Soft edge (pixels)", "group": "Mask"}
         ] = 3,
-        do_helix: DO_HELIX_TYPE = False,
-        helical_z_percentage: HELICAL_Z_PERCENTAGE_TYPE = 30,
+        do_helix: _a.helix.DO_HELIX = False,
+        helical_z_percentage: _a.helix.HELICAL_Z_PERCENTAGE = 30,
         # Running
-        nr_threads: THREAD_TYPE = 1,
-        do_queue: DO_QUEUE_TYPE = False,
-        min_dedicated: MIN_DEDICATED_TYPE = 1,
+        nr_threads: _a.running.THREAD_TYPE = 1,
+        do_queue: _a.running.DO_QUEUE_TYPE = False,
+        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -2486,8 +2272,8 @@ class PostProcessJob(_Relion5Job):
             float, {"label": "MTF pixel size (A)", "group": "Sharpen"}
         ] = 1,
         # Running
-        do_queue: DO_QUEUE_TYPE = False,
-        min_dedicated: MIN_DEDICATED_TYPE = 1,
+        do_queue: _a.running.DO_QUEUE_TYPE = False,
+        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -2549,10 +2335,10 @@ class CtfRefineJob(_Relion5Job):
             float, {"label": "Minimum resolution for fitting (A)", "group": "Fit"}
         ] = 30,
         # Running
-        nr_mpi: MPI_TYPE = 1,
-        nr_threads: THREAD_TYPE = 1,
-        do_queue: DO_QUEUE_TYPE = False,
-        min_dedicated: MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.MPI_TYPE = 1,
+        nr_threads: _a.running.THREAD_TYPE = 1,
+        do_queue: _a.running.DO_QUEUE_TYPE = False,
+        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 

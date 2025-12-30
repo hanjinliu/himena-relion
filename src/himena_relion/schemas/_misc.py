@@ -35,11 +35,19 @@ class JobStarModel(schema.StarModel):
 
 
 class ParticlesModel(schema.LoopDataModel):
-    tomo_name: schema.Series[str] = schema.Field("rlnTomoName")
-    centered_x: schema.Series[float] = schema.Field("rlnCenteredCoordinateXAngst")
-    centered_y: schema.Series[float] = schema.Field("rlnCenteredCoordinateYAngst")
-    centered_z: schema.Series[float] = schema.Field("rlnCenteredCoordinateZAngst")
+    tomo_name: schema.Series[str] = schema.Field("rlnTomoName", default=None)
+    centered_x: schema.Series[float] = schema.Field(
+        "rlnCenteredCoordinateXAngst", default=None
+    )
+    centered_y: schema.Series[float] = schema.Field(
+        "rlnCenteredCoordinateYAngst", default=None
+    )
+    centered_z: schema.Series[float] = schema.Field(
+        "rlnCenteredCoordinateZAngst", default=None
+    )
     class_number: schema.Series[int] = schema.Field("rlnClassNumber", default=None)
+    angle_rot: schema.Series[float] = schema.Field("rlnAngleRot", default=None)
+    angle_tilt: schema.Series[float] = schema.Field("rlnAngleTilt", default=None)
 
 
 class ParticleMetaModel(schema.StarModel):

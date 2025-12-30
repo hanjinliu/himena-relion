@@ -89,4 +89,4 @@ class QExtractJobViewer(QJobScrollArea):
                 self._viewer.clear()
             else:
                 self._viewer.set_array_view(img)
-            self._viewer.redraw()
+                self._viewer.redraw()

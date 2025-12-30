@@ -47,7 +47,6 @@ class QFindBeads3DViewer(QtW.QWidget):
         self._tomo_choice.addItems(items)
         if len(items) == 0:
             self._viewer.clear()
-            self._viewer.redraw()
         if current_text in items:
             self._tomo_choice.setCurrentText(current_text)
         self._on_tomo_changed(self._tomo_choice.currentText())
@@ -63,7 +62,6 @@ class QFindBeads3DViewer(QtW.QWidget):
         mod_path = self._job_dir.path / "models" / f"{text}.mod"
         if not mod_path.exists():
             self._viewer.clear()
-            self._viewer.redraw()
             return
         tomo_view = info.read_tomogram(self._job_dir.relion_project_dir)
         self._viewer.set_array_view(
@@ -149,7 +147,6 @@ class QEraseGoldViewer(QtW.QWidget):
         star_path = self._job_dir.path / "tilt_series" / f"{text}.star"
         if not star_path.exists():
             self._viewer.clear()
-            self._viewer.redraw()
             return
         ts = TSModel.validate_file(star_path)
         rln_dir = self._job_dir.relion_project_dir

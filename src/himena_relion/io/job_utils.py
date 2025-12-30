@@ -125,7 +125,7 @@ def abort_relion_job(ui: MainWindow, model: WidgetDataModel):
 @register_function(
     menus=[MenuId.RELION_UTILS],
     types=[Type.RELION_JOB],
-    title="Overwrite",
+    title="Overwrite ...",
     command_id="himena-relion:overwrite-job",
     group="07-job-operation",
 )
@@ -144,7 +144,7 @@ def overwrite_relion_job(ui: MainWindow, model: WidgetDataModel):
 @register_function(
     menus=[MenuId.RELION_UTILS],
     types=[Type.RELION_JOB],
-    title="Clone",
+    title="Clone ...",
     command_id="himena-relion:clone-job",
     group="07-job-operation",
 )
@@ -168,7 +168,7 @@ def clone_relion_job(ui: MainWindow, model: WidgetDataModel):
 @register_function(
     menus=[MenuId.RELION_UTILS],
     types=[Type.RELION_JOB],
-    title="Set Alias",
+    title="Set Alias ...",
     command_id="himena-relion:set-job-alias",
     group="07-job-operation",
 )

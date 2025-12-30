@@ -80,6 +80,7 @@ class Q2DViewer(QViewer):
     def clear(self):
         self._array_view = None
         self._points = np.empty((0, 3), dtype=np.float32)
+        self.redraw()
 
     @property
     def has_image(self) -> bool:

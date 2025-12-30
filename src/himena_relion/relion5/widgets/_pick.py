@@ -60,12 +60,7 @@ class QManualPickViewer(QJobScrollArea):
             movie_view.with_filter(self._filter_widget.apply),
             clim=self._viewer._last_clim,
         )
-        if row[2] and (coords_path := self._job_dir.resolve_path(row[2])).exists():
-            self._coords = CoordsModel.validate_file(coords_path)
-        else:
-            self._coords = None
-
-        self._update_points()
+        self._update_points(reload=row[2])
         self._viewer._auto_contrast()
 
     def _filter_param_changed(self):
@@ -77,7 +72,12 @@ class QManualPickViewer(QJobScrollArea):
             self._viewer.auto_fit()
         self._update_points()
 
-    def _update_points(self):
+    def _update_points(self, reload: str = ""):
+        if reload and (coords_path := self._job_dir.resolve_path(reload)).exists():
+            self._coords = CoordsModel.validate_file(coords_path)
+        else:
+            self._coords = None
+
         if self._coords is None:
             self._viewer.set_points(np.empty((0, 3)))
         else:
@@ -110,7 +110,9 @@ class QManualPickViewer(QJobScrollArea):
                 num = read_star(coords_path).first().trust_loop().shape[0]
             choices.append((mic_path, str(num), coords_path or ""))
         self._mic_list.set_choices(choices)
-        self._update_points()
+        row = self._mic_list.currentRow()
+        item = self._mic_list.item(row, 2)
+        self._update_points(reload=item.text() if item else "")
 
     def _get_diameter(self) -> float:
         return float(self._job_dir.get_job_param("diameter"))

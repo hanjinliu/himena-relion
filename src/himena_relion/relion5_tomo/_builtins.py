@@ -10,68 +10,29 @@ from himena_relion import _configs
 from himena_relion._pipeline import RelionPipeline
 from himena_relion._widgets._magicgui import OptimisationSetEdit, DoseRateEdit
 from himena_relion._widgets._path_input import PathDrop
+from himena_relion import _annotated as _a
 from himena_relion.relion5._builtins import (
     IN_MICROGRAPHS,
     IN_MOVIES,
     IN_PARTICLES,
-    ANG_SAMPLING_TYPE,
     CONTINUE_TYPE,
-    DO_APPLY_HELICAL_SYMMETRY_TYPE,
     DO_BLUSH_TYPE,
-    DO_COMBINE_THRU_DISC_TYPE,
     DO_CTF_TYPE,
-    DO_HELIX_TYPE,
-    DO_LOCAL_SEARCH_HELICAL_SYMMETRY_TYPE,
-    DO_PREREAD_TYPE,
     HALFMAP_TYPE,
-    HELICAL_NR_ASU_TYPE,
-    HELICAL_RANGE_DIST_TYPE,
-    HELICAL_RISE_INITIAL_TYPE,
-    HELICAL_RISE_RANGE_TYPE,
-    HELICAL_TUBE_DIAMETER_RANGE_TYPE,
-    HELICAL_TWIST_INITIAL_TYPE,
-    HELICAL_TWIST_RANGE_TYPE,
-    HELICAL_Z_PERCENTAGE_TYPE,
     IGNORE_CTF_TYPE,
     INITIAL_LOWPASS_TYPE,
-    KEEP_TILT_PRIOR_FIXED_TYPE,
-    LOC_ANG_SAMPLING_TYPE,
     MASK_DIAMETER_TYPE,
     MASK_TYPE,
     MASK_WITH_ZEROS_TYPE,
-    MCOR_BFACTOR_TYPE,
-    MCOR_BIN_FACTOR_TYPE,
-    MCOR_DEFECT_FILE_TYPE,
-    DO_F16_TYPE,
-    MCOR_DO_SAVE_PS_TYPE,
-    MCOR_EER_FRAC_TYPE,
-    MCOR_GAIN_FLIP_TYPE,
-    MCOR_GAIN_REF_TYPE,
-    MCOR_GAIN_ROT_TYPE,
-    MCOR_GROUP_FRAMES_TYPE,
-    MCOR_PATCH_TYPE,
     NUM_CLASS_TYPE,
     NUM_ITER_TYPE,
-    NUM_POOL_TYPE,
-    OFFSET_RANGE_STEP_TYPE,
     PROCESS_TYPE,
     REF_CORRECT_GRAY_TYPE,
     REF_SYMMETRY_TYPE,
     REF_TYPE,
-    RELAX_SYMMETRY_TYPE,
-    ROT_TILT_PSI_RANGE_TYPE,
-    SIGMA_TILT_TYPE,
     SOLVENT_FLATTEN_FSC_TYPE,
     T_TYPE,
     TRUST_REF_SIZE_TYPE,
-    MPI_TYPE,
-    DO_QUEUE_TYPE,
-    MIN_DEDICATED_TYPE,
-    THREAD_TYPE,
-    GPU_IDS_TYPE,
-    USE_FAST_SUBSET_TYPE,
-    USE_PARALLEL_DISC_IO_TYPE,
-    USE_SCRATCH_TYPE,
     CtfEstimationJob,
     Class3DJob,
     MotionCorr2Job,
@@ -99,12 +60,6 @@ IN_OPTIM = Annotated[
 TOMO_THICKNESS_TYPE = Annotated[
     float,
     {"label": "Estimated tomogram thickness (nm)", "min": 1.0, "group": "I/O"},
-]
-MCOR_ODD_EVEN_SPLIT_TYPE = Annotated[
-    bool, {"label": "Save images for denoising", "group": "I/O"}
-]
-MCOR_SUM_EVERY_N_TYPE = Annotated[
-    int, {"label": "Save power spectra every n frames", "group": "I/O"}
 ]
 
 
@@ -231,8 +186,7 @@ class ImportTomoJob(_ImportTomoJob):
             bool, {"label": "Invert defocus handedness", "group": "Tilt series"}
         ] = True,
         # Running
-        do_queue: DO_QUEUE_TYPE = False,
-        min_dedicated: MIN_DEDICATED_TYPE = 1,
+        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -288,8 +242,7 @@ class ImportCoordinatesJob(_ImportTomoJob):
             float, {"label": "Add this to coordinates", "group": "Coordinates"}
         ] = 0.0,
         # Running
-        do_queue: DO_QUEUE_TYPE = False,
-        min_dedicated: MIN_DEDICATED_TYPE = 1,
+        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -298,23 +251,22 @@ class MotionCorr2TomoJob(_Relion5TomoJob, MotionCorr2Job):
     def run(
         self,
         input_star_mics: IN_MOVIES = "",
-        eer_grouping: MCOR_EER_FRAC_TYPE = 32,
-        do_even_odd_split: MCOR_ODD_EVEN_SPLIT_TYPE = False,
+        eer_grouping: _a.mcor.EER_FRAC = 32,
+        do_even_odd_split: _a.mcor.DO_ODD_EVEN_SPLIT = False,
         # Motion correction
-        bfactor: MCOR_BFACTOR_TYPE = 150,
-        group_frames: MCOR_GROUP_FRAMES_TYPE = 1,
-        bin_factor: MCOR_BIN_FACTOR_TYPE = 1,
-        fn_defect: MCOR_DEFECT_FILE_TYPE = "",
-        fn_gain_ref: MCOR_GAIN_REF_TYPE = "",
-        gain_rot: MCOR_GAIN_ROT_TYPE = "No rotation (0)",
-        gain_flip: MCOR_GAIN_FLIP_TYPE = "No flipping (0)",
-        patch: MCOR_PATCH_TYPE = (1, 1),
-        gpu_ids: GPU_IDS_TYPE = "0",
+        bfactor: _a.mcor.BFACTOR = 150,
+        group_frames: _a.mcor.GROUP_FRAMES = 1,
+        bin_factor: _a.mcor.BIN_FACTOR = 1,
+        fn_defect: _a.mcor.DEFECT_FILE = "",
+        fn_gain_ref: _a.mcor.GAIN_REF = "",
+        gain_rot: _a.mcor.GAIN_ROT = "No rotation (0)",
+        gain_flip: _a.mcor.GAIN_FLIP = "No flipping (0)",
+        patch: _a.mcor.PATCH = (1, 1),
+        gpu_ids: _a.compute.GPU_IDS = "0",
         # Running
-        nr_mpi: MPI_TYPE = 1,
-        nr_threads: THREAD_TYPE = 1,
-        do_queue: DO_QUEUE_TYPE = False,
-        min_dedicated: MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.MPI_TYPE = 1,
+        nr_threads: _a.running.THREAD_TYPE = 1,
+        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -323,25 +275,24 @@ class MotionCorrOwnTomoJob(_Relion5TomoJob, MotionCorrOwnJob):
     def run(
         self,
         input_star_mics: IN_MOVIES = "",
-        do_even_odd_split: MCOR_ODD_EVEN_SPLIT_TYPE = False,
-        do_float16: DO_F16_TYPE = True,
-        eer_grouping: MCOR_EER_FRAC_TYPE = 32,
-        do_save_ps: MCOR_DO_SAVE_PS_TYPE = True,
-        group_for_ps: MCOR_SUM_EVERY_N_TYPE = 4,
+        do_even_odd_split: _a.mcor.DO_ODD_EVEN_SPLIT = False,
+        do_float16: _a.mcor.DO_F16 = True,
+        eer_grouping: _a.mcor.EER_FRAC = 32,
+        do_save_ps: _a.mcor.DO_SAVE_PS = True,
+        group_for_ps: _a.mcor.SUM_EVERY_N = 4,
         # Motion correction
-        bfactor: MCOR_BFACTOR_TYPE = 150,
-        group_frames: MCOR_GROUP_FRAMES_TYPE = 1,
-        bin_factor: MCOR_BIN_FACTOR_TYPE = 1,
-        fn_defect: MCOR_DEFECT_FILE_TYPE = "",
-        fn_gain_ref: MCOR_GAIN_REF_TYPE = "",
-        gain_rot: MCOR_GAIN_ROT_TYPE = "No rotation (0)",
-        gain_flip: MCOR_GAIN_FLIP_TYPE = "No flipping (0)",
-        patch: MCOR_PATCH_TYPE = (1, 1),
+        bfactor: _a.mcor.BFACTOR = 150,
+        group_frames: _a.mcor.GROUP_FRAMES = 1,
+        bin_factor: _a.mcor.BIN_FACTOR = 1,
+        fn_defect: _a.mcor.DEFECT_FILE = "",
+        fn_gain_ref: _a.mcor.GAIN_REF = "",
+        gain_rot: _a.mcor.GAIN_ROT = "No rotation (0)",
+        gain_flip: _a.mcor.GAIN_FLIP = "No flipping (0)",
+        patch: _a.mcor.PATCH = (1, 1),
         # Running
-        nr_mpi: MPI_TYPE = 1,
-        nr_threads: THREAD_TYPE = 1,
-        do_queue: DO_QUEUE_TYPE = False,
-        min_dedicated: MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.MPI_TYPE = 1,
+        nr_threads: _a.running.THREAD_TYPE = 1,
+        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -390,9 +341,8 @@ class CtfEstimationTomoJob(_Relion5TomoJob, CtfEstimationJob):
             {"label": "Dose-dependent Thon ring fading (e/A^2)", "group": "CTFFIND"},
         ] = 100,
         # Running
-        nr_mpi: MPI_TYPE = 1,
-        do_queue: DO_QUEUE_TYPE = False,
-        min_dedicated: MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.MPI_TYPE = 1,
+        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -420,8 +370,7 @@ class ExcludeTiltJob(_Relion5TomoJob):
                 "group": "I/O",
             },
         ] = 5,
-        do_queue: DO_QUEUE_TYPE = False,
-        min_dedicated: MIN_DEDICATED_TYPE = 1,
+        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -492,9 +441,8 @@ class AlignTiltSeriesImodFiducial(_AlignTiltSeriesJobBase):
         in_tiltseries: IN_TILT_TYPE = "",
         tomogram_thickness: TOMO_THICKNESS_TYPE = 300.0,
         fiducial_diameter: Annotated[float, {"label": "Fiducial diameter (nm)"}] = 10.0,
-        nr_mpi: MPI_TYPE = 1,
-        do_queue: DO_QUEUE_TYPE = False,
-        min_dedicated: MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.MPI_TYPE = 1,
+        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -545,9 +493,8 @@ class AlignTiltSeriesImodPatch(_AlignTiltSeriesJobBase):
         patch_overlap: Annotated[
             float, {"label": "Patch overlap (%)", "min": 0, "max": 100}
         ] = 50,
-        nr_mpi: MPI_TYPE = 1,
-        do_queue: DO_QUEUE_TYPE = False,
-        min_dedicated: MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.MPI_TYPE = 1,
+        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -598,10 +545,9 @@ class AlignTiltSeriesAreTomo2(_AlignTiltSeriesJobBase):
             bool, {"label": "Estimate phase shift"}
         ] = False,
         other_aretomo_args: Annotated[str, {"label": "Other AreTomo2 arguments"}] = "",
-        gpu_ids: GPU_IDS_TYPE = "",
-        nr_mpi: MPI_TYPE = 1,
-        do_queue: DO_QUEUE_TYPE = False,
-        min_dedicated: MIN_DEDICATED_TYPE = 1,
+        gpu_ids: _a.compute.GPU_IDS = "",
+        nr_mpi: _a.running.MPI_TYPE = 1,
+        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -676,10 +622,9 @@ class ReconstructTomogramJob(_Relion5TomoJob):
             bool, {"label": "Ignore CTFs until first peak", "group": "Filter"}
         ] = True,
         # Running
-        nr_mpi: MPI_TYPE = 1,
-        nr_threads: THREAD_TYPE = 1,
-        do_queue: DO_QUEUE_TYPE = False,
-        min_dedicated: MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.MPI_TYPE = 1,
+        nr_threads: _a.running.THREAD_TYPE = 1,
+        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -726,8 +671,7 @@ class PickJob(_Relion5TomoJob):
         particle_spacing: Annotated[
             float, {"label": "Particle spacing (A)", "group": "I/O"}
         ] = -1,
-        do_queue: DO_QUEUE_TYPE = False,
-        min_dedicated: MIN_DEDICATED_TYPE = 1,
+        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -777,10 +721,9 @@ class ExtractParticlesTomoJob(_Relion5TomoJob):
             bool, {"label": "Write output in float16", "group": "Reconstruct"}
         ] = True,
         # Running
-        nr_mpi: MPI_TYPE = 1,
-        nr_threads: THREAD_TYPE = 1,
-        do_queue: DO_QUEUE_TYPE = False,
-        min_dedicated: MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.MPI_TYPE = 1,
+        nr_threads: _a.running.THREAD_TYPE = 1,
+        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -853,11 +796,10 @@ class DenoiseTrain(_DenoiseJobBase):
         subvolume_dimensions: Annotated[
             int, {"label": "Sub-volume dimensions (pix)", "group": "Train"}
         ] = 72,
-        gpu_ids: GPU_IDS_TYPE = "0",
-        nr_mpi: MPI_TYPE = 1,
-        nr_threads: THREAD_TYPE = 1,
-        do_queue: DO_QUEUE_TYPE = False,
-        min_dedicated: MIN_DEDICATED_TYPE = 1,
+        gpu_ids: _a.compute.GPU_IDS = "0",
+        nr_mpi: _a.running.MPI_TYPE = 1,
+        nr_threads: _a.running.THREAD_TYPE = 1,
+        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -917,11 +859,10 @@ class DenoisePredict(_DenoiseJobBase):
         denoising_tomo_name: Annotated[
             str, {"label": "Reconstruct only this tomogram"}
         ] = "",
-        gpu_ids: GPU_IDS_TYPE = "0",
-        nr_mpi: MPI_TYPE = 1,
-        nr_threads: THREAD_TYPE = 1,
-        do_queue: DO_QUEUE_TYPE = False,
-        min_dedicated: MIN_DEDICATED_TYPE = 1,
+        gpu_ids: _a.compute.GPU_IDS = "0",
+        nr_mpi: _a.running.MPI_TYPE = 1,
+        nr_threads: _a.running.THREAD_TYPE = 1,
+        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -964,19 +905,18 @@ class InitialModelTomoJob(_Relion5TomoJob, InitialModelJob):
             bool,
             {"label": "Run in C1 and apply symmetry later", "group": "Optimisation"},
         ] = True,
-        sigma_tilt: SIGMA_TILT_TYPE = -1,
+        sigma_tilt: _a.sampling.SIGMA_TILT = -1,
         # Compute
-        do_parallel_discio: USE_PARALLEL_DISC_IO_TYPE = True,
-        nr_pool: NUM_POOL_TYPE = 3,
-        do_preread_images: DO_PREREAD_TYPE = False,
-        use_scratch: USE_SCRATCH_TYPE = False,
-        do_combine_thru_disc: DO_COMBINE_THRU_DISC_TYPE = False,
-        gpu_ids: GPU_IDS_TYPE = "",
+        do_parallel_discio: _a.compute.USE_PARALLEL_DISC_IO = True,
+        nr_pool: _a.compute.NUM_POOL = 3,
+        do_preread_images: _a.compute.DO_PREREAD = False,
+        use_scratch: _a.compute.USE_SCRATCH = False,
+        do_combine_thru_disc: _a.compute.DO_COMBINE_THRU_DISC = False,
+        gpu_ids: _a.compute.GPU_IDS = "",
         # Running
-        nr_mpi: MPI_TYPE = 1,
-        nr_threads: THREAD_TYPE = 1,
-        do_queue: DO_QUEUE_TYPE = False,
-        min_dedicated: MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.MPI_TYPE = 1,
+        nr_threads: _a.running.THREAD_TYPE = 1,
+        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -998,16 +938,15 @@ class InitialModelTomoContinue(_RelionBuiltinContinue):
         # Optimisation
         nr_iter: NUM_ITER_TYPE = 200,
         # Compute
-        do_parallel_discio: USE_PARALLEL_DISC_IO_TYPE = True,
-        nr_pool: NUM_POOL_TYPE = 3,
-        do_preread_images: DO_PREREAD_TYPE = False,
-        do_combine_thru_disc: DO_COMBINE_THRU_DISC_TYPE = False,
-        gpu_ids: GPU_IDS_TYPE = "",
+        do_parallel_discio: _a.compute.USE_PARALLEL_DISC_IO = True,
+        nr_pool: _a.compute.NUM_POOL = 3,
+        do_preread_images: _a.compute.DO_PREREAD = False,
+        do_combine_thru_disc: _a.compute.DO_COMBINE_THRU_DISC = False,
+        gpu_ids: _a.compute.GPU_IDS = "",
         # Running
-        nr_mpi: MPI_TYPE = 1,
-        nr_threads: THREAD_TYPE = 1,
-        do_queue: DO_QUEUE_TYPE = False,
-        min_dedicated: MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.MPI_TYPE = 1,
+        nr_threads: _a.running.THREAD_TYPE = 1,
+        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -1062,8 +1001,8 @@ class Class3DTomoJob(_Relion5TomoJob, Class3DJob):
         dont_skip_align: Annotated[
             bool, {"label": "Perform image alignment", "group": "Sampling"}
         ] = True,
-        sampling: ANG_SAMPLING_TYPE = "7.5 degrees",
-        offset_range_step: OFFSET_RANGE_STEP_TYPE = (5, 1),
+        sampling: _a.sampling.ANG_SAMPLING = "7.5 degrees",
+        offset_range_step: _a.sampling.OFFSET_RANGE_STEP = (5, 1),
         allow_coarser: Annotated[
             bool, {"label": "Allow coarser sampling", "group": "Sampling"}
         ] = False,
@@ -1073,36 +1012,36 @@ class Class3DTomoJob(_Relion5TomoJob, Class3DJob):
         sigma_angles: Annotated[
             float, {"label": "Local angular search range", "group": "Sampling"}
         ] = 5,
-        relax_sym: RELAX_SYMMETRY_TYPE = "",
-        sigma_tilt: SIGMA_TILT_TYPE = -1,
+        relax_sym: _a.sampling.RELAX_SYMMETRY = "",
+        sigma_tilt: _a.sampling.SIGMA_TILT = -1,
         # Helix
-        do_helix: DO_HELIX_TYPE = False,
-        helical_tube_diameter_range: HELICAL_TUBE_DIAMETER_RANGE_TYPE = (-1, -1),
-        rot_tilt_psi_range: ROT_TILT_PSI_RANGE_TYPE = (-1, 15, 10),
-        helical_range_distance: HELICAL_RANGE_DIST_TYPE = -1,
-        keep_tilt_prior_fixed: KEEP_TILT_PRIOR_FIXED_TYPE = True,
-        do_apply_helical_symmetry: DO_APPLY_HELICAL_SYMMETRY_TYPE = True,
-        helical_twist_initial: HELICAL_TWIST_INITIAL_TYPE = 0,
-        helical_rise_initial: HELICAL_RISE_INITIAL_TYPE = 0,
-        helical_nr_asu: HELICAL_NR_ASU_TYPE = 1,
-        helical_z_percentage: HELICAL_Z_PERCENTAGE_TYPE = 30,
-        do_local_search_helical_symmetry: DO_LOCAL_SEARCH_HELICAL_SYMMETRY_TYPE = False,
-        helical_twist_range: HELICAL_TWIST_RANGE_TYPE = (0, 0, 0),
-        helical_rise_range: HELICAL_RISE_RANGE_TYPE = (0, 0, 0),
+        do_helix: _a.helix.DO_HELIX = False,
+        helical_tube_diameter_range: _a.helix.HELICAL_TUBE_DIAMETER_RANGE = (-1, -1),
+        rot_tilt_psi_range: _a.helix.ROT_TILT_PSI_RANGE = (-1, 15, 10),
+        helical_range_distance: _a.helix.HELICAL_RANGE_DIST = -1,
+        keep_tilt_prior_fixed: _a.helix.KEEP_TILT_PRIOR_FIXED = True,
+        do_apply_helical_symmetry: _a.helix.DO_APPLY_HELICAL_SYMMETRY = True,
+        helical_twist_initial: _a.helix.HELICAL_TWIST_INITIAL = 0,
+        helical_rise_initial: _a.helix.HELICAL_RISE_INITIAL = 0,
+        helical_nr_asu: _a.helix.HELICAL_NR_ASU = 1,
+        helical_z_percentage: _a.helix.HELICAL_Z_PERCENTAGE = 30,
+        do_local_search_helical_symmetry: _a.helix.DO_LOCAL_SEARCH_H_SYM = False,
+        helical_twist_range: _a.helix.HELICAL_TWIST_RANGE = (0, 0, 0),
+        helical_rise_range: _a.helix.HELICAL_RISE_RANGE = (0, 0, 0),
         # Compute
-        do_fast_subsets: USE_FAST_SUBSET_TYPE = False,
-        do_parallel_discio: USE_PARALLEL_DISC_IO_TYPE = True,
-        use_scratch: USE_SCRATCH_TYPE = False,
-        nr_pool: NUM_POOL_TYPE = 3,
-        do_pad1: Annotated[bool, {"label": "Skip padding", "group": "Compute"}] = False,
-        do_preread_images: DO_PREREAD_TYPE = False,
-        do_combine_thru_disc: DO_COMBINE_THRU_DISC_TYPE = False,
-        gpu_ids: GPU_IDS_TYPE = "",
+        do_fast_subsets: _a.compute.USE_FAST_SUBSET = False,
+        do_parallel_discio: _a.compute.USE_PARALLEL_DISC_IO = True,
+        use_scratch: _a.compute.USE_SCRATCH = False,
+        nr_pool: _a.compute.NUM_POOL = 3,
+        do_pad1: _a.compute.DO_PAD1 = False,
+        do_preread_images: _a.compute.DO_PREREAD = False,
+        do_combine_thru_disc: _a.compute.DO_COMBINE_THRU_DISC = False,
+        gpu_ids: _a.compute.GPU_IDS = "",
         # Running
-        nr_mpi: MPI_TYPE = 1,
-        nr_threads: THREAD_TYPE = 1,
-        do_queue: DO_QUEUE_TYPE = False,
-        min_dedicated: MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.MPI_TYPE = 1,
+        nr_threads: _a.running.THREAD_TYPE = 1,
+        do_queue: _a.running.DO_QUEUE_TYPE = False,
+        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -1114,18 +1053,18 @@ class Class3DTomoContinue(_RelionBuiltinContinue):
         self,
         fn_cont: CONTINUE_TYPE = "",
         # Compute
-        do_fast_subsets: USE_FAST_SUBSET_TYPE = False,
-        do_parallel_discio: USE_PARALLEL_DISC_IO_TYPE = True,
-        nr_pool: NUM_POOL_TYPE = 3,
-        do_pad1: Annotated[bool, {"label": "Skip padding", "group": "Compute"}] = False,
-        do_preread_images: DO_PREREAD_TYPE = False,
-        do_combine_thru_disc: DO_COMBINE_THRU_DISC_TYPE = False,
-        gpu_ids: GPU_IDS_TYPE = "",
+        do_fast_subsets: _a.compute.USE_FAST_SUBSET = False,
+        do_parallel_discio: _a.compute.USE_PARALLEL_DISC_IO = True,
+        nr_pool: _a.compute.NUM_POOL = 3,
+        do_pad1: _a.compute.DO_PAD1 = False,
+        do_preread_images: _a.compute.DO_PREREAD = False,
+        do_combine_thru_disc: _a.compute.DO_COMBINE_THRU_DISC = False,
+        gpu_ids: _a.compute.GPU_IDS = "",
         # Running
-        nr_mpi: MPI_TYPE = 1,
-        nr_threads: THREAD_TYPE = 1,
-        do_queue: DO_QUEUE_TYPE = False,
-        min_dedicated: MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.MPI_TYPE = 1,
+        nr_threads: _a.running.THREAD_TYPE = 1,
+        do_queue: _a.running.DO_QUEUE_TYPE = False,
+        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -1166,41 +1105,40 @@ class Refine3DTomoJob(_Relion5TomoJob, Refine3DJob):
         do_solvent_fsc: SOLVENT_FLATTEN_FSC_TYPE = False,
         do_blush: DO_BLUSH_TYPE = False,
         # Sampling
-        sampling: ANG_SAMPLING_TYPE = "7.5 degrees",
-        offset_range_step: OFFSET_RANGE_STEP_TYPE = (5, 1),
-        auto_local_sampling: LOC_ANG_SAMPLING_TYPE = "1.8 degrees",
-        relax_sym: RELAX_SYMMETRY_TYPE = "",
+        sampling: _a.sampling.ANG_SAMPLING = "7.5 degrees",
+        offset_range_step: _a.sampling.OFFSET_RANGE_STEP = (5, 1),
+        auto_local_sampling: _a.sampling.LOC_ANG_SAMPLING = "1.8 degrees",
+        relax_sym: _a.sampling.RELAX_SYMMETRY = "",
         auto_faster: Annotated[
             bool, {"label": "Use finer angular sampling faster", "group": "Sampling"}
         ] = False,
-        sigma_tilt: SIGMA_TILT_TYPE = -1,
+        sigma_tilt: _a.sampling.SIGMA_TILT = -1,
         # Helix
-        do_helix: DO_HELIX_TYPE = False,
-        helical_tube_diameter_range: HELICAL_TUBE_DIAMETER_RANGE_TYPE = (-1, -1),
-        rot_tilt_psi_range: ROT_TILT_PSI_RANGE_TYPE = (-1, 15, 10),
-        helical_range_distance: HELICAL_RANGE_DIST_TYPE = -1,
-        do_apply_helical_symmetry: DO_APPLY_HELICAL_SYMMETRY_TYPE = True,
-        helical_nr_asu: HELICAL_NR_ASU_TYPE = 1,
-        helical_twist_initial: HELICAL_TWIST_INITIAL_TYPE = 0,
-        helical_rise_initial: HELICAL_RISE_INITIAL_TYPE = 0,
-        helical_z_percentage: HELICAL_Z_PERCENTAGE_TYPE = 30,
-        keep_tilt_prior_fixed: KEEP_TILT_PRIOR_FIXED_TYPE = True,
-        do_local_search_helical_symmetry: DO_LOCAL_SEARCH_HELICAL_SYMMETRY_TYPE = False,
-        helical_twist_range: HELICAL_TWIST_RANGE_TYPE = (0, 0, 0),
-        helical_rise_range: HELICAL_RISE_RANGE_TYPE = (0, 0, 0),
+        do_helix: _a.helix.DO_HELIX = False,
+        helical_tube_diameter_range: _a.helix.HELICAL_TUBE_DIAMETER_RANGE = (-1, -1),
+        rot_tilt_psi_range: _a.helix.ROT_TILT_PSI_RANGE = (-1, 15, 10),
+        helical_range_distance: _a.helix.HELICAL_RANGE_DIST = -1,
+        do_apply_helical_symmetry: _a.helix.DO_APPLY_HELICAL_SYMMETRY = True,
+        helical_nr_asu: _a.helix.HELICAL_NR_ASU = 1,
+        helical_twist_initial: _a.helix.HELICAL_TWIST_INITIAL = 0,
+        helical_rise_initial: _a.helix.HELICAL_RISE_INITIAL = 0,
+        helical_z_percentage: _a.helix.HELICAL_Z_PERCENTAGE = 30,
+        keep_tilt_prior_fixed: _a.helix.KEEP_TILT_PRIOR_FIXED = True,
+        do_local_search_helical_symmetry: _a.helix.DO_LOCAL_SEARCH_H_SYM = False,
+        helical_twist_range: _a.helix.HELICAL_TWIST_RANGE = (0, 0, 0),
+        helical_rise_range: _a.helix.HELICAL_RISE_RANGE = (0, 0, 0),
         # Compute
-        do_parallel_discio: USE_PARALLEL_DISC_IO_TYPE = True,
-        nr_pool: NUM_POOL_TYPE = 3,
+        do_parallel_discio: _a.compute.USE_PARALLEL_DISC_IO = True,
+        nr_pool: _a.compute.NUM_POOL = 3,
         do_pad1: Annotated[bool, {"label": "Skip padding", "group": "Compute"}] = False,
-        do_preread_images: DO_PREREAD_TYPE = False,
-        use_scratch: USE_SCRATCH_TYPE = False,
-        do_combine_thru_disc: DO_COMBINE_THRU_DISC_TYPE = False,
-        gpu_ids: GPU_IDS_TYPE = "",
+        do_preread_images: _a.compute.DO_PREREAD = False,
+        use_scratch: _a.compute.USE_SCRATCH = False,
+        do_combine_thru_disc: _a.compute.DO_COMBINE_THRU_DISC = False,
+        gpu_ids: _a.compute.GPU_IDS = "",
         # Running
-        nr_mpi: MPI_TYPE = 3,
-        nr_threads: THREAD_TYPE = 1,
-        do_queue: DO_QUEUE_TYPE = False,
-        min_dedicated: MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.MPI_TYPE = 3,
+        nr_threads: _a.running.THREAD_TYPE = 1,
+        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -1212,17 +1150,16 @@ class Refine3DTomoContinue(_RelionBuiltinContinue):
         self,
         fn_cont: CONTINUE_TYPE = "",
         # Compute
-        do_parallel_discio: USE_PARALLEL_DISC_IO_TYPE = True,
-        nr_pool: NUM_POOL_TYPE = 3,
+        do_parallel_discio: _a.compute.USE_PARALLEL_DISC_IO = True,
+        nr_pool: _a.compute.NUM_POOL = 3,
         do_pad1: Annotated[bool, {"label": "Skip padding", "group": "Compute"}] = False,
-        do_preread_images: DO_PREREAD_TYPE = False,
-        do_combine_thru_disc: DO_COMBINE_THRU_DISC_TYPE = False,
-        gpu_ids: GPU_IDS_TYPE = "",
+        do_preread_images: _a.compute.DO_PREREAD = False,
+        do_combine_thru_disc: _a.compute.DO_COMBINE_THRU_DISC = False,
+        gpu_ids: _a.compute.GPU_IDS = "",
         # Running
-        nr_mpi: MPI_TYPE = 1,
-        nr_threads: THREAD_TYPE = 1,
-        do_queue: DO_QUEUE_TYPE = False,
-        min_dedicated: MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.MPI_TYPE = 1,
+        nr_threads: _a.running.THREAD_TYPE = 1,
+        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -1260,8 +1197,8 @@ class ReconstructParticlesJob(_Relion5TomoJob):
         snr: Annotated[float, {"label": "Wiener SNR constant", "group": "Average"}] = 0,
         sym_name: Annotated[str, {"label": "Symmetry", "group": "Average"}] = "C1",
         # Helix
-        do_helix: DO_HELIX_TYPE = False,
-        helical_nr_asu: HELICAL_NR_ASU_TYPE = 1,
+        do_helix: _a.helix.DO_HELIX = False,
+        helical_nr_asu: _a.helix.HELICAL_NR_ASU = 1,
         helical_twist: Annotated[
             float, {"label": "Helical twist (deg)", "group": "Helix"}
         ] = -1,
@@ -1271,12 +1208,11 @@ class ReconstructParticlesJob(_Relion5TomoJob):
         helical_tube_outer_diameter: Annotated[
             float, {"label": "Outer helical diameter (A)", "group": "Helix"}
         ] = 200,
-        helical_z_percentage: HELICAL_Z_PERCENTAGE_TYPE = 20,
+        helical_z_percentage: _a.helix.HELICAL_Z_PERCENTAGE = 20,
         # Running
-        nr_mpi: MPI_TYPE = 1,
-        nr_threads: THREAD_TYPE = 1,
-        do_queue: DO_QUEUE_TYPE = False,
-        min_dedicated: MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.MPI_TYPE = 1,
+        nr_threads: _a.running.THREAD_TYPE = 1,
+        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -1353,10 +1289,9 @@ class CtfRefineTomoJob(_Relion5TomoJob):
             bool, {"label": "Refine scale per tomogram", "group": "Defocus"}
         ] = False,
         # Running
-        nr_mpi: MPI_TYPE = 1,
-        nr_threads: THREAD_TYPE = 1,
-        do_queue: DO_QUEUE_TYPE = False,
-        min_dedicated: MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.MPI_TYPE = 1,
+        nr_threads: _a.running.THREAD_TYPE = 1,
+        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import logging
-from qtpy import QtWidgets as QtW, QtGui
+from qtpy import QtWidgets as QtW
 from himena_relion._widgets import (
     QJobScrollArea,
     Q3DViewer,
@@ -11,6 +11,7 @@ from himena_relion._widgets import (
     spacer_widget,
 )
 from himena_relion import _job_dir
+from ._shared import QMicrographListWidget
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -19,29 +20,24 @@ _LOGGER = logging.getLogger(__name__)
 class QClass3DViewer(QJobScrollArea):
     def __init__(self, job_dir: _job_dir.Class3DJobDirectory):
         super().__init__()
-        self._text_edit = QtW.QTextEdit()
-        self._text_edit.setReadOnly(True)
-        self._text_edit.setWordWrapMode(QtGui.QTextOption.WrapMode.NoWrap)
-
+        self._list_widget = QMicrographListWidget(["Class", "Population", "Resolution"])
+        self._list_widget.verticalHeader().setVisible(False)
         self._viewer = Q3DViewer()
-        self._class_choice = QIntWidget("Class", label_width=50)
         self._iter_choice = QIntWidget("Iteration", label_width=60)
-        self._class_choice.setMinimum(1)
         self._iter_choice.setMinimum(0)
         hor_layout0 = QtW.QHBoxLayout()
         hor_layout0.addWidget(self._viewer)
-        hor_layout0.addWidget(self._text_edit)
+        hor_layout0.addWidget(self._list_widget)
         self._layout.addLayout(hor_layout0)
         hor_layout1 = QtW.QHBoxLayout()
         hor_layout1.addWidget(self._iter_choice)
-        hor_layout1.addWidget(self._class_choice)
         hor_layout1.setContentsMargins(0, 0, 0, 0)
         self._layout.addLayout(hor_layout1)
         self._index_start = 1
         self._job_dir = job_dir
 
         self._iter_choice.valueChanged.connect(self._on_iter_changed)
-        self._class_choice.valueChanged.connect(self._on_class_changed)
+        self._list_widget.current_changed.connect(self._on_class_changed)
         self._layout.addWidget(spacer_widget())
 
     def on_job_updated(self, job_dir: _job_dir.Class3DJobDirectory, path: str):
@@ -58,7 +54,6 @@ class QClass3DViewer(QJobScrollArea):
         if nclasses == 0:
             return
         niters = job_dir.num_iters()
-        self._class_choice.setMaximum(nclasses)
         self._iter_choice.setMaximum(max(niters - 1, 0))
         self._iter_choice.setValue(self._iter_choice.maximum())
         self._on_iter_changed(self._iter_choice.value())
@@ -66,20 +61,21 @@ class QClass3DViewer(QJobScrollArea):
         self._viewer.auto_fit()
 
     def _on_iter_changed(self, value: int):
-        self._update_for_value(value, self._class_choice.value())
-        self._text_edit.clear()
-        self._print_summary_table(value)
+        row = self._list_widget.currentRow()
+        class_id = int(self._list_widget.item(row, 0).text()) if row >= 0 else 1
+        self._update_for_value(value, class_id)
+        self._update_summary_table(value)
 
-    def _on_class_changed(self, value: int):
-        self._update_for_value(self._iter_choice.value(), value)
+    def _on_class_changed(self, value: tuple[str, str, str]):
+        class_id = int(value[0])
+        self._update_for_value(self._iter_choice.value(), class_id)
 
     def _update_for_value(self, niter: int, class_id: int):
         res = self._job_dir.get_result(niter)
         map0 = res.class_map(class_id - self._index_start)
         self._viewer.set_image(map0)
 
-    def _print_summary_table(self, niter):
-        cursor = self._text_edit.textCursor()
+    def _update_summary_table(self, niter):
         res = self._job_dir.get_result(niter)
         try:
             gr = res.model_groups()
@@ -89,19 +85,9 @@ class QClass3DViewer(QJobScrollArea):
             )
             return
         nclasses = len(gr.classes.class_distribution)
-        if texttable := cursor.insertTable(nclasses + 1, 3):
-            _insert(texttable, 0, 0, "Class")
-            _insert(texttable, 0, 1, "Distribution")
-            _insert(texttable, 0, 2, "Resolution")
-            for ith in range(nclasses):
-                dist = gr.classes.class_distribution[ith]
-                reso = gr.classes.resolution[ith]
-                _insert(texttable, ith + 1, 0, str(ith + 1))
-                _insert(texttable, ith + 1, 1, f"{dist:.2%}")
-                _insert(texttable, ith + 1, 2, f"{reso:.2f} Å")
-        cursor.movePosition(QtGui.QTextCursor.MoveOperation.End)
-        cursor.insertText("\n\n")
-
-
-def _insert(texttable: QtGui.QTextTable, row: int, col: int, text: str):
-    texttable.cellAt(row, col).firstCursorPosition().insertText(text)
+        choices = []
+        for ith in range(nclasses):
+            dist = gr.classes.class_distribution[ith]
+            reso = gr.classes.resolution[ith]
+            choices.append((str(ith + 1), f"{dist:.2%}", f"{reso:.2f} A"))
+        self._list_widget.set_choices(choices)
