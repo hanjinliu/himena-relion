@@ -141,7 +141,7 @@ class JobDirectory:
         return RelionPipeline.from_star(self.job_pipeline())
 
     def _to_job_class(self) -> type[RelionJob] | None:
-        from himena_relion._job_class import iter_relion_jobs
+        from himena_relion._job_class import iter_relion_jobs, _RelionBuiltinContinue
 
         job_star = JobStarModel.validate_file(self.job_star())
         job_type = job_star.job.job_type_label
@@ -151,6 +151,8 @@ class JobDirectory:
             if subcls.type_label() == job_type and subcls.param_matches(
                 job_star.joboptions_values.to_dict()
             ):
+                if issubclass(subcls, _RelionBuiltinContinue):
+                    continue
                 if subcls.job_is_tomo() == is_tomo:
                     return subcls
                 else:

@@ -279,6 +279,8 @@ class QJobPipelineViewer(QtW.QWidget, JobWidgetBase):
 
 
 class QJobParameterView(QJobParameter, JobWidgetBase):
+    """Parameter view in the Parameters tab."""
+
     def initialize(self, job_dir: _job_dir.JobDirectory):
         self.clear_content()
         if job_cls := job_dir._to_job_class():

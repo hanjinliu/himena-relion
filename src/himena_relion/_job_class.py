@@ -375,11 +375,14 @@ class _RelionBuiltinContinue(_RelionBuiltinJob):
         job_star_path = job_dir.job_star()
         job_star = JobStarModel.validate_file(job_star_path)
         params_df = job_star.joboptions_values.dataframe
+        if job_cls := job_dir._to_job_class():
+            kwargs = job_cls.normalize_kwargs(**kwargs)
         # update job parameters
         for key, val_new in kwargs.items():
             mask = job_star.joboptions_values.variable == key
             idx = np.where(mask)[0]
-            params_df.iloc[idx, 1] = to_string(val_new)
+            if len(idx) == 1:
+                params_df.iloc[idx[0], 1] = to_string(val_new)
         job_star.joboptions_values = params_df
         job_star.write(job_star_path)
         d = job_dir.path.relative_to(job_dir.relion_project_dir).as_posix()
