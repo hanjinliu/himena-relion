@@ -1390,6 +1390,22 @@ class ExtractJobBase(_Relion5Job):
             kwargs["minimum_pick_fom"] = None
         return kwargs
 
+    @classmethod
+    def setup_widgets(cls, widgets):
+        @widgets["do_extract_helix"].changed.connect
+        def _on_do_extract_helix_changed(value: bool):
+            for name in [
+                "helical_tube_outer_diameter",
+                "helical_bimodal_angular_priors",
+                "do_extract_helical_tubes",
+                "do_cut_into_segments",
+                "helical_nr_asu",
+                "helical_rise",
+            ]:
+                widgets[name].enabled = value
+
+        _on_do_extract_helix_changed(widgets["do_extract_helix"].value)  # initialize
+
 
 class ExtractJob(ExtractJobBase):
     """Particle extraction from micrographs."""
@@ -1463,6 +1479,7 @@ class ReExtractJob(ExtractJobBase):
     def normalize_kwargs(cls, **kwargs):
         kwargs = super().normalize_kwargs(**kwargs)
         kwargs["do_reextract"] = True
+        return kwargs
 
     @classmethod
     def normalize_kwargs_inv(cls, **kwargs):
@@ -1475,9 +1492,7 @@ class ReExtractJob(ExtractJobBase):
     def run(
         self,
         # I/O
-        fndata_reextract: Annotated[
-            str, {"label": "STAR file with refined particles", "group": "I/O"}
-        ] = "",
+        fndata_reextract: IN_PARTICLES = "",
         do_reset_offsets: Annotated[
             bool, {"label": "Reset refined offsets to zero", "group": "I/O"}
         ] = False,

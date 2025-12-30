@@ -12,7 +12,7 @@ from himena_relion._widgets import (
 )
 from himena_relion import _job_dir
 from himena_relion.schemas import OptimisationSetModel
-from ._shared import QNumParticlesLabel
+from himena_relion.relion5.widgets._shared import QNumParticlesLabel
 
 _LOGGER = logging.getLogger(__name__)
 

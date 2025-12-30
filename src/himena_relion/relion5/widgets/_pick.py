@@ -29,6 +29,7 @@ class QManualPickViewer(QJobScrollArea):
         layout = self._layout
 
         self._viewer = Q2DViewer(zlabel="")
+        self._viewer.setMinimumSize(300, 330)
         self._mic_list = QMicrographListWidget(["Micrograph", "Picked", "Coordinates"])
         self._mic_list.setFixedHeight(130)
         self._mic_list.setColumnHidden(2, True)
@@ -150,8 +151,8 @@ class QTemplatePick2DViewer(QAutopickViewerBase):
 class QTemplatePick3DViewer(QAutopickViewerBase):
     def __init__(self, job_dir: _job_dir.JobDirectory):
         super().__init__(job_dir)
-        self._text_edit = QImageViewTextEdit()
-        self._text_edit.setFixedHeight(100)
+        self._text_edit = QImageViewTextEdit(image_size_pixel=64)
+        self._text_edit.setFixedHeight(160)
         self._layout.insertWidget(0, QtW.QLabel("<b>Reference Projections</b>"))
         self._layout.insertWidget(1, self._text_edit)
 

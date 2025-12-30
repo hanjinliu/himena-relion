@@ -79,6 +79,11 @@ connect_jobs(
     _spa.Refine3DJob,
     node_mapping={"particles.star": "fn_img"},
 )
+connect_jobs(
+    _spa.Refine3DJob,
+    _spa.ReExtractJob,
+    node_mapping={"run_data.star": "fndata_reextract"},
+)
 
 
 def _optimiser_last_iter(path: Path) -> str:
@@ -119,7 +124,7 @@ for sel_class_job in [_spa.SelectClassesInteractiveJob, _spa.SelectClassesAutoJo
     connect_jobs(
         _spa.Class2DJob,
         sel_class_job,
-        node_mapping={_optimiser_last_iter: "fn_classes"},
+        node_mapping={_optimiser_last_iter: "fn_model"},
     )
     connect_jobs(
         sel_class_job,
@@ -153,7 +158,7 @@ for class3d_job in [_spa.Class3DJob, _spa.Class3DNoAlignmentJob]:
     connect_jobs(
         class3d_job,
         _spa.SelectClassesInteractiveJob,
-        node_mapping={_optimiser_last_iter: "fn_classes"},
+        node_mapping={_optimiser_last_iter: "fn_model"},
     )
     connect_jobs(
         class3d_job,

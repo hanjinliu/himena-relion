@@ -56,10 +56,10 @@ class QMicrographListWidget(QtW.QTableWidget):
 
 
 class QImageViewTextEdit(QtW.QTextEdit):
-    def __init__(self, font_size: int = 9):
+    def __init__(self, font_size: int = 9, image_size_pixel: int = 96):
         super().__init__()
         self.setReadOnly(True)
-        self._image_size_pixel = 96
+        self._image_size_pixel = image_size_pixel
         self._font_size = font_size
 
     def image_to_base64(self, img_slice: np.ndarray, text: str = "") -> str:
@@ -92,3 +92,17 @@ class QImageViewTextEdit(QtW.QTextEdit):
 
     def prep_uuid(self) -> uuid.UUID:
         return uuid.uuid4()
+
+
+class QNumParticlesLabel(QtW.QLabel):
+    """A QLabel to show the number of particles."""
+
+    def __init__(self):
+        super().__init__()
+        self.setText("--- particles")
+
+    def set_number(self, num: int):
+        if num >= 0:
+            self.setText(f"<b>{num}</b> particles")
+        else:
+            self.setText("??? particles")

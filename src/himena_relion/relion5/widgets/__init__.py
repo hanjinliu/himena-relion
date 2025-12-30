@@ -7,6 +7,9 @@ from himena_relion.relion5.widgets import (
     _ctf,
     _class2d,
     _extract,
+    _initial_model,
+    _refine,
+    _class3d,
 )
 
 del (
@@ -18,4 +21,7 @@ del (
     _pick,
     _class2d,
     _extract,
+    _initial_model,
+    _refine,
+    _class3d,
 )
