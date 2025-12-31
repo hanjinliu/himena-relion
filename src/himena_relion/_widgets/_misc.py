@@ -24,6 +24,8 @@ class QMicrographListWidget(QtW.QTableWidget):
         self.setFixedHeight(100)
         self.setEditTriggers(QtW.QAbstractItemView.EditTrigger.NoEditTriggers)
         self.itemSelectionChanged.connect(self._on_selection_changed)
+        self.setHorizontalScrollMode(QtW.QAbstractItemView.ScrollMode.ScrollPerPixel)
+        self.verticalHeader().setDefaultAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
         self.setSizePolicy(
             QtW.QSizePolicy.Policy.Expanding, QtW.QSizePolicy.Policy.Minimum
         )

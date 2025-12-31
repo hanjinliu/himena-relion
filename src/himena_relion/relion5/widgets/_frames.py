@@ -47,7 +47,7 @@ class QImportMoviesViewer(QJobScrollArea):
 
     def _mic_changed(self, row: tuple[str, ...]):
         """Handle changes to selected micrograph."""
-        movie_path = self._job_dir.path / "Movies" / row[0]
+        movie_path = self._job_dir.resolve_path(row[0])
 
         movie_view = ArrayFilteredView.from_tif(movie_path)
         had_image = self._viewer.has_image
