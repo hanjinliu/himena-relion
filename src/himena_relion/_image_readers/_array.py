@@ -187,19 +187,21 @@ class ArrayFromTif(ArrayViewBase):
 
     def __init__(self, path):
         self._path = Path(path)
+        self._arr: NDArray[np.number] | None = None
 
     def get_slice(self, index: int) -> Arr:
-        with tifffile.TiffFile(self._path) as tif:
-            image = tif.asarray(out="memmap")
-            arr = np.asarray(image[index])
-        return arr
+        self._make_cache()
+        return self._arr[index]
 
     def get_scale(self) -> float:
         # with tifffile.TiffFile(self._path) as tif:
         return 1.0  # TODO: read from TIFF metadata
 
     def num_slices(self) -> int:
-        with tifffile.TiffFile(self._path) as tif:
-            # TODO: better to read from header
-            image = tif.asarray(out="memmap")
-            return image.shape[0]
+        self._make_cache()
+        return self._arr.shape[0]
+
+    def _make_cache(self):
+        if self._arr is None:
+            with tifffile.TiffFile(self._path) as tif:
+                self._arr = tif.asarray()

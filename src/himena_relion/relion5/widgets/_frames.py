@@ -89,6 +89,8 @@ class QImportMoviesViewer(QJobScrollArea):
                     ]
                 )
         self._mic_list.set_choices(choices)
+        if len(choices) == 0:
+            self._viewer.clear()
 
 
 @register_job("relion.motioncorr", is_tomo=False)
@@ -151,3 +153,5 @@ class QMotionCorrViewer(QJobScrollArea):
             path = self._job_dir.make_relative_path(p)
             choices.append((path.name, path.as_posix()))
         self._mic_list.set_choices(choices)
+        if len(choices) == 0:
+            self._viewer.clear()

@@ -92,7 +92,7 @@ class MotionCorrOwnJob(_MotionCorrJobBase):
 
     @classmethod
     def job_title(cls):
-        return "Motion Correction (RELION Implementation)"
+        return "Motion Correction (RELION)"
 
     @classmethod
     def normalize_kwargs(cls, **kwargs):
