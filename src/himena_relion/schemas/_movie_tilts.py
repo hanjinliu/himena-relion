@@ -4,14 +4,14 @@ import starfile_rs.schema.pandas as schema
 class OpticsModel(schema.LoopDataModel):
     optics_group_name: schema.Series[str] = schema.Field("rlnOpticsGroupName")
     optics_group: schema.Series[int] = schema.Field("rlnOpticsGroup")
-    mtf_file_name: schema.Series[str] = schema.Field("rlnMtfFileName", default="")
+    mtf_file_name: schema.Series[str] = schema.Field("rlnMtfFileName", default=None)
     mic_orig_pixel_size: schema.Series[float] = schema.Field(
         "rlnMicrographOriginalPixelSize", default=None
     )
-    voltage: schema.Series[float] = schema.Field("rlnVoltage", default=300.0)
-    cs: schema.Series[float] = schema.Field("rlnSphericalAberration", default=2.7)
+    voltage: schema.Series[float] = schema.Field("rlnVoltage", default=None)
+    cs: schema.Series[float] = schema.Field("rlnSphericalAberration", default=None)
     amplitude_contrast: schema.Series[float] = schema.Field(
-        "rlnAmplitudeContrast", default=0.1
+        "rlnAmplitudeContrast", default=None
     )
 
     def make_optics_map(self) -> dict[int, "SingleOpticsModel"]:
@@ -22,14 +22,20 @@ class OpticsModel(schema.LoopDataModel):
             optics = SingleOpticsModel(
                 optics_group_name=self.optics_group_name[i],
                 optics_group=key,
-                mtf_file_name=self.mtf_file_name[i],
-                mic_orig_pixel_size=self.mic_orig_pixel_size[i],
-                voltage=self.voltage[i],
-                cs=self.cs[i],
-                amplitude_contrast=self.amplitude_contrast[i],
+                mtf_file_name=_ith_or_none(self.mtf_file_name, i),
+                mic_orig_pixel_size=_ith_or_none(self.mic_orig_pixel_size, i),
+                voltage=_ith_or_none(self.voltage, i),
+                cs=_ith_or_none(self.cs, i),
+                amplitude_contrast=_ith_or_none(self.amplitude_contrast, i),
             )
             optics_map[key] = optics
         return optics_map
+
+
+def _ith_or_none(series: schema.Series | None, i: int):
+    if series is None:
+        return None
+    return series[i]
 
 
 class SingleOpticsModel(schema.SingleDataModel):
