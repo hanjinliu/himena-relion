@@ -118,9 +118,9 @@ class QMotionCorrViewer(QJobScrollArea):
             self._process_update()
             _LOGGER.debug("%s Updated", job_dir.job_number)
 
-    def _mic_changed(self, row: tuple[str]):
+    def _mic_changed(self, row: tuple[str, ...]):
         """Handle changes to selected micrograph."""
-        mic_path = self._job_dir.path / "Movies" / row[0]
+        mic_path = self._job_dir.resolve_path(row[0])
         movie_view = ArrayFilteredView.from_mrc(mic_path)
         had_image = self._viewer.has_image
         self._filter_widget.set_image_scale(movie_view.get_scale())
@@ -147,5 +147,7 @@ class QMotionCorrViewer(QJobScrollArea):
         self._viewer.auto_fit()
 
     def _process_update(self):
-        choices = [(p.name,) for p in self._job_dir.iter_movies()]
+        choices = [
+            (self._job_dir.make_relative_path(p),) for p in self._job_dir.iter_movies()
+        ]
         self._mic_list.set_choices(choices)

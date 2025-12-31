@@ -112,6 +112,7 @@ class JobDirectory:
             return p
         if (fp := self.relion_project_dir.joinpath(p)).exists():
             return fp
+        return p
 
     def make_relative_path(self, path: str | Path) -> Path:
         """Make a path relative to the RELION project directory."""
@@ -401,7 +402,12 @@ class MotionCorrBase(HasFrameJobDirectory):
     def iter_movies(self) -> Iterator[Path]:
         """Iterate over all motion-corrected movie files (SPA)."""
         movies_dir = self.path / "Movies"
-        yield from movies_dir.glob("*_frameImage.mrc")
+        if not movies_dir.exists():
+            movies_dir = self.path / "frames"
+        for path in movies_dir.glob("*.mrc"):
+            if path.stem.endswith("_PS"):
+                continue
+            yield path
 
     def iter_tilt_series(self) -> Iterator[CorrectedTiltSeriesInfo]:
         """Iterate over all motion correction info (Tomo)."""
