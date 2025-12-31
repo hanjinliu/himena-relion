@@ -22,6 +22,7 @@ class QClass3DViewer(QJobScrollArea):
         super().__init__()
         self._list_widget = QMicrographListWidget(["Class", "Population", "Resolution"])
         self._list_widget.verticalHeader().setVisible(False)
+        self._list_widget.setFixedWidth(200)
         self._viewer = Q3DViewer()
         self._iter_choice = QIntWidget("Iteration", label_width=60)
         self._iter_choice.setMinimum(0)

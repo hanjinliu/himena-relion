@@ -31,6 +31,7 @@ class QExtractViewer(QJobScrollArea):
         self._num_page = 50
         self._worker: GeneratorWorker | None = None
         self._text_edit = QImageViewTextEdit(font_size=11)
+        self._text_edit.setMinimumHeight(350)
         self._slider = QtW.QSlider(QtCore.Qt.Orientation.Horizontal)
         self._slider_display_range = QtW.QLabel("?? - ??")
         self._mic_list = QMicrographListWidget(["Micrograph"])

@@ -10,6 +10,7 @@ from himena_relion.schemas._misc import (
     CoordsModel,
 )
 from himena_relion.schemas._movie_tilts import (
+    MoviesStarModel,
     MicrographsModel,
     MicrographGroupMetaModel,
     TSModel,
@@ -18,6 +19,7 @@ from himena_relion.schemas._movie_tilts import (
 )
 
 __all__ = [
+    "MoviesStarModel",
     "RelionPipelineModel",
     "OptimisationSetModel",
     "JobStarModel",

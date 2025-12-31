@@ -20,6 +20,7 @@ class QMicrographListWidget(QtW.QTableWidget):
         self.setHorizontalHeaderLabels(list(columns))
         self.horizontalHeader().setVisible(len(columns) > 1)
         self.horizontalHeader().setFixedHeight(15)
+        self.horizontalHeader().setStretchLastSection(True)
         self.setFixedHeight(100)
         self.setEditTriggers(QtW.QAbstractItemView.EditTrigger.NoEditTriggers)
         self.itemSelectionChanged.connect(self._on_selection_changed)
@@ -64,7 +65,8 @@ class QMicrographListWidget(QtW.QTableWidget):
                 self.blockSignals(False)
         elif choices:
             self.setCurrentCell(0, 0)
-        self.resizeColumnsToContents()
+        if self.columnCount() > 1:
+            self.resizeColumnsToContents()
 
     def _on_selection_changed(self):
         selected_rows = self.selectionModel().selectedRows()
@@ -83,6 +85,7 @@ class QImageViewTextEdit(QtW.QTextEdit):
     def __init__(self, font_size: int = 9, image_size_pixel: int = 96):
         super().__init__()
         self.setReadOnly(True)
+        self.setMinimumHeight(200)
         self._image_size_pixel = image_size_pixel
         self._font_size = font_size
 

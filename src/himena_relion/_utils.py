@@ -213,7 +213,7 @@ def read_or_show_job(ui: MainWindow, path: Path):
                     return
             except Exception:
                 continue
-    ui.read_file(path)
+    ui.read_file(path, append_history=False)
 
 
 def monospace_font_family() -> str:

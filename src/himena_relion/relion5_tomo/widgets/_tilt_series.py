@@ -13,6 +13,7 @@ from himena_relion._widgets import (
 from himena_relion import _job_dir
 
 _LOGGER = logging.getLogger(__name__)
+TILT_VIEW_MIN_HEIGHT = 480
 
 
 @register_job("relion.motioncorr", is_tomo=True)
@@ -23,7 +24,7 @@ class QMotionCorrViewer(QJobScrollArea):
         layout = self._layout
 
         self._viewer = Q2DViewer(zlabel="Tilt index")
-        self._viewer.setMinimumHeight(360)
+        self._viewer.setMinimumHeight(TILT_VIEW_MIN_HEIGHT)
         self._filter_widget = Q2DFilterWidget()
         self._ts_list = QMicrographListWidget(["Tilt Series"])
         self._ts_list.current_changed.connect(self._ts_choice_changed)
@@ -88,7 +89,7 @@ class QExcludeTiltViewer(QJobScrollArea):
         layout = self._layout
 
         self._viewer = Q2DViewer(zlabel="Tilt index")
-        self._viewer.setMinimumHeight(360)
+        self._viewer.setMinimumHeight(TILT_VIEW_MIN_HEIGHT)
         self._filter_widget = Q2DFilterWidget()
         self._ts_choice = QMicrographListWidget(["Tilt Series", "Number of Tilts"])
         self._ts_choice.current_changed.connect(self._ts_choice_changed)

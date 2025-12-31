@@ -26,7 +26,7 @@ class QAlignTiltSeriesViewer(QJobScrollArea):
         layout = self._layout
 
         self._viewer = Q2DViewer(zlabel="Tilt index")
-        self._viewer.setMinimumHeight(360)
+        self._viewer.setMinimumHeight(480)
         self._ts_list = QMicrographListWidget(["Tilt Series"])
         self._ts_list.current_changed.connect(self._ts_choice_changed)
         self._current_ts_align: pd.DataFrame | None = None

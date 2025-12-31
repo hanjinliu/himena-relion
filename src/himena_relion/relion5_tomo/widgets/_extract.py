@@ -35,6 +35,7 @@ class QExtractJobViewer(QJobScrollArea):
         self._tomo_list.setFixedHeight(130)
         self._tomo_list.current_changed.connect(self._on_tomo_changed)
         self._text_edit = QImageViewTextEdit(font_size=11)
+        self._text_edit.setMinimumHeight(350)
         self._slider = QtW.QSlider(QtCore.Qt.Orientation.Horizontal)
         self._slider_display_range = QtW.QLabel("?? - ??")
 
@@ -96,7 +97,9 @@ class QExtractJobViewer(QJobScrollArea):
             self._on_tomo_changed(self._tomo_list.current_row_texts())
             self._last_force_reloaded = t0
 
-    def _on_tomo_changed(self, value: tuple[str, str]):
+    def _on_tomo_changed(self, value: tuple[str, str] | None):
+        if value is None:
+            return
         tomo_name = value[0]
         max_num = self._job_dir.max_num_subtomograms(tomo_name)
         self._current_num_extracts = max_num

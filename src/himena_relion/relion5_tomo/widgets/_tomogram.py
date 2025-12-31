@@ -19,6 +19,8 @@ from himena_relion._image_readers import ArrayFilteredView
 
 _LOGGER = logging.getLogger(__name__)
 
+TOMO_VIEW_MIN_HEIGHT = 480
+
 
 @register_job("relion.reconstructtomograms", is_tomo=True)
 class QTomogramViewer(QJobScrollArea):
@@ -28,7 +30,7 @@ class QTomogramViewer(QJobScrollArea):
         layout = self._layout
 
         self._viewer = Q2DViewer()
-        self._viewer.setMinimumHeight(360)
+        self._viewer.setMinimumHeight(TOMO_VIEW_MIN_HEIGHT)
         self._filter_widget = Q2DFilterWidget()
         self._filter_widget._bin_factor.setText("1")
         self._tomo_list = QMicrographListWidget(["Tomogram", "Type"])
@@ -98,7 +100,7 @@ class QDenoiseTomogramViewer(QJobScrollArea):
         layout = self._layout
 
         self._viewer = Q2DViewer()
-        self._viewer.setMinimumHeight(360)
+        self._viewer.setMinimumHeight(TOMO_VIEW_MIN_HEIGHT)
         self._tomo_list = QMicrographListWidget(["Tomogram", "Type"])
         self._tomo_list.current_changed.connect(self._on_tomo_changed)
         layout.addWidget(QtW.QLabel("<b>Denoised tomogram Z slice</b>"))
@@ -152,7 +154,7 @@ class QPickViewer(QJobScrollArea):
         layout = self._layout
 
         self._viewer = Q2DViewer()
-        self._viewer.setMinimumHeight(360)
+        self._viewer.setMinimumHeight(TOMO_VIEW_MIN_HEIGHT)
         self._worker = None
         self._current_info: _job_dir.TomogramInfo | None = None
         self._filter_widget = Q2DFilterWidget()
@@ -164,6 +166,13 @@ class QPickViewer(QJobScrollArea):
         layout.addWidget(self._tomo_list)
         layout.addWidget(self._viewer)
         self._filter_widget.value_changed.connect(self._viewer.redraw)
+
+        # Add resize grip in the corner
+        self._size_grip = QtW.QSizeGrip(self)
+        grip_layout = QtW.QHBoxLayout()
+        grip_layout.addStretch()
+        grip_layout.addWidget(self._size_grip)
+        layout.addLayout(grip_layout)
 
     def on_job_updated(self, job_dir: _job_dir.PickJobDirectory, path: str):
         """Handle changes to the job directory."""

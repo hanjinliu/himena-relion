@@ -29,6 +29,7 @@ class QClass2DViewer(QJobScrollArea):
         self._sort_by.setCurrentIndex(1)
         self._sort_by.setFixedWidth(120)
         self._text_edit = QImageViewTextEdit()
+        self._text_edit.setMinimumHeight(360)
         self._iter_choice = QIntChoiceWidget("Iteration", label_width=60)
 
         self._iter_choice.current_changed.connect(self._iter_changed)

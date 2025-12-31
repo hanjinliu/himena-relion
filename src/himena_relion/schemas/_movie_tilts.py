@@ -1,7 +1,38 @@
 import starfile_rs.schema.pandas as schema
 
 
-class MicrographOpticsModel(schema.SingleDataModel):
+class OpticsModel(schema.LoopDataModel):
+    optics_group_name: schema.Series[str] = schema.Field("rlnOpticsGroupName")
+    optics_group: schema.Series[int] = schema.Field("rlnOpticsGroup")
+    mtf_file_name: schema.Series[str] = schema.Field("rlnMtfFileName", default="")
+    mic_orig_pixel_size: schema.Series[float] = schema.Field(
+        "rlnMicrographOriginalPixelSize", default=None
+    )
+    voltage: schema.Series[float] = schema.Field("rlnVoltage", default=300.0)
+    cs: schema.Series[float] = schema.Field("rlnSphericalAberration", default=2.7)
+    amplitude_contrast: schema.Series[float] = schema.Field(
+        "rlnAmplitudeContrast", default=0.1
+    )
+
+    def make_optics_map(self) -> dict[int, "SingleOpticsModel"]:
+        """Create a mapping from optics group ID to SingleOpticsModel."""
+        optics_map = {}
+        for i in range(len(self.optics_group)):
+            key = self.optics_group[i]
+            optics = SingleOpticsModel(
+                optics_group_name=self.optics_group_name[i],
+                optics_group=key,
+                mtf_file_name=self.mtf_file_name[i],
+                mic_orig_pixel_size=self.mic_orig_pixel_size[i],
+                voltage=self.voltage[i],
+                cs=self.cs[i],
+                amplitude_contrast=self.amplitude_contrast[i],
+            )
+            optics_map[key] = optics
+        return optics_map
+
+
+class SingleOpticsModel(schema.SingleDataModel):
     optics_group_name: str = schema.Field("rlnOpticsGroupName")
     optics_group: int = schema.Field("rlnOpticsGroup")
     mtf_file_name: str = schema.Field("rlnMtfFileName", default="")
@@ -14,6 +45,19 @@ class MicrographOpticsModel(schema.SingleDataModel):
     mc_pixel_size: float = schema.Field("rlnMicrographMoviePixelSize", default=None)
 
 
+class MoviesModel(schema.LoopDataModel):
+    movie_name: schema.Series[str] = schema.Field("rlnMicrographMovieName")
+    """Path to the movie file."""
+    optics_group: schema.Series[int] = schema.Field("rlnOpticsGroup")
+
+
+class MoviesStarModel(schema.StarModel):
+    """movies.star file content."""
+
+    optics: OpticsModel = schema.Field()
+    movies: MoviesModel = schema.Field()
+
+
 class MicrographsModel(schema.LoopDataModel):
     mic_name: schema.Series[str] = schema.Field("rlnMicrographName")
     """Path to the micrograph file."""
@@ -22,7 +66,7 @@ class MicrographsModel(schema.LoopDataModel):
 
 
 class MicrographGroupMetaModel(schema.StarModel):
-    optics: MicrographOpticsModel = schema.Field()
+    optics: SingleOpticsModel = schema.Field()
     micrographs: MicrographsModel = schema.Field()
 
 

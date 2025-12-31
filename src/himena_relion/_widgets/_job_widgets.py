@@ -48,6 +48,7 @@ class QJobScrollArea(QtW.QScrollArea, JobWidgetBase):
     def __init__(self):
         super().__init__()
         inner = QtW.QWidget()
+        inner.setMinimumWidth(420)
         self.setWidget(inner)
         self.setWidgetResizable(False)
         layout = QtW.QVBoxLayout(inner)

@@ -31,7 +31,7 @@ class QManualPickViewer(QJobScrollArea):
 
         self._viewer = Q2DViewer(zlabel="")
         self._last_update: dict[str, tuple[float, int]] = {}  # path -> (mtime, npoints)
-        self._viewer.setMinimumSize(300, 330)
+        self._viewer.setMinimumHeight(480)
         self._mic_list = QMicrographListWidget(["Micrograph", "Picked", "Coordinates"])
         self._mic_list.setFixedHeight(130)
         self._mic_list.setColumnHidden(2, True)

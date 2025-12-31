@@ -64,8 +64,8 @@ class ArrayFilteredView:
         return cls(ArrayFromMrcs(paths))
 
     @classmethod
-    def from_tifs(cls, paths: list[PathLike]) -> ArrayFilteredView:
-        return cls(ArrayFromTifs(paths))
+    def from_tif(cls, path: PathLike) -> ArrayFilteredView:
+        return cls(ArrayFromTif(path))
 
 
 class ArrayViewBase(ABC):
@@ -182,14 +182,24 @@ class ArrayFromMrcs(ArrayFromFiles):
         return data[sl]
 
 
-class ArrayFromTifs(ArrayFromFiles):
-    """Array view that reads slices from a list of TIFF files."""
+class ArrayFromTif(ArrayViewBase):
+    """Array view that reads a single slice from a TIFF file."""
+
+    def __init__(self, path):
+        self._path = Path(path)
 
     def get_slice(self, index: int) -> Arr:
-        path = self._paths[index]
-        with tifffile.TiffFile(path) as tif:
-            arr = tif.asarray()
+        with tifffile.TiffFile(self._path) as tif:
+            image = tif.asarray(out="memmap")
+            arr = np.asarray(image[index])
         return arr
 
     def get_scale(self) -> float:
+        # with tifffile.TiffFile(self._path) as tif:
         return 1.0  # TODO: read from TIFF metadata
+
+    def num_slices(self) -> int:
+        with tifffile.TiffFile(self._path) as tif:
+            # TODO: better to read from header
+            image = tif.asarray(out="memmap")
+            return image.shape[0]

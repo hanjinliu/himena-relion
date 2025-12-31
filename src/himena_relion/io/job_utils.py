@@ -23,10 +23,15 @@ _LOGGER = logging.getLogger(__name__)
     title="Open job.star as text",
     command_id="himena-relion:open-job-star",
 )
-def open_relion_job_star(ui: MainWindow, model: WidgetDataModel) -> WidgetDataModel:
+def open_relion_job_star(ui: MainWindow, model: WidgetDataModel):
+    """Openthe job.star file of this RELION job as text."""
     job_dir = assert_job(model)
     job_star_path = job_dir.job_star()
-    ui.read_file(job_star_path, plugin="himena_builtins.io.read_as_text_anyway")
+    ui.read_file(
+        job_star_path,
+        plugin="himena_builtins.io.read_as_text_anyway",
+        append_history=False,
+    )
 
 
 @register_function(
@@ -35,12 +40,15 @@ def open_relion_job_star(ui: MainWindow, model: WidgetDataModel) -> WidgetDataMo
     title="Open job_pipeline.star as text",
     command_id="himena-relion:open-job-pipeline-star",
 )
-def open_relion_job_pipeline_star(
-    ui: MainWindow, model: WidgetDataModel
-) -> WidgetDataModel:
+def open_relion_job_pipeline_star(ui: MainWindow, model: WidgetDataModel):
+    """Open the job_pipeline.star file of this RELION job as text."""
     job_dir = assert_job(model)
     job_star_path = job_dir.job_pipeline()
-    ui.read_file(job_star_path, plugin="himena_builtins.io.read_as_text_anyway")
+    ui.read_file(
+        job_star_path,
+        plugin="himena_builtins.io.read_as_text_anyway",
+        append_history=False,
+    )
 
 
 @register_function(
