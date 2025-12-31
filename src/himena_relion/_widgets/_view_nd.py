@@ -111,7 +111,7 @@ class Q2DViewer(QViewer):
         finally:
             self._dims_slider.blockSignals(False)
         if not had_image:
-            self._auto_contrast()
+            self._auto_contrast(force_update_view_range=True)
             self.auto_fit()
 
     def set_points(
@@ -216,7 +216,7 @@ class Q2DViewer(QViewer):
         # vispy point size is not scaled by device pixel ratio.
         return self._point_size / self.devicePixelRatioF()
 
-    def _auto_contrast(self):
+    def _auto_contrast(self, *, force_update_view_range: bool = False):
         """Automatically adjust the contrast based on the histogram."""
         range_min, range_max = self._histogram_view._view_range
         minmax = self._histogram_view.calc_contrast_limits(
@@ -237,7 +237,7 @@ class Q2DViewer(QViewer):
         if max_new > max_old:
             range_max = max_new
             changed = True
-        if changed:
+        if changed or force_update_view_range:
             self._histogram_view.set_view_range(range_min, range_max)
 
     def _on_clim_changed(self, clim: tuple[float, float]):

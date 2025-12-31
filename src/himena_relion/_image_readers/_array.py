@@ -64,8 +64,9 @@ class ArrayFilteredView:
         return cls(ArrayFromMrcs(paths))
 
     @classmethod
-    def from_tif(cls, path: PathLike) -> ArrayFilteredView:
-        return cls(ArrayFromTif(path))
+    def from_tif(cls, path: PathLike, split_into: int = 4) -> ArrayFilteredView:
+        """Read a tiff movie"""
+        return cls(ArrayFromTif(path, split_into))
 
 
 class ArrayViewBase(ABC):
@@ -185,8 +186,9 @@ class ArrayFromMrcs(ArrayFromFiles):
 class ArrayFromTif(ArrayViewBase):
     """Array view that reads a single slice from a TIFF file."""
 
-    def __init__(self, path):
+    def __init__(self, path, split_into):
         self._path = Path(path)
+        self._split_into = split_into
         self._arr: NDArray[np.number] | None = None
 
     def get_slice(self, index: int) -> Arr:
@@ -204,4 +206,25 @@ class ArrayFromTif(ArrayViewBase):
     def _make_cache(self):
         if self._arr is None:
             with tifffile.TiffFile(self._path) as tif:
-                self._arr = tif.asarray()
+                arr = tif.asarray()
+            if arr.ndim == 2:
+                arr = arr[np.newaxis, :, :]
+            if self._split_into > 1:
+                # n_groups = self._split_into
+                # remainder = arr.shape[0] % self._split_into
+                # groups = []
+                # for i in range(n_groups):
+                #     start = i * self._split_into
+                #     end = start + self._split_into
+                #     groups.append(arr[start:end].mean(axis=0, dtype=np.float32))
+                # if remainder > 0:
+                #     groups.append(arr[n_groups * self._split_into:].mean(axis=0, dtype=np.float32))
+                start = 0
+                num_slice = int(np.ceil(arr.shape[0] / self._split_into))
+                groups = []
+                while start < arr.shape[0]:
+                    end = min(start + num_slice, arr.shape[0])
+                    group = arr[start:end].mean(axis=0, dtype=np.float32)
+                    groups.append(group)
+                    start = end
+                arr = np.stack(groups, axis=0)
