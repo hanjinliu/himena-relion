@@ -119,21 +119,17 @@ BEAM_TILT_X = Annotated[
     {
         "label": "Beamtilt in X (mrad)",
         "min": -1.0,
-        "tooltip": (
-            "Known beamtilt in the X-direction (in mrad). Set to zero if unknown."
-        ),
+        "tooltip": "Known beamtilt in the X-direction (in mrad). Set to 0 if unknown.",
         "group": "Optics",
     },
 ]
 
-BEAM_TILT_X = Annotated[
+BEAM_TILT_Y = Annotated[
     float,
     {
         "label": "Beamtilt in Y (mrad)",
         "min": -1.0,
-        "tooltip": (
-            "Known beamtilt in the Y-direction (in mrad). Set to zero if unknown."
-        ),
+        "tooltip": "Known beamtilt in the Y-direction (in mrad). Set to 0 if unknown.",
         "group": "Optics",
     },
 ]

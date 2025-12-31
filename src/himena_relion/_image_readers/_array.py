@@ -210,15 +210,6 @@ class ArrayFromTif(ArrayViewBase):
             if arr.ndim == 2:
                 arr = arr[np.newaxis, :, :]
             if self._split_into > 1:
-                # n_groups = self._split_into
-                # remainder = arr.shape[0] % self._split_into
-                # groups = []
-                # for i in range(n_groups):
-                #     start = i * self._split_into
-                #     end = start + self._split_into
-                #     groups.append(arr[start:end].mean(axis=0, dtype=np.float32))
-                # if remainder > 0:
-                #     groups.append(arr[n_groups * self._split_into:].mean(axis=0, dtype=np.float32))
                 start = 0
                 num_slice = int(np.ceil(arr.shape[0] / self._split_into))
                 groups = []
@@ -228,3 +219,4 @@ class ArrayFromTif(ArrayViewBase):
                     groups.append(group)
                     start = end
                 arr = np.stack(groups, axis=0)
+            self._arr = arr

@@ -152,7 +152,7 @@ class QJobParameter(QtW.QScrollArea):
                 if isinstance(widget, _mgui.ToggleSwitch):
                     widget.text = ""
                 elif isinstance(widget, (_mgui.IntEdit, _mgui.FloatEdit, ComboBox)):
-                    widget.max_width = 160
+                    widget.max_width = 200
                 gb_layout.addWidget(widget.native)
                 param_label.setToolTip(widget.tooltip)
                 self._mgui_widgets[widget.name] = widget

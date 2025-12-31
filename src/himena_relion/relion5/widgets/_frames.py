@@ -1,6 +1,7 @@
 from __future__ import annotations
 from pathlib import Path
 import logging
+import time
 from qtpy import QtWidgets as QtW
 from himena_relion._image_readers._array import ArrayFilteredView
 from himena_relion._widgets import (
@@ -48,10 +49,14 @@ class QImportMoviesViewer(QJobScrollArea):
     def _mic_changed(self, row: tuple[str, ...]):
         """Handle changes to selected micrograph."""
         movie_path = self._job_dir.resolve_path(row[0])
+        try:
+            angpix = float(self._job_dir.get_job_param("angpix"))
+        except Exception:
+            angpix = 1.0
 
         movie_view = ArrayFilteredView.from_tif(movie_path)
         had_image = self._viewer.has_image
-        self._filter_widget.set_image_scale(movie_view.get_scale())
+        self._filter_widget.set_image_scale(angpix)
         self._viewer.set_array_view(
             movie_view.with_filter(self._filter_widget.apply),
             clim=self._viewer._last_clim,
@@ -79,6 +84,7 @@ class QImportMoviesViewer(QJobScrollArea):
         mov = MoviesStarModel.validate_file(movies_star_path)
         optics_map = mov.optics.make_optics_map()
         choices = []
+        t0 = time.time()
         for movie_name, opt_id in zip(mov.movies.movie_name, mov.movies.optics_group):
             if opt := optics_map.get(opt_id):
                 choices.append(
@@ -89,6 +95,7 @@ class QImportMoviesViewer(QJobScrollArea):
                     ]
                 )
         self._mic_list.set_choices(choices)
+        print(f"Time to process movies.star: {time.time() - t0:.2f} s")
         if len(choices) == 0:
             self._viewer.clear()
 

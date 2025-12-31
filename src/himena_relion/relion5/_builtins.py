@@ -14,6 +14,93 @@ class _Relion5Job(_RelionBuiltinJob):
         return "RELION 5:"
 
 
+class ImportMoviesJob(_Relion5Job):
+    """Import movies into RELION."""
+
+    @classmethod
+    def type_label(cls) -> str:
+        return "relion.import.movies"
+
+    @classmethod
+    def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
+        kwargs = super().normalize_kwargs(**kwargs)
+        kwargs["do_other"] = False
+        kwargs["node_type"] = "Particle coordinates (*.box, *_pick.star)"
+        kwargs["fn_in_other"] = ""
+        kwargs["optics_group_particles"] = ""
+        kwargs["do_raw"] = True
+        return kwargs
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
+        kwargs = super().normalize_kwargs_inv(**kwargs)
+        for name in [
+            "fn_in_other",
+            "do_other",
+            "node_type",
+            "optics_group_particles",
+            "do_raw",
+        ]:
+            kwargs.pop(name, None)
+        return kwargs
+
+    def run(
+        self,
+        fn_in_raw: _a.import_.FN_IN_RAW = "",
+        is_multiframe: _a.import_.IN_MULTIFRAME = True,
+        optics_group_name: _a.import_.OPTICS_GROUP_NAME = "opticsGroup1",
+        fn_mtf: _a.import_.FN_MTF = "",
+        angpix: _a.import_.ANGPIX = 1.4,
+        kV: _a.import_.KV = 300,
+        Cs: _a.import_.CS = 2.7,
+        Q0: _a.import_.Q0 = 0.1,
+        beamtilt_x: _a.import_.BEAM_TILT_X = 0,
+        beamtilt_y: _a.import_.BEAM_TILT_Y = 0,
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")
+
+
+class ImportOthersJob(_Relion5Job):
+    @classmethod
+    def type_label(cls) -> str:
+        return "relion.import.other"
+
+    @classmethod
+    def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
+        kwargs = super().normalize_kwargs(**kwargs)
+        kwargs["do_other"] = True
+        kwargs["do_raw"] = False
+        kwargs["fn_in_raw"] = ""
+        kwargs["is_multiframe"] = True
+        kwargs["optics_group_name"] = "opticsGroup1"
+        kwargs["fn_mtf"] = ""
+        kwargs["angpix"] = 1.4
+        kwargs["kV"] = 300
+        kwargs["Cs"] = 2.7
+        kwargs["Q0"] = 0.1
+        kwargs["beamtilt_x"] = 0
+        kwargs["beamtilt_y"] = 0
+        return kwargs
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
+        kwargs = super().normalize_kwargs_inv(**kwargs)
+        for name in [
+            "fn_in_raw", "is_multiframe", "optics_group_name", "fn_mtf", "angpix", "kV",
+            "Cs", "Q0", "beamtilt_x", "beamtilt_y", "do_other", "do_raw",
+        ]:  # fmt: skip
+            kwargs.pop(name, None)
+        return kwargs
+
+    def run(
+        self,
+        fn_in_other: _a.import_.FN_IN_OTHER = "",
+        node_type: _a.import_.NODE_TYPE = "Particle coordinates (*.box, *_pick.star)",
+        optics_group_particles: _a.import_.OPTICS_GROUP_PARTICLES = "",
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")
+
+
 class _MotionCorrJobBase(_Relion5Job):
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
