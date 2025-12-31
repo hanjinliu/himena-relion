@@ -1023,15 +1023,9 @@ class ExtractJob(ExtractJobBase):
         # Helix
         do_extract_helix: _a.helix.DO_HELIX = False,
         helical_tube_outer_diameter: _a.helix.HELICAL_TUBE_DIAMETER = 200,
-        helical_bimodal_angular_priors: Annotated[
-            bool, {"label": "Use bimodal angular priors", "group": "Helix"}
-        ] = True,
-        do_extract_helical_tubes: Annotated[
-            bool, {"label": "Coordinates are star-end only", "group": "Helix"}
-        ] = True,
-        do_cut_into_segments: Annotated[
-            bool, {"label": "Cut helical tubes into segments", "group": "Helix"}
-        ] = True,
+        helical_bimodal_angular_priors: _a.extract.HELICAL_BIMODAL_ANGULAR_PRIORS = True,
+        do_extract_helical_tubes: _a.extract.DO_EXTRACT_HELICAL_TUBES = True,
+        do_cut_into_segments: _a.extract.DO_CUT_INTO_SEGMENTS = True,
         helical_nr_asu: _a.helix.HELICAL_NR_ASU = 1,
         helical_rise: _a.helix.HELICAL_RISE = 1,
         # Running
@@ -1084,15 +1078,9 @@ class ReExtractJob(ExtractJobBase):
         # Helix
         do_extract_helix: _a.helix.DO_HELIX = False,
         helical_tube_outer_diameter: _a.helix.HELICAL_TUBE_DIAMETER = 200,
-        helical_bimodal_angular_priors: Annotated[
-            bool, {"label": "Use bimodal angular priors", "group": "Helix"}
-        ] = True,
-        do_extract_helical_tubes: Annotated[
-            bool, {"label": "Coordinates are star-end only", "group": "Helix"}
-        ] = True,
-        do_cut_into_segments: Annotated[
-            bool, {"label": "Cut helical tubes into segments", "group": "Helix"}
-        ] = True,
+        helical_bimodal_angular_priors: _a.extract.HELICAL_BIMODAL_ANGULAR_PRIORS = True,
+        do_extract_helical_tubes: _a.extract.DO_EXTRACT_HELICAL_TUBES = True,
+        do_cut_into_segments: _a.extract.DO_CUT_INTO_SEGMENTS = True,
         helical_nr_asu: _a.helix.HELICAL_NR_ASU = 1,
         helical_rise: _a.helix.HELICAL_RISE = 1,
         # Running
@@ -2102,3 +2090,175 @@ class CtfRefineJob(_Relion5Job):
                 widgets[name].enabled = not value
 
         _on_do_aniso_mag_changed(widgets["do_aniso_mag"].value)
+
+
+# "relion.joinstar.particles": "Join Particles",
+# "relion.joinstar.micrographs": "Join Micrographs",
+# "relion.joinstar.movies": "Join Movies",
+class _JoinStarBase(_Relion5Job):
+    @classmethod
+    def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
+        kwargs = super().normalize_kwargs(**kwargs)
+        for do in ["do_mic", "do_mov", "do_part"]:
+            kwargs.setdefault(do, False)
+        for i in [1, 2, 3, 4]:
+            kwargs.setdefault(f"fn_mic{i}", "")
+            kwargs.setdefault(f"fn_mov{i}", "")
+            kwargs.setdefault(f"fn_part{i}", "")
+        return kwargs
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
+        kwargs = super().normalize_kwargs_inv(**kwargs)
+        params = cls._signature().parameters
+        for do in ["do_mic", "do_mov", "do_part"]:
+            if do not in params:
+                kwargs.pop(do, None)
+        for i in [1, 2, 3, 4]:
+            for prefix in ["fn_mic", "fn_mov", "fn_part"]:
+                if f"{prefix}{i}" not in params:
+                    kwargs.pop(f"{prefix}{i}", None)
+        return kwargs
+
+
+class JoinParticlesJob(_JoinStarBase):
+    @classmethod
+    def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
+        kwargs = super().normalize_kwargs(**kwargs)
+        kwargs["do_part"] = True
+        return kwargs
+
+    @classmethod
+    def type_label(cls):
+        return "relion.joinstar.particles"
+
+    def run(
+        self,
+        fn_part1: _a.io.IN_PARTICLES = "",
+        fn_part2: _a.io.IN_PARTICLES = "",
+        fn_part3: _a.io.IN_PARTICLES = "",
+        fn_part4: _a.io.IN_PARTICLES = "",
+        do_queue: _a.running.DO_QUEUE_TYPE = False,
+        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")
+
+
+class JoinMicrographsJob(_JoinStarBase):
+    @classmethod
+    def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
+        kwargs = super().normalize_kwargs(**kwargs)
+        kwargs["do_mic"] = True
+        return kwargs
+
+    @classmethod
+    def type_label(cls):
+        return "relion.joinstar.micrographs"
+
+    def run(
+        self,
+        fn_mic1: _a.io.IN_MICROGRAPHS = "",
+        fn_mic2: _a.io.IN_MICROGRAPHS = "",
+        fn_mic3: _a.io.IN_MICROGRAPHS = "",
+        fn_mic4: _a.io.IN_MICROGRAPHS = "",
+        do_queue: _a.running.DO_QUEUE_TYPE = False,
+        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")
+
+
+class JoinMoviesJob(_JoinStarBase):
+    @classmethod
+    def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
+        kwargs = super().normalize_kwargs(**kwargs)
+        kwargs["do_mov"] = True
+        return kwargs
+
+    @classmethod
+    def type_label(cls):
+        return "relion.joinstar.movies"
+
+    def run(
+        self,
+        fn_mov1: _a.io.IN_MOVIES = "",
+        fn_mov2: _a.io.IN_MOVIES = "",
+        fn_mov3: _a.io.IN_MOVIES = "",
+        fn_mov4: _a.io.IN_MOVIES = "",
+        do_queue: _a.running.DO_QUEUE_TYPE = False,
+        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")
+
+    # "relion.localres.own": "Local Resolution",
+    # "relion.localres.resmap": "Local Resolution",
+
+
+class _LocalResolutionJobBase(_Relion5Job): ...
+
+
+class LocalResolutionResmapJob(_LocalResolutionJobBase):
+    @classmethod
+    def type_label(cls):
+        return "relion.localres.resmap"
+
+    @classmethod
+    def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
+        kwargs = super().normalize_kwargs(**kwargs)
+        kwargs["do_resmap_locres"] = True
+        kwargs["do_relion_locres"] = False
+        return super().normalize_kwargs(**kwargs)
+
+    def run(
+        self,
+        fn_in: _a.io.HALFMAP_TYPE = "",
+        fn_mask: _a.io.MASK_TYPE = "",
+        angpix: Annotated[float, {"label": "Pixel size (A)", "group": "I/O"}] = -1,
+        pval: Annotated[
+            float, {"label": "P-value for significance", "group": "ResMap"}
+        ] = 0.05,
+        minres: Annotated[
+            float, {"label": "Highest resolution (A)", "group": "ResMap"}
+        ] = 0,
+        maxres: Annotated[
+            float, {"label": "Lowest resolution (A)", "group": "ResMap"}
+        ] = 0,
+        stepres: Annotated[
+            float, {"label": "Resolution step (A)", "group": "ResMap"}
+        ] = 1,
+        # Running
+        nr_mpi: _a.running.MPI_TYPE = 1,
+        do_queue: _a.running.DO_QUEUE_TYPE = False,
+        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")
+
+
+class LocalResolutionOwnJob(_LocalResolutionJobBase):
+    @classmethod
+    def type_label(cls):
+        return "relion.localres.own"
+
+    @classmethod
+    def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
+        kwargs = super().normalize_kwargs(**kwargs)
+        kwargs["do_resmap_locres"] = False
+        kwargs["do_relion_locres"] = True
+        return super().normalize_kwargs(**kwargs)
+
+    def run(
+        self,
+        fn_in: _a.io.HALFMAP_TYPE = "",
+        fn_mask: _a.io.MASK_TYPE = "",
+        angpix: Annotated[float, {"label": "Pixel size (A)", "group": "I/O"}] = -1,
+        adhoc_bfactor: Annotated[
+            float, {"label": "User-provided B-factor (A^2)", "group": "Relion"}
+        ] = -100,
+        fn_mtf: Annotated[
+            str, {"label": "MTF of the detector", "group": "Relion"}
+        ] = "",
+        # Running
+        nr_mpi: _a.running.MPI_TYPE = 1,
+        do_queue: _a.running.DO_QUEUE_TYPE = False,
+        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")

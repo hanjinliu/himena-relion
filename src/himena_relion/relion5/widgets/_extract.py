@@ -72,11 +72,12 @@ class QExtractViewer(QJobScrollArea):
             nz = mrc.header.nz
         self._current_num_extracts = nz
         current_pos = self._slider.value()
-        self._slider.setRange(1, nz // self._num_page)
+        self._slider.setRange(0, nz // self._num_page)
         current_pos = min(current_pos, self._slider.maximum())
         self._slider_value_changed(current_pos, udpate_slider=True)
 
     def _slider_value_changed(self, value: int, *, udpate_slider: bool = False):
+        # value: 0-indexed
         self.window_closed_callback()
         if udpate_slider:
             self._slider.setValue(value)
@@ -93,11 +94,9 @@ class QExtractViewer(QJobScrollArea):
 
     @thread_worker
     def plot_extracts(self, start_index: int, session: uuid.UUID):
+        end_index = min(start_index + self._num_page, self._current_num_extracts + 1)
         with mrcfile.mmap(self._current_extract_path) as mrc:
-            end_index = min(
-                start_index + self._num_page, self._current_num_extracts + 1
-            )
-            for ith in range(start_index, end_index):
+            for ith in range(start_index + 1, end_index + 1):
                 img_data = np.asarray(mrc.data[ith - 1], dtype=np.float32)
                 img_data = _utils.lowpass_filter(img_data, 0.2)
                 img_str = self._text_edit.image_to_base64(img_data, f"{ith}")

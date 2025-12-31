@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Optional
 
 
 SIZE = Annotated[
@@ -121,7 +121,7 @@ RECENTER = Annotated[
 ]
 
 MINIMUM_PICK_FOM = Annotated[
-    float | None,
+    Optional[float],
     {
         "label": "Minimum autopick FOM",
         "tooltip": (
@@ -129,5 +129,42 @@ MINIMUM_PICK_FOM = Annotated[
             "extracted."
         ),
         "group": "Extract",
+    },
+]
+HELICAL_BIMODAL_ANGULAR_PRIORS = Annotated[
+    bool,
+    {
+        "label": "Use bimodal angular priors",
+        "tooltip": (
+            "Normally it should be set to Yes and bimodal angular priors will be "
+            "applied in the following classification and refinement jobs. Set to No if "
+            "the 3D helix looks the same when rotated upside down."
+        ),
+        "group": "Helix",
+    },
+]
+DO_EXTRACT_HELICAL_TUBES = Annotated[
+    bool,
+    {
+        "label": "Coordinates are star-end only",
+        "tooltip": (
+            "Set to Yes if you want to extract helical segments from manually picked "
+            "tube coordinates (starting and end points of helical tubes in RELION, "
+            "EMAN or XIMDISP format). Set to No if segment coordinates (RELION "
+            "auto-picked results or EMAN / XIMDISP segments) are provided."
+        ),
+        "group": "Helix",
+    },
+]
+DO_CUT_INTO_SEGMENTS = Annotated[
+    bool,
+    {
+        "label": "Cut helical tubes into segments",
+        "tooltip": (
+            "Set to Yes if you want to extract multiple helical segments with a fixed "
+            "inter-box distance. If it is set to No, only one box at the center of "
+            "each helical tube will be extracted."
+        ),
+        "group": "Helix",
     },
 ]

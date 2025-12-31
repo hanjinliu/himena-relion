@@ -110,9 +110,7 @@ class QManualPickViewer(QJobScrollArea):
                 num = read_star(coords_path).first().trust_loop().shape[0]
             choices.append((mic_path, str(num), coords_path or ""))
         self._mic_list.set_choices(choices)
-        row = self._mic_list.currentRow()
-        item = self._mic_list.item(row, 2)
-        self._update_points(reload=item.text() if item else "")
+        self._update_points(reload=self._mic_list.current_text(2))
 
     def _get_diameter(self) -> float:
         return float(self._job_dir.get_job_param("diameter"))

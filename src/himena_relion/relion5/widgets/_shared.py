@@ -23,12 +23,16 @@ class QMicrographListWidget(QtW.QTableWidget):
         self.setEditTriggers(QtW.QAbstractItemView.EditTrigger.NoEditTriggers)
         self.itemSelectionChanged.connect(self._on_selection_changed)
 
+    def current_text(self, ncol: int = 0) -> str:
+        if self.rowCount() > 0 and self.currentItem():
+            current_text = self.item(self.currentRow(), ncol).text()
+        else:
+            current_text = ""
+        return current_text
+
     def set_choices(self, choices: list[tuple[str, ...]]):
         """Set the micrograph choices in the list widget."""
-        if self.rowCount() > 0 and self.currentItem():
-            current_text = self.item(self.currentRow(), 0).text()
-        else:
-            current_text = None
+        current_text = self.current_text(0)
         self.setRowCount(0)
         self.setRowCount(len(choices))
         choices_0: list[str] = []

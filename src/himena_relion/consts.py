@@ -86,6 +86,7 @@ JOB_ID_MAP = {
     "relion.maskcreate": "Create Mask",
     "relion.joinstar.particles": "Join Particles",
     "relion.joinstar.micrographs": "Join Micrographs",
+    "relion.joinstar.movies": "Join Movies",
     "relion.framealigntomo": "Frame Align",
     "relion.ctfrefinetomo": "CTF Refine",
 }

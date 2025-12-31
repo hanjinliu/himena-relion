@@ -61,8 +61,7 @@ class QClass3DViewer(QJobScrollArea):
         self._viewer.auto_fit()
 
     def _on_iter_changed(self, value: int):
-        row = self._list_widget.currentRow()
-        class_id = int(self._list_widget.item(row, 0).text()) if row >= 0 else 1
+        class_id = int(self._list_widget.current_text() or 1)
         self._update_for_value(value, class_id)
         self._update_summary_table(value)
 
