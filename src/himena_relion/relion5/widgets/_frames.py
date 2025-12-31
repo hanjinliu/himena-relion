@@ -100,7 +100,7 @@ class QMotionCorrViewer(QJobScrollArea):
 
         self._viewer = Q2DViewer(zlabel="")
         self._viewer.setMinimumHeight(480)
-        self._mic_list = QMicrographListWidget()
+        self._mic_list = QMicrographListWidget(["Micrograph", "Path"])
         self._mic_list.setFixedHeight(130)
         self._mic_list.current_changed.connect(self._mic_changed)
         self._filter_widget = Q2DFilterWidget()
@@ -118,9 +118,9 @@ class QMotionCorrViewer(QJobScrollArea):
             self._process_update()
             _LOGGER.debug("%s Updated", job_dir.job_number)
 
-    def _mic_changed(self, row: tuple[str, ...]):
+    def _mic_changed(self, row: tuple[str, str]):
         """Handle changes to selected micrograph."""
-        mic_path = self._job_dir.resolve_path(row[0])
+        mic_path = self._job_dir.resolve_path(row[1])
         movie_view = ArrayFilteredView.from_mrc(mic_path)
         had_image = self._viewer.has_image
         self._filter_widget.set_image_scale(movie_view.get_scale())
@@ -142,12 +142,12 @@ class QMotionCorrViewer(QJobScrollArea):
     def initialize(self, job_dir: _job_dir.MotionCorrBase):
         """Initialize the viewer with the job directory."""
         self._job_dir = job_dir
-
         self._process_update()
         self._viewer.auto_fit()
 
     def _process_update(self):
-        choices = [
-            (self._job_dir.make_relative_path(p),) for p in self._job_dir.iter_movies()
-        ]
+        choices = []
+        for p in self._job_dir.iter_movies():
+            path = self._job_dir.make_relative_path(p)
+            choices.append((path.name, path.as_posix()))
         self._mic_list.set_choices(choices)
