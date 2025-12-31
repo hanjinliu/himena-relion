@@ -4,9 +4,9 @@ from qtpy import QtGui, QtCore
 from cmap import Color
 
 from himena import MainWindow
-from himena.types import is_subtype
 from himena.qt._qflowchart import QFlowChartView, BaseNodeItem
-from himena_relion.consts import Type, JOB_ID_MAP
+from himena_relion.consts import JOB_ID_MAP
+from himena_relion._utils import read_or_show_job
 from himena_relion._pipeline import RelionDefaultPipeline, RelionJobInfo, NodeStatus
 from himena_relion._job_dir import ExternalJobDirectory, JobDirectory
 
@@ -92,20 +92,7 @@ class QRelionPipelineFlowChartView(QFlowChartView):
         """Open the job directory or activate the already opened one."""
         path = self._relion_project_dir / item_id
         if path.exists():
-            # if already opened, switch to it
-            for i_tab, tab in self._ui.tabs.enumerate():
-                for i_window, window in tab.enumerate():
-                    if not is_subtype(window.model_type(), Type.RELION_JOB):
-                        continue
-                    try:
-                        val = window.value
-                        if isinstance(val, JobDirectory) and path == val.path:
-                            self._ui.tabs.current_index = i_tab
-                            tab.current_index = i_window
-                            return
-                    except Exception:
-                        continue
-            self._ui.read_file(path)
+            read_or_show_job(self._ui, path)
         else:
             raise FileNotFoundError(f"File {path} does not exist.")
 

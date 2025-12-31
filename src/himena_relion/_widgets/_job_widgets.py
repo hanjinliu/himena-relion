@@ -4,20 +4,22 @@ from __future__ import annotations
 
 import logging
 from contextlib import suppress
-from functools import lru_cache
 from pathlib import Path
-import sys
 import html
 from typing import Iterator
 import numpy as np
 from qtpy import QtWidgets as QtW, QtGui, QtCore
 from superqt import QToggleSwitch
 from superqt.utils import qthrottled
-from himena.consts import MonospaceFontFamily
 from himena.widgets import current_instance, set_status_tip
 from himena.qt import drag_files, QColoredSVGIcon
 from himena_relion import _job_class, _job_dir
-from himena_relion._utils import read_icon_svg, read_icon_svg_for_type
+from himena_relion._utils import (
+    read_icon_svg,
+    read_icon_svg_for_type,
+    read_or_show_job,
+    monospace_font_family,
+)
 from himena_relion._pipeline import RelionPipeline
 from himena_relion._widgets._job_edit import QJobParameter
 from himena_relion.schemas._pipeline import RelionPipelineModel
@@ -47,12 +49,13 @@ class QJobScrollArea(QtW.QScrollArea, JobWidgetBase):
         super().__init__()
         inner = QtW.QWidget()
         self.setWidget(inner)
-        self.setWidgetResizable(True)
+        self.setWidgetResizable(False)
         layout = QtW.QVBoxLayout(inner)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setAlignment(
             QtCore.Qt.AlignmentFlag.AlignTop | QtCore.Qt.AlignmentFlag.AlignHCenter
         )
+        layout.setSizeConstraint(QtW.QLayout.SizeConstraint.SetMinimumSize)
         self._layout = layout
 
 
@@ -67,12 +70,7 @@ class QTextEditBase(QtW.QWidget, JobWidgetBase):
         self._wordwrap_checkbox.toggled.connect(self._on_wordwrap_changed)
         self._filename_label = QtW.QLabel("")
         self._text_edit = QtW.QPlainTextEdit()
-        if sys.platform.startswith("linux"):
-            # In linux, "Monospace" sometimes falls back to Sans Serif.
-            # Here, we try to find a better monospace font.
-            font_family = _monospace_font_for_linux()
-        else:
-            font_family = MonospaceFontFamily
+        font_family = monospace_font_family()
         self._text_edit.setFont(QtGui.QFont(font_family, 8))
         self._text_edit.setReadOnly(True)
         self._text_edit.setWordWrapMode(QtGui.QTextOption.WrapMode.NoWrap)
@@ -399,7 +397,7 @@ class QRelionNodeItem(QtW.QWidget):
     def _open_dir_event(self):
         if not (path := self._filepath.parent).exists():
             raise FileNotFoundError(f"Directory {path} does not exist.")
-        current_instance().read_file(path)
+        read_or_show_job(current_instance(), path)
 
     def _drag_file_event(self):
         set_status_tip(f"Start dragging file {self._filepath}", duration=5)
@@ -586,13 +584,3 @@ class QFileLabel(QtW.QWidget):
     def _copy_rel_path_to_clipboard(self):
         if clipboard := QtW.QApplication.clipboard():
             clipboard.setText(str(self._path_rel))
-
-
-@lru_cache(maxsize=1)
-def _monospace_font_for_linux() -> str:
-    candidates = ["Noto Sans Mono", "DejaVu Sans Mono", "Ubuntu Mono"]
-    families = QtGui.QFontDatabase.families()
-    for fam in candidates:
-        if fam in families:
-            return fam
-    return MonospaceFontFamily

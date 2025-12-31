@@ -45,6 +45,14 @@ class TSModel(schema.LoopDataModel):
     ctf_image: schema.Series[str] = schema.Field("rlnCtfImage", default=None)
 
 
+class TSAlignModel(schema.LoopDataModel):
+    xtilt: schema.Series[float] = schema.Field("rlnTomoXTilt")  # 21
+    ytilt: schema.Series[float] = schema.Field("rlnTomoYTilt")  # 22
+    zrot: schema.Series[float] = schema.Field("rlnTomoZRot")  # 23
+    xshift: schema.Series[float] = schema.Field("rlnTomoXShiftAngst")  # 24
+    yshift: schema.Series[float] = schema.Field("rlnTomoYShiftAngst")  # 25
+
+
 class TomogramsGroupModel(schema.LoopDataModel):
     """Star file content such as TomogramsGroup.star"""
 

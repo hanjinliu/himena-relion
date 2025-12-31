@@ -11,6 +11,7 @@ from himena_relion._widgets import (
     Q2DViewer,
     QPlotCanvas,
     register_job,
+    QMicrographListWidget,
 )
 from himena_relion import _job_dir
 from himena_relion.schemas import TSModel
@@ -24,6 +25,8 @@ class QCtfFindViewer(QJobScrollArea):
         super().__init__()
         self._job_dir = job_dir
         layout = self._layout
+        self._worker: GeneratorWorker | None = None
+
         self._defocus_canvas = QPlotCanvas(self)
         self._defocus_canvas.setFixedSize(360, 145)
         self._astigmatism_canvas = QPlotCanvas(self)
@@ -34,10 +37,9 @@ class QCtfFindViewer(QJobScrollArea):
         self._max_resolution_canvas.setFixedSize(360, 145)
 
         self._viewer = Q2DViewer(zlabel="Tilt index")
-        self._worker: GeneratorWorker | None = None
-        self._ts_choice = QtW.QComboBox()
-        self._ts_choice.currentTextChanged.connect(self._ts_choice_changed)
-        layout.addWidget(self._ts_choice)
+        self._ts_list = QMicrographListWidget(["Tilt Series"])
+        self._ts_list.current_changed.connect(self._ts_choice_changed)
+        layout.addWidget(self._ts_list)
         layout.addWidget(QtW.QLabel("<b>Defocus</b>"))
         layout.addWidget(self._defocus_canvas)
         layout.addWidget(QtW.QLabel("<b>Astigmatism</b>"))
@@ -63,15 +65,10 @@ class QCtfFindViewer(QJobScrollArea):
         self._viewer.auto_fit()
 
     def _process_update(self):
-        choices = [p.stem for p in self._job_dir.iter_tilt_series_path()]
-        index = self._ts_choice.currentIndex()
-        self._ts_choice.clear()
-        self._ts_choice.addItems(choices)
-        if choices:
-            self._ts_choice.setCurrentIndex(
-                min(index if index >= 0 else 0, len(choices) - 1)
-            )
-        else:
+        choices = [(p.stem,) for p in self._job_dir.iter_tilt_series_path()]
+        choices.sort(key=lambda x: x[0])
+        self._ts_list.set_choices(choices)
+        if len(choices) == 0:
             # clear everything
             self._defocus_canvas.clear()
             self._astigmatism_canvas.clear()
@@ -79,8 +76,9 @@ class QCtfFindViewer(QJobScrollArea):
             self._max_resolution_canvas.clear()
             self._viewer.clear()
 
-    def _ts_choice_changed(self, text: str):
+    def _ts_choice_changed(self, texts: tuple[str, ...]):
         """Update the viewer when the selected tomogram changes."""
+        text = texts[0]
         job_dir = self._job_dir
         for path in job_dir.iter_tilt_series_path():
             if path.stem == text:
@@ -145,9 +143,9 @@ class QCtfRefineTomoViewer(QJobScrollArea):
         self._defocus_canvas.setFixedSize(360, 160)
         self._ctf_scale_canvas = QPlotCanvas(self)
         self._ctf_scale_canvas.setFixedSize(360, 160)
-        self._ts_choice = QtW.QComboBox()
-        self._ts_choice.currentTextChanged.connect(self._ts_choice_changed)
-        layout.addWidget(self._ts_choice)
+        self._ts_list = QMicrographListWidget(["Tilt Series"])
+        self._ts_list.current_changed.connect(self._ts_choice_changed)
+        layout.addWidget(self._ts_list)
         layout.addWidget(QtW.QLabel("<b>Defocus</b>"))
         layout.addWidget(self._defocus_canvas)
         layout.addWidget(QtW.QLabel("<b>CTF Scale Factor</b>"))
@@ -166,22 +164,18 @@ class QCtfRefineTomoViewer(QJobScrollArea):
             _LOGGER.debug("%s Updated", self._job_dir.job_number)
 
     def _process_update(self):
-        choices = [p.stem for p in self._job_dir.iter_tilt_series_path()]
-        index = self._ts_choice.currentIndex()
-        self._ts_choice.clear()
-        self._ts_choice.addItems(choices)
-        if choices:
-            self._ts_choice.setCurrentIndex(
-                min(index if index >= 0 else 0, len(choices) - 1)
-            )
-        else:
+        choices = [(p.stem,) for p in self._job_dir.iter_tilt_series_path()]
+        choices.sort(key=lambda x: x[0])
+        self._ts_list.set_choices(choices)
+        if len(choices) == 0:
             # clear everything
             self._defocus_canvas.clear()
             self._ctf_scale_canvas.clear()
 
-    def _ts_choice_changed(self, text: str):
+    def _ts_choice_changed(self, texts: tuple[str, ...]):
         """Update the viewer when the selected tomogram changes."""
         job_dir = self._job_dir
+        text = texts[0]
         for ts_path in job_dir.iter_tilt_series_path():
             if ts_path.stem == text:
                 df = read_star(ts_path).first().trust_loop().to_pandas()

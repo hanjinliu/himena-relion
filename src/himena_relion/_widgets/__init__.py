@@ -12,7 +12,12 @@ from himena_relion._widgets._job_widgets import (
 from himena_relion._widgets._view_nd import Q2DViewer, Q3DViewer, Q2DFilterWidget
 from himena_relion._widgets._spinbox import QIntWidget, QIntChoiceWidget
 from himena_relion._widgets._plot import QPlotCanvas
-from himena_relion._widgets._misc import spacer_widget
+from himena_relion._widgets._misc import (
+    spacer_widget,
+    QMicrographListWidget,
+    QImageViewTextEdit,
+    QNumParticlesLabel,
+)
 from himena_relion._widgets._job_edit import QJobScheduler
 
 __all__ = [
@@ -28,6 +33,9 @@ __all__ = [
     "QRelionJobWidget",
     "QRelionNodeItem",
     "QJobScheduler",
+    "QMicrographListWidget",
+    "QImageViewTextEdit",
+    "QNumParticlesLabel",
     "spacer_widget",
 ]
 

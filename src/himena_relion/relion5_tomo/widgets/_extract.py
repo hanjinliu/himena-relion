@@ -1,17 +1,20 @@
 from __future__ import annotations
 from pathlib import Path
 import logging
+import time
 import uuid
 import numpy as np
 import mrcfile
 from qtpy import QtWidgets as QtW, QtCore
 from superqt.utils import GeneratorWorker, thread_worker
-from himena_relion._widgets import QJobScrollArea, register_job
-from himena_relion import _job_dir, _utils
-from himena_relion.relion5.widgets._shared import (
+from himena_relion._widgets import (
+    QJobScrollArea,
+    register_job,
     QImageViewTextEdit,
     QMicrographListWidget,
 )
+from himena_relion import _job_dir, _utils
+
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -22,8 +25,10 @@ class QExtractJobViewer(QJobScrollArea):
         super().__init__()
         self._job_dir = job_dir
 
+        self._last_force_reloaded = -1.0
         self._num_page = 50
         self._current_num_extracts = 0
+        self._last_updated_dir: str = ""
         self._subtomo_pattern = "{ith}_data.mrc"
         self._worker: GeneratorWorker | None = None
         self._tomo_list = QMicrographListWidget(["Tomogram", "Subtomogram Path"])
@@ -50,20 +55,19 @@ class QExtractJobViewer(QJobScrollArea):
     def on_job_updated(self, job_dir: _job_dir.ExtractJobDirectory, path: str):
         """Handle changes to the job directory."""
         fp = Path(path)
-        if fp.name.startswith("RELION_JOB_") or fp.name.endswith(
-            ("_stack2d.mrcs", "_data.mrc")
-        ):
+        is_subtomo_update = fp.name.endswith(("_stack2d.mrcs", "_data.mrc"))
+        if fp.name.startswith("RELION_JOB_") or is_subtomo_update:
             self.initialize(job_dir)
+            if is_subtomo_update:
+                self._last_updated_dir = fp.parent.name
             _LOGGER.debug("%s Updated", self._job_dir.job_number)
 
     def initialize(self, job_dir: _job_dir.ExtractJobDirectory):
         """Initialize the viewer with the job directory."""
-        # update choices, don't include tomogram IDs with no subtomograms
-        self._process_update()
-
-    def _process_update(self):
         subtomo_dir = self._job_dir.path.joinpath("Subtomograms")
         if not subtomo_dir.exists():
+            self._tomo_list.set_choices([])
+            self._text_edit.clear()
             return
         tomo_names = [
             (
@@ -83,6 +87,14 @@ class QExtractJobViewer(QJobScrollArea):
                 "<b>Extracted subtomograms (max projection)</b>"
             )
             self._subtomo_pattern = "{ith}_data.mrc"
+
+        if (
+            (t0 := time.time()) - self._last_force_reloaded > 5.0
+            and self._tomo_list.current_text() == self._last_updated_dir
+            and self._worker is None
+        ):
+            self._on_tomo_changed(self._tomo_list.current_row_texts())
+            self._last_force_reloaded = t0
 
     def _on_tomo_changed(self, value: tuple[str, str]):
         tomo_name = value[0]
@@ -124,13 +136,21 @@ class QExtractJobViewer(QJobScrollArea):
                 continue
             with mrcfile.mmap(mrc_path) as mrc:
                 img_data = np.asarray(mrc.data, dtype=np.float32)
+                if img_data.ndim != 3:
+                    # this may happen if the subtomogram is being written right now
+                    img_str = self._text_edit.image_to_base64(
+                        np.zeros((2, 2), dtype=np.float32), f"{ith}"
+                    )
+                    yield img_str, session
+                    continue
                 if self._subtomo_pattern.endswith("_stack2d.mrcs"):
-                    img_2d = img_data[img_data.shape[0] // 2, :, :]
+                    img_2d = img_data[(img_data.shape[0] - 1) // 2, :, :]
                 else:
                     img_2d = np.max(img_data, axis=0)
                 img_2d = _utils.lowpass_filter(img_2d, 0.2)
                 img_str = self._text_edit.image_to_base64(img_2d, f"{ith}")
                 yield img_str, session
+        self._worker = None
 
     def _on_yielded(self, value: tuple[str, uuid.UUID]):
         if self._worker is None:

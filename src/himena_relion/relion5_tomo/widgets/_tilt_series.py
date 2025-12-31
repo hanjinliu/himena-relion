@@ -2,11 +2,13 @@ from __future__ import annotations
 from pathlib import Path
 import logging
 from qtpy import QtWidgets as QtW
+from starfile_rs import read_star
 from himena_relion._widgets import (
     QJobScrollArea,
     Q2DViewer,
     Q2DFilterWidget,
     register_job,
+    QMicrographListWidget,
 )
 from himena_relion import _job_dir
 
@@ -21,12 +23,13 @@ class QMotionCorrViewer(QJobScrollArea):
         layout = self._layout
 
         self._viewer = Q2DViewer(zlabel="Tilt index")
+        self._viewer.setMinimumHeight(360)
         self._filter_widget = Q2DFilterWidget()
-        self._ts_choice = QtW.QComboBox()
-        self._ts_choice.currentTextChanged.connect(self._ts_choice_changed)
+        self._ts_list = QMicrographListWidget(["Tilt Series"])
+        self._ts_list.current_changed.connect(self._ts_choice_changed)
         layout.addWidget(QtW.QLabel("<b>Motion-corrected tilt series</b>"))
         layout.addWidget(self._filter_widget)
-        layout.addWidget(self._ts_choice)
+        layout.addWidget(self._ts_list)
         layout.addWidget(self._viewer)
         self._filter_widget.value_changed.connect(self._param_changed)
         self._binsize_old = -1
@@ -55,19 +58,18 @@ class QMotionCorrViewer(QJobScrollArea):
 
     def _process_update(self):
         choices = [
-            p.tomo_tilt_series_star_file.stem for p in self._job_dir.iter_tilt_series()
+            (p.tomo_tilt_series_star_file.stem,)
+            for p in self._job_dir.iter_tilt_series()
         ]
-        index = self._ts_choice.currentIndex()
-        self._ts_choice.clear()
-        self._ts_choice.addItems(choices)
-        if choices:
-            self._ts_choice.setCurrentIndex(
-                min(index if index >= 0 else 0, len(choices) - 1)
-            )
+        choices.sort(key=lambda x: x[0])
+        self._ts_list.set_choices(choices)
+        if len(choices) == 0:
+            self._viewer.clear()
 
-    def _ts_choice_changed(self, text: str):
+    def _ts_choice_changed(self, texts: tuple[str, ...]):
         """Update the viewer when the selected tomogram changes."""
         job_dir = self._job_dir
+        text = texts[0]
         for info in job_dir.iter_tilt_series():
             if info.tomo_tilt_series_star_file.stem == text:
                 break
@@ -86,9 +88,10 @@ class QExcludeTiltViewer(QJobScrollArea):
         layout = self._layout
 
         self._viewer = Q2DViewer(zlabel="Tilt index")
+        self._viewer.setMinimumHeight(360)
         self._filter_widget = Q2DFilterWidget()
-        self._ts_choice = QtW.QComboBox()
-        self._ts_choice.currentTextChanged.connect(self._ts_choice_changed)
+        self._ts_choice = QMicrographListWidget(["Tilt Series", "Number of Tilts"])
+        self._ts_choice.current_changed.connect(self._ts_choice_changed)
         layout.addWidget(QtW.QLabel("<b>Selected tilt series</b>"))
         layout.addWidget(self._filter_widget)
         layout.addWidget(self._ts_choice)
@@ -117,20 +120,21 @@ class QExcludeTiltViewer(QJobScrollArea):
         self._viewer.auto_fit()
 
     def _process_update(self):
-        choices = [
-            p.tomo_tilt_series_star_file.stem for p in self._job_dir.iter_tilt_series()
-        ]
-        index = self._ts_choice.currentIndex()
-        self._ts_choice.clear()
-        self._ts_choice.addItems(choices)
-        if choices:
-            self._ts_choice.setCurrentIndex(
-                min(index if index >= 0 else 0, len(choices) - 1)
-            )
+        choices: list[tuple[str, str]] = []
+        for p in self._job_dir.iter_tilt_series():
+            file = self._job_dir.resolve_path(p.tomo_tilt_series_star_file)
+            num_tilts = len(read_star(file).first().trust_loop())
+            choices.append((file.stem, str(num_tilts)))
 
-    def _ts_choice_changed(self, text: str):
+        choices.sort(key=lambda x: x[0])
+        self._ts_choice.set_choices(choices)
+        if len(choices) == 0:
+            self._viewer.clear()
+
+    def _ts_choice_changed(self, texts: tuple[str, str]):
         """Update the viewer when the selected tomogram changes."""
         job_dir = self._job_dir
+        text = texts[0]
         for info in job_dir.iter_tilt_series():
             if info.tomo_tilt_series_star_file.stem == text:
                 break

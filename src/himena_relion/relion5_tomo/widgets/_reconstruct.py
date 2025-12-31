@@ -9,10 +9,10 @@ from himena_relion._widgets import (
     Q3DViewer,
     register_job,
     spacer_widget,
+    QNumParticlesLabel,
 )
 from himena_relion import _job_dir
 from himena_relion.schemas import OptimisationSetModel
-from himena_relion.relion5.widgets._shared import QNumParticlesLabel
 
 _LOGGER = logging.getLogger(__name__)
 

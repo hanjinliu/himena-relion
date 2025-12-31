@@ -10,9 +10,9 @@ from himena_relion._widgets import (
     QIntWidget,
     QIntChoiceWidget,
     spacer_widget,
+    QNumParticlesLabel,
 )
 from himena_relion import _job_dir
-from ._shared import QNumParticlesLabel
 
 _LOGGER = logging.getLogger(__name__)
 

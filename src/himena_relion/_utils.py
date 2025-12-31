@@ -1,13 +1,20 @@
 from __future__ import annotations
 from pathlib import Path
 import logging
-from typing import Annotated, Any, get_args, get_origin
+import sys
+from qtpy import QtGui
+from typing import Annotated, Any, get_args, get_origin, TYPE_CHECKING
 
 import numpy as np
-from numpy.typing import NDArray
 from functools import lru_cache
-
+from himena.types import is_subtype
+from himena.consts import MonospaceFontFamily
+from himena_relion.consts import Type
 from himena_relion.schemas import RelionPipelineModel
+
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
+    from himena import MainWindow
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -187,3 +194,44 @@ def update_default_pipeline(
         except Exception:
             _LOGGER.warning("Failed to update job state for %s", job_id, exc_info=True)
     default_pipeline_path.touch()  # update modification time
+
+
+def read_or_show_job(ui: MainWindow, path: Path):
+    """Open a RELION job file in the UI, or switch to it if already opened."""
+    from himena_relion._job_dir import JobDirectory
+
+    # if already opened, switch to it
+    for i_tab, tab in ui.tabs.enumerate():
+        for i_window, window in tab.enumerate():
+            if not is_subtype(window.model_type(), Type.RELION_JOB):
+                continue
+            try:
+                val = window.value
+                if isinstance(val, JobDirectory) and path == val.path:
+                    ui.tabs.current_index = i_tab
+                    tab.current_index = i_window
+                    return
+            except Exception:
+                continue
+    ui.read_file(path)
+
+
+def monospace_font_family() -> str:
+    """Get the system monospace font family."""
+    if sys.platform.startswith("linux"):
+        # In linux, "Monospace" sometimes falls back to Sans Serif.
+        # Here, we try to find a better monospace font.
+        font_family = _monospace_font_for_linux()
+    else:
+        font_family = MonospaceFontFamily
+    return font_family
+
+
+@lru_cache(maxsize=1)
+def _monospace_font_for_linux() -> str:
+    candidates = ["Noto Sans Mono", "DejaVu Sans Mono", "Ubuntu Mono"]
+    families = QtGui.QFontDatabase.families()
+    for fam in candidates:
+        if fam in families:
+            return fam
+    return MonospaceFontFamily

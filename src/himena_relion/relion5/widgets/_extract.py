@@ -8,8 +8,12 @@ from qtpy import QtWidgets as QtW, QtCore
 import logging
 from superqt.utils import GeneratorWorker, thread_worker
 from himena_relion import _job_dir, _utils
-from ._shared import QMicrographListWidget, QImageViewTextEdit
-from himena_relion._widgets import QJobScrollArea, register_job
+from himena_relion._widgets import (
+    QJobScrollArea,
+    register_job,
+    QMicrographListWidget,
+    QImageViewTextEdit,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -49,15 +53,11 @@ class QExtractViewer(QJobScrollArea):
         """Handle changes to the job directory."""
         fp = Path(path)
         if fp.name.startswith("RELION_JOB_") or fp.suffix == ".star":
-            self._process_update()
+            self.initialize()
             _LOGGER.debug("%s Updated", job_dir.job_number)
 
     def initialize(self, job_dir: _job_dir.JobDirectory):
         """Initialize the viewer with the job directory."""
-        self._job_dir = job_dir
-        self._process_update()
-
-    def _process_update(self):
         choices = []
         movies_dir = self._job_dir.path / "Movies"
         for mrcs_path in movies_dir.glob("*.mrcs"):

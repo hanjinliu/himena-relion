@@ -5,12 +5,14 @@ import logging
 import numpy as np
 import pandas as pd
 from qtpy import QtWidgets as QtW
+from starfile_rs import read_star
 from superqt.utils import thread_worker
 from himena_relion._widgets import (
     QJobScrollArea,
     Q2DViewer,
     Q2DFilterWidget,
     register_job,
+    QMicrographListWidget,
 )
 from himena_relion import _job_dir
 from himena_relion._image_readers import ArrayFilteredView
@@ -26,13 +28,14 @@ class QTomogramViewer(QJobScrollArea):
         layout = self._layout
 
         self._viewer = Q2DViewer()
+        self._viewer.setMinimumHeight(360)
         self._filter_widget = Q2DFilterWidget()
         self._filter_widget._bin_factor.setText("1")
-        self._tomo_choice = QtW.QComboBox()
-        self._tomo_choice.currentTextChanged.connect(self._on_tomo_changed)
+        self._tomo_list = QMicrographListWidget(["Tomogram", "Type"])
+        self._tomo_list.current_changed.connect(self._on_tomo_changed)
         layout.addWidget(QtW.QLabel("<b>Tomogram Z slice</b>"))
         layout.addWidget(self._filter_widget)
-        layout.addWidget(self._tomo_choice)
+        layout.addWidget(self._tomo_list)
         layout.addWidget(self._viewer)
         self._filter_widget.value_changed.connect(self._viewer.redraw)
         self._is_split = False
@@ -46,9 +49,8 @@ class QTomogramViewer(QJobScrollArea):
 
     def initialize(self, job_dir: _job_dir.TomogramJobDirectory):
         """Initialize the viewer with the job directory."""
-        self._job_dir = job_dir
-        current_text = self._tomo_choice.currentText()
-        items: list[str] = []
+        items: list[tuple[str, ...]] = []
+        job_dir = self._job_dir
         self._is_split = job_dir.get_job_param("generate_split_tomograms") == "Yes"
         self._filter_widget.set_image_scale(
             float(job_dir.get_job_param("binned_angpix"))
@@ -58,24 +60,20 @@ class QTomogramViewer(QJobScrollArea):
                 if p.stem.endswith("_half2"):
                     continue
                 elif p.stem.endswith("_half1"):
-                    items.append(p.stem[4:-6])
+                    items.append((p.stem[4:-6], "half tomograms"))
             else:
-                items.append(p.stem[4:])
-        self._tomo_choice.clear()
-        self._tomo_choice.addItems(items)
+                items.append((p.stem[4:], "full tomogram"))
+        self._tomo_list.set_choices(items)
         if len(items) == 0:
             self._viewer.clear()
-        if current_text in items:
-            self._tomo_choice.setCurrentText(current_text)
-        self._on_tomo_changed(self._tomo_choice.currentText())
         self._viewer.auto_fit()
 
-    def _on_tomo_changed(self, text: str):
+    def _on_tomo_changed(self, texts: tuple[str, ...]):
         """Update the viewer when the selected tomogram changes."""
         job_dir = self._job_dir
         if job_dir is None:
             return
-
+        text = texts[0]
         if self._is_split:
             mrc_path1 = job_dir.path / "tomograms" / f"rec_{text}_half1.mrc"
             mrc_path2 = job_dir.path / "tomograms" / f"rec_{text}_half2.mrc"
@@ -100,10 +98,11 @@ class QDenoiseTomogramViewer(QJobScrollArea):
         layout = self._layout
 
         self._viewer = Q2DViewer()
-        self._tomo_choice = QtW.QComboBox()
-        self._tomo_choice.currentTextChanged.connect(self._on_tomo_changed)
+        self._viewer.setMinimumHeight(360)
+        self._tomo_list = QMicrographListWidget(["Tomogram", "Type"])
+        self._tomo_list.current_changed.connect(self._on_tomo_changed)
         layout.addWidget(QtW.QLabel("<b>Denoised tomogram Z slice</b>"))
-        layout.addWidget(self._tomo_choice)
+        layout.addWidget(self._tomo_list)
         layout.addWidget(self._viewer)
 
     def on_job_updated(self, job_dir: _job_dir.DenoiseJobDirectory, path: str):
@@ -123,26 +122,26 @@ class QDenoiseTomogramViewer(QJobScrollArea):
         self._job_dir = job_dir
         if job_dir._is_train:
             return
-        current_text = self._tomo_choice.currentText()
-        items = [p.stem[4:] for p in job_dir.path.joinpath("tomograms").glob("*.mrc")]
-        self._tomo_choice.clear()
-        self._tomo_choice.addItems(items)
+        items = [
+            (p.stem[4:], "Denoised")
+            for p in job_dir.path.joinpath("tomograms").glob("*.mrc")
+        ]
+        self._tomo_list.set_choices(items)
         if len(items) == 0:
             self._viewer.clear()
-        if current_text in items:
-            self._tomo_choice.setCurrentText(current_text)
-        self._on_tomo_changed(self._tomo_choice.currentText())
-        self._viewer.auto_fit()
 
-    def _on_tomo_changed(self, text: str):
+    def _on_tomo_changed(self, texts: tuple[str, ...]):
         """Update the viewer when the selected tomogram changes."""
         job_dir = self._job_dir
+        text = texts[0]
         if job_dir is None:
             return
         mrc_path = job_dir.path / "tomograms" / f"rec_{text}.mrc"
         if mrc_path.exists():
             tomo_view = ArrayFilteredView.from_mrc(mrc_path)
             self._viewer.set_array_view(tomo_view, self._viewer._last_clim)
+        else:
+            _LOGGER.info("Denoised tomogram file not found: %s", mrc_path)
 
 
 @register_job("relion.picktomo", is_tomo=True)
@@ -153,15 +152,16 @@ class QPickViewer(QJobScrollArea):
         layout = self._layout
 
         self._viewer = Q2DViewer()
+        self._viewer.setMinimumHeight(360)
         self._worker = None
         self._current_info: _job_dir.TomogramInfo | None = None
         self._filter_widget = Q2DFilterWidget()
         self._filter_widget._bin_factor.setText("1")
-        self._tomo_choice = QtW.QComboBox()
-        self._tomo_choice.currentTextChanged.connect(self._on_tomo_changed)
+        self._tomo_list = QMicrographListWidget(["Tomogram", "Annotations"])
+        self._tomo_list.current_changed.connect(self._on_tomo_changed)
         layout.addWidget(QtW.QLabel("<b>Picked tomogram Z slice</b>"))
         layout.addWidget(self._filter_widget)
-        layout.addWidget(self._tomo_choice)
+        layout.addWidget(self._tomo_list)
         layout.addWidget(self._viewer)
         self._filter_widget.value_changed.connect(self._viewer.redraw)
 
@@ -180,20 +180,31 @@ class QPickViewer(QJobScrollArea):
     def initialize(self, job_dir: _job_dir.PickJobDirectory):
         """Initialize the viewer with the job directory."""
         self._job_dir = job_dir
-        current_text = self._tomo_choice.currentText()
-        items = [info.tomo_name for info in job_dir.iter_tomogram()]
-        self._tomo_choice.clear()
-        self._tomo_choice.addItems(items)
+        annot_dir = job_dir.path / "annotations"
+        items = []
+        for info in job_dir.iter_tomogram():
+            tomo_name = info.tomo_name
+            annot_files = list(annot_dir.glob(f"{tomo_name}_*.star"))
+            if annot_files:
+                annot_path = annot_files[0]
+                units = annot_path.stem[len(tomo_name) + 1 :]
+                loop = read_star(annot_path).first().trust_loop()
+                if units == "filaments":
+                    # filament vertices are labeled with rlnTomoManifoldIndex
+                    n_annot = loop.to_pandas()["rlnTomoManifoldIndex"].nunique()
+                else:
+                    n_annot = len(loop)
+                items.append((info.tomo_name, f"{n_annot} {units}"))
+            else:
+                items.append((info.tomo_name, "0"))
+        self._tomo_list.set_choices(items)
         if len(items) == 0:
             self._viewer.clear()
-        if current_text in items:
-            self._tomo_choice.setCurrentText(current_text)
-        self._on_tomo_changed(self._tomo_choice.currentText())
-        self._viewer.auto_fit()
 
-    def _on_tomo_changed(self, text: str):
+    def _on_tomo_changed(self, texts: tuple[str, ...]):
         """Update the viewer when the selected tomogram changes."""
         job_dir = self._job_dir
+        text = texts[0]
         for info in job_dir.iter_tomogram():
             if info.tomo_name == text:
                 break

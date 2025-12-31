@@ -13,10 +13,10 @@ from himena_relion._widgets import (
     QIntWidget,
     QPlotCanvas,
     spacer_widget,
+    QNumParticlesLabel,
 )
 from himena_relion import _job_dir
 from himena_relion.schemas import ParticleMetaModel
-from ._shared import QNumParticlesLabel
 
 _LOGGER = logging.getLogger(__name__)
 

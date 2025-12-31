@@ -11,8 +11,8 @@ from himena_relion._widgets import (
     QJobScrollArea,
     QIntChoiceWidget,
     register_job,
+    QImageViewTextEdit,
 )
-from ._shared import QImageViewTextEdit
 from himena_relion import _job_dir
 
 _LOGGER = logging.getLogger(__name__)

@@ -3,10 +3,17 @@ from pathlib import Path
 import logging
 import numpy as np
 
-from qtpy import QtWidgets as QtW
+import pandas as pd
+from qtpy import QtWidgets as QtW, QtGui, QtCore
 import scipy.ndimage as ndi
-from himena_relion._widgets import QJobScrollArea, Q2DViewer, register_job
+from himena_relion._widgets import (
+    QJobScrollArea,
+    Q2DViewer,
+    register_job,
+    QMicrographListWidget,
+)
 from himena_relion import _job_dir, _utils
+from himena_relion.schemas import TSAlignModel
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -19,41 +26,39 @@ class QAlignTiltSeriesViewer(QJobScrollArea):
         layout = self._layout
 
         self._viewer = Q2DViewer(zlabel="Tilt index")
-        self._ts_choice = QtW.QComboBox()
-        self._ts_choice.currentTextChanged.connect(self._ts_choice_changed)
+        self._viewer.setMinimumHeight(360)
+        self._ts_list = QMicrographListWidget(["Tilt Series"])
+        self._ts_list.current_changed.connect(self._ts_choice_changed)
+        self._current_ts_align: pd.DataFrame | None = None
+        self._batchruntomo_log = QBatchruntomoLog()
+        layout.addWidget(self._ts_list)
         layout.addWidget(QtW.QLabel("<b>Aligned tilt series</b>"))
-        layout.addWidget(self._ts_choice)
         layout.addWidget(self._viewer)
+        layout.addWidget(QtW.QLabel("<b>Batchruntomo Log</b>"))
+        layout.addWidget(self._batchruntomo_log)
 
     def on_job_updated(self, job_dir, path: str):
         """Handle changes to the job directory."""
         fp = Path(path)
         if fp.name.startswith("RELION_JOB_") or fp.suffix == ".xf":
-            self._process_update(self._job_dir)
+            self.initialize(self._job_dir)
             _LOGGER.debug("%s Updated", self._job_dir.job_number)
 
     def initialize(self, job_dir):
         """Initialize the viewer with the job directory."""
-        self._process_update(self._job_dir)
-        self._viewer.auto_fit()
-
-    def _process_update(self, job_dir: _job_dir.AlignTiltSeriesJobDirectory):
         choices: list[str] = []
         for imod_dir in job_dir.path.joinpath("external").glob("*"):
             if imod_dir.joinpath(f"{imod_dir.name}.xf").exists():
-                choices.append(imod_dir.name)
-        choices.sort()
-        text = self._ts_choice.currentText()
-        self._ts_choice.clear()
-        self._ts_choice.addItems(choices)
-        if text in choices:
-            self._ts_choice.setCurrentText(text)
-        elif choices == []:
+                choices.append((imod_dir.name,))
+        choices.sort(key=lambda x: x[0])
+        self._ts_list.set_choices(choices)
+        if len(choices) == 0:
             self._viewer.clear()
 
-    def _ts_choice_changed(self, text: str):
+    def _ts_choice_changed(self, texts: tuple[str, ...]):
         """Update the viewer when the selected tomogram changes."""
         job_dir = self._job_dir
+        text = texts[0]
         xf = job_dir.xf_file(text)
         if not xf.exists():
             return
@@ -61,10 +66,10 @@ class QAlignTiltSeriesViewer(QJobScrollArea):
         # Don't use the tilt series inside IMOD project directories. They are redundant
         # and can be deleted by users after this job finished.
         pipeline = job_dir.parse_job_pipeline()
-        if node := pipeline.get_input_by_type("TomogramGroupMetadata.star.relion"):
+        if node := pipeline.get_input_by_type("TomogramGroupMetadata"):
             _LOGGER.debug("Found input: %s", node.path)
             tilt_job_dir = _job_dir.JobDirectory.from_job_star(
-                job_dir.relion_project_dir / node.path_job / "job.star"
+                job_dir.resolve_path(node.path_job / "job.star")
             )
             for info in tilt_job_dir.iter_tilt_series():
                 if info.tomo_name == text:
@@ -74,28 +79,47 @@ class QAlignTiltSeriesViewer(QJobScrollArea):
             nbin = max(round(16 / info.tomo_tilt_series_pixel_size), 1)
             ts_view = info.read_tilt_series(job_dir.relion_project_dir)
             aligner = ImodImageAligner.from_xf(xf, nbin)
-
-            # if tracked fiducials are available, display them
-            # BUG: not aligned well
-            # if (
-            #     (fid_path := job_dir.fid_file(text)).exists()
-            #     and (params := job_dir.image_shape_params(text))
-            # ):
-            #     _LOGGER.debug("Fiducial file %s found. Load it.", fid_path)
-            #     fid = imodmodel.read(fid_path)[["z", "y", "x"]].to_numpy(dtype=np.float32)
-            #     nbin_prealign, ny, nx = params
-            #     fid[:, 1:3] *= nbin_prealign
-            #     fid[:, 1] -= (ny - 1) / 2
-            #     fid[:, 2] -= (nx - 1) / 2
-            #     fid_tr = aligner.transform_points(fid, self._viewer._dims_slider.value())
-            #     fid_tr[:, 1] += (ny - 1) / 2
-            #     fid_tr[:, 2] += (nx - 1) / 2
-            #     fid_tr[:, 1:3] /= aligner._nbin
-            #     self._viewer.set_points(fid_tr, out_of_slice=False)
-            # else:
-            #     _LOGGER.debug("Fiducial file %s not found.", fid_path)
+            self._udpate_fiducials(text, aligner)
 
             self._viewer.set_array_view(ts_view.with_filter(aligner.transform_image))
+
+        # update current TS_XX.star content
+        ts_star = self._job_dir.path / "tilt_series" / f"{text}.star"
+        if ts_star.exists():
+            try:
+                self._current_ts_align = TSAlignModel.validate_file(ts_star)
+            except Exception:
+                self._current_ts_align = None
+
+        # update batchruntomo log
+        log_file = job_dir.path / "external" / text / "batchruntomo.log"
+        if log_file.exists():
+            self._batchruntomo_log.setPlainText(log_file.read_text())
+
+    def _udpate_fiducials(self, text: str, aligner: ImodImageAligner):
+        # if tracked fiducials are available, display them
+        # return
+        # BUG: not aligned well
+        import imodmodel
+
+        job_dir = self._job_dir
+        if (fid_path := job_dir.fid_file(text)).exists() and (
+            params := job_dir.image_shape_params(text)
+        ):
+            _LOGGER.debug("Fiducial file %s found. Load it.", fid_path)
+            fid = imodmodel.read(fid_path)[["z", "y", "x"]].to_numpy(dtype=np.float32)
+            nbin_prealign, ny, nx = params
+            fid[:, 1:3] *= nbin_prealign
+            fid[:, 1] -= (ny - 1) / 2
+            fid[:, 2] -= (nx - 1) / 2
+            fid_tr = aligner.transform_points(fid, self._viewer._dims_slider.value())
+            fid_tr[:, 1] += (ny - 1) / 2
+            fid_tr[:, 2] += (nx - 1) / 2
+            fid_tr[:, 1:3] /= aligner._nbin
+            self._viewer.set_points(fid_tr, size=10, out_of_slice=False)
+            self._viewer.redraw()
+        else:
+            _LOGGER.debug("Fiducial file %s not found.", fid_path)
 
 
 class ImodImageAligner:
@@ -137,3 +161,17 @@ class ImodImageAligner:
         fid = fid.copy()
         fid[:, 1:3] = (fid[:, 1:3] @ mat) + np.array([dy, dx])
         return fid
+
+
+class QBatchruntomoLog(QtW.QPlainTextEdit):
+    def __init__(self):
+        super().__init__()
+        self.setReadOnly(True)
+        font = QtGui.QFont(_utils.monospace_font_family(), 9)
+        self.setFont(font)
+        self.setSizePolicy(
+            QtW.QSizePolicy.Policy.Expanding, QtW.QSizePolicy.Policy.Expanding
+        )
+
+    def minimumSizeHint(self) -> QtCore.QSize:
+        return QtCore.QSize(400, 300)

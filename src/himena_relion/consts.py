@@ -72,7 +72,7 @@ JOB_ID_MAP = {
     "relion.reconstructtomograms": "Reconstruct Tomos",
     "relion.denoisetomo": "Denoise",
     "relion.picktomo": "Manual Pick",
-    "relion.pseudosubtomo": "Extract",
+    "relion.pseudosubtomo": "Extract Subtomo",
     "relion.initialmodel.tomo": "Initial Model",
     "relion.refine3d.tomo": "Auto Refine",
     "relion.reconstructparticletomo": "Reconstruct Particles",

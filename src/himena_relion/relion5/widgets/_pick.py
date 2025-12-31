@@ -12,11 +12,12 @@ from himena_relion._widgets import (
     Q2DViewer,
     Q2DFilterWidget,
     register_job,
+    QImageViewTextEdit,
+    QMicrographListWidget,
 )
 from himena_relion import _job_dir
 from himena_relion.relion5._connections import _get_template_last_iter
 from himena_relion.schemas import CoordsModel, MicrographGroupMetaModel
-from ._shared import QImageViewTextEdit, QMicrographListWidget
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -29,6 +30,7 @@ class QManualPickViewer(QJobScrollArea):
         layout = self._layout
 
         self._viewer = Q2DViewer(zlabel="")
+        self._last_update: dict[str, tuple[float, int]] = {}  # path -> (mtime, npoints)
         self._viewer.setMinimumSize(300, 330)
         self._mic_list = QMicrographListWidget(["Micrograph", "Picked", "Coordinates"])
         self._mic_list.setFixedHeight(130)
@@ -52,7 +54,8 @@ class QManualPickViewer(QJobScrollArea):
 
     def _mic_changed(self, row: tuple[str, str, str]):
         """Handle changes to selected micrograph."""
-        mic_path = self._job_dir.resolve_path(row[0])
+        _mic_path, _, _coords_path = row
+        mic_path = self._job_dir.resolve_path(_mic_path)
         movie_view = ArrayFilteredView.from_mrc(mic_path)
         image_scale = movie_view.get_scale()
         self._filter_widget.set_image_scale(image_scale)
@@ -60,7 +63,7 @@ class QManualPickViewer(QJobScrollArea):
             movie_view.with_filter(self._filter_widget.apply),
             clim=self._viewer._last_clim,
         )
-        self._update_points(reload=row[2])
+        self._update_points(reload=_coords_path)
         self._viewer._auto_contrast()
 
     def _filter_param_changed(self):
@@ -97,6 +100,7 @@ class QManualPickViewer(QJobScrollArea):
         """Initialize the viewer with the job directory."""
         self._job_dir = job_dir
         self._viewer.clear()
+        self._last_update.clear()
         self._process_update()
         self._viewer.auto_fit()
 
@@ -106,8 +110,19 @@ class QManualPickViewer(QJobScrollArea):
             if coords_path is None:
                 num = 0
             else:
-                coords_path = self._job_dir.resolve_path(coords_path).as_posix()
-                num = read_star(coords_path).first().trust_loop().shape[0]
+                coords_path = self._job_dir.resolve_path(coords_path)
+                if not coords_path.exists():
+                    num = 0
+                    self._last_update.pop(coords_path.stem, None)
+                else:
+                    # reading all the particles can be slow, so use mtime caching
+                    mtime0, num0 = self._last_update.get(coords_path.stem, (-1, 0))
+                    if (mtime := coords_path.stat().st_mtime) <= mtime0:
+                        num = num0
+                    else:
+                        num = read_star(coords_path).first().trust_loop().shape[0]
+                        self._last_update[coords_path.stem] = mtime, num
+                coords_path = coords_path.as_posix()
             choices.append((mic_path, str(num), coords_path or ""))
         self._mic_list.set_choices(choices)
         self._update_points(reload=self._mic_list.current_text(2))
@@ -126,13 +141,10 @@ def iter_micrograph_and_coordinates(
     mic_model = MicrographGroupMetaModel.validate_file(job_dir.resolve_path(mic.path))
     movie_dir = job_dir.path / "Movies"
     for path in mic_model.micrographs.mic_name:
-        if (
-            pickpath := movie_dir.joinpath(Path(path).stem + "_autopick.star")
-        ).exists():
+        stem = Path(path).stem
+        if (pickpath := movie_dir.joinpath(stem + "_autopick.star")).exists():
             pick_star = job_dir.make_relative_path(pickpath).as_posix()
-        elif (
-            pickpath := movie_dir.joinpath(Path(path).stem + "_manualpick.star")
-        ).exists():
+        elif (pickpath := movie_dir.joinpath(stem + "_manualpick.star")).exists():
             pick_star = job_dir.make_relative_path(pickpath).as_posix()
         else:
             pick_star = None
@@ -163,9 +175,10 @@ class QTemplatePick3DViewer(QAutopickViewerBase):
     def __init__(self, job_dir: _job_dir.JobDirectory):
         super().__init__(job_dir)
         self._text_edit = QImageViewTextEdit(image_size_pixel=64)
-        self._text_edit.setMinimumHeight(200)
+        self._text_edit.setMinimumHeight(120)
         self._layout.insertWidget(0, QtW.QLabel("<b>Reference Projections</b>"))
         self._layout.insertWidget(1, self._text_edit)
+        self._last_ref_proj_mtime: float = 0.0
 
     def _get_diameter(self) -> float:
         path = self._job_dir.path / "reference_projections.mrcs"
@@ -176,6 +189,10 @@ class QTemplatePick3DViewer(QAutopickViewerBase):
         super()._process_update()
         ref_proj_path = self._job_dir.path / "reference_projections.mrcs"
         if ref_proj_path.exists():
+            if (mtime := ref_proj_path.stat().st_mtime) <= self._last_ref_proj_mtime:
+                return
+            self._last_ref_proj_mtime = mtime
+            self._text_edit.clear()
             with mrcfile.open(ref_proj_path) as mrc:
                 images = np.asarray(mrc.data, dtype=np.float32)
             for img_slice in images:

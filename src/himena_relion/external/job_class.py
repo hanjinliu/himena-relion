@@ -46,6 +46,10 @@ class RelionExternalJob(RelionJob):
         """Get the output job directory object."""
         return self._output_job_dir
 
+    @classmethod
+    def command_palette_title_prefix(cls) -> str:
+        return "RELION External:"
+
     @property
     def console(self) -> Console:
         """Get the console object for logging."""

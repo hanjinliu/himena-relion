@@ -9,9 +9,9 @@ from himena_relion._widgets import (
     register_job,
     QIntWidget,
     spacer_widget,
+    QMicrographListWidget,
 )
 from himena_relion import _job_dir
-from ._shared import QMicrographListWidget
 
 _LOGGER = logging.getLogger(__name__)
 

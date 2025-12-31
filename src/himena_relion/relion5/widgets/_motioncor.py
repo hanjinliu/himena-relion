@@ -8,9 +8,9 @@ from himena_relion._widgets import (
     Q2DViewer,
     Q2DFilterWidget,
     register_job,
+    QMicrographListWidget,
 )
 from himena_relion import _job_dir
-from ._shared import QMicrographListWidget
 
 _LOGGER = logging.getLogger(__name__)
 

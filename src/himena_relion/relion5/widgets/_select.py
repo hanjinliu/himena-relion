@@ -7,8 +7,7 @@ from qtpy import QtGui
 from starfile_rs import read_star, read_star_block
 from superqt.utils import thread_worker, GeneratorWorker
 
-from himena_relion._widgets import QJobScrollArea, register_job
-from ._shared import QImageViewTextEdit
+from himena_relion._widgets import QJobScrollArea, register_job, QImageViewTextEdit
 from himena_relion import _job_dir
 from himena_relion.schemas import ModelClasses
 
