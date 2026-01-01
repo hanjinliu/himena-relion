@@ -459,34 +459,27 @@ class AutoPickLogJob(_AutoPickJob):
 
     @classmethod
     def normalize_kwargs(cls, **kwargs):
-        kwargs = super().normalize_kwargs(**kwargs)
+        kwargs["gpu_ids"] = ""
         kwargs["do_log"] = True
         kwargs["minavgnoise_autopick"] = -999
+        kwargs["maxstddevnoise_autopick"] = 1.1  # ignored in LoG picker
+        kwargs["mindist_autopick"] = 100  # ignored in LoG picker
+        kwargs["threshold_autopick"] = 0.05
+        kwargs["shrink"] = 0
+        kwargs = super().normalize_kwargs(**kwargs)
         return kwargs
 
     @classmethod
     def normalize_kwargs_inv(cls, **kwargs):
         kwargs = super().normalize_kwargs_inv(**kwargs)
         keys_to_pop = [
-            "continue_manual",
-            "minavgnoise_autopick",
-            "do_log",
-            "do_ref3d",
-            "do_refs",
-            "log_upper_thr",
-            "angpix_ref",
-            "do_ctf_autopick",
-            "do_ignore_first_ctfpeak_autopick",
-            "do_invert_refs",
-            "fn_ref3d_autopick",
-            "fn_refs_autopick",
-            "fn_topaz_exe",
-            "highpass",
-            "lowpass",
-            "psi_sampling_autopick",
-            "ref3d_sampling",
-            "ref3d_symmetry",
-        ]
+            "continue_manual", "minavgnoise_autopick", "do_log", "do_ref3d", "do_refs",
+            "log_upper_thr", "angpix_ref", "do_ctf_autopick",
+            "do_ignore_first_ctfpeak_autopick", "do_invert_refs", "fn_ref3d_autopick",
+            "fn_refs_autopick", "fn_topaz_exe", "highpass", "lowpass", "shrink",
+            "psi_sampling_autopick", "ref3d_sampling", "ref3d_symmetry", "gpu_ids",
+            "maxstddevnoise_autopick", "mindist_autopick", "threshold_autopick"
+        ]  # fmt: skip
         for key in kwargs:
             if key.startswith(("do_topaz", "topaz_")):
                 keys_to_pop.append(key)
@@ -497,64 +490,26 @@ class AutoPickLogJob(_AutoPickJob):
     def run(
         self,
         fn_input_autopick: _a.io.IN_MICROGRAPHS = "",
-        angpix: Annotated[
-            float, {"label": "Micrograph pixel size (A)", "group": "IO"}
-        ] = -1,
+        angpix: _a.autopick.ANGPIX = -1,
         # Laplacian
-        log_diam_min: Annotated[
-            float, {"label": "Min diameter for LoG filter (A)", "group": "Laplacian"}
-        ] = 200,
-        log_diam_max: Annotated[
-            float, {"label": "Max diameter for LoG filter (A)", "group": "Laplacian"}
-        ] = 250,
-        log_invert: Annotated[
-            bool, {"label": "Dark background", "group": "Laplacian"}
-        ] = False,
-        log_maxres: Annotated[
-            float, {"label": "Max resolution to consider (A)", "group": "Laplacian"}
-        ] = 20,
-        log_adjust_thr: Annotated[
-            float, {"label": "Adjust default threshold (stddev)", "group": "Laplacian"}
-        ] = 0,
-        log_upper_thr: Annotated[
-            float, {"label": "Upper threshold (stddev)", "group": "Laplacian"}
-        ] = 999,
+        log_diam_min: _a.autopick.LOG_DIAM_MIN = 200,
+        log_diam_max: _a.autopick.LOG_DIAM_MAX = 250,
+        log_invert: _a.autopick.LOG_INVERT = False,
+        log_maxres: _a.autopick.LOG_MAXRES = 20,
+        log_adjust_thr: _a.autopick.LOG_ADJUST_THR = 0,
+        log_upper_thr: _a.autopick.LOG_UPPER_THR = 999,
         # Autopicking
-        threshold_autopick: Annotated[
-            float, {"label": "Picking threshold", "group": "Autopicking"}
-        ] = 0.05,
-        mindist_autopick: Annotated[
-            float, {"label": "Min inter-particle distance (A)", "group": "Autopicking"}
-        ] = 100,
-        maxstddevnoise_autopick: Annotated[
-            float, {"label": "Max stddev noise", "group": "Autopicking"}
-        ] = 1.1,
-        do_write_fom_maps: Annotated[
-            bool, {"label": "Write FOM maps", "group": "Autopicking"}
-        ] = False,
-        do_read_fom_maps: Annotated[
-            bool, {"label": "Read FOM maps", "group": "Autopicking"}
-        ] = False,
-        shrink: Annotated[
-            float, {"label": "Shrink factor", "group": "Autopicking"}
-        ] = 0,
+        do_write_fom_maps: _a.autopick.DO_WHITE_FOM_MAPS = False,
+        do_read_fom_maps: _a.autopick.DO_READ_FOM_MAPS = False,
         gpu_ids: _a.compute.GPU_IDS = "",
         # Helical
-        do_pick_helical_segments: Annotated[
-            bool, {"label": "Pick 2D helical segments", "group": "Helix"}
-        ] = False,
+        do_pick_helical_segments: _a.autopick.DO_PICK_HELICAL_SEGMENTS = False,
         helical_tube_outer_diameter: _a.helix.HELICAL_TUBE_DIAMETER = 200,
-        helical_tube_length_min: Annotated[
-            float, {"label": "Minimum length (A)", "group": "Helix"}
-        ] = -1,
-        helical_tube_kappa_max: Annotated[
-            float, {"label": "Maximum curvature (kappa)", "group": "Helix"}
-        ] = 0.1,
+        helical_tube_length_min: _a.autopick.HELICAL_TUBE_LENGTH_MIN = -1,
+        helical_tube_kappa_max: _a.autopick.HELICAL_TUBE_KAPPA_MAX = 0.1,
         helical_nr_asu: _a.helix.HELICAL_NR_ASU = 1,
         helical_rise: _a.helix.HELICAL_RISE = -1,
-        do_amyloid: Annotated[
-            bool, {"label": "Pick amyloid segments", "group": "Helix"}
-        ] = False,
+        do_amyloid: _a.autopick.DO_AMYLOID = False,
         # Running
         nr_mpi: _a.running.MPI_TYPE = 1,
         do_queue: _a.running.DO_QUEUE_TYPE = False,
@@ -604,92 +559,39 @@ class AutoPickTemplate2DJob(_AutoPickJob):
     def run(
         self,
         fn_input_autopick: _a.io.IN_MICROGRAPHS = "",
-        angpix: Annotated[
-            float, {"label": "Micrograph pixel size (A)", "group": "I/O"}
-        ] = -1,
+        angpix: _a.autopick.ANGPIX = -1,
         # References
-        fn_refs_autopick: Annotated[
-            str, {"label": "2D reference", "group": "References"}
-        ] = "",
-        lowpass: Annotated[
-            float, {"label": "Lowpass filter references", "group": "References"}
-        ] = 20,
-        highpass: Annotated[
-            float, {"label": "Highpass filter micrographs", "group": "References"}
-        ] = -1,
-        angpix_ref: Annotated[
-            float, {"label": "Reference pixel size", "group": "References"}
-        ] = -1,
-        psi_sampling_autopick: Annotated[
-            float, {"label": "In-plane angular sampling (deg)", "group": "References"}
-        ] = 5,
-        do_invert_refs: Annotated[
-            bool, {"label": "References have inverted contrast", "group": "References"}
-        ] = True,
-        do_ctf_autopick: Annotated[
-            bool, {"label": "References are CTF corrected", "group": "References"}
-        ] = True,
-        do_ignore_first_ctfpeak_autopick: Annotated[
-            bool, {"label": "Ignore CTFs until first peak", "group": "References"}
-        ] = False,
+        fn_refs_autopick: _a.autopick.FN_REFS_AUTOPICK = "",
+        lowpass: _a.autopick.LOWPASS = 20,
+        highpass: _a.autopick.HIGHPASS = -1,
+        angpix_ref: _a.autopick.ANGPIX_REF = -1,
+        psi_sampling_autopick: _a.autopick.PSI_SAMPLING_AUTOPICK = 5,
+        do_invert_refs: _a.autopick.DO_INVERT_REFS = True,
+        do_ctf_autopick: _a.autopick.DO_CTF_AUTOPICK = True,
+        do_ignore_first_ctfpeak_autopick: _a.autopick.DO_IGNORE_FIRST_CTFPEAK_AUTOPICK = False,
         # Autopicking
-        threshold_autopick: Annotated[
-            float, {"label": "Picking threshold", "group": "Autopicking"}
-        ] = 0.05,
-        mindist_autopick: Annotated[
-            float, {"label": "Min inter-particle distance (A)", "group": "Autopicking"}
-        ] = 100,
-        maxstddevnoise_autopick: Annotated[
-            float, {"label": "Max stddev noise", "group": "Autopicking"}
-        ] = 1.1,
-        minavgnoise_autopick: Annotated[
-            float, {"label": "Min avg noise", "group": "Autopicking"}
-        ] = -999,
-        do_write_fom_maps: Annotated[
-            bool, {"label": "Write FOM maps", "group": "Autopicking"}
-        ] = False,
-        do_read_fom_maps: Annotated[
-            bool, {"label": "Read FOM maps", "group": "Autopicking"}
-        ] = False,
-        shrink: Annotated[
-            float, {"label": "Shrink factor", "group": "Autopicking"}
-        ] = 0,
+        threshold_autopick: _a.autopick.THRESHOLD_AUTOPICK = 0.05,
+        mindist_autopick: _a.autopick.MINDIST_AUTOPICK = 100,
+        maxstddevnoise_autopick: _a.autopick.MAXSTDDEVNOISE_AUTOPICK = 1.1,
+        minavgnoise_autopick: _a.autopick.MINAVGNOISE_AUOTPICK = -999,
+        do_write_fom_maps: _a.autopick.DO_WHITE_FOM_MAPS = False,
+        do_read_fom_maps: _a.autopick.DO_READ_FOM_MAPS = False,
+        shrink: _a.autopick.SHRINK = 0,
         gpu_ids: _a.compute.GPU_IDS = "",
         # Helical
-        do_pick_helical_segments: Annotated[
-            bool, {"label": "Pick 2D helical segments", "group": "Helix"}
-        ] = False,
+        do_pick_helical_segments: _a.autopick.DO_PICK_HELICAL_SEGMENTS = False,
         helical_tube_outer_diameter: _a.helix.HELICAL_TUBE_DIAMETER = 200,
-        helical_tube_length_min: Annotated[
-            float, {"label": "Minimum length (A)", "group": "Helix"}
-        ] = -1,
-        helical_tube_kappa_max: Annotated[
-            float, {"label": "Maximum curvature (kappa)", "group": "Helix"}
-        ] = 0.1,
+        helical_tube_length_min: _a.autopick.HELICAL_TUBE_LENGTH_MIN = -1,
+        helical_tube_kappa_max: _a.autopick.HELICAL_TUBE_KAPPA_MAX = 0.1,
         helical_nr_asu: _a.helix.HELICAL_NR_ASU = 1,
         helical_rise: _a.helix.HELICAL_RISE = -1,
-        do_amyloid: Annotated[
-            bool, {"label": "Pick amyloid segments", "group": "Helix"}
-        ] = False,
+        do_amyloid: _a.autopick.DO_AMYLOID = False,
         # Running
         nr_mpi: _a.running.MPI_TYPE = 1,
         do_queue: _a.running.DO_QUEUE_TYPE = False,
         min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
-
-
-REF3D_SAMPLING = Literal[
-    "30 degrees",
-    "15 degrees",
-    "7.5 degrees",
-    "3.7 degrees",
-    "1.8 degrees",
-    "0.9 degrees",
-    "0.5 degrees",
-    "0.2 degrees",
-    "0.1 degrees",
-]
 
 
 class AutoPickTemplate3DJob(_AutoPickJob):
@@ -731,76 +633,34 @@ class AutoPickTemplate3DJob(_AutoPickJob):
         self,
         fn_input_autopick: _a.io.IN_MICROGRAPHS = "",
         fn_ref3d_autopick: _a.io.REF_TYPE = "",
-        angpix: Annotated[
-            float, {"label": "Micrograph pixel size (A)", "group": "I/O"}
-        ] = -1,
+        angpix: _a.autopick.ANGPIX = -1,
         # References
-        ref3d_symmetry: Annotated[
-            str, {"label": "Symmetry", "group": "References"}
-        ] = "C1",
-        ref3d_sampling: Annotated[
-            REF3D_SAMPLING, {"label": "3D angular sampling", "group": "References"}
-        ] = "30 degrees",
-        lowpass: Annotated[
-            float, {"label": "Lowpass filter references (A)", "group": "References"}
-        ] = 20,
-        highpass: Annotated[
-            float, {"label": "Highpass filter micrographs (A)", "group": "References"}
-        ] = -1,
-        angpix_ref: Annotated[
-            float, {"label": "Reference pixel size (A)", "group": "References"}
-        ] = -1,
-        psi_sampling_autopick: Annotated[
-            float, {"label": "In-plane angular sampling (deg)", "group": "References"}
-        ] = 5,
-        do_invert_refs: Annotated[
-            bool, {"label": "References have inverted contrast", "group": "References"}
-        ] = True,
-        do_ctf_autopick: Annotated[
-            bool, {"label": "References are CTF corrected", "group": "References"}
-        ] = True,
-        do_ignore_first_ctfpeak_autopick: Annotated[
-            bool, {"label": "Ignore CTFs until first peak", "group": "References"}
-        ] = False,
+        ref3d_symmetry: _a.autopick.REF3D_SYMMETRY = "C1",
+        ref3d_sampling: _a.autopick.REF3D_SAMPLING = "30 degrees",
+        lowpass: _a.autopick.LOWPASS = 20,
+        highpass: _a.autopick.HIGHPASS = -1,
+        angpix_ref: _a.autopick.ANGPIX_REF = -1,
+        psi_sampling_autopick: _a.autopick.PSI_SAMPLING_AUTOPICK = 5,
+        do_invert_refs: _a.autopick.DO_INVERT_REFS = True,
+        do_ctf_autopick: _a.autopick.DO_CTF_AUTOPICK = True,
+        do_ignore_first_ctfpeak_autopick: _a.autopick.DO_IGNORE_FIRST_CTFPEAK_AUTOPICK = False,
         # Autopicking
-        threshold_autopick: Annotated[
-            float, {"label": "Picking threshold", "group": "Autopicking"}
-        ] = 0.05,
-        mindist_autopick: Annotated[
-            float, {"label": "Min inter-particle distance (A)", "group": "Autopicking"}
-        ] = 100,
-        maxstddevnoise_autopick: Annotated[
-            float, {"label": "Max stddev noise", "group": "Autopicking"}
-        ] = 1.1,
-        minavgnoise_autopick: Annotated[
-            float, {"label": "Min avg noise", "group": "Autopicking"}
-        ] = -999,
-        do_write_fom_maps: Annotated[
-            bool, {"label": "Write FOM maps", "group": "Autopicking"}
-        ] = False,
-        do_read_fom_maps: Annotated[
-            bool, {"label": "Read FOM maps", "group": "Autopicking"}
-        ] = False,
-        shrink: Annotated[
-            float, {"label": "Shrink factor", "group": "Autopicking"}
-        ] = 0,
+        threshold_autopick: _a.autopick.THRESHOLD_AUTOPICK = 0.05,
+        mindist_autopick: _a.autopick.MINDIST_AUTOPICK = 100,
+        maxstddevnoise_autopick: _a.autopick.MAXSTDDEVNOISE_AUTOPICK = 1.1,
+        minavgnoise_autopick: _a.autopick.MINAVGNOISE_AUOTPICK = -999,
+        do_write_fom_maps: _a.autopick.DO_WHITE_FOM_MAPS = False,
+        do_read_fom_maps: _a.autopick.DO_READ_FOM_MAPS = False,
+        shrink: _a.autopick.SHRINK = 0,
         gpu_ids: _a.compute.GPU_IDS = "",
         # Helical
-        do_pick_helical_segments: Annotated[
-            bool, {"label": "Pick 2D helical segments", "group": "Helix"}
-        ] = False,
+        do_pick_helical_segments: _a.autopick.DO_PICK_HELICAL_SEGMENTS = False,
         helical_tube_outer_diameter: _a.helix.HELICAL_TUBE_DIAMETER = 200,
-        helical_tube_length_min: Annotated[
-            float, {"label": "Minimum length (A)", "group": "Helix"}
-        ] = -1,
-        helical_tube_kappa_max: Annotated[
-            float, {"label": "Maximum curvature (kappa)", "group": "Helix"}
-        ] = 0.1,
+        helical_tube_length_min: _a.autopick.HELICAL_TUBE_LENGTH_MIN = -1,
+        helical_tube_kappa_max: _a.autopick.HELICAL_TUBE_KAPPA_MAX = 0.1,
         helical_nr_asu: _a.helix.HELICAL_NR_ASU = 1,
         helical_rise: _a.helix.HELICAL_RISE = -1,
-        do_amyloid: Annotated[
-            bool, {"label": "Pick amyloid segments", "group": "Helix"}
-        ] = False,
+        do_amyloid: _a.autopick.DO_AMYLOID = False,
         # Running
         nr_mpi: _a.running.MPI_TYPE = 1,
         do_queue: _a.running.DO_QUEUE_TYPE = False,
@@ -838,74 +698,41 @@ class AutoPickTopazTrain(_AutoPickJob):
         kwargs = super().normalize_kwargs(**kwargs)
         kwargs["do_topaz"] = True
         kwargs["do_topaz_train"] = True
+        kwargs["fn_topaz_exe"] = _configs.get_topaz_exe()
         return kwargs
 
     @classmethod
     def normalize_kwargs_inv(cls, **kwargs):
         kwargs = super().normalize_kwargs_inv(**kwargs)
+        kwargs.pop("fn_topaz_exe", None)
         return kwargs
 
     def run(
         self,
         fn_input_autopick: _a.io.IN_MICROGRAPHS = "",
-        angpix: Annotated[
-            float, {"label": "Micrograph pixel size (A)", "group": "IO"}
-        ] = -1,
+        angpix: _a.autopick.ANGPIX = -1,
         # Topaz
-        fn_topaz_exe: Annotated[
-            str, {"label": "Topaz executable", "group": "Topaz"}
-        ] = "relion_python_topaz",
-        topaz_particle_diameter: Annotated[
-            float, {"label": "Particle diameter (A)", "group": "Topaz"}
-        ] = -1,
-        topaz_nr_particles: Annotated[
-            float, {"label": "Number of particles per micrographs", "group": "Topaz"}
-        ] = -1,
-        do_topaz_train_parts: Annotated[
-            bool, {"label": "Train on a set of particles", "group": "Topaz"}
-        ] = False,
-        topaz_train_picks: Annotated[
-            str, {"label": "Input picked coordinates for training", "group": "Topaz"}
-        ] = "",
-        topaz_train_parts: Annotated[
-            str, {"label": "Particles STAR file for training", "group": "Topaz"}
-        ] = "",
+        topaz_particle_diameter: _a.autopick.TOPAZ_PARTICLE_DIAMETER = -1,
+        topaz_nr_particles: _a.autopick.TOPAZ_NR_PARTICLES = -1,
+        do_topaz_train_parts: _a.autopick.DO_TOPAZ_TRAIN_PARTS = False,
+        topaz_train_picks: _a.autopick.TOPAZ_TRAIN_PICKS = "",
+        topaz_train_parts: _a.autopick.TOPAZ_TRAIN_PARTS = "",
         # Autopicking
-        threshold_autopick: Annotated[
-            float, {"label": "Picking threshold", "group": "Autopicking"}
-        ] = 0.05,
-        mindist_autopick: Annotated[
-            float, {"label": "Min inter-particle distance (A)", "group": "Autopicking"}
-        ] = 100,
-        maxstddevnoise_autopick: Annotated[
-            float, {"label": "Max stddev noise", "group": "Autopicking"}
-        ] = 1.1,
-        do_write_fom_maps: Annotated[
-            bool, {"label": "Write FOM maps", "group": "Autopicking"}
-        ] = False,
-        do_read_fom_maps: Annotated[
-            bool, {"label": "Read FOM maps", "group": "Autopicking"}
-        ] = False,
-        shrink: Annotated[
-            float, {"label": "Shrink factor", "group": "Autopicking"}
-        ] = 0,
+        threshold_autopick: _a.autopick.THRESHOLD_AUTOPICK = 0.05,
+        mindist_autopick: _a.autopick.MINDIST_AUTOPICK = 100,
+        maxstddevnoise_autopick: _a.autopick.MAXSTDDEVNOISE_AUTOPICK = 1.1,
+        do_write_fom_maps: _a.autopick.DO_WHITE_FOM_MAPS = False,
+        do_read_fom_maps: _a.autopick.DO_READ_FOM_MAPS = False,
+        shrink: _a.autopick.SHRINK = 0,
         gpu_ids: _a.compute.GPU_IDS = "",
         # Helical
-        do_pick_helical_segments: Annotated[
-            bool, {"label": "Pick 2D helical segments", "group": "Helix"}
-        ] = False,
+        do_pick_helical_segments: _a.autopick.DO_PICK_HELICAL_SEGMENTS = False,
         helical_tube_outer_diameter: _a.helix.HELICAL_TUBE_DIAMETER = 200,
-        helical_tube_length_min: Annotated[
-            float, {"label": "Minimum length (A)", "group": "Helix"}
-        ] = -1,
-        helical_tube_kappa_max: Annotated[
-            float, {"label": "Maximum curvature (kappa)", "group": "Helix"}
-        ] = 0.1,
+        helical_tube_length_min: _a.autopick.HELICAL_TUBE_LENGTH_MIN = -1,
+        helical_tube_kappa_max: _a.autopick.HELICAL_TUBE_KAPPA_MAX = 0.1,
         helical_nr_asu: _a.helix.HELICAL_NR_ASU = 1,
         helical_rise: _a.helix.HELICAL_RISE = -1,
-        do_amyloid: Annotated[
-            bool, {"label": "Pick amyloid segments", "group": "Helix"}
-        ] = False,
+        do_amyloid: _a.autopick.DO_AMYLOID = False,
         # Running
         nr_mpi: _a.running.MPI_TYPE = 1,
         do_queue: _a.running.DO_QUEUE_TYPE = False,
@@ -939,72 +766,42 @@ class AutoPickTopazPick(_AutoPickJob):
         kwargs = super().normalize_kwargs(**kwargs)
         kwargs["do_topaz"] = True
         kwargs["do_topaz_pick"] = True
+        kwargs["fn_topaz_exe"] = _configs.get_topaz_exe()
+        return kwargs
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs):
+        kwargs = super().normalize_kwargs_inv(**kwargs)
+        kwargs.pop("fn_topaz_exe", None)
         return kwargs
 
     def run(
         self,
         fn_input_autopick: _a.io.IN_MICROGRAPHS = "",
-        angpix: Annotated[
-            float, {"label": "Micrograph pixel size (A)", "group": "IO"}
-        ] = -1,
+        angpix: _a.autopick.ANGPIX = -1,
         # Topaz
-        fn_topaz_exe: Annotated[
-            str, {"label": "Topaz executable", "group": "Topaz"}
-        ] = "relion_python_topaz",
-        topaz_particle_diameter: Annotated[
-            float, {"label": "Particle diameter (A)", "group": "Topaz"}
-        ] = -1,
-        topaz_model: Annotated[
-            str, {"label": "Trained Topaz model", "group": "Topaz"}
-        ] = "",
-        do_topaz_filaments: Annotated[
-            bool, {"label": "Pick filaments", "group": "Topaz"}
-        ] = False,
-        topaz_filament_threshold: Annotated[
-            float, {"label": "Filament threshold", "group": "Topaz"}
-        ] = -5,
-        topaz_hough_length: Annotated[
-            float, {"label": "Hough length", "group": "Topaz"}
-        ] = -1,
-        topaz_other_args: Annotated[
-            str, {"label": "Additional Topaz arguments", "group": "Topaz"}
-        ] = "",
+        topaz_particle_diameter: _a.autopick.TOPAZ_PARTICLE_DIAMETER = -1,
+        topaz_model: _a.autopick.TOPAZ_MODEL = "",
+        do_topaz_filaments: _a.autopick.DO_TOPAZ_FILAMENTS = False,
+        topaz_filament_threshold: _a.autopick.TOPAZ_FILAMENT_THRESHOLD = -5,
+        topaz_hough_length: _a.autopick.TOPAZ_HOUGH_LENGTH = -1,
+        topaz_other_args: _a.autopick.TOPAZ_OTHER_ARGS = "",
         # Autopicking
-        threshold_autopick: Annotated[
-            float, {"label": "Picking threshold", "group": "Autopicking"}
-        ] = 0.05,
-        mindist_autopick: Annotated[
-            float, {"label": "Min inter-particle distance (A)", "group": "Autopicking"}
-        ] = 100,
-        maxstddevnoise_autopick: Annotated[
-            float, {"label": "Max stddev noise", "group": "Autopicking"}
-        ] = 1.1,
-        do_write_fom_maps: Annotated[
-            bool, {"label": "Write FOM maps", "group": "Autopicking"}
-        ] = False,
-        do_read_fom_maps: Annotated[
-            bool, {"label": "Read FOM maps", "group": "Autopicking"}
-        ] = False,
-        shrink: Annotated[
-            float, {"label": "Shrink factor", "group": "Autopicking"}
-        ] = 0,
+        threshold_autopick: _a.autopick.THRESHOLD_AUTOPICK = 0.05,
+        mindist_autopick: _a.autopick.MINDIST_AUTOPICK = 100,
+        maxstddevnoise_autopick: _a.autopick.MAXSTDDEVNOISE_AUTOPICK = 1.1,
+        do_write_fom_maps: _a.autopick.DO_WHITE_FOM_MAPS = False,
+        do_read_fom_maps: _a.autopick.DO_READ_FOM_MAPS = False,
+        shrink: _a.autopick.SHRINK = 0,
         gpu_ids: _a.compute.GPU_IDS = "",
         # Helical
-        do_pick_helical_segments: Annotated[
-            bool, {"label": "Pick 2D helical segments", "group": "Helix"}
-        ] = False,
+        do_pick_helical_segments: _a.autopick.DO_PICK_HELICAL_SEGMENTS = False,
         helical_tube_outer_diameter: _a.helix.HELICAL_TUBE_DIAMETER = 200,
-        helical_tube_length_min: Annotated[
-            float, {"label": "Minimum length (A)", "group": "Helix"}
-        ] = -1,
-        helical_tube_kappa_max: Annotated[
-            float, {"label": "Maximum curvature (kappa)", "group": "Helix"}
-        ] = 0.1,
+        helical_tube_length_min: _a.autopick.HELICAL_TUBE_LENGTH_MIN = -1,
+        helical_tube_kappa_max: _a.autopick.HELICAL_TUBE_KAPPA_MAX = 0.1,
         helical_nr_asu: _a.helix.HELICAL_NR_ASU = 1,
         helical_rise: _a.helix.HELICAL_RISE = -1,
-        do_amyloid: Annotated[
-            bool, {"label": "Pick amyloid segments", "group": "Helix"}
-        ] = False,
+        do_amyloid: _a.autopick.DO_AMYLOID = False,
         # Running
         nr_mpi: _a.running.MPI_TYPE = 1,
         do_queue: _a.running.DO_QUEUE_TYPE = False,

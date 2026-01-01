@@ -107,7 +107,7 @@ def read_icon_svg_for_type(type_label: str) -> str:
             return read_icon_svg("particles")
         case "MicrographMoviesData":
             return read_icon_svg("movies")
-        case "MicrographMoviesGroupMeta":
+        case "MicrographMovieGroupMetadata":
             return read_icon_svg("movies")
         case "MicrographsData" | "MicrographGroupMetadata":
             return read_icon_svg("micrographs")

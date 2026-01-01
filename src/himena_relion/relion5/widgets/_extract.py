@@ -34,7 +34,7 @@ class QExtractViewer(QJobScrollArea):
         self._text_edit.setMinimumHeight(350)
         self._slider = QtW.QSlider(QtCore.Qt.Orientation.Horizontal)
         self._slider_display_range = QtW.QLabel("?? - ??")
-        self._mic_list = QMicrographListWidget(["Micrograph"])
+        self._mic_list = QMicrographListWidget(["Micrograph", "Extracted", "Full Path"])
         self._mic_list.setFixedHeight(130)
         self._mic_list.current_changed.connect(self._mic_changed)
         layout.addWidget(QtW.QLabel("<b>Extracted Micrographs</b>"))
@@ -49,6 +49,7 @@ class QExtractViewer(QJobScrollArea):
         layout.addWidget(self._mic_list)
         self._slider.valueChanged.connect(self._slider_value_changed)
         self._plot_session_id = self._text_edit.prep_uuid()
+        self._nparticles_cache: dict[str, int] = {}
 
     def on_job_updated(self, job_dir: _job_dir.JobDirectory, path: str):
         """Handle changes to the job directory."""
@@ -60,17 +61,21 @@ class QExtractViewer(QJobScrollArea):
     def initialize(self, job_dir: _job_dir.JobDirectory):
         """Initialize the viewer with the job directory."""
         choices = []
-        movies_dir = self._job_dir.path / "Movies"
-        for mrcs_path in movies_dir.glob("*.mrcs"):
-            choices.append((self._job_dir.make_relative_path(mrcs_path).as_posix(),))
+        for mrcs_path in self._job_dir.glob_in_subdirs("*.mrcs"):
+            rel_path = self._job_dir.make_relative_path(mrcs_path).as_posix()
+            nparticles = self._nparticles_cache.get(rel_path)
+            if nparticles is None or nparticles == 0:
+                with mrcfile.open(mrcs_path, header_only=True) as mrc:
+                    nparticles = mrc.header.nz
+                self._nparticles_cache[rel_path] = nparticles
+            choices.append((rel_path, str(nparticles)))
         self._mic_list.set_choices(choices)
 
-    def _mic_changed(self, row: tuple[str]):
+    def _mic_changed(self, row: tuple[str, str, str]):
         """Handle changes to selected micrograph."""
         rln_dir = self._job_dir.relion_project_dir
-        self._current_extract_path = rln_dir / row[0]
-        with mrcfile.open(self._current_extract_path, header_only=True) as mrc:
-            nz = mrc.header.nz
+        self._current_extract_path = rln_dir / row[2]
+        nz = int(row[1])
         self._current_num_extracts = nz
         current_pos = self._slider.value()
         self._slider.setRange(0, nz // self._num_page)

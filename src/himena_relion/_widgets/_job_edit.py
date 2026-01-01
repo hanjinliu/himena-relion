@@ -285,6 +285,8 @@ class QParameterNameLabel(QtW.QWidget):
 
 
 class QParameterInfoIcon(QtW.QLabel):
+    """The (i) icon shown next to parameter names for displaying tooltips."""
+
     clicked = QtCore.Signal(QtCore.QPoint)
 
     def __init__(self):

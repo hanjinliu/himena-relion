@@ -244,12 +244,11 @@ class JobDirectory:
         job_star = JobStarModel.validate_file(self.job_star())
         return job_star.job.job_type_label
 
-
-class HasFrameJobDirectory(JobDirectory):
-    def iter_frames(self, pattern: str) -> Iterator[Path]:
-        """Iterate over all motion correction info as DataFrames."""
-        frames_dir = self.path / "frames"
-        yield from frames_dir.glob(pattern)
+    def glob_in_subdirs(self, pattern: str) -> Iterator[Path]:
+        """Glob files matching the given pattern under subdirectories of this job."""
+        for d in self.path.iterdir():
+            if d.is_dir():
+                yield from d.glob(pattern)
 
 
 class HasTiltSeriesJobDirectory(JobDirectory):
@@ -370,7 +369,7 @@ class TiltSeriesInfo:
         return TSModel.validate_file(rln_dir / self.tomo_tilt_series_star_file)
 
 
-class ImportJobDirectory(HasFrameJobDirectory):
+class ImportJobDirectory(JobDirectory):
     """Class for handling import job directories in RELION."""
 
     _job_type = "relion.importtomo"
@@ -384,9 +383,6 @@ class ImportJobDirectory(HasFrameJobDirectory):
         for _, row in _read_star_as_df(self.tilt_series_star()).iterrows():
             yield TiltSeriesInfo.from_series(row)
 
-    # def tilt_series_paths(self) -> list[Path]:
-    #     df = _read_star_as_df(self.tilt_series_star())
-
 
 @dataclass
 class CorrectedTiltSeriesInfo(TiltSeriesInfo):
@@ -398,13 +394,10 @@ class CorrectedTiltSeriesInfo(TiltSeriesInfo):
         return out
 
 
-class MotionCorrBase(HasFrameJobDirectory):
+class MotionCorrBase(JobDirectory):
     def iter_movies(self) -> Iterator[Path]:
         """Iterate over all motion-corrected movie files (SPA)."""
-        movies_dir = self.path / "Movies"
-        if not movies_dir.exists():
-            movies_dir = self.path / "frames"
-        for path in movies_dir.glob("*.mrc"):
+        for path in self.glob_in_subdirs("*.mrc"):
             if path.stem.endswith("_PS"):
                 continue
             yield path

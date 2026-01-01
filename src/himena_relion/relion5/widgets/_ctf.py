@@ -50,13 +50,11 @@ class QCtfFindViewer(QJobScrollArea):
         self._max_resolution_canvas = QPlotCanvas(self)
         self._max_resolution_canvas.setFixedSize(360, 145)
 
-        self._mic_list = QMicrographListWidget()
+        self._mic_list = QMicrographListWidget(["CTF image", "Full Path"])
+        self._mic_list.setColumnHidden(1, True)
         self._mic_list.current_changed.connect(self._mic_changed)
 
-        self._viewer = Q2DViewer(zlabel="Tilt index")
-        splitter = QtW.QSplitter()
-        splitter.addWidget(self._mic_list)
-        splitter.addWidget(self._viewer)
+        self._viewer = Q2DViewer()
         layout.addWidget(QtW.QLabel("<b>Defocus</b>"))
         layout.addWidget(self._defocus_canvas)
         layout.addWidget(QtW.QLabel("<b>Astigmatism</b>"))
@@ -66,8 +64,8 @@ class QCtfFindViewer(QJobScrollArea):
         layout.addWidget(QtW.QLabel("<b>Max resolution</b>"))
         layout.addWidget(self._max_resolution_canvas)
         layout.addWidget(QtW.QLabel("<b>CTF spectra</b>"))
-        layout.addWidget(splitter)
-        splitter.setSizes([200, 400])
+        layout.addWidget(self._viewer)
+        layout.addWidget(self._mic_list)
 
     def on_job_updated(self, job_dir, path: str):
         """Handle changes to the job directory."""
@@ -82,29 +80,25 @@ class QCtfFindViewer(QJobScrollArea):
         self._viewer.auto_fit()
 
     def _process_update(self):
-        if self._job_dir.path.joinpath("Movies").exists():
-            if self._worker is not None:
-                self._worker.quit()
-            self._worker = self._prep_data_to_plot(self._job_dir)
-            self._worker.yielded.connect(self._on_data_ready)
-            self._worker.start()
-        else:
-            # clear everything
-            self._defocus_canvas.clear()
-            self._astigmatism_canvas.clear()
-            self._defocus_angle_canvas.clear()
-            self._max_resolution_canvas.clear()
-            self._viewer.clear()
+        if self._worker is not None:
+            self._worker.quit()
+        self._worker = self._prep_data_to_plot(self._job_dir)
+        self._worker.yielded.connect(self._on_data_ready)
+        self._worker.start()
+
+    def _clear_everything(self, *_):
+        self._defocus_canvas.clear()
+        self._astigmatism_canvas.clear()
+        self._defocus_angle_canvas.clear()
+        self._max_resolution_canvas.clear()
+        self._viewer.clear()
 
     @thread_worker
     def _prep_data_to_plot(self, job_dir: _job_dir.JobDirectory):
-        mov_dir = job_dir.path.joinpath("Movies")
         if (final_path := job_dir.path.joinpath("micrographs_ctf.star")).exists():
             df = read_star(final_path).get("micrographs").trust_loop().to_pandas()
         else:
-            if not mov_dir.exists():
-                return
-            it = mov_dir.glob("*_frameImage_PS.txt")
+            it = self._job_dir.glob_in_subdirs("*_PS.txt")
             arr = np.stack([read_ctf_output_txt(txtpath) for txtpath in it])
             df = pd.DataFrame(
                 arr,
@@ -122,8 +116,10 @@ class QCtfFindViewer(QJobScrollArea):
         yield self._astigmatism_canvas.plot_ctf_astigmatism, df
         yield self._defocus_angle_canvas.plot_ctf_defocus_angle, df
         yield self._max_resolution_canvas.plot_ctf_max_resolution, df
-        ctf_paths = [(f.name,) for f in mov_dir.glob("*_frameImage_PS.ctf")]
-        yield self._update_ctf_choices, ctf_paths
+        ctf_paths = [
+            (f.name, f.as_posix()) for f in self._job_dir.glob_in_subdirs("*_PS.ctf")
+        ]
+        yield self._mic_list.set_choices, ctf_paths
 
         self._worker = None
 
@@ -131,13 +127,9 @@ class QCtfFindViewer(QJobScrollArea):
         fn, df = yielded
         fn(df)
 
-    def _update_ctf_choices(self, mic_names: list[tuple[str]]):
-        """Update the micrograph choices in the list widget."""
-        self._mic_list.set_choices(mic_names)
-
-    def _mic_changed(self, row: tuple[str]):
+    def _mic_changed(self, row: tuple[str, str]):
         """Handle changes to selected micrograph."""
-        mic_path = self._job_dir.path / "Movies" / row[0]
+        mic_path = self._job_dir.resolve_path(row[1])
         movie_view = ArrayFilteredView.from_mrc(mic_path)
         had_image = self._viewer.has_image
         self._viewer.set_array_view(

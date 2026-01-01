@@ -139,9 +139,10 @@ def iter_micrograph_and_coordinates(
     if mic is None:
         return
     mic_model = MicrographGroupMetaModel.validate_file(job_dir.resolve_path(mic.path))
-    movie_dir = job_dir.path / "Movies"
     for path in mic_model.micrographs.mic_name:
-        stem = Path(path).stem
+        fp = Path(path)
+        stem = fp.stem
+        movie_dir = job_dir.path / "/".join(fp.parts[2:-1])
         if (pickpath := movie_dir.joinpath(stem + "_autopick.star")).exists():
             pick_star = job_dir.make_relative_path(pickpath).as_posix()
         elif (pickpath := movie_dir.joinpath(stem + "_manualpick.star")).exists():

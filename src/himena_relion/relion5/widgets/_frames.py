@@ -148,14 +148,12 @@ class QMotionCorrViewer(QJobScrollArea):
         """Handle changes to selected micrograph."""
         mic_path = self._job_dir.resolve_path(row[1])
         movie_view = ArrayFilteredView.from_mrc(mic_path)
-        had_image = self._viewer.has_image
         self._filter_widget.set_image_scale(movie_view.get_scale())
         self._viewer.set_array_view(
             movie_view.with_filter(self._filter_widget.apply),
             clim=self._viewer._last_clim,
         )
-        if not had_image:
-            self._viewer._auto_contrast()
+        self._viewer._auto_contrast()
 
     def _filter_param_changed(self):
         """Handle changes to filter parameters."""

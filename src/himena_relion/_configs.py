@@ -5,22 +5,27 @@ from himena.plugins import register_config, config_field, get_config
 @dataclass
 class RelionConfig:
     motioncor2: str = config_field(
-        default="/public/EM/MOTIONCOR2/MotionCor2",
+        default="MotionCor2",
         label="MotionCor2 Executable",
         tooltip="Path to the MotionCor2 executable",
     )
     ctffind4: str = config_field(
-        default="/public/EM/ctffind/ctffind.exe",
+        default="ctffind4",
         label="CTFFIND4 Executable",
         tooltip="Path to the CTFFIND4 executable",
     )
+    fn_topaz_exe: str = config_field(
+        default="relion_python_topaz",
+        label="Topaz Executable",
+        tooltip="Path to the Topaz executable",
+    )
     batchruntomo: str = config_field(
-        default="/public/EM/imod/IMOD/bin/batchruntomo",
+        default="batchruntomo",
         label="Batchruntomo Executable",
         tooltip="Path to the IMOD batchruntomo executable",
     )
     aretomo2: str = config_field(
-        default="/public/EM/AreTomo/AreTomo2/AreTomo2",
+        default="AreTomo2",
         label="AreTomo2 Executable",
         tooltip="Path to the AreTomo2 executable",
     )
@@ -59,6 +64,10 @@ def get_motioncor2_exe() -> str:
 
 def get_ctffind4_exe() -> str:
     return _get_himena_relion_config().ctffind4
+
+
+def get_topaz_exe() -> str:
+    return _get_himena_relion_config().fn_topaz_exe
 
 
 def get_batchruntomo_exe() -> str:
