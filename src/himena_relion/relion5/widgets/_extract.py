@@ -6,7 +6,7 @@ import mrcfile
 import numpy as np
 from qtpy import QtWidgets as QtW, QtCore
 import logging
-from superqt.utils import GeneratorWorker, thread_worker
+from superqt.utils import thread_worker
 from himena_relion import _job_dir, _utils
 from himena_relion._widgets import (
     QJobScrollArea,
@@ -29,7 +29,6 @@ class QExtractViewer(QJobScrollArea):
         self._current_extract_path = None
         self._current_num_extracts = 0
         self._num_page = 50
-        self._worker: GeneratorWorker | None = None
         self._text_edit = QImageViewTextEdit(font_size=11)
         self._text_edit.setMinimumHeight(350)
         self._slider = QtW.QSlider(QtCore.Qt.Orientation.Horizontal)

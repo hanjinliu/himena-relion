@@ -3,7 +3,7 @@ from pathlib import Path
 import logging
 from typing import Any, Callable
 from qtpy import QtWidgets as QtW
-from superqt.utils import thread_worker, GeneratorWorker
+from superqt.utils import thread_worker
 from starfile_rs import read_star
 from himena_relion._image_readers._array import ArrayFilteredView
 from himena_relion._widgets import (
@@ -25,7 +25,6 @@ class QCtfFindViewer(QJobScrollArea):
         super().__init__()
         self._job_dir = job_dir
         layout = self._layout
-        self._worker: GeneratorWorker | None = None
 
         self._defocus_canvas = QPlotCanvas(self)
         self._defocus_canvas.setFixedSize(360, 145)

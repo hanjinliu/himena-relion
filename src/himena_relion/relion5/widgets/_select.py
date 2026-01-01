@@ -5,7 +5,7 @@ import mrcfile
 import numpy as np
 from qtpy import QtGui
 from starfile_rs import read_star, read_star_block
-from superqt.utils import thread_worker, GeneratorWorker
+from superqt.utils import thread_worker
 
 from himena_relion._widgets import QJobScrollArea, register_job, QImageViewTextEdit
 from himena_relion import _job_dir
@@ -20,7 +20,6 @@ class QSelectJobBase(QJobScrollArea):
         self._job_dir = job_dir
         self._text_edit = QImageViewTextEdit()
         self._layout.addWidget(self._text_edit)
-        self._worker: GeneratorWorker | None = None
 
     def initialize(self, job_dir: _job_dir.SelectInteractiveJobDirectory):
         """Initialize the viewer with the job directory."""

@@ -6,7 +6,7 @@ import uuid
 import numpy as np
 import mrcfile
 from qtpy import QtWidgets as QtW, QtCore
-from superqt.utils import GeneratorWorker, thread_worker
+from superqt.utils import thread_worker
 from himena_relion._widgets import (
     QJobScrollArea,
     register_job,
@@ -30,7 +30,6 @@ class QExtractJobViewer(QJobScrollArea):
         self._current_num_extracts = 0
         self._last_updated_dir: str = ""
         self._subtomo_pattern = "{ith}_data.mrc"
-        self._worker: GeneratorWorker | None = None
         self._tomo_list = QMicrographListWidget(["Tomogram", "Subtomogram Path"])
         self._tomo_list.setFixedHeight(130)
         self._tomo_list.current_changed.connect(self._on_tomo_changed)

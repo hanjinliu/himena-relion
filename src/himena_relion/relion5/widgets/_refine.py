@@ -5,7 +5,7 @@ from typing import Any, Callable
 import numpy as np
 import pandas as pd
 from qtpy import QtWidgets as QtW, QtCore
-from superqt.utils import thread_worker, GeneratorWorker
+from superqt.utils import thread_worker
 from himena_relion._widgets import (
     QJobScrollArea,
     Q3DViewer,
@@ -52,7 +52,6 @@ class QRefine3DViewer(QJobScrollArea):
         layout.addWidget(spacer_widget())
         self._index_start = 1
         self._job_dir = _job_dir.Refine3DJobDirectory(job_dir.path)
-        self._worker: GeneratorWorker | None = None
 
         self._iter_choice.valueChanged.connect(self._on_iter_changed)
 

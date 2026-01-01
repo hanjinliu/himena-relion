@@ -997,7 +997,7 @@ class Class2DJob(_Relion5Job):
             kwargs["do_em"] = False
             kwargs["do_grad"] = True
             kwargs["nr_iter_grad"] = algo["niter"]
-            kwargs.setdefault("n_iter_em", 25)
+            kwargs.setdefault("nr_iter_em", 25)
         return kwargs
 
     @classmethod
