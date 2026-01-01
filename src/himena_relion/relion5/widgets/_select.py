@@ -232,12 +232,15 @@ class SplitParticlesViewer(QSelectJobBase):
             block = read_star(path).first().trust_loop()
             yield f"<h2>{path.name} = {len(block)} particles</h2>"
             df = block.to_pandas()
-            particles_in_each_tomo = []
-            for name, sub in df.groupby("rlnTomoName"):
-                particles_in_each_tomo.append((name, f"n = {sub.shape[0]}"))
-            particles_in_each_tomo.sort(key=lambda x: x[0])
-            yield np.array(particles_in_each_tomo, dtype=np.dtypes.StringDType())
-            yield "<br><br>"
+            particles_in_each_set = []
+            for col in ["rlnTomoName", "rlnMicrographName"]:
+                # tomo or SPA
+                if col in df.columns:
+                    for name, sub in df.groupby(col):
+                        particles_in_each_set.append((name, f"n = {sub.shape[0]}"))
+                    particles_in_each_set.sort(key=lambda x: x[0])
+                    yield np.array(particles_in_each_set, dtype=np.dtypes.StringDType())
+                    yield "<br><br>"
 
 
 _NOT_ENOUGH_MSG = "Not enough output files to display results."

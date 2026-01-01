@@ -7,6 +7,11 @@ from himena_relion.relion5 import _builtins as _spa
 from himena_relion.schemas import ModelClasses
 
 connect_jobs(
+    _spa.ImportMoviesJob,
+    _spa.MotionCorr2Job,
+    node_mapping={"movies.star": "input_star_mics"},
+)
+connect_jobs(
     _spa.MotionCorr2Job,
     _spa.CtfEstimationJob,
     node_mapping={"corrected_micrographs.star": "input_star_mics"},
@@ -88,6 +93,11 @@ for extract_job in [_spa.ExtractJob, _spa.ReExtractJob]:
         extract_job,
         _spa.InitialModelJob,
         node_mapping={"particles.star": "fn_img"},
+    )
+    connect_jobs(
+        extract_job,
+        _spa.SelectSplitJob,
+        node_mapping={"particles.star": "fn_data"},
     )
 connect_jobs(
     _spa.ReExtractJob,

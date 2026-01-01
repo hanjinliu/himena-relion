@@ -15,6 +15,7 @@ from himena.widgets import current_instance, set_status_tip
 from himena.qt import drag_files, QColoredSVGIcon
 from himena_relion import _job_class, _job_dir
 from himena_relion._utils import (
+    normalize_job_id,
     read_icon_svg,
     read_icon_svg_for_type,
     read_or_show_job,
@@ -260,7 +261,18 @@ class QJobPipelineViewer(QtW.QWidget, JobWidgetBase):
             list_item.setSizeHint(item.sizeHint())
             self._list_widget_in.addItem(list_item)
             self._list_widget_in.setItemWidget(list_item, item)
-        for output_node in job_pipeline.outputs:
+        if len(job_pipeline.outputs) == 0:
+            # Some jobs, such as "split particles", do not have output nodes but the
+            # default pipeline will be updated after the job finishes.
+            default = RelionPipeline.from_star(rln_dir / "default_pipeline.star")
+            outputs = []
+            this_job_id = job_dir.job_normal_id()
+            for each in default.outputs:
+                if normalize_job_id(each.path_job) == this_job_id:
+                    outputs.append(each)
+        else:
+            outputs = job_pipeline.outputs
+        for output_node in outputs:
             output_path = rln_dir / output_node.path
             item = QRelionNodeItem(
                 output_path, filetype=output_node.type_label, show_dir=False
