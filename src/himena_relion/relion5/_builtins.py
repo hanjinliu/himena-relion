@@ -1552,9 +1552,9 @@ class _SelectJob(_Relion5Job):
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
         kwargs = super().normalize_kwargs(**kwargs)
         for name, default in [
-            ("fn_model", ""),
-            ("fn_mic", ""),
-            ("fn_data", ""),
+            ("fn_model", ""),  # select class
+            ("fn_mic", ""),  # select micrographs
+            ("fn_data", ""),  # select particles
             ("do_class_ranker", False),
             ("do_discard", False),
             ("do_filaments", False),
@@ -1647,18 +1647,12 @@ class SelectClassesAutoJob(_SelectJob):
     def run(
         self,
         fn_model: _a.io.IN_OPTIMISER = "",
-        rank_threshold: Annotated[
-            float, {"label": "Minimum threshold for auto selection"}
-        ] = 0.5,
-        select_nr_parts: Annotated[
-            int, {"label": "Minimum number of particles to select"}
-        ] = -1,
-        select_nr_classes: Annotated[
-            int, {"label": "Or minimum number of classes to select"}
-        ] = -1,
-        do_recenter: Annotated[bool, {"label": "Recenter the class averages"}] = False,
-        do_regroup: Annotated[bool, {"label": "Regroup the particles"}] = False,
-        nr_groups: Annotated[int, {"label": "Approximate number of groups"}] = 1,
+        rank_threshold: _a.select.RANK_THRESHOLD = 0.5,
+        select_nr_parts: _a.select.SELECT_NR_PARTS = -1,
+        select_nr_classes: _a.select.SELECT_NR_CLASSES = -1,
+        do_recenter: _a.select.DO_RECENTER = False,
+        do_regroup: _a.select.DO_REGROUP = False,
+        nr_groups: _a.select.NR_GROUPS = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -1670,6 +1664,10 @@ class _SelectValuesJob(_SelectJob):
 
 
 class SelectParticlesJob(_SelectValuesJob):
+    @classmethod
+    def param_matches(cls, job_params):
+        return job_params["fn_data"] != ""
+
     @classmethod
     def command_id(cls):
         return super().command_id() + "-particles"
@@ -1687,20 +1685,18 @@ class SelectParticlesJob(_SelectValuesJob):
     def run(
         self,
         fn_data: _a.io.IN_PARTICLES = "",
-        select_label: Annotated[
-            str, {"label": "Metadata label for selection"}
-        ] = "rlnCtfMaxResolution",
-        select_minval: Annotated[
-            float, {"label": "Minimum value for selection"}
-        ] = -9999,
-        select_maxval: Annotated[
-            float, {"label": "Maximum value for selection"}
-        ] = 9999,
+        select_label: _a.select.SELECT_LABEL = "rlnCtfMaxResolution",
+        select_minval: _a.select.SELECT_MINVAL = -9999,
+        select_maxval: _a.select.SELECT_MAXVAL = 9999,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
 
 class SelectMicrographsJob(_SelectValuesJob):
+    @classmethod
+    def param_matches(cls, job_params):
+        return job_params["fn_data"] == "" and job_params["fn_mic"]
+
     @classmethod
     def command_id(cls):
         return super().command_id() + "-micrographs"
@@ -1718,15 +1714,9 @@ class SelectMicrographsJob(_SelectValuesJob):
     def run(
         self,
         fn_mic: _a.io.IN_MICROGRAPHS = "",
-        select_label: Annotated[
-            str, {"label": "Metadata label for selection"}
-        ] = "rlnCtfMaxResolution",
-        select_minval: Annotated[
-            float, {"label": "Minimum value for selection"}
-        ] = -9999,
-        select_maxval: Annotated[
-            float, {"label": "Maximum value for selection"}
-        ] = 9999,
+        select_label: _a.select.SELECT_LABEL = "rlnCtfMaxResolution",
+        select_minval: _a.select.SELECT_MINVAL = -9999,
+        select_maxval: _a.select.SELECT_MAXVAL = 9999,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -1747,10 +1737,8 @@ class SelectRemoveDuplicatesJob(_SelectJob):
     def run(
         self,
         fn_data: _a.io.IN_PARTICLES = "",
-        duplicate_threshold: Annotated[
-            float, {"label": "Minimum inter-particle distance (A)"}
-        ] = 30,
-        image_angpix: Annotated[float, {"label": "Image pixel size (A)"}] = -1,
+        duplicate_threshold: _a.select.DUPLICATE_THRESHOLD = 30,
+        image_angpix: _a.select.IMAGE_ANGPIX = -1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -1771,11 +1759,9 @@ class SelectSplitJob(_SelectJob):
     def run(
         self,
         fn_data: _a.io.IN_PARTICLES = "",
-        do_random: Annotated[
-            bool, {"label": "Randomise order before making subsets"}
-        ] = False,
-        split_size: Annotated[int, {"label": "Number of particles per subset"}] = 100,
-        nr_split: Annotated[int, {"label": "Or number of subsets"}] = -1,
+        do_random: _a.select.DO_RANDOM = False,
+        split_size: _a.select.SPLIT_SIZE = 100,
+        nr_split: _a.select.NR_SPLIT = -1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -1794,10 +1780,8 @@ class SelectFilamentsJob(_SelectJob):
     def run(
         self,
         fn_model: _a.io.IN_OPTIMISER = "",
-        dendrogram_threshold: Annotated[
-            float, {"label": "Dendrogram threshold"}
-        ] = 0.85,
-        dendrogram_minclass: Annotated[int, {"label": "Minimum class size"}] = -1000,
+        dendrogram_threshold: _a.select.DENDROGRAM_THRESHOLD = 0.85,
+        dendrogram_minclass: _a.select.DENDROGRAM_MINCLASS = -1000,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 

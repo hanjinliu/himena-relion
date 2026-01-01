@@ -47,11 +47,11 @@ class JobWidgetBase:
 class QJobScrollArea(QtW.QScrollArea, JobWidgetBase):
     def __init__(self):
         super().__init__()
-        inner = QtW.QWidget()
-        inner.setMinimumWidth(420)
-        self.setWidget(inner)
+        self.inner = QtW.QWidget()
+        self.inner.setFixedWidth(420)
+        self.setWidget(self.inner)
         self.setWidgetResizable(False)
-        layout = QtW.QVBoxLayout(inner)
+        layout = QtW.QVBoxLayout(self.inner)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setAlignment(
             QtCore.Qt.AlignmentFlag.AlignTop | QtCore.Qt.AlignmentFlag.AlignHCenter
@@ -59,6 +59,11 @@ class QJobScrollArea(QtW.QScrollArea, JobWidgetBase):
         layout.setSizeConstraint(QtW.QLayout.SizeConstraint.SetMinimumSize)
         self._layout = layout
         self._worker: GeneratorWorker | None = None
+
+    def resizeEvent(self, a0):
+        super().resizeEvent(a0)
+        if a0.size().width() > 420:
+            self.inner.setFixedWidth(a0.size().width())
 
     def closeEvent(self, a0):
         self.window_closed_callback()

@@ -241,7 +241,7 @@ def get_subset_sizes(path_optimiser: Path) -> tuple[int, int]:
     return size, fin_size
 
 
-def wait_for_file(path, num_retry: int = 5, delay: float = 0.05) -> bool:
+def wait_for_file(path, num_retry: int = 5, delay: float = 0.1) -> bool:
     """Wait for a file to be created, return False if failed."""
     path = Path(path)
     for _ in range(num_retry):

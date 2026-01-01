@@ -97,7 +97,7 @@ class QClass2DViewer(QJobScrollArea):
         path_model = self._job_dir.path / f"run_it{niter:03d}_model.star"
         with mrcfile.open(path_img) as mrc:
             img = np.asarray(mrc.data)
-        if not wait_for_file(path_model):
+        if not wait_for_file(path_model, num_retry=20):
             _LOGGER.error("Failed to find %s", path_model)
             return
         df = read_star(path_model)["model_classes"].trust_loop().to_pandas()

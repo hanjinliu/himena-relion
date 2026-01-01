@@ -38,6 +38,7 @@ from himena_relion._annotated import (
     helix,
     tomo,
     sampling,
+    select,
     running,
 )
 
@@ -55,5 +56,6 @@ __all__ = [
     "tomo",
     "sampling",
     "compute",
+    "select",
     "running",
 ]

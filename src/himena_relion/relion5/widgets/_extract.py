@@ -29,6 +29,7 @@ class QExtractViewer(QJobScrollArea):
         self._current_extract_path = None
         self._current_num_extracts = 0
         self._num_page = 50
+        self._num_particles_label = QtW.QLabel("0 particles")
         self._text_edit = QImageViewTextEdit(font_size=11)
         self._text_edit.setMinimumHeight(350)
         self._slider = QtW.QSlider(QtCore.Qt.Orientation.Horizontal)
@@ -37,6 +38,7 @@ class QExtractViewer(QJobScrollArea):
         self._mic_list.setFixedHeight(130)
         self._mic_list.current_changed.connect(self._mic_changed)
         layout.addWidget(QtW.QLabel("<b>Extracted Micrographs</b>"))
+        layout.addWidget(self._num_particles_label)
         hlayout = QtW.QHBoxLayout()
         hlayout.setContentsMargins(0, 0, 0, 0)
         hlayout.addWidget(QtW.QLabel("Display Range:"))
@@ -60,6 +62,7 @@ class QExtractViewer(QJobScrollArea):
     def initialize(self, job_dir: _job_dir.JobDirectory):
         """Initialize the viewer with the job directory."""
         choices = []
+        num_total = 0
         for mrcs_path in self._job_dir.glob_in_subdirs("*.mrcs"):
             fp = self._job_dir.make_relative_path(mrcs_path)
             rel_path = fp.as_posix()
@@ -69,7 +72,9 @@ class QExtractViewer(QJobScrollArea):
                     nparticles = mrc.header.nz
                 self._nparticles_cache[rel_path] = nparticles
             choices.append((fp.name, str(nparticles), rel_path))
+            num_total += nparticles
         self._mic_list.set_choices(choices)
+        self._num_particles_label.setText(f"<b>{num_total}</b> particles")
 
     def _mic_changed(self, row: tuple[str, str, str]):
         """Handle changes to selected micrograph."""
@@ -102,8 +107,11 @@ class QExtractViewer(QJobScrollArea):
     def plot_extracts(self, start_index: int, session: uuid.UUID):
         end_index = min(start_index + self._num_page, self._current_num_extracts + 1)
         with mrcfile.mmap(self._current_extract_path) as mrc:
+            mrc_data = mrc.data
             for ith in range(start_index + 1, end_index + 1):
-                img_data = np.asarray(mrc.data[ith - 1], dtype=np.float32)
+                if mrc_data.shape[0] < ith:
+                    break
+                img_data = np.asarray(mrc_data[ith - 1], dtype=np.float32)
                 img_data = _utils.lowpass_filter(img_data, 0.2)
                 img_str = self._text_edit.image_to_base64(img_data, f"{ith}")
                 yield img_str, session

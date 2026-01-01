@@ -17,6 +17,11 @@ connect_jobs(
     node_mapping={"corrected_micrographs.star": "input_star_mics"},
 )
 connect_jobs(
+    _spa.MotionCorrOwnJob,
+    _spa.SelectMicrographsJob,
+    node_mapping={"corrected_micrographs.star": "fn_mic"},
+)
+connect_jobs(
     _spa.CtfEstimationJob,
     _spa.SelectMicrographsJob,
     node_mapping={"micrographs_ctf.star": "fn_mic"},
@@ -25,6 +30,11 @@ connect_jobs(
     _spa.CtfEstimationJob,
     _spa.ManualPickJob,
     node_mapping={"micrographs_ctf.star": "fn_in"},
+)
+connect_jobs(
+    _spa.SelectMicrographsJob,
+    _spa.ManualPickJob,
+    node_mapping={"micrographs.star": "fn_in"},
 )
 connect_jobs(
     _spa.ManualPickJob,
@@ -54,6 +64,11 @@ for autopick_job in [
         _spa.CtfEstimationJob,
         autopick_job,
         node_mapping={"micrographs_ctf.star": "fn_input_autopick"},
+    )
+    connect_jobs(
+        _spa.SelectMicrographsJob,
+        autopick_job,
+        node_mapping={"micrographs.star": "fn_input_autopick"},
     )
     connect_jobs(
         autopick_job,
@@ -125,6 +140,11 @@ for sel_class_job in [_spa.SelectClassesInteractiveJob, _spa.SelectClassesAutoJo
         _spa.Class2DJob,
         sel_class_job,
         node_mapping={_optimiser_last_iter: "fn_model"},
+    )
+    connect_jobs(
+        sel_class_job,
+        _spa.Class2DJob,
+        node_mapping={"particles.star": "fn_img"},
     )
     connect_jobs(
         sel_class_job,
