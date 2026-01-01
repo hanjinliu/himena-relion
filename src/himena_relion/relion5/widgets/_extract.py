@@ -62,13 +62,14 @@ class QExtractViewer(QJobScrollArea):
         """Initialize the viewer with the job directory."""
         choices = []
         for mrcs_path in self._job_dir.glob_in_subdirs("*.mrcs"):
-            rel_path = self._job_dir.make_relative_path(mrcs_path).as_posix()
+            fp = self._job_dir.make_relative_path(mrcs_path)
+            rel_path = fp.as_posix()
             nparticles = self._nparticles_cache.get(rel_path)
             if nparticles is None or nparticles == 0:
                 with mrcfile.open(mrcs_path, header_only=True) as mrc:
                     nparticles = mrc.header.nz
                 self._nparticles_cache[rel_path] = nparticles
-            choices.append((rel_path, str(nparticles)))
+            choices.append((fp.name, str(nparticles), rel_path))
         self._mic_list.set_choices(choices)
 
     def _mic_changed(self, row: tuple[str, str, str]):
