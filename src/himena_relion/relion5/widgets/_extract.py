@@ -55,7 +55,7 @@ class QExtractViewer(QJobScrollArea):
         """Handle changes to the job directory."""
         fp = Path(path)
         if fp.name.startswith("RELION_JOB_") or fp.suffix == ".star":
-            self.initialize()
+            self.initialize(job_dir)
             _LOGGER.debug("%s Updated", job_dir.job_number)
 
     def initialize(self, job_dir: _job_dir.JobDirectory):

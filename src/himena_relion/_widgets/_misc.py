@@ -49,9 +49,12 @@ class QMicrographListWidget(QtW.QTableWidget):
 
     def set_choices(self, choices: list[tuple[str, ...]]):
         """Set the micrograph choices in the list widget."""
+        was_empty = self.rowCount() == 0
         current_text = self.current_text(0)
         self.setRowCount(0)
         self.setRowCount(len(choices))
+        vbar_pos = self.verticalScrollBar().value()
+        hbar_pos = self.horizontalScrollBar().value()
         choices_0: list[str] = []
         for i, entry in enumerate(choices):
             self.setRowHeight(i, 16)
@@ -67,8 +70,10 @@ class QMicrographListWidget(QtW.QTableWidget):
                 self.blockSignals(False)
         elif choices:
             self.setCurrentCell(0, 0)
-        if self.columnCount() > 1:
+        if self.columnCount() > 1 and was_empty:
             self.resizeColumnsToContents()
+        self.verticalScrollBar().setValue(vbar_pos)
+        self.horizontalScrollBar().setValue(hbar_pos)
 
     def _on_selection_changed(self):
         selected_rows = self.selectionModel().selectedRows()

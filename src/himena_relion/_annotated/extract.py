@@ -1,4 +1,4 @@
-from typing import Annotated, Optional
+from typing import Annotated
 
 
 SIZE = Annotated[
@@ -121,7 +121,7 @@ RECENTER = Annotated[
 ]
 
 MINIMUM_PICK_FOM = Annotated[
-    Optional[float],
+    float | None,
     {
         "label": "Minimum autopick FOM",
         "tooltip": (
