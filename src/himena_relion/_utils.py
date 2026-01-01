@@ -7,10 +7,12 @@ from typing import Annotated, Any, get_args, get_origin, TYPE_CHECKING
 
 import numpy as np
 from functools import lru_cache
+
+from starfile_rs import read_star
 from himena.types import is_subtype
 from himena.consts import MonospaceFontFamily
 from himena_relion.consts import Type
-from himena_relion.schemas import RelionPipelineModel
+from himena_relion.schemas import RelionPipelineModel, ParticleMetaModel
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
@@ -214,6 +216,28 @@ def read_or_show_job(ui: MainWindow, path: Path):
             except Exception:
                 continue
     ui.read_file(path, append_history=False)
+
+
+def get_subset_sizes(path_optimiser: Path) -> tuple[int, int]:
+    path_optimiser = Path(path_optimiser)
+    if path_optimiser.exists():
+        optimier = read_star(path_optimiser).first().trust_single()
+        size = int(optimier.get("rlnSgdSubsetSize", -1))
+        fin_size = int(optimier.get("rlnSgdFinalSubsetSize", -1))
+        if size <= 0:
+            size = fin_size
+    else:
+        size, fin_size = -1, -1
+    if fin_size < 0:
+        stem = path_optimiser.stem
+        data_name = stem[: -len("_optimiser")] + "_data.star"
+        data_file = path_optimiser.parent / data_name
+        if data_file.exists():
+            part = ParticleMetaModel.validate_file(data_file)
+            fin_size = len(part.particles.block)
+    if size < 0:
+        size = fin_size
+    return size, fin_size
 
 
 def monospace_font_family() -> str:

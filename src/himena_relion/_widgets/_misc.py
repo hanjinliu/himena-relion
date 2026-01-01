@@ -136,12 +136,19 @@ class QNumParticlesLabel(QtW.QLabel):
     def __init__(self):
         super().__init__()
         self.setText("--- particles")
+        self.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
 
     def set_number(self, num: int):
         if num >= 0:
             self.setText(f"<b>{num}</b> particles")
         else:
             self.setText("??? particles")
+
+    def set_subset_sizes(self, current: int, final: int):
+        if current >= 0 and final >= 0:
+            self.setText(f"Using <b>{current} / {final}</b> particles")
+        else:
+            self.setText("Using ??? / ??? particles")
 
 
 def spacer_widget():

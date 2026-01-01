@@ -12,8 +12,9 @@ from himena_relion._widgets import (
     QIntChoiceWidget,
     register_job,
     QImageViewTextEdit,
+    QNumParticlesLabel,
 )
-from himena_relion.schemas import ParticleMetaModel
+from himena_relion._utils import get_subset_sizes
 from himena_relion import _job_dir
 
 _LOGGER = logging.getLogger(__name__)
@@ -32,8 +33,7 @@ class QClass2DViewer(QJobScrollArea):
         self._text_edit = QImageViewTextEdit()
         self._text_edit.setMinimumHeight(360)
         self._iter_choice = QIntChoiceWidget("Iteration", label_width=60)
-        self._num_subsets_label = QtW.QLabel("")
-        self._num_subsets_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
+        self._num_subsets_label = QNumParticlesLabel()
 
         self._iter_choice.current_changed.connect(self._iter_changed)
         self._sort_by.currentIndexChanged.connect(self._sort_by_changed)
@@ -74,25 +74,6 @@ class QClass2DViewer(QJobScrollArea):
         niters.sort()
         self._iter_choice.set_choices(niters)
 
-    def _get_subset_sizes(self, niter: int) -> tuple[int, int]:
-        """Get the current and final subset sizes for the given iteration."""
-        path_optimiser = self._job_dir.path / f"run_it{niter:0>3}_optimiser.star"
-        if path_optimiser.exists():
-            optimier = read_star(path_optimiser).first().trust_single()
-            size = int(optimier.get("rlnSgdSubsetSize", -1))
-            if size <= 0:
-                size = int(optimier.get("rlnSgdInitialSubsetSize", -1))
-            fin_size = int(optimier.get("rlnSgdFinalSubsetSize", -1))
-        else:
-            size, fin_size = -1, -1
-        if fin_size < 0:
-            data_file = self._job_dir.path / f"run_it{niter:0>3}_data.star"
-            part = ParticleMetaModel.validate_file(data_file)
-            fin_size = len(part.particles.block)
-        if size < 0:
-            size = fin_size
-        return size, fin_size
-
     def _sort_by_changed(self):
         self._iter_changed(self._iter_choice.value())
 
@@ -100,10 +81,11 @@ class QClass2DViewer(QJobScrollArea):
         self.window_closed_callback()
         self._text_edit.clear()
         try:
-            size, fin_size = self._get_subset_sizes(value)
+            path_optimiser = self._job_dir.path / f"run_it{value:0>3}_optimiser.star"
+            size, fin_size = get_subset_sizes(path_optimiser)
         except Exception:
-            size, fin_size = "???", "???"
-        self._num_subsets_label.setText(f"Using {size} / {fin_size} particles")
+            size, fin_size = -1, -1
+        self._num_subsets_label.set_subset_sizes(size, fin_size)
         self._plot_session_id = self._text_edit.prep_uuid()
         self._worker = self.plot_classes(value, self._plot_session_id)
         self._worker.yielded.connect(self._on_class_yielded)
