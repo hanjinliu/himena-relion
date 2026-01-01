@@ -982,27 +982,22 @@ class Class2DJob(_Relion5Job):
     def normalize_kwargs(cls, **kwargs):
         kwargs = super().normalize_kwargs(**kwargs)
         kwargs["fn_cont"] = ""
-        # default
-        for key, value in [
-            ("do_em", False),
-            ("nr_iter_em", 25),
-            ("do_grad", True),
-            ("nr_iter_grad", 200),
-        ]:
-            kwargs.setdefault(key, value)
 
         if "offset_range_step" in kwargs:
-            kwargs["offset_range"], kwargs["offset_step"] = kwargs.pop(
-                "offset_range_step"
-            )
+            rng, step = kwargs.pop("offset_range_step")
+            kwargs["offset_range"], kwargs["offset_step"] = rng, step
 
         algo = kwargs.pop("algorithm")
         if algo["algorithm"] == "EM":
             kwargs["do_em"] = True
+            kwargs["do_grad"] = False
             kwargs["nr_iter_em"] = algo["niter"]
+            kwargs.setdefault("n_iter_grad", 200)
         else:
+            kwargs["do_em"] = False
             kwargs["do_grad"] = True
             kwargs["nr_iter_grad"] = algo["niter"]
+            kwargs.setdefault("n_iter_em", 25)
         return kwargs
 
     @classmethod
