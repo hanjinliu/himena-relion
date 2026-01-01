@@ -2,7 +2,7 @@ from __future__ import annotations
 from pathlib import Path
 import logging
 from qtpy import QtWidgets as QtW
-from superqt.utils import thread_worker, FunctionWorker
+from superqt.utils import thread_worker
 from himena_relion._image_readers._array import ArrayFilteredView
 from himena_relion._widgets import (
     QJobScrollArea,
@@ -23,7 +23,6 @@ class QImportMoviesViewer(QJobScrollArea):
         super().__init__()
         self._job_dir = job_dir
         layout = self._layout
-        self._worker: FunctionWorker | None = None
 
         self._viewer = Q2DViewer(zlabel="")
         self._viewer.setMinimumHeight(480)
@@ -58,7 +57,7 @@ class QImportMoviesViewer(QJobScrollArea):
 
         self.window_closed_callback()
         self._worker = self._uncompress_image(movie_path)
-        self._worker.returned.connect(self._on_movie_loaded)
+        self._worker.yielded.connect(self._on_movie_loaded)
         self._worker.start()
 
     def _on_movie_loaded(self, movie_view: ArrayFilteredView):
@@ -72,7 +71,7 @@ class QImportMoviesViewer(QJobScrollArea):
 
     @thread_worker
     def _uncompress_image(self, movie_path):
-        return ArrayFilteredView.from_tif(movie_path)
+        yield ArrayFilteredView.from_tif(movie_path)
 
     def _filter_param_changed(self):
         """Handle changes to filter parameters."""

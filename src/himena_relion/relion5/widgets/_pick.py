@@ -5,6 +5,7 @@ from typing import Iterator
 import mrcfile
 import numpy as np
 from starfile_rs import read_star
+from superqt.utils import thread_worker
 from qtpy import QtWidgets as QtW
 from himena_relion._image_readers._array import ArrayFilteredView
 from himena_relion._widgets import (
@@ -43,13 +44,14 @@ class QManualPickViewer(QJobScrollArea):
         layout.addWidget(self._mic_list)
         self._filter_widget.value_changed.connect(self._filter_param_changed)
         self._binsize_old = -1
+        # cache current coordinates here
         self._coords: CoordsModel | None = None
 
     def on_job_updated(self, job_dir: _job_dir.JobDirectory, path: str):
         """Handle changes to the job directory."""
         fp = Path(path)
         if fp.name.startswith("RELION_JOB_") or fp.suffix in (".star", ".mrcs"):
-            self._process_update()
+            self._process_update(force_update=fp.name.startswith("RELION_JOB_"))
             _LOGGER.debug("%s Updated", job_dir.job_number)
 
     def _mic_changed(self, row: tuple[str, str, str]):
@@ -63,7 +65,8 @@ class QManualPickViewer(QJobScrollArea):
             movie_view.with_filter(self._filter_widget.apply),
             clim=self._viewer._last_clim,
         )
-        self._update_points(reload=_coords_path)
+        self._reload_coords(_coords_path)
+        self._update_points()
         self._viewer._auto_contrast()
 
     def _filter_param_changed(self):
@@ -75,12 +78,15 @@ class QManualPickViewer(QJobScrollArea):
             self._viewer.auto_fit()
         self._update_points()
 
-    def _update_points(self, reload: str = ""):
-        if reload and (coords_path := self._job_dir.resolve_path(reload)).exists():
+    def _reload_coords(self, path: str | Path):
+        if (
+            coords_path := self._job_dir.resolve_path(path)
+        ).exists() and coords_path.suffix == ".star":
             self._coords = CoordsModel.validate_file(coords_path)
         else:
             self._coords = None
 
+    def _update_points(self, *_):
         if self._coords is None:
             self._viewer.set_points(np.empty((0, 3)))
         else:
@@ -101,10 +107,17 @@ class QManualPickViewer(QJobScrollArea):
         self._job_dir = job_dir
         self._viewer.clear()
         self._last_update.clear()
-        self._process_update()
+        self._process_update(force_update=True)
         self._viewer.auto_fit()
 
-    def _process_update(self):
+    def _process_update(self, force_update: bool = False):
+        if force_update or self._worker is None:
+            self._worker = self._prep_mic_list()
+            self._worker.yielded.connect(self._on_yielded)
+            self._worker.start()
+
+    @thread_worker
+    def _prep_mic_list(self):
         choices = []
         for mic_path, coords_path in iter_micrograph_and_coordinates(self._job_dir):
             if coords_path is None:
@@ -124,8 +137,16 @@ class QManualPickViewer(QJobScrollArea):
                         self._last_update[coords_path.stem] = mtime, num
                 coords_path = coords_path.as_posix()
             choices.append((mic_path, str(num), coords_path or ""))
-        self._mic_list.set_choices(choices)
-        self._update_points(reload=self._mic_list.current_text(2))
+        current_path = Path(self._mic_list.current_text(2))
+        yield self._mic_list.set_choices, choices
+
+        self._reload_coords(current_path)
+        yield self._update_points, None
+        self._worker = None
+
+    def _on_yielded(self, val):
+        func, value = val
+        func(value)
 
     def _get_diameter(self) -> float:
         return float(self._job_dir.get_job_param("diameter"))

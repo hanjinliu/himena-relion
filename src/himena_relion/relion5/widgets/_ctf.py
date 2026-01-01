@@ -1,12 +1,13 @@
 from __future__ import annotations
 from pathlib import Path
 import logging
+import time
 import numpy as np
 from numpy.typing import NDArray
 from typing import Any, Callable
 import pandas as pd
 from qtpy import QtWidgets as QtW
-from superqt.utils import thread_worker, GeneratorWorker
+from superqt.utils import thread_worker
 from starfile_rs import read_star
 from himena_relion._image_readers._array import ArrayFilteredView
 from himena_relion._widgets import (
@@ -42,7 +43,6 @@ class QCtfFindViewer(QJobScrollArea):
     def __init__(self, job_dir: _job_dir.JobDirectory):
         super().__init__()
         self._job_dir = _job_dir.CtfCorrectionJobDirectory(job_dir.path)
-        self._worker: GeneratorWorker | None = None
         layout = self._layout
         self._defocus_canvas = QPlotCanvas(self)
         self._defocus_canvas.setFixedSize(360, 145)
@@ -69,23 +69,29 @@ class QCtfFindViewer(QJobScrollArea):
         layout.addWidget(QtW.QLabel("<b>CTF spectra</b>"))
         layout.addWidget(self._viewer)
         layout.addWidget(self._mic_list)
+        self._last_update = -1.0
+        self._update_min_interval = 10.0
 
     def on_job_updated(self, job_dir, path: str):
         """Handle changes to the job directory."""
         fp = Path(path)
         if fp.name.startswith("RELION_JOB_") or fp.suffix == ".ctf":
-            self._process_update()
+            self._process_update(force_reload=fp.name.startswith("RELION_JOB_"))
             _LOGGER.debug("%s Updated", self._job_dir.job_number)
 
     def initialize(self, job_dir):
         """Initialize the viewer with the job directory."""
-        self._process_update()
+        self._process_update(force_reload=True)
         self._viewer.auto_fit()
 
-    def _process_update(self):
+    def _process_update(self, force_reload: bool = False):
         if self._worker is not None:
             self._worker.quit()
+        dt = time.time() - self._last_update
+        if not force_reload and dt < self._update_min_interval:
+            return
         self._worker = self._prep_data_to_plot(self._job_dir)
+        self._last_update = time.time()
         self._worker.yielded.connect(self._on_data_ready)
         self._worker.start()
 
@@ -106,6 +112,9 @@ class QCtfFindViewer(QJobScrollArea):
             for txtpath in it:
                 if (arr := read_ctf_output_txt(txtpath)) is not None:
                     arrs.append(arr)
+            if arrs == []:
+                yield self._clear_everything, None
+                return
             arr = np.stack(arrs, axis=0)
             df = pd.DataFrame(
                 arr,
@@ -151,12 +160,3 @@ class QCtfFindViewer(QJobScrollArea):
         self._astigmatism_canvas.widget_added_callback()
         self._defocus_angle_canvas.widget_added_callback()
         self._max_resolution_canvas.widget_added_callback()
-
-    def closeEvent(self, a0):
-        self.widget_closed_callback()
-        return super().closeEvent(a0)
-
-    def widget_closed_callback(self):
-        if self._worker is not None:
-            self._worker.quit()
-            self._worker = None

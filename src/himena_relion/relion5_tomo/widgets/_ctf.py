@@ -123,15 +123,6 @@ class QCtfFindViewer(QJobScrollArea):
         self._defocus_angle_canvas.widget_added_callback()
         self._max_resolution_canvas.widget_added_callback()
 
-    def closeEvent(self, a0):
-        self.widget_closed_callback()
-        return super().closeEvent(a0)
-
-    def widget_closed_callback(self):
-        if self._worker is not None:
-            self._worker.quit()
-            self._worker = None
-
 
 @register_job("relion.ctfrefinetomo", is_tomo=True)
 class QCtfRefineTomoViewer(QJobScrollArea):

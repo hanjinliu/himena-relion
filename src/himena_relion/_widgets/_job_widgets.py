@@ -10,7 +10,7 @@ from typing import Iterator
 import numpy as np
 from qtpy import QtWidgets as QtW, QtGui, QtCore
 from superqt import QToggleSwitch
-from superqt.utils import qthrottled
+from superqt.utils import qthrottled, GeneratorWorker
 from himena.widgets import current_instance, set_status_tip
 from himena.qt import drag_files, QColoredSVGIcon
 from himena_relion import _job_class, _job_dir
@@ -58,6 +58,16 @@ class QJobScrollArea(QtW.QScrollArea, JobWidgetBase):
         )
         layout.setSizeConstraint(QtW.QLayout.SizeConstraint.SetMinimumSize)
         self._layout = layout
+        self._worker: GeneratorWorker | None = None
+
+    def closeEvent(self, a0):
+        self.widget_closed_callback()
+        return super().closeEvent(a0)
+
+    def widget_closed_callback(self):
+        if self._worker is not None:
+            self._worker.quit()
+            self._worker = None
 
 
 class QTextEditBase(QtW.QWidget, JobWidgetBase):
