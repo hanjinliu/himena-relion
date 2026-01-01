@@ -106,15 +106,6 @@ class QImportMoviesViewer(QJobScrollArea):
         if len(choices) == 0:
             self._viewer.clear()
 
-    def window_closed_callback(self):
-        if self._worker is not None:
-            self._worker.quit()
-            self._worker = None
-
-    def closeEvent(self, a0):
-        self.window_closed_callback()
-        return super().closeEvent(a0)
-
 
 @register_job("relion.motioncorr", is_tomo=False)
 class QMotionCorrViewer(QJobScrollArea):

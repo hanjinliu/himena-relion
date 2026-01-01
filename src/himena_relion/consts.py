@@ -80,7 +80,7 @@ JOB_ID_MAP = {
     "relion.select.class2dauto": "Class Ranker",
     "relion.select.onvalue": "Select On Value",
     "relion.select.split": "Split Particles",
-    "relion.select.filamentsdendrogram": "Select Filaments By Dendrogram",
+    "relion.select.filamentsdendrogram": "Select Filaments",
     "relion.select.removeduplicates": "Remove Duplicates",
     "relion.postprocess": "Post Process",
     "relion.maskcreate": "Create Mask",

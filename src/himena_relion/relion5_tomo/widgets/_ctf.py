@@ -85,7 +85,7 @@ class QCtfFindViewer(QJobScrollArea):
         else:
             return
 
-        self.widget_closed_callback()
+        self.window_closed_callback()
         self._worker = self._prep_data_to_plot(job_dir, path)
         self._worker.yielded.connect(self._on_data_ready)
         self._worker.start()

@@ -161,13 +161,3 @@ class QExtractJobViewer(QJobScrollArea):
         if my_uuid != self._plot_session_id:
             return
         self._text_edit.insert_base64_image(img_str)
-
-    def window_closed_callback(self):
-        if self._worker:
-            worker = self._worker
-            self._worker = None
-            worker.quit()
-
-    def closeEvent(self, a0):
-        self.window_closed_callback()
-        return super().closeEvent(a0)

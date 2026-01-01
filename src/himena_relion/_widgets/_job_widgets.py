@@ -61,10 +61,10 @@ class QJobScrollArea(QtW.QScrollArea, JobWidgetBase):
         self._worker: GeneratorWorker | None = None
 
     def closeEvent(self, a0):
-        self.widget_closed_callback()
+        self.window_closed_callback()
         return super().closeEvent(a0)
 
-    def widget_closed_callback(self):
+    def window_closed_callback(self):
         if self._worker is not None:
             self._worker.quit()
             self._worker = None

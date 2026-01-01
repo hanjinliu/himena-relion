@@ -14,7 +14,7 @@ from himena_relion._widgets import (
     QImageViewTextEdit,
     QNumParticlesLabel,
 )
-from himena_relion._utils import get_subset_sizes
+from himena_relion._utils import get_subset_sizes, wait_for_file
 from himena_relion import _job_dir
 
 _LOGGER = logging.getLogger(__name__)
@@ -97,6 +97,9 @@ class QClass2DViewer(QJobScrollArea):
         path_model = self._job_dir.path / f"run_it{niter:03d}_model.star"
         with mrcfile.open(path_img) as mrc:
             img = np.asarray(mrc.data)
+        if not wait_for_file(path_model):
+            _LOGGER.error("Failed to find %s", path_model)
+            return
         df = read_star(path_model)["model_classes"].trust_loop().to_pandas()
         dist_percent = df["rlnClassDistribution"] * 100
         resolutions = df["rlnEstimatedResolution"]
@@ -111,7 +114,7 @@ class QClass2DViewer(QJobScrollArea):
             distribution = dist_percent.iloc[ith]
             resolution = resolutions.iloc[ith]
             img_slice = img[ith]
-            text = f"{ith + 1}\n{distribution:.1f}%\n{resolution:.1f} A"
+            text = f"{ith + 1}\n{distribution:.2f}%\n{resolution:.1f} A"
             img_str = self._text_edit.image_to_base64(img_slice, text)
             yield img_str, session
 
@@ -122,13 +125,3 @@ class QClass2DViewer(QJobScrollArea):
         if my_uuid != self._plot_session_id:
             return
         self._text_edit.insert_base64_image(img_str)
-
-    def window_closed_callback(self):
-        if self._worker:
-            worker = self._worker
-            self._worker = None
-            worker.quit()
-
-    def closeEvent(self, a0):
-        self.window_closed_callback()
-        return super().closeEvent(a0)

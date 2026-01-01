@@ -124,6 +124,12 @@ class RelionJobPipelineNode:
             return self.path_file
         return self.path_job / self.path_file
 
+    def is_ready(self, relion_dir: Path) -> bool:
+        return (
+            self.path_job is None
+            or (relion_dir / self.path_job / FileNames.EXIT_SUCCESS).exists()
+        )
+
     @classmethod
     def from_file_path(
         cls,
@@ -246,14 +252,16 @@ class RelionPipeline:
 
 def is_all_inputs_ready(d: str | Path) -> bool:
     """True if the job at directory `d` has all inputs ready."""
-    if (ppath := Path(d) / "job_pipeline.star").exists():
+    fp = Path(d)
+    if (ppath := fp / "job_pipeline.star").exists():
         pipeline = RelionPipeline.from_star(ppath)
         # NOTE: Do NOT check the existence of output files. For example, Extract job
         # writes optimisation_set.star before the job actually finishes.
+        rln_dir = fp.parent.parent
         not_ready = [
             input_.path_job
             for input_ in pipeline.inputs
-            if not input_.path_job.joinpath(FileNames.EXIT_SUCCESS).exists()
+            if not input_.is_ready(rln_dir)
         ]
         if not_ready:
             _LOGGER.info(
