@@ -59,16 +59,17 @@ class RelionDefaultPipeline(Sequence["RelionJobInfo"]):
             )
             nodes[Path(path)] = node
 
-        for from_node, to_node in zip(
-            mappers.from_node,
-            mappers.process,
-            strict=True,
-        ):
-            from_path = Path(from_node)
-            to_path = Path(to_node)
-            if to_path in nodes and from_path.parent in nodes:
-                job = RelionOutputFile(nodes[from_path.parent], from_path.name)
-                nodes[to_path].parents.append(job)
+        if mappers is not None:
+            for from_node, to_node in zip(
+                mappers.from_node,
+                mappers.process,
+                strict=True,
+            ):
+                from_path = Path(from_node)
+                to_path = Path(to_node)
+                if to_path in nodes and from_path.parent in nodes:
+                    job = RelionOutputFile(nodes[from_path.parent], from_path.name)
+                    nodes[to_path].parents.append(job)
 
         return cls(list(nodes.values()))
 
@@ -168,10 +169,10 @@ class RelionPipeline:
     def from_star(cls, path: str | Path) -> RelionPipeline:
         pipeline = RelionPipelineModel.validate_file(path)
         df_general = pipeline.general.block.to_pandas()
-        process_name = pipeline.processes.process_name.iloc[0]
-        process_alias = pipeline.processes.alias.iloc[0]
-        process_type_label = pipeline.processes.type_label.iloc[0]
-        process_status_label = pipeline.processes.status_label.iloc[0]
+        process_name = pipeline.processes.process_name[0]
+        process_alias = pipeline.processes.alias[0]
+        process_type_label = pipeline.processes.type_label[0]
+        process_status_label = pipeline.processes.status_label[0]
 
         # construct type map
         _type_map = dict(zip(pipeline.nodes.name, pipeline.nodes.type_label))

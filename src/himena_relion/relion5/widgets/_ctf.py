@@ -21,7 +21,7 @@ from himena_relion import _job_dir
 _LOGGER = logging.getLogger(__name__)
 
 
-def read_ctf_output_txt(path: Path) -> NDArray[np.float32]:
+def read_ctf_output_txt(path: Path) -> NDArray[np.float32] | None:
     """Read a CTF output text file into a MicrographsModel."""
     # Each column:
     # micrograph number
@@ -31,7 +31,10 @@ def read_ctf_output_txt(path: Path) -> NDArray[np.float32]:
     # additional phase shift
     # cross correlation
     # spacing (A) up to which CTF ring were fit successfully = max resolution
-    return np.loadtxt(path, dtype=np.float32)
+    arr = np.loadtxt(path, dtype=np.float32)
+    if arr.ndim != 1 or arr.shape[0] != 7:
+        return None
+    return arr
 
 
 @register_job("relion.ctffind.ctffind4")
@@ -99,7 +102,11 @@ class QCtfFindViewer(QJobScrollArea):
             df = read_star(final_path).get("micrographs").trust_loop().to_pandas()
         else:
             it = self._job_dir.glob_in_subdirs("*_PS.txt")
-            arr = np.stack([read_ctf_output_txt(txtpath) for txtpath in it])
+            arrs = []
+            for txtpath in it:
+                if (arr := read_ctf_output_txt(txtpath)) is not None:
+                    arrs.append(arr)
+            arr = np.stack(arrs, axis=0)
             df = pd.DataFrame(
                 arr,
                 columns=[
