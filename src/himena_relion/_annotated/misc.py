@@ -195,9 +195,11 @@ REF_SYMMETRY = Annotated[
             "* I2: Crowther 222 \n "
             "* I3: 52-setting (as used in SPIDER?)\n "
             "* I4: A different 52 setting \n "
-            "The command 'relion_refine --sym D2 --print_symmetry_ops' prints a list "
+            "The command <code>relion_refine --sym D2 --print_symmetry_ops</code> prints a list "
             "of all symmetry operators for symmetry group D2. RELION uses XMIPP's "
-            "libraries for symmetry operations."
+            "libraries for symmetry operations. Therefore, look at the "
+            "<a href='https://i2pc.github.io/docs/Utils/Conventions/index.html#symmetry'>XMIPP documentation</a> for "
+            "more details: "
         ),
         "group": "Reference",
     },

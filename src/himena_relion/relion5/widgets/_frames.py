@@ -1,8 +1,8 @@
 from __future__ import annotations
 from pathlib import Path
 import logging
-import time
 from qtpy import QtWidgets as QtW
+from superqt.utils import thread_worker, FunctionWorker
 from himena_relion._image_readers._array import ArrayFilteredView
 from himena_relion._widgets import (
     QJobScrollArea,
@@ -23,16 +23,17 @@ class QImportMoviesViewer(QJobScrollArea):
         super().__init__()
         self._job_dir = job_dir
         layout = self._layout
+        self._worker: FunctionWorker | None = None
 
         self._viewer = Q2DViewer(zlabel="")
         self._viewer.setMinimumHeight(480)
         self._mic_list = QMicrographListWidget(
-            ["Movie Name", "Optics Group", "Pixel Size"]
+            ["Movie Name", "Optics Group", "Pixel Size (A)"]
         )
         self._mic_list.setFixedHeight(130)
         self._mic_list.current_changed.connect(self._mic_changed)
         self._filter_widget = Q2DFilterWidget()
-        layout.addWidget(QtW.QLabel("<b>Imported-movies</b>"))
+        layout.addWidget(QtW.QLabel("<b>Imported movies (piece-wise projection)</b>"))
         layout.addWidget(self._filter_widget)
         layout.addWidget(self._viewer)
         layout.addWidget(self._mic_list)
@@ -53,16 +54,25 @@ class QImportMoviesViewer(QJobScrollArea):
             angpix = float(self._job_dir.get_job_param("angpix"))
         except Exception:
             angpix = 1.0
-
-        movie_view = ArrayFilteredView.from_tif(movie_path)
-        had_image = self._viewer.has_image
         self._filter_widget.set_image_scale(angpix)
+
+        self.window_closed_callback()
+        self._worker = self._uncompress_image(movie_path)
+        self._worker.returned.connect(self._on_movie_loaded)
+        self._worker.start()
+
+    def _on_movie_loaded(self, movie_view: ArrayFilteredView):
+        had_image = self._viewer.has_image
         self._viewer.set_array_view(
             movie_view.with_filter(self._filter_widget.apply),
             clim=self._viewer._last_clim,
         )
         if not had_image:
             self._viewer._auto_contrast()
+
+    @thread_worker
+    def _uncompress_image(self, movie_path):
+        return ArrayFilteredView.from_tif(movie_path)
 
     def _filter_param_changed(self):
         """Handle changes to filter parameters."""
@@ -84,7 +94,6 @@ class QImportMoviesViewer(QJobScrollArea):
         mov = MoviesStarModel.validate_file(movies_star_path)
         optics_map = mov.optics.make_optics_map()
         choices = []
-        t0 = time.time()
         for movie_name, opt_id in zip(mov.movies.movie_name, mov.movies.optics_group):
             if opt := optics_map.get(opt_id):
                 choices.append(
@@ -95,9 +104,17 @@ class QImportMoviesViewer(QJobScrollArea):
                     ]
                 )
         self._mic_list.set_choices(choices)
-        print(f"Time to process movies.star: {time.time() - t0:.2f} s")
         if len(choices) == 0:
             self._viewer.clear()
+
+    def window_closed_callback(self):
+        if self._worker is not None:
+            self._worker.quit()
+            self._worker = None
+
+    def closeEvent(self, a0):
+        self.window_closed_callback()
+        return super().closeEvent(a0)
 
 
 @register_job("relion.motioncorr", is_tomo=False)

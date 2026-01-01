@@ -3,6 +3,7 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from functools import lru_cache, reduce
+from io import BytesIO
 from pathlib import Path
 from typing import Callable, TYPE_CHECKING, Iterator
 import numpy as np
@@ -205,7 +206,15 @@ class ArrayFromTif(ArrayViewBase):
 
     def _make_cache(self):
         if self._arr is None:
-            with tifffile.TiffFile(self._path) as tif:
+            # Opening the file and decompressing all frames takes time, so this process
+            # may interfere with other operations such as the subsequent motion
+            # correction. Here, we first copy the file content into memory, then read
+            # from the in-memory bytes buffer to avoid holding the file lock for too
+            # long.
+            with open(self._path, "rb") as f:
+                bytes_io = BytesIO(f.read())
+
+            with tifffile.TiffFile(bytes_io) as tif:
                 arr = tif.asarray()
             if arr.ndim == 2:
                 arr = arr[np.newaxis, :, :]

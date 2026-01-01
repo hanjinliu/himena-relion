@@ -35,12 +35,9 @@ class ImportMoviesJob(_Relion5Job):
     def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
         kwargs = super().normalize_kwargs_inv(**kwargs)
         for name in [
-            "fn_in_other",
-            "do_other",
-            "node_type",
-            "optics_group_particles",
-            "do_raw",
-        ]:
+            "fn_in_other", "do_other", "node_type", "optics_group_particles",
+            "do_raw", "do_queue", "min_dedicated",
+        ]:  # fmt: skip
             kwargs.pop(name, None)
         return kwargs
 
@@ -87,7 +84,8 @@ class ImportOthersJob(_Relion5Job):
         kwargs = super().normalize_kwargs_inv(**kwargs)
         for name in [
             "fn_in_raw", "is_multiframe", "optics_group_name", "fn_mtf", "angpix", "kV",
-            "Cs", "Q0", "beamtilt_x", "beamtilt_y", "do_other", "do_raw",
+            "Cs", "Q0", "beamtilt_x", "beamtilt_y", "do_other", "do_raw", "do_queue",
+            "min_dedicated",
         ]:  # fmt: skip
             kwargs.pop(name, None)
         return kwargs

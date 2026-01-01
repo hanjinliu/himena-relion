@@ -5,10 +5,10 @@ import logging
 from typing import Any
 
 from himena import MainWindow
-from qtpy import QtWidgets as QtW, QtCore
+from qtpy import QtWidgets as QtW, QtCore, QtGui
 from magicgui.widgets import ComboBox
-from himena.qt import magicgui as _mgui
-from himena_relion import _job_dir
+from himena.qt import magicgui as _mgui, QColoredSVGIcon
+from himena_relion import _job_dir, _utils
 from himena_relion._job_class import (
     RelionJob,
     RelionJobExecution,
@@ -135,11 +135,14 @@ class QJobParameter(QtW.QScrollArea):
         sig = job_cls._signature()
         typemap = _mgui.get_type_map()
         groups = defaultdict[str, list[ValueWidget]](list)
+        tooltip_for_widget: dict[str, str] = {}
         for param in sig.parameters.values():
             param = MagicParameter.from_parameter(param)
             group = param.options.pop("group", "Parameters")
+            tooltip = param.options.pop("tooltip", "")
             widget = param.to_widget(type_map=typemap)
             groups[group].append(widget)
+            tooltip_for_widget[widget.name] = tooltip
         for group, widgets in groups.items():
             gb = QtW.QGroupBox(group)
             fontsize = gb.font().pointSize() + 3
@@ -147,14 +150,15 @@ class QJobParameter(QtW.QScrollArea):
             gb_layout = QtW.QVBoxLayout(gb)
             gb_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignTop)
             for widget in widgets:
-                param_label = QtW.QLabel(f"<b>{widget.label}</b>")
+                param_label = QParameterNameLabel(
+                    widget.label, tooltip=tooltip_for_widget.get(widget.name, "")
+                )
                 gb_layout.addWidget(param_label)
                 if isinstance(widget, _mgui.ToggleSwitch):
                     widget.text = ""
                 elif isinstance(widget, (_mgui.IntEdit, _mgui.FloatEdit, ComboBox)):
                     widget.max_width = 200
                 gb_layout.addWidget(widget.native)
-                param_label.setToolTip(widget.tooltip)
                 self._mgui_widgets[widget.name] = widget
             self._param_layout.addWidget(gb)
             self._groupboxes.append(gb)
@@ -246,3 +250,98 @@ class EditMode(Mode):
 
     def button_text(self) -> str:
         return "Overwrite And Run"
+
+
+class QParameterNameLabel(QtW.QWidget):
+    def __init__(self, name: str, tooltip: str | None = None):
+        super().__init__()
+        self._tooltip = tooltip
+        layout = QtW.QHBoxLayout(self)
+        label = QtW.QLabel(f"<b>{name}</b>")
+        layout.addWidget(label)
+        self.setSizePolicy(
+            QtW.QSizePolicy.Policy.Expanding, QtW.QSizePolicy.Policy.Minimum
+        )
+
+        if tooltip:
+            svg = _utils.read_icon_svg("info")
+            icon = QColoredSVGIcon(svg, color="gray")
+            info_icon_widget = QParameterInfoIcon()
+            info_icon_widget.setPixmap(icon.pixmap(12, 12))
+            layout.addWidget(
+                info_icon_widget, alignment=QtCore.Qt.AlignmentFlag.AlignRight
+            )
+            info_icon_widget.clicked.connect(self._on_info_icon_clicked)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+    def _on_info_icon_clicked(self, pos: QtCore.QPoint):
+        menu = QtW.QMenu(self)
+        text_edit = QHTMLTextEdit(self._tooltip.replace("\n", "<br>"))
+        action = QtW.QWidgetAction(menu)
+        action.setDefaultWidget(text_edit)
+        menu.addAction(action)
+        adjusted_pos = QtCore.QPoint(pos.x() - 300, pos.y())
+        menu.exec(adjusted_pos)
+
+
+class QParameterInfoIcon(QtW.QLabel):
+    clicked = QtCore.Signal(QtCore.QPoint)
+
+    def __init__(self):
+        super().__init__()
+        svg = _utils.read_icon_svg("info")
+        icon = QColoredSVGIcon(svg, color="gray")
+        self.setPixmap(icon.pixmap(12, 12))
+        self.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
+        self._last_press_pos = QtCore.QPoint()
+
+    def mousePressEvent(self, event: QtGui.QMouseEvent) -> None:
+        if event.buttons() & QtCore.Qt.MouseButton.LeftButton:
+            self._last_press_pos = event.pos()
+
+    def mouseReleaseEvent(self, event: QtGui.QMouseEvent) -> None:
+        if event.button() == QtCore.Qt.MouseButton.LeftButton:
+            dist = (event.pos() - self._last_press_pos).manhattanLength()
+            if dist < 6:
+                self.clicked.emit(event.globalPos())
+
+
+class QHTMLTextEdit(QtW.QTextEdit):
+    """A text edit used for displaying HTML content."""
+
+    def __init__(self, html: str = ""):
+        super().__init__()
+        self.setReadOnly(True)
+        self.setFixedSize(300, 150)
+        self.setHtml(html)
+
+    def mousePressEvent(self, e: QtGui.QMouseEvent):
+        self._anchor = self.anchorAt(e.pos())
+        self.viewport().setCursor(
+            QtCore.Qt.CursorShape.PointingHandCursor
+            if self._anchor
+            else QtCore.Qt.CursorShape.IBeamCursor
+        )
+        return super().mousePressEvent(e)
+
+    def mouseMoveEvent(self, e: QtGui.QMouseEvent) -> None:
+        super().mouseMoveEvent(e)
+        _anchor = self.anchorAt(e.pos())
+        self.viewport().setCursor(
+            QtCore.Qt.CursorShape.PointingHandCursor
+            if _anchor
+            else QtCore.Qt.CursorShape.IBeamCursor
+        )
+        if _anchor:
+            self.setToolTip(f"Open in browser: {_anchor}")
+        else:
+            self.setToolTip("")
+        return super().mouseMoveEvent(e)
+
+    def mouseReleaseEvent(self, e: QtGui.QMouseEvent):
+        if e.button() == QtCore.Qt.MouseButton.LeftButton:
+            _anchor = self.anchorAt(e.pos())
+            if self._anchor == _anchor:
+                QtGui.QDesktopServices.openUrl(QtCore.QUrl(self._anchor))
+            self._anchor = None
+        return super().mouseReleaseEvent(e)

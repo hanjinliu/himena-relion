@@ -84,6 +84,8 @@ class QMicrographListWidget(QtW.QTableWidget):
 
 
 class QImageViewTextEdit(QtW.QTextEdit):
+    """A text edit used for displaying images with text annotations."""
+
     def __init__(self, font_size: int = 9, image_size_pixel: int = 96):
         super().__init__()
         self.setReadOnly(True)
