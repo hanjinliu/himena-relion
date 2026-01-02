@@ -227,8 +227,8 @@ class QTemplatePick3DViewer(QAutopickViewerBase):
         with mrcfile.open(path, header_only=True) as mrc:
             return float(mrc.voxel_size.x * mrc.header.nx)
 
-    def _process_update(self):
-        super()._process_update()
+    def _process_update(self, force_update: bool = False):
+        super()._process_update(force_update=force_update)
         ref_proj_path = self._job_dir.path / "reference_projections.mrcs"
         if ref_proj_path.exists():
             if (mtime := ref_proj_path.stat().st_mtime) <= self._last_ref_proj_mtime:
