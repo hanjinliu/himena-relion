@@ -12,9 +12,8 @@ from himena_relion._widgets import (
     QIntChoiceWidget,
     register_job,
     QImageViewTextEdit,
-    QNumParticlesLabel,
 )
-from himena_relion._utils import get_subset_sizes, wait_for_file
+from himena_relion._utils import wait_for_file
 from himena_relion import _job_dir
 
 _LOGGER = logging.getLogger(__name__)
@@ -33,7 +32,6 @@ class QClass2DViewer(QJobScrollArea):
         self._text_edit = QImageViewTextEdit()
         self._text_edit.setMinimumHeight(360)
         self._iter_choice = QIntChoiceWidget("Iteration", label_width=60)
-        self._num_subsets_label = QNumParticlesLabel()
 
         self._iter_choice.current_changed.connect(self._iter_changed)
         self._sort_by.currentIndexChanged.connect(self._sort_by_changed)
@@ -50,7 +48,6 @@ class QClass2DViewer(QJobScrollArea):
         hlayout = QtW.QHBoxLayout()
         hlayout.setContentsMargins(0, 0, 0, 0)
         hlayout.addWidget(self._iter_choice)
-        hlayout.addWidget(self._num_subsets_label)
         layout.addLayout(hlayout)
         self._plot_session_id = self._text_edit.prep_uuid()
 
@@ -80,12 +77,6 @@ class QClass2DViewer(QJobScrollArea):
     def _iter_changed(self, value: int):
         self.window_closed_callback()
         self._text_edit.clear()
-        try:
-            path_optimiser = self._job_dir.path / f"run_it{value:0>3}_optimiser.star"
-            size, fin_size = get_subset_sizes(path_optimiser)
-        except Exception:
-            size, fin_size = -1, -1
-        self._num_subsets_label.set_subset_sizes(size, fin_size)
         self._plot_session_id = self._text_edit.prep_uuid()
         self._worker = self.plot_classes(value, self._plot_session_id)
         self._worker.yielded.connect(self._on_class_yielded)

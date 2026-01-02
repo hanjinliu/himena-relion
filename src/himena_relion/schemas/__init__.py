@@ -8,6 +8,7 @@ from himena_relion.schemas._misc import (
     ModelStarModel,
     MicCoordSetModel,
     CoordsModel,
+    ModelGroups,
 )
 from himena_relion.schemas._movie_tilts import (
     MoviesStarModel,
@@ -34,4 +35,5 @@ __all__ = [
     "TomogramsGroupModel",
     "MicCoordSetModel",
     "CoordsModel",
+    "ModelGroups",
 ]

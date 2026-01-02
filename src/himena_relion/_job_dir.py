@@ -27,6 +27,7 @@ from himena_relion.schemas import (
     TSModel,
     ParticleMetaModel,
     ModelStarModel,
+    ModelGroups,
 )
 
 if TYPE_CHECKING:
@@ -816,7 +817,7 @@ class _3DResultsBase:
     #             color = f.readline()
     #             cylinder = f.readline()
 
-    #         angdist.append(data)
+    #      angdist.append(data)
 
     def model_groups(self) -> ModelStarModel:
         return ModelStarModel.validate_file(self._model_star())
@@ -920,18 +921,14 @@ class Refine3DResults(_3DResultsBase):
 
     def model_dataframe(
         self, class_id: int = 1
-    ) -> tuple[pd.DataFrame | None, pd.DataFrame | None]:
+    ) -> tuple[pd.DataFrame | None, ModelGroups | None]:
         starpath = self.path / f"run{self.it_str}_half1_model.star"
         if not starpath.exists():
             return None, None
         star = read_star(starpath)
         df_fsc = star[f"model_class_{class_id}"].to_pandas()
-        df_groups = star["model_groups"].to_pandas()
-        # df_groups example:
-        # rlnGroupNumber rlnGroupName  rlnGroupNrParticles  rlnGroupScaleCorrection
-        #   1             TS_01            931                 0.998775
-        #   2             TS_03            914                 1.016683
-        return df_fsc, df_groups
+        model = ModelGroups.validate_block(star["model_groups"])
+        return df_fsc, model
 
     # def angdist(self, class_id: int) -> list[np.ndarray]:
     #     """Return the angular distribution for a given class ID."""

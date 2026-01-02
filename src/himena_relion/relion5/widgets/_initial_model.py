@@ -2,18 +2,19 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
+from typing import Any, Callable
 from qtpy import QtWidgets as QtW
-from himena_relion._utils import get_subset_sizes
+from superqt.utils import thread_worker
 from himena_relion._widgets import (
     QJobScrollArea,
     Q3DViewer,
     register_job,
     QIntWidget,
     QIntChoiceWidget,
-    spacer_widget,
     QNumParticlesLabel,
 )
 from himena_relion import _job_dir
+from himena_relion.schemas import ModelStarModel
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -38,7 +39,6 @@ class QInitialModelViewer(QJobScrollArea):
         hor_layout.addWidget(self._class_choice)
         hor_layout.setContentsMargins(0, 0, 0, 0)
         layout.addLayout(hor_layout)
-        layout.addWidget(spacer_widget())
         self._iter_choice.current_changed.connect(self._on_iter_changed)
         self._class_choice.valueChanged.connect(self._on_class_changed)
         self._index_start = 1
@@ -72,14 +72,30 @@ class QInitialModelViewer(QJobScrollArea):
     def _on_class_changed(self, value: int):
         self._update_for_value(self._iter_choice.value(), value)
 
-    def _update_for_value(self, niter: int, class_id: int):
-        _LOGGER.info("Updating viewer to iteration %s, class %s", niter, class_id)
+    def _update_for_value(self, niter: int, class_id: int = 1):
+        if self._worker is not None and self._worker.is_running:
+            self._worker.quit()
+        self._worker = None
+        self._worker = self._read_items(niter, class_id)
+        self._worker.yielded.connect(self._on_yielded)
+        self._worker.start()
+
+    @thread_worker
+    def _read_items(self, niter, class_id: int = 1):
+        res = self._job_dir.get_result(niter)
+
         res = self._job_dir.get_result(niter)
         map0 = res.class_map(class_id - self._index_start)
-        self._viewer.set_image(map0)
-        path_optimiser = self._job_dir.path / f"run_it{niter:0>3}_optimiser.star"
+        yield self._viewer.set_image, map0
+        starpath = self._job_dir.path / f"run_it{niter:0>3}_model.star"
         try:
-            s_cur, s_fin = get_subset_sizes(path_optimiser)
-        except Exception:
-            s_cur, s_fin = -1, -1
-        self._num_particles_label.set_subset_sizes(s_cur, s_fin)
+            model = ModelStarModel.validate_file(starpath)
+            num_particles = model.groups.num_particles.sum()
+        except Exception as e:
+            num_particles = -1
+            raise e
+        yield self._num_particles_label.set_number, num_particles
+
+    def _on_yielded(self, yielded: tuple[Callable, Any]):
+        fn, args = yielded
+        fn(args)

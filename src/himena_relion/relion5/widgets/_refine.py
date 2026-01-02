@@ -6,7 +6,6 @@ import numpy as np
 import pandas as pd
 from qtpy import QtWidgets as QtW, QtCore
 from superqt.utils import thread_worker
-from himena_relion._utils import get_subset_sizes
 from himena_relion._widgets import (
     QJobScrollArea,
     Q3DViewer,
@@ -91,14 +90,10 @@ class QRefine3DViewer(QJobScrollArea):
         else:
             map_out = None
         yield self._set_map, map_out
-        df_fsc, df_groups = res.model_dataframe(class_id)
+        df_fsc, groups = res.model_dataframe(class_id)
         yield self._set_fsc, df_fsc
-        path_optimiser = self._job_dir.path / f"run_it{niter:0>3}_optimiser.star"
-        try:
-            s_cur, s_fin = get_subset_sizes(path_optimiser)
-        except Exception:
-            s_cur, s_fin = -1, -1
-        yield self._set_num_particles, (s_cur, s_fin)
+        if groups is not None:
+            yield self._num_particles_label.set_number, groups.num_particles.sum()
 
         path_data = self._job_dir.path / f"run_it{niter:0>3}_data.star"
         if not path_data.exists():
@@ -132,9 +127,6 @@ class QRefine3DViewer(QJobScrollArea):
             self._fsc_plot.plot_fsc_refine(df_fsc)
         else:
             self._fsc_plot.clear()
-
-    def _set_num_particles(self, sizes: tuple):
-        self._num_particles_label.set_subset_sizes(*sizes)
 
     def _set_ang_dist(self, heatmap: np.ndarray | None):
         if heatmap is not None:

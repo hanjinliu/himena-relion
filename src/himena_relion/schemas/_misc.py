@@ -65,8 +65,11 @@ class ModelClasses(schema.LoopDataModel):
 
 class ModelGroups(schema.LoopDataModel):
     number: schema.Series[int] = schema.Field("rlnGroupNumber")
+    """ID number of this group."""
     name: schema.Series[str] = schema.Field("rlnGroupName")
+    """Name of this group."""
     num_particles: schema.Series[int] = schema.Field("rlnGroupNrParticles")
+    """The number of particles assigned to this group."""
     scale_correction: schema.Series[float] = schema.Field(
         "rlnGroupScaleCorrection", default=None
     )

@@ -29,6 +29,7 @@ class QMicrographListWidget(QtW.QTableWidget):
         self.setSizePolicy(
             QtW.QSizePolicy.Policy.Expanding, QtW.QSizePolicy.Policy.Minimum
         )
+        self.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
 
     def current_text(self, ncol: int = 0) -> str:
         if self.rowCount() > 0 and self.currentItem():
@@ -143,12 +144,6 @@ class QNumParticlesLabel(QtW.QLabel):
             self.setText(f"<b>{num}</b> particles")
         else:
             self.setText("??? particles")
-
-    def set_subset_sizes(self, current: int, final: int):
-        if current >= 0 and final >= 0:
-            self.setText(f"Using <b>{current} / {final}</b> particles")
-        else:
-            self.setText("Using ??? / ??? particles")
 
 
 def spacer_widget():

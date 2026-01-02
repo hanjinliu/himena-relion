@@ -265,7 +265,6 @@ class Q3DViewer(QViewer):
         self._canvas.native.setMinimumSize(300, 300)
         layout = QtW.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignHCenter)
         self.setSizePolicy(
             QtW.QSizePolicy.Policy.Expanding,
             QtW.QSizePolicy.Policy.Expanding,
@@ -276,11 +275,12 @@ class Q3DViewer(QViewer):
         self._auto_threshold_btn.setFixedWidth(40)
         self._auto_threshold_btn.clicked.connect(lambda: self.auto_threshold())
         self._has_image = False
+        dim_slider = labeled("Threshold", self._iso_slider, self._auto_threshold_btn)
+        dim_slider.setMaximumWidth(400)
+        dim_slider.setMinimumWidth(300)
 
         layout.addWidget(self._canvas.native)
-        layout.addWidget(
-            labeled("Threshold", self._iso_slider, self._auto_threshold_btn)
-        )
+        layout.addWidget(dim_slider)
 
     @property
     def has_image(self) -> bool:
