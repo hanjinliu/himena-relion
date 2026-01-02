@@ -346,6 +346,15 @@ class _RelionBuiltinContinue(_RelionBuiltinJob):
         return {}
 
     @classmethod
+    def normalize_kwargs(cls, **kwargs):
+        if "fn_cont" in kwargs:
+            # fn_cont is usually overwriten in normalize_kwargs but we need to keep.
+            fn_cont = kwargs["fn_cont"]
+        kwargs_out = cls.original_class.normalize_kwargs(**kwargs)
+        kwargs_out["fn_cont"] = fn_cont
+        return kwargs_out
+
+    @classmethod
     def _show_scheduler_widget_for_continue(
         cls,
         ui: MainWindow,
@@ -374,8 +383,7 @@ class _RelionBuiltinContinue(_RelionBuiltinJob):
         job_star_path = job_dir.job_star()
         job_star = JobStarModel.validate_file(job_star_path)
         params_df = job_star.joboptions_values.dataframe
-        if job_cls := job_dir._to_job_class():
-            kwargs = job_cls.normalize_kwargs(**kwargs)
+        kwargs = self.normalize_kwargs(**kwargs)
         # update job parameters
         for key, val_new in kwargs.items():
             mask = job_star.joboptions_values.variable == key
