@@ -383,7 +383,7 @@ class _RelionBuiltinContinue(_RelionBuiltinJob):
             idx = np.where(mask)[0]
             if len(idx) == 1:
                 params_df.iloc[idx[0], 1] = to_string(val_new)
-        job_star.joboptions_values = params_df
+        job_star.joboptions_values = params_df.to_dict(orient="list")
         job_star.write(job_star_path)
         d = job_dir.path.relative_to(job_dir.relion_project_dir).as_posix()
         return execute_job(d)
