@@ -1713,6 +1713,12 @@ class _SelectValuesJob(_SelectJob):
     def type_label(cls):
         return "relion.select.onvalue"
 
+    @classmethod
+    def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
+        kwargs = super().normalize_kwargs(**kwargs)
+        kwargs["do_select_values"] = True
+        return super().normalize_kwargs(**kwargs)
+
 
 class SelectParticlesJob(_SelectValuesJob):
     @classmethod
@@ -1726,12 +1732,6 @@ class SelectParticlesJob(_SelectValuesJob):
     @classmethod
     def job_title(cls):
         return "Select Particles by Value"
-
-    @classmethod
-    def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
-        kwargs = super().normalize_kwargs(**kwargs)
-        kwargs["do_select_values"] = True
-        return super().normalize_kwargs(**kwargs)
 
     def run(
         self,
@@ -1755,12 +1755,6 @@ class SelectMicrographsJob(_SelectValuesJob):
     @classmethod
     def job_title(cls):
         return "Select Micrographs by Value"
-
-    @classmethod
-    def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
-        kwargs = super().normalize_kwargs(**kwargs)
-        kwargs["do_discard"] = True
-        return super().normalize_kwargs(**kwargs)
 
     def run(
         self,

@@ -46,8 +46,10 @@ class QRelionPipelineFlowChartView(QFlowChartView):
             if pos := old_positions.get(new_item.item().id()):
                 new_item.setPos(pos)
         # new items should be added last to adjust their positions properly
+        default_pos = next(iter(old_positions.values()), QtCore.QPointF(0, 0))
         for new_info in new_infos:
-            self._add_job_node_item(new_info)
+            new_item = self._add_job_node_item(new_info)
+            new_item.setPos(default_pos)
 
     def paintEvent(self, event: QtGui.QPaintEvent) -> None:
         super().paintEvent(event)
