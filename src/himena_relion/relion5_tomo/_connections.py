@@ -1,7 +1,7 @@
 from pathlib import Path
 import logging
 from himena_relion.relion5 import _builtins as _spa
-from himena_relion.relion5._connections import mask_create_search_halfmap
+from himena_relion.relion5._connections import get_nr_iter, mask_create_search_halfmap
 from himena_relion.relion5_tomo import _builtins as _tomo
 from himena_relion._job_dir import JobDirectory
 from himena_relion._job_class import connect_jobs
@@ -270,8 +270,10 @@ connect_jobs(
 
 
 def _optimiser_last_iter(path: Path) -> str:
-    files = sorted(path.glob("run_it???_optimiser.star"))
-    return str(files[-1]) if files else ""
+    niter = get_nr_iter(path)
+    if niter is None:
+        return ""
+    return path / f"run_it{niter:03d}_optimiser.star"
 
 
 connect_jobs(

@@ -51,6 +51,19 @@ OPTIM_ALGORIGHM = Annotated[
     {
         "label": "Algorithm",
         "widget_type": Class2DAlgorithmEdit,
+        "tooltip": (
+            "The optimization algorithm to use:\n\n"
+            "<b>EM:</b> the slower expectation-maximization algorithm will be used. "
+            "This was the default option in releases prior to 4.0-beta. The current "
+            "implementation of 2D class averaging and 3D classification does NOT "
+            "comprise a convergence criterium. Therefore, the calculations will "
+            "need to be stopped by the user if further iterations do not yield "
+            "improvements in resolution or classes.\n\n"
+            "<b>VDAM:</b> the faster VDAM algorithm will be used. This algorithm was "
+            "introduced with relion-4.0. Using 200 iterations has given good results "
+            "for many data sets. Using 100 will run faster, at the expense of some "
+            "quality in the results."
+        ),
         "group": "Optimisation",
     },
 ]

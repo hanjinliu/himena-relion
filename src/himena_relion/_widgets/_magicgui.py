@@ -195,36 +195,21 @@ class Class2DAlgorithmEdit(ValuedContainerWidget):
             choices=["EM", "VDAM"],
             value="VDAM",
             orientation="horizontal",
-            tooltip=(
-                "EM: the slower expectation-maximization algorithm will be used. This "
-                "was the default option in releases prior to 4.0-beta.\n"
-                "VDAM: the faster VDAM algorithm will be used. This algorithm was "
-                "introduced with relion-4.0."
-            ),
+            tooltip="The optimization algorithm to use.",
         )
         self._niter_em = IntEdit(
             label="EM Iterations",
             value=25,
             min=1,
             max=100,
-            tooltip=(
-                "Number of EM iterations to be performed. Note that the current "
-                "implementation of 2D class averaging and 3D classification does NOT "
-                "comprise a convergence criterium. Therefore, the calculations will "
-                "need to be stopped by the user if further iterations do not yield "
-                "improvements in resolution or classes."
-            ),
+            tooltip="Number of EM iterations to be performed",
         )
         self._niter_grad = IntEdit(
             label="VDAM mini-batches",
             value=200,
             min=1,
             max=1000,
-            tooltip=(
-                "Number of mini-batches to be processed using the VDAM algorithm. "
-                "Using 200 has given good results for many data sets. Using 100 will "
-                "run faster, at the expense of some quality in the results."
-            ),
+            tooltip="Number of mini-batches to be processed using the VDAM algorithm.",
         )
         widgets = [self._algorithm, self._niter_em, self._niter_grad]
         super().__init__(layout="vertical", labels=True, widgets=widgets, **kwargs)

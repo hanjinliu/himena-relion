@@ -272,10 +272,15 @@ class Q3DViewer(QViewer):
         )
         self._iso_slider = QLabeledDoubleSlider(QtCore.Qt.Orientation.Horizontal)
         self._iso_slider.valueChanged.connect(self._on_iso_changed)
+        self._auto_threshold_btn = QtW.QPushButton("Auto")
+        self._auto_threshold_btn.setFixedWidth(40)
+        self._auto_threshold_btn.clicked.connect(lambda: self.auto_threshold())
         self._has_image = False
 
         layout.addWidget(self._canvas.native)
-        layout.addWidget(labeled("Threshold", self._iso_slider))
+        layout.addWidget(
+            labeled("Threshold", self._iso_slider, self._auto_threshold_btn)
+        )
 
     @property
     def has_image(self) -> bool:
@@ -302,6 +307,9 @@ class Q3DViewer(QViewer):
             if cur_th < th_min or cur_th > th_max:
                 self._iso_slider.setValue((th_min + th_max) / 2)
             self._iso_slider.setRange(th_min, th_max)
+            prec = np.log10(th_max - th_min + 1e-8)
+            n_decimals = max(0, -int(np.floor(prec)) + 2)
+            self._iso_slider.setDecimals(n_decimals)
         if update_now:
             self._canvas.update_canvas()
 

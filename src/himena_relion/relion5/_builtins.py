@@ -1058,7 +1058,7 @@ class Class2DJob(_Relion5Job):
         kwargs = super().normalize_kwargs_inv(**kwargs)
         nr_iter_em = kwargs.pop("nr_iter_em", 25)
         nr_iter_grad = kwargs.pop("nr_iter_grad", 200)
-        if kwargs.pop("do_em", False):
+        if kwargs.pop("do_em", "No") == "Yes":
             kwargs["algorithm"] = {
                 "algorithm": "EM",
                 "niter": nr_iter_em,

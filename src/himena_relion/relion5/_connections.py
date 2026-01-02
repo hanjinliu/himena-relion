@@ -116,7 +116,7 @@ connect_jobs(
 )
 
 
-def _get_niter(path: Path) -> int | None:
+def get_nr_iter(path: Path) -> int | None:
     """Get the final number of iterations from the job.star file."""
     params = JobDirectory(path).get_job_params_as_dict()
     if "nr_iter" in params:
@@ -129,17 +129,17 @@ def _get_niter(path: Path) -> int | None:
 
 
 def _optimiser_last_iter(path: Path) -> str:
-    niter = _get_niter(path)
+    niter = get_nr_iter(path)
     if niter is None:
         return ""
-    return f"run_it{niter:03d}_optimiser.star"
+    return path / f"run_it{niter:03d}_optimiser.star"
 
 
 def _particles_last_iter(path: Path) -> str:
-    niter = _get_niter(path)
+    niter = get_nr_iter(path)
     if niter is None:
         return ""
-    return f"run_it{niter:03d}_data.star"
+    return path / f"run_it{niter:03d}_data.star"
 
 
 def _get_template_for_pick(path: Path) -> str:
@@ -155,13 +155,13 @@ def _get_angpix_from_template_pick(path: Path) -> float | None:
     path_refs = _get_template_for_pick(path)
     path = job_dir.resolve_path(path_refs)
     with mrcfile.open(path, header_only=True) as mrc:
-        return float(mrc.voxel_size.x)
+        return round(float(mrc.voxel_size.x), 3)
 
 
 def _make_get_template_angpix(filename: str):
     def _func(path: Path) -> float | None:
         with mrcfile.open(path / filename, header_only=True) as mrc:
-            return float(mrc.voxel_size.x)
+            return round(float(mrc.voxel_size.x), 3)
 
     return _func
 

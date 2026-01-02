@@ -12,7 +12,7 @@ ANGPIX = Annotated[
             "value given here will be ignored, and the pixel size will be calculated "
             "from the values in the STAR file. A negative value can then be given here."
         ),
-        "group": "IO",
+        "group": "I/O",
     },
 ]
 # Laplacian
