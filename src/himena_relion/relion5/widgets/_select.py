@@ -258,12 +258,11 @@ class SelectOnValueViewer(QSelectJobBase):
         else:
             yield "Not supported job output."
             return
-        loop = read_star_block(fn, "micrographs").trust_loop()
-        loop_pre = read_star_block(fn, "micrographs").trust_loop()
-        num_selected = len(loop)
-        num_removed = len(loop_pre) - num_selected
-        yield f"Selected: {num_selected} {block_name}"
-        yield f"Removed: {num_removed} {block_name}<br>"
+        loop = read_star_block(fn, block_name).trust_loop()
+        loop_pre = read_star_block(fn, block_name).trust_loop()
+        n_selected = len(loop)
+        n_removed = len(loop_pre) - n_selected
+        yield self._get_summary_table(n_selected, n_removed, n_selected + n_removed)
 
 
 _NOT_ENOUGH_MSG = "Not enough output files to display results."

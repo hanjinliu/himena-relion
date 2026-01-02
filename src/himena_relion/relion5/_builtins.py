@@ -213,10 +213,10 @@ class MotionCorr2Job(_MotionCorrJobBase):
         patch: _a.mcor.PATCH = (1, 1),
         gpu_ids: _a.compute.GPU_IDS = "0",
         # Running
-        nr_mpi: _a.running.MPI_TYPE = 1,
-        nr_threads: _a.running.THREAD_TYPE = 1,
-        do_queue: _a.running.DO_QUEUE_TYPE = False,
-        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.NR_MPI = 1,
+        nr_threads: _a.running.NR_THREADS = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -270,10 +270,10 @@ class MotionCorrOwnJob(_MotionCorrJobBase):
         gain_flip: _a.mcor.GAIN_FLIP = "No flipping (0)",
         patch: _a.mcor.PATCH = (1, 1),
         # Running
-        nr_mpi: _a.running.MPI_TYPE = 1,
-        nr_threads: _a.running.THREAD_TYPE = 1,
-        do_queue: _a.running.DO_QUEUE_TYPE = False,
-        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.NR_MPI = 1,
+        nr_threads: _a.running.NR_THREADS = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -336,9 +336,9 @@ class CtfEstimationJob(_Relion5Job):
         resmin: _a.ctffind.RESMIN = 30,
         dfrange: _a.ctffind.DFRANGE = (5000, 50000, 500),
         # Running
-        nr_mpi: _a.running.MPI_TYPE = 1,
-        do_queue: _a.running.DO_QUEUE_TYPE = False,
-        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.NR_MPI = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -563,9 +563,9 @@ class AutoPickLogJob(_AutoPickJob):
         helical_rise: _a.helix.HELICAL_RISE = -1,
         do_amyloid: _a.autopick.DO_AMYLOID = False,
         # Running
-        nr_mpi: _a.running.MPI_TYPE = 1,
-        do_queue: _a.running.DO_QUEUE_TYPE = False,
-        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.NR_MPI = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -639,9 +639,9 @@ class AutoPickTemplate2DJob(_AutoPickJob):
         helical_rise: _a.helix.HELICAL_RISE = -1,
         do_amyloid: _a.autopick.DO_AMYLOID = False,
         # Running
-        nr_mpi: _a.running.MPI_TYPE = 1,
-        do_queue: _a.running.DO_QUEUE_TYPE = False,
-        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.NR_MPI = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -714,9 +714,9 @@ class AutoPickTemplate3DJob(_AutoPickJob):
         helical_rise: _a.helix.HELICAL_RISE = -1,
         do_amyloid: _a.autopick.DO_AMYLOID = False,
         # Running
-        nr_mpi: _a.running.MPI_TYPE = 1,
-        do_queue: _a.running.DO_QUEUE_TYPE = False,
-        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.NR_MPI = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -786,9 +786,9 @@ class AutoPickTopazTrain(_AutoPickJob):
         helical_rise: _a.helix.HELICAL_RISE = -1,
         do_amyloid: _a.autopick.DO_AMYLOID = False,
         # Running
-        nr_mpi: _a.running.MPI_TYPE = 1,
-        do_queue: _a.running.DO_QUEUE_TYPE = False,
-        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.NR_MPI = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -855,9 +855,9 @@ class AutoPickTopazPick(_AutoPickJob):
         helical_rise: _a.helix.HELICAL_RISE = -1,
         do_amyloid: _a.autopick.DO_AMYLOID = False,
         # Running
-        nr_mpi: _a.running.MPI_TYPE = 1,
-        do_queue: _a.running.DO_QUEUE_TYPE = False,
-        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.NR_MPI = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -961,9 +961,9 @@ class ExtractJob(ExtractJobBase):
         helical_nr_asu: _a.helix.HELICAL_NR_ASU = 1,
         helical_rise: _a.helix.HELICAL_RISE = 1,
         # Running
-        nr_mpi: _a.running.MPI_TYPE = 1,
-        do_queue: _a.running.DO_QUEUE_TYPE = False,
-        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.NR_MPI = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -1016,9 +1016,9 @@ class ReExtractJob(ExtractJobBase):
         helical_nr_asu: _a.helix.HELICAL_NR_ASU = 1,
         helical_rise: _a.helix.HELICAL_RISE = 1,
         # Running
-        nr_mpi: _a.running.MPI_TYPE = 1,
-        do_queue: _a.running.DO_QUEUE_TYPE = False,
-        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.NR_MPI = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -1110,10 +1110,10 @@ class Class2DJob(_Relion5Job):
         do_combine_thru_disc: _a.compute.DO_COMBINE_THRU_DISC = False,
         gpu_ids: _a.compute.GPU_IDS = "",
         # Running
-        nr_mpi: _a.running.MPI_TYPE = 1,
-        nr_threads: _a.running.THREAD_TYPE = 1,
-        do_queue: _a.running.DO_QUEUE_TYPE = False,
-        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.NR_MPI = 1,
+        nr_threads: _a.running.NR_THREADS = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -1167,10 +1167,10 @@ class InitialModelJob(_Relion5Job):
         do_combine_thru_disc: _a.compute.DO_COMBINE_THRU_DISC = False,
         gpu_ids: _a.compute.GPU_IDS = "",
         # Running
-        nr_mpi: _a.running.MPI_TYPE = 1,
-        nr_threads: _a.running.THREAD_TYPE = 1,
-        do_queue: _a.running.DO_QUEUE_TYPE = False,
-        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.NR_MPI = 1,
+        nr_threads: _a.running.NR_THREADS = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -1338,10 +1338,10 @@ class Class3DNoAlignmentJob(_Class3DJobBase):
         do_combine_thru_disc: _a.compute.DO_COMBINE_THRU_DISC = False,
         gpu_ids: _a.compute.GPU_IDS = "",
         # Running
-        nr_mpi: _a.running.MPI_TYPE = 1,
-        nr_threads: _a.running.THREAD_TYPE = 1,
-        do_queue: _a.running.DO_QUEUE_TYPE = False,
-        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.NR_MPI = 1,
+        nr_threads: _a.running.NR_THREADS = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -1420,10 +1420,10 @@ class Class3DJob(_Class3DJobBase):
         do_combine_thru_disc: _a.compute.DO_COMBINE_THRU_DISC = False,
         gpu_ids: _a.compute.GPU_IDS = "",
         # Running
-        nr_mpi: _a.running.MPI_TYPE = 1,
-        nr_threads: _a.running.THREAD_TYPE = 1,
-        do_queue: _a.running.DO_QUEUE_TYPE = False,
-        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.NR_MPI = 1,
+        nr_threads: _a.running.NR_THREADS = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -1540,10 +1540,10 @@ class Refine3DJob(_Relion5Job):
         do_combine_thru_disc: _a.compute.DO_COMBINE_THRU_DISC = False,
         gpu_ids: _a.compute.GPU_IDS = "",
         # Running
-        nr_mpi: _a.running.MPI_TYPE = 3,
-        nr_threads: _a.running.THREAD_TYPE = 1,
-        do_queue: _a.running.DO_QUEUE_TYPE = False,
-        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.NR_MPI = 3,
+        nr_threads: _a.running.NR_THREADS = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -1848,9 +1848,9 @@ class MaskCreationJob(_Relion5Job):
         do_helix: _a.helix.DO_HELIX = False,
         helical_z_percentage: _a.helix.HELICAL_Z_PERCENTAGE = 30,
         # Running
-        nr_threads: _a.running.THREAD_TYPE = 1,
-        do_queue: _a.running.DO_QUEUE_TYPE = False,
-        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
+        nr_threads: _a.running.NR_THREADS = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -1899,8 +1899,8 @@ class PostProcessJob(_Relion5Job):
         fn_mtf: _a.post.FN_MTF = "",
         mtf_angpix: _a.post.MTF_ANGPIX = 1,
         # Running
-        do_queue: _a.running.DO_QUEUE_TYPE = False,
-        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -1962,10 +1962,10 @@ class CtfRefineJob(_Relion5Job):
             float, {"label": "Minimum resolution for fitting (A)", "group": "Fit"}
         ] = 30,
         # Running
-        nr_mpi: _a.running.MPI_TYPE = 1,
-        nr_threads: _a.running.THREAD_TYPE = 1,
-        do_queue: _a.running.DO_QUEUE_TYPE = False,
-        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.NR_MPI = 1,
+        nr_threads: _a.running.NR_THREADS = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -2025,8 +2025,8 @@ class JoinParticlesJob(_JoinStarBase):
         fn_part2: _a.io.IN_PARTICLES = "",
         fn_part3: _a.io.IN_PARTICLES = "",
         fn_part4: _a.io.IN_PARTICLES = "",
-        do_queue: _a.running.DO_QUEUE_TYPE = False,
-        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -2048,8 +2048,8 @@ class JoinMicrographsJob(_JoinStarBase):
         fn_mic2: _a.io.IN_MICROGRAPHS = "",
         fn_mic3: _a.io.IN_MICROGRAPHS = "",
         fn_mic4: _a.io.IN_MICROGRAPHS = "",
-        do_queue: _a.running.DO_QUEUE_TYPE = False,
-        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -2071,8 +2071,8 @@ class JoinMoviesJob(_JoinStarBase):
         fn_mov2: _a.io.IN_MOVIES = "",
         fn_mov3: _a.io.IN_MOVIES = "",
         fn_mov4: _a.io.IN_MOVIES = "",
-        do_queue: _a.running.DO_QUEUE_TYPE = False,
-        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -2113,9 +2113,9 @@ class LocalResolutionResmapJob(_LocalResolutionJobBase):
             float, {"label": "Resolution step (A)", "group": "ResMap"}
         ] = 1,
         # Running
-        nr_mpi: _a.running.MPI_TYPE = 1,
-        do_queue: _a.running.DO_QUEUE_TYPE = False,
-        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.NR_MPI = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -2144,8 +2144,8 @@ class LocalResolutionOwnJob(_LocalResolutionJobBase):
             str, {"label": "MTF of the detector", "group": "Relion"}
         ] = "",
         # Running
-        nr_mpi: _a.running.MPI_TYPE = 1,
-        do_queue: _a.running.DO_QUEUE_TYPE = False,
-        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.NR_MPI = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")

@@ -30,9 +30,9 @@ class _AutoPickContinueManually(_RelionBuiltinContinue):
     def run(
         self,
         continue_manual: _a.misc.CONTINUE_MANUALLY = True,
-        nr_mpi: _a.running.MPI_TYPE = 1,
-        do_queue: _a.running.DO_QUEUE_TYPE = False,
-        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.NR_MPI = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -78,10 +78,10 @@ class Class2DContinue(_RelionBuiltinContinue):
         do_combine_thru_disc: _a.compute.DO_COMBINE_THRU_DISC = False,
         gpu_ids: _a.compute.GPU_IDS = "",
         # Running
-        nr_mpi: _a.running.MPI_TYPE = 1,
-        nr_threads: _a.running.THREAD_TYPE = 1,
-        do_queue: _a.running.DO_QUEUE_TYPE = False,
-        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.NR_MPI = 1,
+        nr_threads: _a.running.NR_THREADS = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -107,10 +107,10 @@ class InitialModelContinue(_RelionBuiltinContinue):
         do_combine_thru_disc: _a.compute.DO_COMBINE_THRU_DISC = False,
         gpu_ids: _a.compute.GPU_IDS = "",
         # Running
-        nr_mpi: _a.running.MPI_TYPE = 1,
-        nr_threads: _a.running.THREAD_TYPE = 1,
-        do_queue: _a.running.DO_QUEUE_TYPE = False,
-        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.NR_MPI = 1,
+        nr_threads: _a.running.NR_THREADS = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -137,10 +137,10 @@ class Class3DNoAlignmentContinue(_RelionBuiltinContinue):
         do_combine_thru_disc: _a.compute.DO_COMBINE_THRU_DISC = False,
         gpu_ids: _a.compute.GPU_IDS = "",
         # Running
-        nr_mpi: _a.running.MPI_TYPE = 1,
-        nr_threads: _a.running.THREAD_TYPE = 1,
-        do_queue: _a.running.DO_QUEUE_TYPE = False,
-        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.NR_MPI = 1,
+        nr_threads: _a.running.NR_THREADS = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -174,10 +174,10 @@ class Class3DContinue(_RelionBuiltinContinue):
         do_combine_thru_disc: _a.compute.DO_COMBINE_THRU_DISC = False,
         gpu_ids: _a.compute.GPU_IDS = "",
         # Running
-        nr_mpi: _a.running.MPI_TYPE = 1,
-        nr_threads: _a.running.THREAD_TYPE = 1,
-        do_queue: _a.running.DO_QUEUE_TYPE = False,
-        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.NR_MPI = 1,
+        nr_threads: _a.running.NR_THREADS = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -201,10 +201,10 @@ class Refine3DContinue(_RelionBuiltinContinue):
         do_combine_thru_disc: _a.compute.DO_COMBINE_THRU_DISC = False,
         gpu_ids: _a.compute.GPU_IDS = "",
         # Running
-        nr_mpi: _a.running.MPI_TYPE = 3,
-        nr_threads: _a.running.THREAD_TYPE = 1,
-        do_queue: _a.running.DO_QUEUE_TYPE = False,
-        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.NR_MPI = 3,
+        nr_threads: _a.running.NR_THREADS = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 

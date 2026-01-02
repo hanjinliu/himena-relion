@@ -113,7 +113,7 @@ class ImportTomoJob(_ImportTomoJob):
         mtf_file: _a.import_.FN_MTF = "",
         flip_tiltseries_hand: _a.import_.FLIP_TILTSERIES_HAND = True,
         # Running
-        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -152,8 +152,8 @@ class ImportCoordinatesJob(_ImportTomoJob):
         scale_factor: _a.import_.SCALE_FACTOR = 1.0,
         add_factor: _a.import_.ADD_FACTOR = 0.0,
         # Running
-        do_queue: _a.running.DO_QUEUE_TYPE = False,
-        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -175,10 +175,10 @@ class MotionCorr2TomoJob(_Relion5TomoJob, MotionCorr2Job):
         patch: _a.mcor.PATCH = (1, 1),
         gpu_ids: _a.compute.GPU_IDS = "0",
         # Running
-        nr_mpi: _a.running.MPI_TYPE = 1,
-        nr_threads: _a.running.THREAD_TYPE = 1,
-        do_queue: _a.running.DO_QUEUE_TYPE = False,
-        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.NR_MPI = 1,
+        nr_threads: _a.running.NR_THREADS = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -202,10 +202,10 @@ class MotionCorrOwnTomoJob(_Relion5TomoJob, MotionCorrOwnJob):
         gain_flip: _a.mcor.GAIN_FLIP = "No flipping (0)",
         patch: _a.mcor.PATCH = (1, 1),
         # Running
-        nr_mpi: _a.running.MPI_TYPE = 1,
-        nr_threads: _a.running.THREAD_TYPE = 1,
-        do_queue: _a.running.DO_QUEUE_TYPE = False,
-        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.NR_MPI = 1,
+        nr_threads: _a.running.NR_THREADS = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -229,9 +229,9 @@ class CtfEstimationTomoJob(_Relion5TomoJob, CtfEstimationJob):
         localsearch_nominal_defocus: _a.ctffind.LOCALSEARCH_NOMINAL_DEFOCUS = 10000,
         exp_factor_dose: _a.ctffind.EXP_FACTOR_DOSE = 100,
         # Running
-        nr_mpi: _a.running.MPI_TYPE = 1,
-        do_queue: _a.running.DO_QUEUE_TYPE = False,
-        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.NR_MPI = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -252,8 +252,8 @@ class ExcludeTiltJob(_Relion5TomoJob):
         in_tiltseries: _a.io.IN_TILT = "",
         cache_size: _a.tomo.EXCLUDETILT_CACHE_SIZE = 5,
         # Running
-        do_queue: _a.running.DO_QUEUE_TYPE = False,
-        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -326,9 +326,9 @@ class AlignTiltSeriesImodFiducial(_AlignTiltSeriesJobBase):
         in_tiltseries: _a.io.IN_TILT = "",
         fiducial_diameter: _a.tomo.FIDUCIAL_DIAMETER = 10.0,
         # Running
-        nr_mpi: _a.running.MPI_TYPE = 1,
-        do_queue: _a.running.DO_QUEUE_TYPE = False,
-        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.NR_MPI = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -378,9 +378,9 @@ class AlignTiltSeriesImodPatch(_AlignTiltSeriesJobBase):
         patch_size: _a.tomo.PATCH_SIZE = 100,
         patch_overlap: _a.tomo.PATCH_OVERLAP = 50,
         # Running
-        nr_mpi: _a.running.MPI_TYPE = 1,
-        do_queue: _a.running.DO_QUEUE_TYPE = False,
-        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.NR_MPI = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -429,9 +429,9 @@ class AlignTiltSeriesAreTomo2(_AlignTiltSeriesJobBase):
         other_aretomo_args: _a.tomo.OTHER_ARETOMO_ARGS = "",
         gpu_ids: _a.compute.GPU_IDS = "",
         # Running
-        nr_mpi: _a.running.MPI_TYPE = 1,
-        do_queue: _a.running.DO_QUEUE_TYPE = False,
-        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.NR_MPI = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -484,10 +484,10 @@ class ReconstructTomogramJob(_Relion5TomoJob):
         do_fourier: _a.tomo.DO_FOURIER = True,
         ctf_intact_first_peak: _a.tomo.CTF_INTACT_FIRST_PEAK = True,
         # Running
-        nr_mpi: _a.running.MPI_TYPE = 1,
-        nr_threads: _a.running.THREAD_TYPE = 1,
-        do_queue: _a.running.DO_QUEUE_TYPE = False,
-        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.NR_MPI = 1,
+        nr_threads: _a.running.NR_THREADS = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -535,8 +535,8 @@ class PickJob(_Relion5TomoJob):
             float, {"label": "Particle spacing (A)", "group": "I/O"}
         ] = -1,
         # Running
-        do_queue: _a.running.DO_QUEUE_TYPE = False,
-        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -572,10 +572,10 @@ class ExtractParticlesTomoJob(_Relion5TomoJob):
         do_stack2d: _a.extract.DO_STACK2D = True,
         do_float16: _a.io.DO_F16 = True,
         # Running
-        nr_mpi: _a.running.MPI_TYPE = 1,
-        nr_threads: _a.running.THREAD_TYPE = 1,
-        do_queue: _a.running.DO_QUEUE_TYPE = False,
-        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.NR_MPI = 1,
+        nr_threads: _a.running.NR_THREADS = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -650,8 +650,8 @@ class DenoiseTrain(_DenoiseJobBase):
         ] = 72,
         gpu_ids: _a.compute.GPU_IDS = "0",
         # Running
-        do_queue: _a.running.DO_QUEUE_TYPE = False,
-        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -713,8 +713,8 @@ class DenoisePredict(_DenoiseJobBase):
         ] = "",
         gpu_ids: _a.compute.GPU_IDS = "0",
         # Running
-        do_queue: _a.running.DO_QUEUE_TYPE = False,
-        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -757,10 +757,10 @@ class InitialModelTomoJob(_Relion5TomoJob, InitialModelJob):
         do_combine_thru_disc: _a.compute.DO_COMBINE_THRU_DISC = False,
         gpu_ids: _a.compute.GPU_IDS = "",
         # Running
-        nr_mpi: _a.running.MPI_TYPE = 1,
-        nr_threads: _a.running.THREAD_TYPE = 1,
-        do_queue: _a.running.DO_QUEUE_TYPE = False,
-        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.NR_MPI = 1,
+        nr_threads: _a.running.NR_THREADS = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -854,10 +854,10 @@ class Class3DTomoJob(_Relion5TomoJob, Class3DJob):
         do_combine_thru_disc: _a.compute.DO_COMBINE_THRU_DISC = False,
         gpu_ids: _a.compute.GPU_IDS = "",
         # Running
-        nr_mpi: _a.running.MPI_TYPE = 1,
-        nr_threads: _a.running.THREAD_TYPE = 1,
-        do_queue: _a.running.DO_QUEUE_TYPE = False,
-        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.NR_MPI = 1,
+        nr_threads: _a.running.NR_THREADS = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -923,10 +923,10 @@ class Refine3DTomoJob(_Relion5TomoJob, Refine3DJob):
         do_combine_thru_disc: _a.compute.DO_COMBINE_THRU_DISC = False,
         gpu_ids: _a.compute.GPU_IDS = "",
         # Running
-        nr_mpi: _a.running.MPI_TYPE = 3,
-        nr_threads: _a.running.THREAD_TYPE = 1,
-        do_queue: _a.running.DO_QUEUE_TYPE = False,
-        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.NR_MPI = 3,
+        nr_threads: _a.running.NR_THREADS = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -973,10 +973,10 @@ class ReconstructParticlesJob(_Relion5TomoJob):
         ] = 200,
         helical_z_percentage: _a.helix.HELICAL_Z_PERCENTAGE = 20,
         # Running
-        nr_mpi: _a.running.MPI_TYPE = 1,
-        nr_threads: _a.running.THREAD_TYPE = 1,
-        do_queue: _a.running.DO_QUEUE_TYPE = False,
-        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.NR_MPI = 1,
+        nr_threads: _a.running.NR_THREADS = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -1053,10 +1053,10 @@ class CtfRefineTomoJob(_Relion5TomoJob):
             bool, {"label": "Refine scale per tomogram", "group": "Defocus"}
         ] = False,
         # Running
-        nr_mpi: _a.running.MPI_TYPE = 1,
-        nr_threads: _a.running.THREAD_TYPE = 1,
-        do_queue: _a.running.DO_QUEUE_TYPE = False,
-        min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
+        nr_mpi: _a.running.NR_MPI = 1,
+        nr_threads: _a.running.NR_THREADS = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
