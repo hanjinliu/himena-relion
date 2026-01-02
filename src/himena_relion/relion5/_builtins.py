@@ -554,7 +554,6 @@ class AutoPickLogJob(_AutoPickJob):
         # Autopicking
         do_write_fom_maps: _a.autopick.DO_WHITE_FOM_MAPS = False,
         do_read_fom_maps: _a.autopick.DO_READ_FOM_MAPS = False,
-        gpu_ids: _a.compute.GPU_IDS = "",
         # Helical
         do_pick_helical_segments: _a.autopick.DO_PICK_HELICAL_SEGMENTS = False,
         helical_tube_outer_diameter: _a.helix.HELICAL_TUBE_DIAMETER = 200,

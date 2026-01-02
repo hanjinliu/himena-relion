@@ -243,4 +243,27 @@ class SplitParticlesViewer(QSelectJobBase):
                     yield "<br><br>"
 
 
+@register_job("relion.select.onvalue")
+class SelectOnValueViewer(QSelectJobBase):
+    def insert_html(self, job_dir: _job_dir.JobDirectory):
+        path_mic = job_dir.path / "micrographs.star"
+        path_particles = job_dir.path / "particles.star"
+        job_params = job_dir.get_job_params_as_dict()
+        if path_mic.exists() and (fn := job_params.get("fn_mic")):
+            # this is split-micrograph job
+            block_name = "micrographs"
+        elif path_particles.exists() and (fn := job_params.get("fn_data")):
+            # this is split-particle job
+            block_name = "particles"
+        else:
+            yield "Not supported job output."
+            return
+        loop = read_star_block(fn, "micrographs").trust_loop()
+        loop_pre = read_star_block(fn, "micrographs").trust_loop()
+        num_selected = len(loop)
+        num_removed = len(loop_pre) - num_selected
+        yield f"Selected: {num_selected} {block_name}"
+        yield f"Removed: {num_removed} {block_name}<br>"
+
+
 _NOT_ENOUGH_MSG = "Not enough output files to display results."

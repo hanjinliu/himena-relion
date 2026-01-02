@@ -15,6 +15,7 @@ class QPlotCanvas(QModelMatplotlibCanvas):
         self.setParent(parent)
         self.setMaximumSize(400, 280)
         self.setMinimumSize(300, 200)
+        self._size = 7
         self.clear()
 
     def clear(self):
@@ -37,8 +38,8 @@ class QPlotCanvas(QModelMatplotlibCanvas):
                 xlabel = "Micrograph"
             defocus_u_um = df["rlnDefocusU"] / 10000
             defocus_v_um = df["rlnDefocusV"] / 10000
-            fig.plot(xvals, defocus_u_um, name="U", width=1)
-            fig.plot(xvals, defocus_v_um, name="V", width=1)
+            fig.scatter(xvals, defocus_u_um, name="U", size=self._size, alpha=0.5)
+            fig.scatter(xvals, defocus_v_um, name="V", size=self._size, alpha=0.5)
             fig.x.label = xlabel
             fig.y.label = "Def. (µm)"
             fig.set_legend(font_size=9.0, location="top_right")
@@ -71,7 +72,7 @@ class QPlotCanvas(QModelMatplotlibCanvas):
                 xlabel = "Micrograph"
             if ycol in df.columns:
                 yvals = df[ycol]
-                fig.plot(xvals, yvals, width=1)
+                fig.scatter(xvals, yvals, size=self._size, alpha=0.5)
             fig.x.label = xlabel
             fig.y.label = ylabel
             self.update_model(WidgetDataModel(value=fig, type=StandardType.PLOT))
