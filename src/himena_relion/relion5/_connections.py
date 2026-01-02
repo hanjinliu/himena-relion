@@ -222,7 +222,7 @@ for class3d_job in [_spa.Class3DJob, _spa.Class3DNoAlignmentJob]:
         node_mapping={"run_class001.mrc": "fn_ref3d_autopick"},
         value_mapping={_make_get_template_angpix("run_class001.mrc"): "angpix_ref"},
     )
-# TODO: implement the way to fill input_micrographs.
+
 connect_jobs(
     _spa.InitialModelJob,
     _spa.AutoPickTemplate3DJob,

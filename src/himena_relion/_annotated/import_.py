@@ -1,4 +1,6 @@
+from pathlib import Path
 from typing import Annotated
+from himena_relion._widgets._magicgui import DoseRateEdit
 
 DO_RAW = Annotated[
     bool,
@@ -178,5 +180,171 @@ OPTICS_GROUP_PARTICLES = Annotated[
             "to this string."
         ),
         "group": "I/O",
+    },
+]
+
+# Tomo
+MOVIE_FILES = Annotated[
+    str,
+    {
+        "label": "Tilt image files",
+        "tooltip": (
+            "File pattern matching all tilt image files. These can be multi-frame "
+            "micrographs or single 2D images."
+        ),
+        "group": "General",
+    },
+]
+IMAGES_ARE_MOTION_CORRECTED = Annotated[
+    bool,
+    {
+        "label": "Movies already motion corrected",
+        "tooltip": (
+            "Select Yes if your input images in 'Tilt image movie files' have already "
+            "been motion corrected and/or are summed single frame images. Make sure "
+            "the image file names match the corresponding image file names under "
+            "SubFramePath in the mdoc files"
+        ),
+        "group": "General",
+    },
+]
+MDOC_FILES = Annotated[
+    str,
+    {
+        "label": "mod files",
+        "tooltip": "File pattern pointing to the mdoc files.",
+        "group": "General",
+    },
+]
+PREFIX = Annotated[
+    str,
+    {
+        "label": "Prefix",
+        "tooltip": (
+            "Optional prefix added to avoid tilt-series name collisions when dealing "
+            "with multiple datasets."
+        ),
+        "group": "General",
+    },
+]
+# Tilt series
+DOSE_RATE_VALUE = Annotated[
+    dict,
+    {
+        "label": "Dose rate (e/A^2)",
+        "widget_type": DoseRateEdit,
+        "tooltip": (
+            "Electron dose (in e/A^2) per image in the tilt series, or the dose rate "
+            "per movie frame."
+        ),
+        "group": "Tilt series",
+    },
+]
+TILT_AXIS_ANGLE = Annotated[
+    float,
+    {
+        "label": "Tilt axis angle (deg)",
+        "tooltip": (
+            "Nominal value for the tilt-axis rotation angle (positive is CCW from Y)"
+        ),
+        "group": "Tilt series",
+    },
+]
+FLIP_TILTSERIES_HAND = Annotated[
+    bool,
+    {
+        "label": "Invert defocus handedness",
+        "tooltip": (
+            "Specify Yes to flip the handedness of the defocus geometry (default = Yes "
+            "(value -1 in the STAR file), the same as the tutorial dataset: "
+            "EMPIAR-10164)"
+        ),
+        "group": "Tilt series",
+    },
+]
+
+IN_COORDS = Annotated[
+    Path,
+    {
+        "label": "Input coordinates",
+        "filter": "STAR files (*.star);;All files (*)",
+        "tooltip": (
+            "You can provide a 2-column STAR file (with columns rlnTomoName and "
+            "rlnTomoImportParticleFile for the tomogram names and their corrsesponding "
+            "particle coordinate files, OR you can provide a linux wildcard to all the "
+            "particle coordinate files.\n\nThe coordinate files can be in RELION STAR "
+            "format, or in ASCII text files. Input STAR file should contain either "
+            "rlnCoordinateX/Y/Z columns with non-centered coordinates in pixels of the "
+            "tilt series, or rlnCenteredCoordinateX/Y/ZAngst column with coordinates "
+            "in Angstroms from the center of the tomograms).\n\nASCII files may "
+            "contain headers, but all lines where the first 3 columns contain numbers "
+            "will be interpreted as data lines. The first 3 columns are assumed to be "
+            "X, Y and Z coordinates. If 6 columns are present, columns 4,5 and 6 are "
+            "assumed to be the rlnTomoSubtomogramRot/Tilt/Psi.\n\nFor text files, the "
+            "options below are used to indicate whether the coordinates are relative "
+            "to the centre of the tomogram (in which case they need to be provided in "
+            "Angstroms, or converted thereto using a pixel size). Or if the "
+            "coordinates are decentered, they need to be provided in pixels of the "
+            "tilt series, possibly using a multiplicative scaling factor."
+        ),
+        "group": "Coordinates",
+    },
+]
+
+REMOVE_SUBSTRING = Annotated[
+    str,
+    {
+        "label": "Remove substring from file names",
+        "tooltip": (
+            "If specified, this substring is removed from the coordinate filenames to "
+            "get the tomogram names"
+        ),
+        "group": "Coordinates",
+    },
+]
+REMOVE_SUBSTRING2 = Annotated[
+    str,
+    {
+        "label": "Second substring to remove",
+        "tooltip": (
+            "If specified, this substring is removed from the coordinate filenames to "
+            "get the tomogram names"
+        ),
+        "group": "Coordinates",
+    },
+]
+IS_CENTERED = Annotated[
+    bool,
+    {
+        "label": "Coordinates are centered",
+        "tooltip": (
+            "Specify Yes if coordinates in the input text files are relative to the "
+            "center of the tomogram."
+        ),
+        "group": "Coordinates",
+    },
+]
+SCALE_FACTOR = Annotated[
+    float,
+    {
+        "label": "Multiply coordinates with",
+        "tooltip": (
+            "As also mentioned above, centered coordinates should be in Angstroms, "
+            "decentered coordinates should be in pixels of the (motion-corrected) tilt "
+            "series. If they are not, multiply them with this factor to convert them."
+        ),
+        "group": "Coordinates",
+    },
+]
+ADD_FACTOR = Annotated[
+    float,
+    {
+        "label": "Add this to coordinates",
+        "tooltip": (
+            "After conversion of coordinates in text files to centered coordinates in "
+            "Angstroms, or decentered coordinates in pixels of the tilt series, add "
+            "this factor the coordinate values."
+        ),
+        "group": "Coordinates",
     },
 ]

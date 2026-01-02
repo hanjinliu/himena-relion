@@ -374,7 +374,7 @@ class ManualPickJob(_Relion5Job):
         kwargs["filter_method"] = (
             "Topaz" if kwargs.pop("do_topaz_denoise", False) else "Band-pass"
         )
-        if not kwargs.pop("do_fom_threshold", False):
+        if kwargs.pop("do_fom_threshold", "No") == "No":
             kwargs["minimum_pick_fom"] = None
         for name in ["do_queue", "min_dedicated"]:
             kwargs.pop(name, None)
@@ -895,9 +895,7 @@ class ExtractJobBase(_Relion5Job):
         kwargs = super().normalize_kwargs_inv(**kwargs)
         kwargs.pop("do_reextract", None)
         kwargs.pop("do_recenter", None)
-        if kwargs.pop("do_fom_threshold", False):
-            pass
-        else:
+        if kwargs.pop("do_fom_threshold", "No") == "No":
             kwargs["minimum_pick_fom"] = None
         return kwargs
 

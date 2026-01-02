@@ -168,3 +168,83 @@ DO_CUT_INTO_SEGMENTS = Annotated[
         "group": "Helix",
     },
 ]
+
+
+BINNING = Annotated[
+    int,
+    {
+        "label": "Binning factor",
+        "min": 1,
+        "tooltip": (
+            "The tilt series images will be binned by this (real-valued) factor and "
+            "then reconstructed in the specified box size above. Note that thereby the "
+            "reconstructed region becomes larger when specifying binning factors "
+            "larger than one."
+        ),
+        "group": "Reconstruct",
+    },
+]
+BOX_SIZE = Annotated[
+    int,
+    {
+        "label": "Box size (binned pix)",
+        "tooltip": (
+            "The initial box size of the reconstruction. A sufficiently large box size "
+            "allows more of the high-frequency signal to be captured that has been "
+            "delocalised by the CTF."
+        ),
+        "group": "Reconstruct",
+    },
+]
+CROP_SIZE = Annotated[
+    int,
+    {
+        "label": "Crop size (binned pix)",
+        "tooltip": (
+            "If set to a positive value, after construction, the resulting pseudo "
+            "subtomograms are cropped to this size. A smaller box size allows the "
+            "(generally expensive) refinement using relion_refine to proceed more "
+            "rapidly."
+        ),
+        "group": "Reconstruct",
+    },
+]
+MAX_DOSE = Annotated[
+    float,
+    {
+        "label": "Maximum dose (e/A^2)",
+        "tooltip": (
+            "Tilt series frames with a dose higher than this maximum dose (in "
+            "electrons per squared Angstroms) will not be included in the 3D "
+            "pseudo-subtomogram, or in the 2D stack. For the latter, this will disc "
+            "I/O operations and increase speed."
+        ),
+        "group": "Reconstruct",
+    },
+]
+MIN_FRAMES = Annotated[
+    int,
+    {
+        "label": "Minimum number of frames",
+        "min": 1,
+        "tooltip": (
+            "Each selected pseudo-subtomogram need to be visible in at least this "
+            "number of tilt series frames with doses below the maximum dose"
+        ),
+        "group": "Reconstruct",
+    },
+]
+DO_STACK2D = Annotated[
+    bool,
+    {
+        "label": "Extract as 2D stacks",
+        "tooltip": (
+            "If set to Yes, this program will write output subtomograms as 2D "
+            "substacks. This is new as of relion-4.1, and the preferred way of "
+            "generating subtomograms. If set to No, then relion-4.0 3D "
+            "pseudo-subtomograms will be written out. Either can be used in subsequent "
+            "refinements and classifications."
+        ),
+        "group": "Reconstruct",
+    },
+]

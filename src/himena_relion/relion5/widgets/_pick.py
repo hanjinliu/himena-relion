@@ -92,9 +92,14 @@ class QManualPickViewer(QJobScrollArea):
         else:
             self._coords = None
 
+    def _clear_points(self, *_):
+        """Clear all the points before reloading."""
+        self._viewer.set_points(np.empty((0, 3)))
+        self._viewer.redraw()
+
     def _update_points(self, *_):
         if self._coords is None:
-            self._viewer.set_points(np.empty((0, 3)))
+            self._clear_points()
         else:
             arr = np.column_stack(
                 [np.zeros(len(self._coords.x)), self._coords.y, self._coords.x]
@@ -106,7 +111,7 @@ class QManualPickViewer(QJobScrollArea):
             except Exception:
                 diameter = 50.0
             self._viewer.set_points(arr / bins, size=diameter / image_scale / bins)
-        self._viewer.redraw()
+            self._viewer.redraw()
 
     def initialize(self, job_dir: _job_dir.JobDirectory):
         """Initialize the viewer with the job directory."""
@@ -159,6 +164,7 @@ class QManualPickViewer(QJobScrollArea):
             f"Total: {num_total} particles"
         )
         yield self._num_picked_label.setText, text
+        yield self._clear_points, None
 
         self._reload_coords(current_path)
         yield self._update_points, None

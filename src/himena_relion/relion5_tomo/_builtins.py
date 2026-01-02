@@ -4,7 +4,6 @@ from typing import Annotated, Any
 from himena_relion._job_class import _RelionBuiltinJob, parse_string
 from himena_relion import _configs
 from himena_relion._pipeline import RelionPipeline
-from himena_relion._widgets._magicgui import DoseRateEdit
 from himena_relion import _annotated as _a
 from himena_relion.relion5._builtins import (
     CtfEstimationJob,
@@ -99,39 +98,20 @@ class ImportTomoJob(_ImportTomoJob):
     def run(
         self,
         # General
-        movie_files: Annotated[
-            str, {"label": "Tilt image files", "group": "General"}
-        ] = "frames/*.mrc",
-        images_are_motion_corrected: Annotated[
-            bool, {"label": "Movies already motion corrected", "group": "General"}
-        ] = False,
-        mdoc_files: Annotated[
-            str, {"label": "mod files", "group": "General"}
-        ] = "mdoc/*.mdoc",
-        optics_group_name: Annotated[
-            str, {"label": "Optics group name", "group": "General"}
-        ] = "",
-        prefix: Annotated[str, {"label": "Prefix", "group": "General"}] = "",
-        angpix: Annotated[
-            float, {"label": "Pixel size (A)", "group": "General"}
-        ] = 0.675,
-        kV: Annotated[int, {"label": "Voltage (kV)", "group": "General"}] = 300,
-        Cs: Annotated[
-            float, {"label": "Spherical aberration", "group": "General"}
-        ] = 2.7,
-        Q0: Annotated[float, {"label": "Amplitude contrast", "group": "General"}] = 0.1,
+        movie_files: _a.import_.MOVIE_FILES = "frames/*.mrc",
+        images_are_motion_corrected: _a.import_.IMAGES_ARE_MOTION_CORRECTED = False,
+        mdoc_files: _a.import_.MDOC_FILES = "mdoc/*.mdoc",
+        optics_group_name: _a.import_.OPTICS_GROUP_NAME = "",
+        prefix: _a.import_.PREFIX = "",
+        angpix: _a.import_.ANGPIX = 0.675,
+        kV: _a.import_.KV = 300,
+        Cs: _a.import_.CS = 2.7,
+        Q0: _a.import_.Q0 = 0.1,
         # Tilt series
-        dose_rate_value: Annotated[
-            dict,
-            {"label": "Dose rate", "widget_type": DoseRateEdit, "group": "Tilt series"},
-        ] = None,
-        tilt_axis_angle: Annotated[
-            float, {"label": "Tilt axis angle (deg)", "group": "Tilt series"}
-        ] = 85,
-        mtf_file: Annotated[str, {"label": "MTF file", "group": "Tilt series"}] = "",
-        flip_tiltseries_hand: Annotated[
-            bool, {"label": "Invert defocus handedness", "group": "Tilt series"}
-        ] = True,
+        dose_rate_value: _a.import_.DOSE_RATE_VALUE = None,
+        tilt_axis_angle: _a.import_.TILT_AXIS_ANGLE = 85,
+        mtf_file: _a.import_.FN_MTF = "",
+        flip_tiltseries_hand: _a.import_.FLIP_TILTSERIES_HAND = True,
         # Running
         min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
     ):
@@ -165,29 +145,12 @@ class ImportCoordinatesJob(_ImportTomoJob):
 
     def run(
         self,
-        in_coords: Annotated[
-            Path,
-            {
-                "label": "Input coordinates",
-                "filter": "STAR files (*.star);;All files (*)",
-                "group": "Coordinates",
-            },
-        ],
-        remove_substring: Annotated[
-            str, {"label": "Remove substring from file names", "group": "Coordinates"}
-        ] = "",
-        remove_substring2: Annotated[
-            str, {"label": "Second substring to remove", "group": "Coordinates"}
-        ] = "",
-        is_centered: Annotated[
-            bool, {"label": "Coordinates are centered", "group": "Coordinates"}
-        ] = False,
-        scale_factor: Annotated[
-            float, {"label": "Multiply coordinates with", "group": "Coordinates"}
-        ] = 1.0,
-        add_factor: Annotated[
-            float, {"label": "Add this to coordinates", "group": "Coordinates"}
-        ] = 0.0,
+        in_coords: _a.import_.IN_COORDS = "",
+        remove_substring: _a.import_.REMOVE_SUBSTRING = "",
+        remove_substring2: _a.import_.REMOVE_SUBSTRING2 = "",
+        is_centered: _a.import_.IS_CENTERED = False,
+        scale_factor: _a.import_.SCALE_FACTOR = 1.0,
+        add_factor: _a.import_.ADD_FACTOR = 0.0,
         # Running
         do_queue: _a.running.DO_QUEUE_TYPE = False,
         min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,
@@ -361,7 +324,7 @@ class AlignTiltSeriesImodFiducial(_AlignTiltSeriesJobBase):
     def run(
         self,
         in_tiltseries: _a.io.IN_TILT = "",
-        fiducial_diameter: Annotated[float, {"label": "Fiducial diameter (nm)"}] = 10.0,
+        fiducial_diameter: _a.tomo.FIDUCIAL_DIAMETER = 10.0,
         # Running
         nr_mpi: _a.running.MPI_TYPE = 1,
         do_queue: _a.running.DO_QUEUE_TYPE = False,
@@ -412,10 +375,8 @@ class AlignTiltSeriesImodPatch(_AlignTiltSeriesJobBase):
         self,
         in_tiltseries: _a.io.IN_TILT = "",
         tomogram_thickness: _a.tomo.TOMO_THICKNESS = 300.0,
-        patch_size: Annotated[float, {"label": "Patch size (nm)", "min": 1}] = 100,
-        patch_overlap: Annotated[
-            float, {"label": "Patch overlap (%)", "min": 0, "max": 100}
-        ] = 50,
+        patch_size: _a.tomo.PATCH_SIZE = 100,
+        patch_overlap: _a.tomo.PATCH_OVERLAP = 50,
         # Running
         nr_mpi: _a.running.MPI_TYPE = 1,
         do_queue: _a.running.DO_QUEUE_TYPE = False,
@@ -461,15 +422,11 @@ class AlignTiltSeriesAreTomo2(_AlignTiltSeriesJobBase):
         self,
         in_tiltseries: _a.io.IN_TILT = "",
         tomogram_thickness: _a.tomo.TOMO_THICKNESS = 300.0,
-        do_aretomo_tiltcorrect: Annotated[
-            bool, {"label": "Correct tilt angle offset"}
-        ] = False,
-        aretomo_tiltcorrect_angle: Annotated[int, {"label": "Tilt angle offset"}] = 999,
-        do_aretomo_ctf: Annotated[bool, {"label": "Estimate CTF"}] = False,
-        do_aretomo_phaseshift: Annotated[
-            bool, {"label": "Estimate phase shift"}
-        ] = False,
-        other_aretomo_args: Annotated[str, {"label": "Other AreTomo2 arguments"}] = "",
+        do_aretomo_tiltcorrect: _a.tomo.DO_ARETOMO_TILTCORRECT = False,
+        aretomo_tiltcorrect_angle: _a.tomo.ARETOMO_TILTCORRECT_ANGLE = 999,
+        do_aretomo_ctf: _a.tomo.DO_ARETOMO_CTF = False,
+        do_aretomo_phaseshift: _a.tomo.DO_ARETOMO_PHASESHIFT = False,
+        other_aretomo_args: _a.tomo.OTHER_ARETOMO_ARGS = "",
         gpu_ids: _a.compute.GPU_IDS = "",
         # Running
         nr_mpi: _a.running.MPI_TYPE = 1,
@@ -514,40 +471,18 @@ class ReconstructTomogramJob(_Relion5TomoJob):
         self,
         # I/O
         in_tiltseries: _a.io.IN_TILT = "",
-        generate_split_tomograms: Annotated[
-            bool, {"label": "Split tomograms", "group": "I/O"}
-        ] = False,
-        do_proj: Annotated[
-            bool, {"label": "Write 2D projection", "group": "I/O"}
-        ] = False,
-        centre_proj: Annotated[
-            int, {"label": "Central Z-slice (binned pix)", "group": "I/O"}
-        ] = 0,
-        thickness_proj: Annotated[
-            int, {"label": "Number of Z-slices (binned pix)", "group": "I/O"}
-        ] = 10,
+        generate_split_tomograms: _a.tomo.GENERATE_SPLIT_TOMOGRAMS = False,
+        do_proj: _a.tomo.DO_PROJ = False,
+        centre_proj: _a.tomo.CENTRE_PROJ = 0,
+        thickness_proj: _a.tomo.THICKNESS_PROJ = 10,
         # Reconstruct
-        dims: Annotated[
-            tuple[int, int, int],
-            {"label": "Tomogram X, Y, Z size (unbinned pix)", "group": "Reconstruct"},
-        ] = (4000, 4000, 2000),
-        binned_angpix: Annotated[
-            float, {"label": "Pixel size (A)", "group": "Reconstruct"}
-        ] = 10.0,
-        tiltangle_offset: Annotated[
-            float, {"label": "Tilt angle offset (deg)", "group": "Reconstruct"}
-        ] = 0.0,
-        tomo_name: Annotated[
-            str, {"label": "Reconstruct only this tomogram", "group": "Reconstruct"}
-        ] = "",
+        dims: _a.tomo.DIMS = (4000, 4000, 2000),
+        binned_angpix: _a.tomo.BINNED_ANGPIX = 10.0,
+        tiltangle_offset: _a.tomo.TILTANGLE_OFFSET = 0.0,
+        tomo_name: _a.tomo.TOMO_NAME = "",
         # Filter
-        do_fourier: Annotated[
-            bool,
-            {"label": "Fourier-inversion with odd/even frames", "group": "Filter"},
-        ] = True,
-        ctf_intact_first_peak: Annotated[
-            bool, {"label": "Ignore CTFs until first peak", "group": "Filter"}
-        ] = True,
+        do_fourier: _a.tomo.DO_FOURIER = True,
+        ctf_intact_first_peak: _a.tomo.CTF_INTACT_FIRST_PEAK = True,
         # Running
         nr_mpi: _a.running.MPI_TYPE = 1,
         nr_threads: _a.running.THREAD_TYPE = 1,
@@ -629,24 +564,12 @@ class ExtractParticlesTomoJob(_Relion5TomoJob):
         self,
         in_optim: _a.io.IN_OPTIM = None,
         # Reconstruct
-        binning: Annotated[
-            int, {"label": "Binning factor", "min": 1, "group": "Reconstruct"}
-        ] = 1,
-        box_size: Annotated[
-            int, {"label": "Box size (binned pix)", "group": "Reconstruct"}
-        ] = 128,
-        crop_size: Annotated[
-            int, {"label": "Crop size (binned pix)", "group": "Reconstruct"}
-        ] = -1,
-        max_dose: Annotated[
-            float, {"label": "Maximum dose (e/A^2)", "group": "Reconstruct"}
-        ] = -1,
-        min_frames: Annotated[
-            int, {"label": "Minimum number of frames", "min": 1, "group": "Reconstruct"}
-        ] = 1,
-        do_stack2d: Annotated[
-            bool, {"label": "Extract as 2D stacks", "group": "Reconstruct"}
-        ] = True,
+        binning: _a.extract.BINNING = 1,
+        box_size: _a.extract.BOX_SIZE = 128,
+        crop_size: _a.extract.CROP_SIZE = -1,
+        max_dose: _a.extract.MAX_DOSE = -1,
+        min_frames: _a.extract.MIN_FRAMES = 1,
+        do_stack2d: _a.extract.DO_STACK2D = True,
         do_float16: _a.io.DO_F16 = True,
         # Running
         nr_mpi: _a.running.MPI_TYPE = 1,
