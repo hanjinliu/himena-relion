@@ -213,3 +213,41 @@ B_FACTOR = Annotated[
         "group": "Sharpen",
     },
 ]
+
+# Particle subtract
+CENTER_METHOD = Annotated[
+    str,
+    {
+        "label": "Centering method",
+        "choices": ["No", "Mask center", "User-defined"],
+        "tooltip": (
+            "Specify how the subtracted particles should be centered.\n\n"
+            "<b>No</b>: The particles will not be centered.\n"
+            "<b>Mask center</b>: The particles will be centered to the projections of "
+            "the center-of-mass of the input mask.\n"
+            "<b>User-defined</b>: The particles will be centered to the projections of "
+            "the x, y, z coordinates below. The unit is pixel, not angstrom. The "
+            "origin is at the center of the box, not at the corner."
+        ),
+        "group": "Centering",
+    },
+]
+CENTER = Annotated[
+    tuple[float, float, float],
+    {
+        "label": "Center coordinates in X, Y, Z (pix)",
+        "tooltip": "X-, Y- and Z-coordinate of the 3D center (in pixels).",
+        "group": "Centering",
+    },
+]
+NEW_BOX = Annotated[
+    int,
+    {
+        "label": "New box size (pixels)",
+        "tooltip": (
+            "Provide a non-negative value to re-window the subtracted particles in a "
+            "smaller box size."
+        ),
+        "group": "Centering",
+    },
+]

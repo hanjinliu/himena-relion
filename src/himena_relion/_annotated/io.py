@@ -37,6 +37,15 @@ IN_PARTICLES = Annotated[
         "group": "I/O",
     },
 ]
+IN_PARTICELS_SUBTRACT = Annotated[
+    str,
+    {
+        "label": "Use these particles instead",
+        "widget_type": PathDrop,
+        "type_label": ["ParticlesData", "ParticleGroupMetadata"],
+        "group": "I/O",
+    },
+]
 IMG_TYPE = Annotated[
     str,
     {
@@ -73,12 +82,26 @@ HALFMAP_TYPE = Annotated[
         "group": "I/O",
     },
 ]
-MASK_TYPE = Annotated[
+IN_MASK = Annotated[
     str,
     {
         "label": "Reference mask (optional)",
         "widget_type": PathDrop,
         "type_label": "Mask3D",
+        "group": "I/O",
+    },
+]
+IN_MASK_SUBTRACT = Annotated[
+    str,
+    {
+        "label": "Mask of the signal to keep",
+        "widget_type": PathDrop,
+        "type_label": "Mask3D",
+        "tooltip": (
+            "Provide a soft mask where the protein density you wish to subtract from "
+            "the experimental particles is black (0) and the density you wish to keep "
+            "is white (1)."
+        ),
         "group": "I/O",
     },
 ]

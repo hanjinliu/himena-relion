@@ -796,7 +796,7 @@ class Class3DTomoJob(_Relion5TomoJob, Class3DJob):
         self,
         in_optim: _a.io.IN_OPTIM = None,
         fn_ref: _a.io.REF_TYPE = "",
-        fn_mask: _a.io.MASK_TYPE = "",
+        fn_mask: _a.io.IN_MASK = "",
         # Reference
         ref_correct_greyscale: _a.misc.REF_CORRECT_GRAY = False,
         trust_ref_size: _a.misc.TRUST_REF_SIZE = True,
@@ -879,7 +879,7 @@ class Refine3DTomoJob(_Relion5TomoJob, Refine3DJob):
         self,
         in_optim: _a.io.IN_OPTIM = None,
         fn_ref: _a.io.REF_TYPE = "",
-        fn_mask: _a.io.MASK_TYPE = "",
+        fn_mask: _a.io.IN_MASK = "",
         # Reference
         ref_correct_greyscale: _a.misc.REF_CORRECT_GRAY = False,
         trust_ref_size: _a.misc.TRUST_REF_SIZE = True,
@@ -1025,7 +1025,7 @@ class CtfRefineTomoJob(_Relion5TomoJob):
         self,
         in_optim: _a.io.IN_OPTIM = None,
         in_halfmaps: _a.io.HALFMAP_TYPE = "",
-        in_refmask: _a.io.MASK_TYPE = "",
+        in_refmask: _a.io.IN_MASK = "",
         in_post: _a.io.PROCESS_TYPE = "",
         # CTF Refinement
         box_size: Annotated[

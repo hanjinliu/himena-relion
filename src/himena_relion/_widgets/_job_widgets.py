@@ -150,6 +150,7 @@ class QRunOutErrLog(QtW.QSplitter, JobWidgetBase):
         self._out_log._filename_label.setText("run.out")
         self._err_log._filename_label.setText("run.err")
         self.addWidget(self._err_log)
+        self.setSizes([600, 300])
 
     def on_job_updated(self, job_dir: _job_dir.JobDirectory, fp: Path):
         if fp.name == "run.out":

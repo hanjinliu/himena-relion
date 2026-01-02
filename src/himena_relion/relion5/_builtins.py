@@ -978,6 +978,9 @@ class ReExtractJob(ExtractJobBase):
     @classmethod
     def normalize_kwargs(cls, **kwargs):
         kwargs = super().normalize_kwargs(**kwargs)
+        kwargs["recenter_x"], kwargs["recenter_y"], kwargs["recenter_z"] = kwargs.pop(
+            "recenter"
+        )
         kwargs["do_reextract"] = True
         return kwargs
 
@@ -1298,7 +1301,7 @@ class Class3DNoAlignmentJob(_Class3DJobBase):
         self,
         fn_img: _a.io.IN_PARTICLES = "",
         fn_ref: _a.io.REF_TYPE = "",
-        fn_mask: _a.io.MASK_TYPE = "",
+        fn_mask: _a.io.IN_MASK = "",
         # Reference
         ref_correct_greyscale: _a.misc.REF_CORRECT_GRAY = False,
         trust_ref_size: _a.misc.TRUST_REF_SIZE = True,
@@ -1372,7 +1375,7 @@ class Class3DJob(_Class3DJobBase):
         self,
         fn_img: _a.io.IN_PARTICLES = "",
         fn_ref: _a.io.REF_TYPE = "",
-        fn_mask: _a.io.MASK_TYPE = "",
+        fn_mask: _a.io.IN_MASK = "",
         # Reference
         ref_correct_greyscale: _a.misc.REF_CORRECT_GRAY = False,
         trust_ref_size: _a.misc.TRUST_REF_SIZE = True,
@@ -1497,7 +1500,7 @@ class Refine3DJob(_Relion5Job):
         self,
         fn_img: _a.io.IN_PARTICLES = "",
         fn_ref: _a.io.REF_TYPE = "",
-        fn_mask: _a.io.MASK_TYPE = "",
+        fn_mask: _a.io.IN_MASK = "",
         # Reference
         ref_correct_greyscale: _a.misc.REF_CORRECT_GRAY = False,
         trust_ref_size: _a.misc.TRUST_REF_SIZE = True,
@@ -1890,7 +1893,7 @@ class PostProcessJob(_Relion5Job):
         self,
         # I/O
         fn_in: _a.io.HALFMAP_TYPE = "",
-        fn_mask: _a.io.MASK_TYPE = "",
+        fn_mask: _a.io.IN_MASK = "",
         angpix: _a.post.ANGPIX_POST = -1,
         # Sharpen
         b_factor: _a.misc.B_FACTOR = None,
@@ -2098,7 +2101,7 @@ class LocalResolutionResmapJob(_LocalResolutionJobBase):
     def run(
         self,
         fn_in: _a.io.HALFMAP_TYPE = "",
-        fn_mask: _a.io.MASK_TYPE = "",
+        fn_mask: _a.io.IN_MASK = "",
         angpix: Annotated[float, {"label": "Pixel size (A)", "group": "I/O"}] = -1,
         pval: Annotated[
             float, {"label": "P-value for significance", "group": "ResMap"}
@@ -2135,7 +2138,7 @@ class LocalResolutionOwnJob(_LocalResolutionJobBase):
     def run(
         self,
         fn_in: _a.io.HALFMAP_TYPE = "",
-        fn_mask: _a.io.MASK_TYPE = "",
+        fn_mask: _a.io.IN_MASK = "",
         angpix: Annotated[float, {"label": "Pixel size (A)", "group": "I/O"}] = -1,
         adhoc_bfactor: Annotated[
             float, {"label": "User-provided B-factor (A^2)", "group": "Relion"}
@@ -2149,3 +2152,74 @@ class LocalResolutionOwnJob(_LocalResolutionJobBase):
         min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
+
+
+class ParticleSubtractionJob(_Relion5Job):
+    """Particle subtraction based on a 3D mask and a reference map."""
+
+    @classmethod
+    def type_label(cls) -> str:
+        return "relion.subtract"
+
+    @classmethod
+    def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
+        kwargs = super().normalize_kwargs(**kwargs)
+        kwargs["center_x"], kwargs["center_y"], kwargs["center_z"] = kwargs.pop(
+            "center"
+        )
+        kwargs["do_data"] = kwargs["fn_data"].strip() != ""
+        if kwargs["center_method"] == "Mask center":
+            kwargs["do_center_mask"] = "Yes"
+            kwargs["do_center_xyz"] = "No"
+        elif kwargs["center_method"] == "User-defined":
+            kwargs["do_center_mask"] = "No"
+            kwargs["do_center_xyz"] = "Yes"
+        else:
+            kwargs["do_center_mask"] = "No"
+            kwargs["do_center_xyz"] = "No"
+        return kwargs
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
+        kwargs = super().normalize_kwargs_inv(**kwargs)
+        kwargs.pop("do_data", None)
+        center = (
+            kwargs.pop("center_x", 0),
+            kwargs.pop("center_y", 0),
+            kwargs.pop("center_z", 0),
+        )
+        do_center_mask = kwargs.pop("do_center_mask", "Yes") == "Yes"
+        do_center_xyz = kwargs.pop("do_center_xyz", "No") == "Yes"
+        if do_center_mask:
+            kwargs["center_method"] = "Mask center"
+        elif do_center_xyz:
+            kwargs["center_method"] = "User-defined"
+            kwargs["center"] = center
+        else:
+            kwargs["center_method"] = "No"
+        return kwargs
+
+    def run(
+        self,
+        fn_opt: _a.io.IN_OPTIMISER = "",
+        fn_mask: _a.io.IN_MASK_SUBTRACT = "",
+        fn_data: _a.io.IN_PARTICELS_SUBTRACT = "",
+        do_float16: _a.io.DO_F16 = True,
+        # Centering
+        center_method: _a.misc.CENTER_METHOD = "No",
+        center: _a.misc.CENTER = (0.0, 0.0, 0.0),
+        new_box: _a.misc.NEW_BOX = -1,
+        # Running
+        nr_mpi: _a.running.NR_MPI = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")
+
+    @classmethod
+    def setup_widgets(cls, widgets):
+        @widgets["center_method"].changed.connect
+        def _on_center_method_changed(value: str):
+            widgets["center"].enabled = value == "User-defined"
+
+        _on_center_method_changed(widgets["center_method"].value == "User-defined")

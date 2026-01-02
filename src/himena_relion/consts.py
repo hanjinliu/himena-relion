@@ -63,8 +63,9 @@ JOB_ID_MAP = {
     "relion.ctfrefine.anisomag": "CTF Refine",
     "relion.polish.train": "Bayesian Polish (Train)",
     "relion.polish": "Bayesian Polish",
-    "relion.localres.own": "Local Resolution",
-    "relion.localres.resmap": "Local Resolution",
+    "relion.localres.own": "Local Res (RELION)",
+    "relion.localres.resmap": "Local Res (ResMap)",
+    "relion.subtract": "Subtract Particles",
     # Tomo
     "relion.importtomo": "Import Tomo",
     "relion.excludetilts": "Exclude Tilts",

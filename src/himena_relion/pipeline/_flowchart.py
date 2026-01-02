@@ -14,7 +14,7 @@ from himena_relion._job_dir import ExternalJobDirectory, JobDirectory
 class QRelionPipelineFlowChartView(QFlowChartView):
     def __init__(self, ui: MainWindow, scene):
         super().__init__(scene)
-        # self.item_right_clicked.connect(self._on_right_clicked)
+        self.item_right_clicked.connect(self._on_right_clicked)
         self._ui = ui
         self._pipeline = RelionDefaultPipeline([])
         self._relion_project_dir: Path = Path.cwd()
@@ -103,6 +103,9 @@ class QRelionPipelineFlowChartView(QFlowChartView):
             center = node.center()
             self.centerOn(center)
             node.setSelected(True)
+
+    def _on_right_clicked(self, item: RelionJobNodeItem):
+        pass  # TODO
 
 
 class RelionJobNodeItem(BaseNodeItem):

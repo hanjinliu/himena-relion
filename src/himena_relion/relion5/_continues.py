@@ -2,6 +2,9 @@ from pathlib import Path
 
 from himena_relion._job_class import _RelionBuiltinContinue
 from himena_relion.relion5._builtins import (
+    MotionCorr2Job,
+    MotionCorrOwnJob,
+    CtfEstimationJob,
     Class2DJob,
     Class3DNoAlignmentJob,
     InitialModelJob,
@@ -13,6 +16,39 @@ from himena_relion.relion5._builtins import (
     AutoPickTopazPick,
 )
 from himena_relion import _annotated as _a
+
+
+class _MotionCorContinue(_RelionBuiltinContinue):
+    def run(
+        self,
+        # Running
+        nr_mpi: _a.running.NR_MPI = 1,
+        nr_threads: _a.running.NR_THREADS = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")
+
+
+class MotionCorr2Continue(_MotionCorContinue):
+    original_class = MotionCorr2Job
+
+
+class MotionCorrOwnContinue(_MotionCorContinue):
+    original_class = MotionCorrOwnJob
+
+
+class CtfEstimationContinue(_RelionBuiltinContinue):
+    original_class = CtfEstimationJob
+
+    def run(
+        self,
+        # Running
+        nr_mpi: _a.running.NR_MPI = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")
 
 
 def _latest_optimiser_star(path: Path) -> str:
