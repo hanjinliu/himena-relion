@@ -930,23 +930,30 @@ class Refine3DResults(_3DResultsBase):
         model = ModelGroups.validate_block(star["model_groups"])
         return df_fsc, model
 
-    # def angdist(self, class_id: int) -> list[np.ndarray]:
-    #     """Return the angular distribution for a given class ID."""
-    #     if self.it_str == "":
-    #         paths = [f"run_class{class_id:03d}_angdist.bild"]
-    #     else:
-    #         paths = [
-    #             f"run{self.it_str}_half1_class{class_id:03d}_angdist.bild",
-    #             f"run{self.it_str}_half2_class{class_id:03d}_angdist.bild",
-    #         ]
-    #     angdist = []
-    #     for path in paths:
-    #         full_path = self.path / path
-    #         with open(full_path, "r") as f:
-    #             color = f.readline()
-    #             cylinder = f.readline()
-
-    #         angdist.append(data)
+    def angdist(self, class_id: int) -> list[CylinderObject]:
+        """Return the angular distribution for a given class ID."""
+        if self.it_str == "":
+            path = f"run_class{class_id:03d}_angdist.bild"
+        else:
+            path = f"run{self.it_str}_half1_class{class_id:03d}_angdist.bild"
+        full_path = self.path / path
+        cylinders: list[CylinderObject] = []
+        with open(full_path) as f:
+            while True:
+                color = f.readline()
+                if color.strip() == "":
+                    break
+                r0, g0, b0 = color[7:].split(" ")
+                cylinder = f.readline()
+                x1, y1, z1, x2, y2, z2, radius = cylinder[10:].split(" ")
+                cyl = CylinderObject(
+                    start=np.array([float(x1), float(y1), float(z1)]),
+                    end=np.array([float(x2), float(y2), float(z2)]),
+                    radius=float(radius),
+                    color=(float(r0), float(g0), float(b0)),
+                )
+                cylinders.append(cyl)
+        return cylinders
 
     def _half_class_mrc(self, class_id: int, num: Literal[1, 2] = 1) -> Path:
         """Return the path to the half 1 class MRC file for this iteration."""
@@ -1058,24 +1065,6 @@ class ReconstructParticlesJobDirectory(JobDirectory):
 class SelectInteractiveJobDirectory(JobDirectory):
     _job_type = "relion.select.interactive"
 
-    def particles_star(self) -> Path:
-        """Return the path to the particles star file."""
-        return self.path / "particles.star"
-
-    def particles_pre_star(self) -> Path | None:
-        """Return the path to the pre-selection particles star file."""
-        pipeline = RelionPipelineModel.validate_file(self.path / "job_pipeline.star")
-        optimizer_star_path = Path(pipeline.input_edges.from_node.iloc[0])
-        new_stem = optimizer_star_path.stem[: -len("optimiser")] + "data"
-        return self.resolve_path(optimizer_star_path.parent / f"{new_stem}.star")
-
-    def is_selected_array(self) -> NDArray[np.bool_] | None:
-        try:
-            df = _read_star_as_df(self.path / "backup_selection.star")
-            return df["rlnSelected"].to_numpy(dtype=np.bool_)
-        except Exception:
-            return None
-
     def class_map_paths(self, num_classes: int) -> list[Path | None]:
         """Return the paths to the class maps."""
         path_opt_star = self._opt_star()
@@ -1153,3 +1142,13 @@ class FrameAlignTomoJobDirectory(JobDirectory):
 
 def _read_star_as_df(star_path: Path) -> pd.DataFrame:
     return read_star(star_path).first().trust_loop().to_pandas()
+
+
+@dataclass
+class CylinderObject:
+    """Data class for cylinder object in BILD file."""
+
+    start: np.ndarray
+    end: np.ndarray
+    radius: float
+    color: np.ndarray

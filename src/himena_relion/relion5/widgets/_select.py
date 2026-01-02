@@ -9,7 +9,7 @@ from superqt.utils import thread_worker
 
 from himena_relion._widgets import QJobScrollArea, register_job, QImageViewTextEdit
 from himena_relion import _job_dir
-from himena_relion.schemas import ModelClasses
+from himena_relion.schemas import ModelClasses, RelionPipelineModel
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -116,8 +116,8 @@ class QSelectInteractiveViewer(QSelectJobBase):
         if not class_avg_path.exists():
             yield _NOT_ENOUGH_MSG
             return
-        path_all = job_dir.particles_pre_star()
-        path_sel = job_dir.particles_star()
+        path_all = get_particles_star_before(job_dir)
+        path_sel = job_dir.path / "particles.star"
         if path_all is None or not (path_sel.exists() and path_all.exists()):
             yield _NOT_ENOUGH_MSG
             return
@@ -142,7 +142,7 @@ class QSelectInteractiveViewer(QSelectJobBase):
 
         yield self._get_summary_table(n_selected, n_removed, n_all)
 
-        is_selected = job_dir.is_selected_array()
+        is_selected = get_is_selected(job_dir)
         if is_selected is None:
             return
 
@@ -166,8 +166,8 @@ class QSelectInteractiveViewer(QSelectJobBase):
                 yield f'<img src="data:image/png;base64,{img_str}"/>'
 
     def _insert_html_class3d(self, job_dir: _job_dir.SelectInteractiveJobDirectory):
-        path_all = job_dir.particles_pre_star()
-        path_sel = job_dir.particles_star()
+        path_all = get_particles_star_before(job_dir)
+        path_sel = job_dir.path / "particles.star"
         if path_all is None or not (path_sel.exists() and path_all.exists()):
             yield _NOT_ENOUGH_MSG
             return
@@ -185,7 +185,7 @@ class QSelectInteractiveViewer(QSelectJobBase):
 
         yield self._get_summary_table(n_selected, n_removed, n_all)
 
-        is_selected = job_dir.is_selected_array()
+        is_selected = get_is_selected(job_dir)
         if is_selected is None:
             return
 
@@ -266,3 +266,19 @@ class SelectOnValueViewer(QSelectJobBase):
 
 
 _NOT_ENOUGH_MSG = "Not enough output files to display results."
+
+
+def get_particles_star_before(job_dir: _job_dir.JobDirectory) -> Path:
+    pipeline = RelionPipelineModel.validate_file(job_dir.path / "job_pipeline.star")
+    optimizer_star_path = Path(pipeline.input_edges.from_node.iloc[0])
+    new_stem = optimizer_star_path.stem[: -len("optimiser")] + "data"
+    return job_dir.resolve_path(optimizer_star_path.parent / f"{new_stem}.star")
+
+
+def get_is_selected(job_dir: _job_dir.JobDirectory) -> np.ndarray | None:
+    path = job_dir.path / "backup_selection.star"
+    try:
+        df = read_star(path).first().trust_loop().to_pandas()
+        return df["rlnSelected"].to_numpy(dtype=np.bool_)
+    except Exception:
+        return None

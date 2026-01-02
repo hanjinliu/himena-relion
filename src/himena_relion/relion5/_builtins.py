@@ -1922,6 +1922,7 @@ class CtfRefineJob(_Relion5Job):
     def normalize_kwargs(cls, **kwargs):
         kwargs = super().normalize_kwargs(**kwargs)
         kwargs["do_ctf"] = any(kwargs[name] != "No" for name in cls._do_ctf_args)
+        return kwargs
 
     @classmethod
     def normalize_kwargs_inv(cls, **kwargs):
