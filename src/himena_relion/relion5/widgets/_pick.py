@@ -6,7 +6,7 @@ import mrcfile
 import numpy as np
 from starfile_rs import read_star
 from superqt.utils import thread_worker
-from qtpy import QtWidgets as QtW
+from qtpy import QtWidgets as QtW, QtCore
 from himena_relion._image_readers._array import ArrayFilteredView
 from himena_relion._widgets import (
     QJobScrollArea,
@@ -17,7 +17,7 @@ from himena_relion._widgets import (
     QMicrographListWidget,
 )
 from himena_relion import _job_dir
-from himena_relion.relion5._connections import _get_template_last_iter
+from himena_relion.relion5._connections import _get_template_for_pick
 from himena_relion.schemas import CoordsModel, MicrographGroupMetaModel
 
 _LOGGER = logging.getLogger(__name__)
@@ -40,10 +40,13 @@ class QManualPickViewer(QJobScrollArea):
         self._mic_list.setColumnHidden(2, True)
         self._mic_list.setColumnHidden(3, True)
         self._mic_list.current_changed.connect(self._mic_changed)
+        self._num_picked_label = QtW.QLabel("")
+        self._num_picked_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
         self._filter_widget = Q2DFilterWidget()
         layout.addWidget(QtW.QLabel("<b>Micrographs with picked particles</b>"))
         layout.addWidget(self._filter_widget)
         layout.addWidget(self._viewer)
+        layout.addWidget(self._num_picked_label)
         layout.addWidget(self._mic_list)
         self._filter_widget.value_changed.connect(self._filter_param_changed)
         self._binsize_old = -1
@@ -122,16 +125,22 @@ class QManualPickViewer(QJobScrollArea):
     @thread_worker
     def _prep_mic_list(self):
         choices = []
+        num_total = 0
+        num_mic_picked = 0
         for mic_path, coords_path in iter_micrograph_and_coordinates(self._job_dir):
             if coords_path is None:
+                # No picked particles yet
                 num = 0
             else:
                 coords_path = self._job_dir.resolve_path(coords_path)
                 if not coords_path.exists():
+                    # No picked particles yet
                     num = 0
                     self._last_update.pop(coords_path.stem, None)
                 else:
-                    # reading all the particles can be slow, so use mtime caching
+                    num_mic_picked += 1
+                    # Picked particles found, read the content
+                    # Reading all the particles can be slow, so use mtime caching
                     mtime0, num0 = self._last_update.get(coords_path.stem, (-1, 0))
                     if (mtime := coords_path.stat().st_mtime) <= mtime0:
                         num = num0
@@ -141,8 +150,15 @@ class QManualPickViewer(QJobScrollArea):
                 coords_path = coords_path.as_posix()
             mic_path_name = Path(mic_path).name
             choices.append((mic_path_name, str(num), coords_path or "", mic_path))
+            num_total += num
         current_path = Path(self._mic_list.current_text(2))
         yield self._mic_list.set_choices, choices
+
+        text = (
+            f"Micrograph picked: {num_mic_picked} / {len(choices)} | "
+            f"Total: {num_total} particles"
+        )
+        yield self._num_picked_label.setText, text
 
         self._reload_coords(current_path)
         yield self._update_points, None
@@ -191,7 +207,7 @@ class QAutoViewer(QAutopickViewerBase):
 @register_job("relion.autopick.ref2d")
 class QTemplatePick2DViewer(QAutopickViewerBase):
     def _get_diameter(self) -> float:
-        path = self._job_dir.resolve_path(_get_template_last_iter(self._job_dir.path))
+        path = self._job_dir.resolve_path(_get_template_for_pick(self._job_dir.path))
         with mrcfile.open(path, header_only=True) as mrc:
             return float(mrc.voxel_size.x * mrc.header.nx)
 

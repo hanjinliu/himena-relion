@@ -56,22 +56,25 @@ class QImportMoviesViewer(QJobScrollArea):
         self._filter_widget.set_image_scale(angpix)
 
         self.window_closed_callback()
-        self._worker = self._uncompress_image(movie_path)
+        self._worker = self._uncompress_and_read_image(movie_path)
         self._worker.yielded.connect(self._on_movie_loaded)
         self._worker.start()
 
     def _on_movie_loaded(self, movie_view: ArrayFilteredView):
-        had_image = self._viewer.has_image
         self._viewer.set_array_view(
             movie_view.with_filter(self._filter_widget.apply),
             clim=self._viewer._last_clim,
         )
-        if not had_image:
-            self._viewer._auto_contrast()
+        self._viewer._auto_contrast()
 
     @thread_worker
-    def _uncompress_image(self, movie_path):
-        yield ArrayFilteredView.from_tif(movie_path)
+    def _uncompress_and_read_image(self, movie_path):
+        """If the movie is LZW-TIFF, uncompress it, then read it."""
+        movie_path = Path(movie_path)
+        if movie_path.suffix == ".mrc":
+            yield ArrayFilteredView.from_mrc(movie_path)
+        else:
+            yield ArrayFilteredView.from_tif(movie_path)
 
     def _filter_param_changed(self):
         """Handle changes to filter parameters."""

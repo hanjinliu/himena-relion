@@ -115,7 +115,7 @@ class QTextEditBase(QtW.QWidget, JobWidgetBase):
         hbar = self._text_edit.horizontalScrollBar()
         vval_old = vbar.value()
         hval_old = hbar.value()
-        is_bottom = vval_old == vbar.maximum()
+        is_bottom = vval_old > vbar.maximum() - 5
         sel0 = self._text_edit.textCursor().selectionStart()
         sel1 = self._text_edit.textCursor().selectionEnd()
         self._text_edit.setPlainText(text)

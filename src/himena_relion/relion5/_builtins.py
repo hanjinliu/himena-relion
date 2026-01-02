@@ -14,7 +14,7 @@ class _Relion5Job(_RelionBuiltinJob):
         return "RELION 5:"
 
 
-class ImportMoviesJob(_Relion5Job):
+class _ImportMoviesJobBase(_Relion5Job):
     """Import movies into RELION."""
 
     @classmethod
@@ -41,10 +41,63 @@ class ImportMoviesJob(_Relion5Job):
             kwargs.pop(name, None)
         return kwargs
 
+
+class ImportMoviesJob(_ImportMoviesJobBase):
+    @classmethod
+    def param_matches(cls, job_params):
+        return job_params["do_raw"] == "Yes"
+
+    @classmethod
+    def normalize_kwargs(cls, **kwargs):
+        kwargs["is_multiframe"] = True
+        return super().normalize_kwargs(**kwargs)
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs):
+        kwargs.pop("is_multiframe", None)
+        return super().normalize_kwargs_inv(**kwargs)
+
     def run(
         self,
         fn_in_raw: _a.import_.FN_IN_RAW = "",
-        is_multiframe: _a.import_.IN_MULTIFRAME = True,
+        optics_group_name: _a.import_.OPTICS_GROUP_NAME = "opticsGroup1",
+        fn_mtf: _a.import_.FN_MTF = "",
+        angpix: _a.import_.ANGPIX = 1.4,
+        kV: _a.import_.KV = 300,
+        Cs: _a.import_.CS = 2.7,
+        Q0: _a.import_.Q0 = 0.1,
+        beamtilt_x: _a.import_.BEAM_TILT_X = 0,
+        beamtilt_y: _a.import_.BEAM_TILT_Y = 0,
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")
+
+
+class ImportMicrographsJob(_ImportMoviesJobBase):
+    @classmethod
+    def param_matches(cls, job_params):
+        return job_params["do_raw"] != "Yes"
+
+    @classmethod
+    def job_title(cls):
+        return "Import Micrographs"
+
+    @classmethod
+    def command_id(cls):
+        return super().command_id() + "-micrographs"
+
+    @classmethod
+    def normalize_kwargs(cls, **kwargs):
+        kwargs["is_multiframe"] = False
+        return super().normalize_kwargs(**kwargs)
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs):
+        kwargs.pop("is_multiframe", None)
+        return super().normalize_kwargs_inv(**kwargs)
+
+    def run(
+        self,
+        fn_in_raw: _a.import_.FN_IN_RAW = "",
         optics_group_name: _a.import_.OPTICS_GROUP_NAME = "opticsGroup1",
         fn_mtf: _a.import_.FN_MTF = "",
         angpix: _a.import_.ANGPIX = 1.4,
@@ -992,7 +1045,7 @@ class Class2DJob(_Relion5Job):
             kwargs["do_em"] = True
             kwargs["do_grad"] = False
             kwargs["nr_iter_em"] = algo["niter"]
-            kwargs.setdefault("n_iter_grad", 200)
+            kwargs.setdefault("nr_iter_grad", 200)
         else:
             kwargs["do_em"] = False
             kwargs["do_grad"] = True
@@ -1796,19 +1849,11 @@ class MaskCreationJob(_Relion5Job):
     def run(
         self,
         fn_in: _a.io.MAP_TYPE = "",
-        lowpass_filter: Annotated[
-            float, {"label": "Lowpass filter (A)", "group": "Mask"}
-        ] = 15,
-        angpix: Annotated[float, {"label": "Pixel size (A)", "group": "Mask"}] = -1,
-        inimask_threshold: Annotated[
-            float, {"label": "Initial binarisation threshold", "group": "Mask"}
-        ] = 0.02,
-        extend_inimask: Annotated[
-            int, {"label": "Extend binary map (pixels)", "group": "Mask"}
-        ] = 3,
-        width_mask_edge: Annotated[
-            int, {"label": "Soft edge (pixels)", "group": "Mask"}
-        ] = 3,
+        lowpass_filter: _a.post.LOWPASS_FILTER = 15,
+        angpix: _a.post.ANGPIX_MASK = -1,
+        inimask_threshold: _a.post.INIMASK_THRESHOLD = 0.02,
+        extend_inimask: _a.post.EXTEND_INIMASK = 3,
+        width_mask_edge: _a.post.WIDTH_MASK_EDGE = 3,
         do_helix: _a.helix.DO_HELIX = False,
         helical_z_percentage: _a.helix.HELICAL_Z_PERCENTAGE = 30,
         # Running
@@ -1855,23 +1900,13 @@ class PostProcessJob(_Relion5Job):
         # I/O
         fn_in: _a.io.HALFMAP_TYPE = "",
         fn_mask: _a.io.MASK_TYPE = "",
-        angpix: Annotated[
-            float, {"label": "Calibrated pixel size (A)", "group": "I/O"}
-        ] = -1,
+        angpix: _a.post.ANGPIX_POST = -1,
         # Sharpen
         b_factor: _a.misc.B_FACTOR = None,
-        do_skip_fsc_weighting: Annotated[
-            bool, {"label": "Skip FSC-weighting", "group": "Sharpen"}
-        ] = False,
-        low_pass: Annotated[
-            float, {"label": "Low-pass filter (A)", "group": "Sharpen"}
-        ] = 5,
-        fn_mtf: Annotated[
-            str, {"label": "MTF of the detector", "group": "Sharpen"}
-        ] = "",
-        mtf_angpix: Annotated[
-            float, {"label": "MTF pixel size (A)", "group": "Sharpen"}
-        ] = 1,
+        do_skip_fsc_weighting: _a.post.DO_SKIP_FSC_WEIGHTING = False,
+        low_pass: _a.post.LOW_PASS = 5,
+        fn_mtf: _a.post.FN_MTF = "",
+        mtf_angpix: _a.post.MTF_ANGPIX = 1,
         # Running
         do_queue: _a.running.DO_QUEUE_TYPE = False,
         min_dedicated: _a.running.MIN_DEDICATED_TYPE = 1,

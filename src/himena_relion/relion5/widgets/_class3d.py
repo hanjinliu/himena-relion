@@ -8,7 +8,6 @@ from himena_relion._widgets import (
     Q3DViewer,
     register_job,
     QIntWidget,
-    spacer_widget,
     QMicrographListWidget,
 )
 from himena_relion import _job_dir
@@ -22,14 +21,11 @@ class QClass3DViewer(QJobScrollArea):
         super().__init__()
         self._list_widget = QMicrographListWidget(["Class", "Population", "Resolution"])
         self._list_widget.verticalHeader().setVisible(False)
-        self._list_widget.setFixedWidth(200)
         self._viewer = Q3DViewer()
         self._iter_choice = QIntWidget("Iteration", label_width=60)
         self._iter_choice.setMinimum(0)
-        hor_layout0 = QtW.QHBoxLayout()
-        hor_layout0.addWidget(self._viewer)
-        hor_layout0.addWidget(self._list_widget)
-        self._layout.addLayout(hor_layout0)
+        self._layout.addWidget(self._list_widget)
+        self._layout.addWidget(self._viewer)
         hor_layout1 = QtW.QHBoxLayout()
         hor_layout1.addWidget(self._iter_choice)
         hor_layout1.setContentsMargins(0, 0, 0, 0)
@@ -39,7 +35,6 @@ class QClass3DViewer(QJobScrollArea):
 
         self._iter_choice.valueChanged.connect(self._on_iter_changed)
         self._list_widget.current_changed.connect(self._on_class_changed)
-        self._layout.addWidget(spacer_widget())
 
     def on_job_updated(self, job_dir: _job_dir.Class3DJobDirectory, path: str):
         """Handle changes to the job directory."""

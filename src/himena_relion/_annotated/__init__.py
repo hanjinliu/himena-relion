@@ -39,6 +39,7 @@ from himena_relion._annotated import (
     tomo,
     sampling,
     select,
+    post,
     running,
 )
 
@@ -57,5 +58,6 @@ __all__ = [
     "sampling",
     "compute",
     "select",
+    "post",
     "running",
 ]

@@ -12,6 +12,11 @@ connect_jobs(
     node_mapping={"movies.star": "input_star_mics"},
 )
 connect_jobs(
+    _spa.ImportMoviesJob,
+    _spa.MotionCorrOwnJob,
+    node_mapping={"movies.star": "input_star_mics"},
+)
+connect_jobs(
     _spa.MotionCorr2Job,
     _spa.CtfEstimationJob,
     node_mapping={"corrected_micrographs.star": "input_star_mics"},
@@ -111,17 +116,33 @@ connect_jobs(
 )
 
 
+def _get_niter(path: Path) -> int | None:
+    """Get the final number of iterations from the job.star file."""
+    params = JobDirectory(path).get_job_params_as_dict()
+    if "nr_iter" in params:
+        return int(params["nr_iter"])
+    elif params.get("do_em", "No") == "Yes":
+        return int(params["nr_iter_em"])
+    elif params.get("do_grad", "No") == "Yes":
+        return int(params["nr_iter_grad"])
+    return None
+
+
 def _optimiser_last_iter(path: Path) -> str:
-    files = sorted(path.glob("run_it???_optimiser.star"))
-    return str(files[-1]) if files else ""
+    niter = _get_niter(path)
+    if niter is None:
+        return ""
+    return f"run_it{niter:03d}_optimiser.star"
 
 
 def _particles_last_iter(path: Path) -> str:
-    files = sorted(path.glob("run_it???_data.star"))
-    return str(files[-1]) if files else ""
+    niter = _get_niter(path)
+    if niter is None:
+        return ""
+    return f"run_it{niter:03d}_data.star"
 
 
-def _get_template_last_iter(path: Path) -> str:
+def _get_template_for_pick(path: Path) -> str:
     job_dir = JobDirectory(path)
     class_avg_path = job_dir.path.joinpath("class_averages.star")
     model = ModelClasses.validate_file(class_avg_path)
@@ -131,7 +152,7 @@ def _get_template_last_iter(path: Path) -> str:
 
 def _get_angpix_from_template_pick(path: Path) -> float | None:
     job_dir = JobDirectory(path)
-    path_refs = _get_template_last_iter(path)
+    path_refs = _get_template_for_pick(path)
     path = job_dir.resolve_path(path_refs)
     with mrcfile.open(path, header_only=True) as mrc:
         return float(mrc.voxel_size.x)
@@ -161,7 +182,7 @@ for sel_class_job in [_spa.SelectClassesInteractiveJob, _spa.SelectClassesAutoJo
         _spa.AutoPickTemplate2DJob,
         # node_mapping={"particles.star": "fn_input_autopick"},
         value_mapping={
-            _get_template_last_iter: "fn_refs_autopick",
+            _get_template_for_pick: "fn_refs_autopick",
             _get_angpix_from_template_pick: "angpix_ref",
         },
     )

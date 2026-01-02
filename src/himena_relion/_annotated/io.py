@@ -6,7 +6,7 @@ IN_MOVIES = Annotated[
     {
         "label": "Input movies",
         "widget_type": PathDrop,
-        "type_label": "MicrographMoviesData",
+        "type_label": ["MicrographMoviesData", "MicrographMovieGroupMetadata"],
         "group": "I/O",
     },
 ]

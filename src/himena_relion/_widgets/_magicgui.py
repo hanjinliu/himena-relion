@@ -248,6 +248,8 @@ class Class2DAlgorithmEdit(ValuedContainerWidget):
                 self._niter_em.value = 25
                 self._niter_grad.value = 200
             elif isinstance(value, dict):
+                if set(value.keys()) != {"algorithm", "niter"}:
+                    raise ValueError(f"Wrong keys in value dict: {value!r}")
                 algorithm = value.get("algorithm", "VDAM")
                 self._algorithm.value = algorithm
                 niter = value.get("niter", 200 if algorithm == "VDAM" else 25)

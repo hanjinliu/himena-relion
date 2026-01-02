@@ -25,16 +25,6 @@ FN_IN_RAW = Annotated[
     },
 ]
 
-IN_MULTIFRAME = Annotated[
-    bool,
-    {
-        "label": "Input files are multi-frame movies",
-        "tooltip": (
-            "Set to Yes for multi-frame movies, set to No for single-frame micrographs."
-        ),
-        "group": "I/O",
-    },
-]
 
 OPTICS_GROUP_NAME = Annotated[
     str,

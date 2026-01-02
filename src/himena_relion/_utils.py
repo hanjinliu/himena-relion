@@ -116,6 +116,8 @@ def read_icon_svg_for_type(type_label: str) -> str:
             return read_icon_svg("micrographs")
         case "MicrographsCoords":  # TODO: different icon?
             return read_icon_svg("particles")
+        case "Image2DGroupMetadata":  # TODO: make svg
+            return read_icon_svg("file")
         case "OptimiserData":
             return read_icon_svg("optimiser")
         case "ProcessData":
