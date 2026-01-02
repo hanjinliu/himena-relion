@@ -369,8 +369,7 @@ class _RelionBuiltinContinue(_RelionBuiltinJob):
             scheduler.set_continue_mode(job_dir)
         return scheduler
 
-    def continue_job(self, **kwargs) -> RelionJobExecution | None:
-        """Continue this job with updated parameters."""
+    def make_job_star(self, **kwargs) -> JobStarModel:
         job_dir = self.output_job_dir
         job_star_path = job_dir.job_star()
         job_star = JobStarModel.validate_file(job_star_path)
@@ -384,6 +383,14 @@ class _RelionBuiltinContinue(_RelionBuiltinJob):
             if len(idx) == 1:
                 params_df.iloc[idx[0], 1] = to_string(val_new)
         job_star.joboptions_values = params_df.to_dict(orient="list")
+        job_star.job.job_is_continue = 1
+        return job_star
+
+    def continue_job(self, **kwargs) -> RelionJobExecution | None:
+        """Continue this job with updated parameters."""
+        job_dir = self.output_job_dir
+        job_star_path = job_dir.job_star()
+        job_star = self.make_job_star(**kwargs)
         job_star.write(job_star_path)
         d = job_dir.path.relative_to(job_dir.relion_project_dir).as_posix()
         return execute_job(d)
