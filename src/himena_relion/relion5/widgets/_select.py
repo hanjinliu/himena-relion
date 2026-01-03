@@ -230,6 +230,7 @@ class SplitParticlesViewer(QSelectJobBase):
             if not path.exists():
                 continue
             block = read_star(path).first().trust_loop()
+            # TODO: wrong
             yield f"<h2>{path.name} = {len(block)} particles</h2>"
             df = block.to_pandas()
             particles_in_each_set = []

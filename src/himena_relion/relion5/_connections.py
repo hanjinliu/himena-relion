@@ -179,6 +179,11 @@ for sel_class_job in [_spa.SelectClassesInteractiveJob, _spa.SelectClassesAutoJo
     )
     connect_jobs(
         sel_class_job,
+        _spa.ReExtractJob,
+        node_mapping={"particles.star": "fn_data_reextract"},
+    )
+    connect_jobs(
+        sel_class_job,
         _spa.AutoPickTemplate2DJob,
         # node_mapping={"particles.star": "fn_input_autopick"},
         value_mapping={
@@ -215,6 +220,11 @@ for class3d_job in [_spa.Class3DJob, _spa.Class3DNoAlignmentJob]:
         class3d_job,
         _spa.Refine3DJob,
         node_mapping={"run_class001.mrc": "fn_ref"},
+    )
+    connect_jobs(
+        _spa.Refine3DJob,
+        class3d_job,
+        node_mapping={_particles_last_iter: "fn_img", "run_class001.mrc": "fn_ref"},
     )
     connect_jobs(
         class3d_job,
@@ -296,4 +306,24 @@ connect_jobs(
         postprocess_search_particles: "fn_data",
         "postprocess.star": "fn_post",
     },
+)
+
+
+def _ctf_refine_postprocess_star(path: Path) -> str:
+    return JobDirectory(path).get_job_param("fn_post")
+
+
+connect_jobs(
+    _spa.CtfRefineJob,
+    _spa.CtfRefineJob,
+    node_mapping={
+        "particles_ctf_refine.star": "fn_data",
+        _ctf_refine_postprocess_star: "fn_post",
+    },
+)
+
+connect_jobs(
+    _spa.CtfRefineJob,
+    _spa.Refine3DJob,
+    node_mapping={"particles_ctf_refine.star": "fn_img"},
 )

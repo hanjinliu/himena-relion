@@ -15,7 +15,7 @@ class QPlotCanvas(QModelMatplotlibCanvas):
         self.setParent(parent)
         self.setMaximumSize(400, 280)
         self.setMinimumSize(300, 200)
-        self._size = 7
+        self._size = 3
         self.clear()
 
     def clear(self):
@@ -30,19 +30,22 @@ class QPlotCanvas(QModelMatplotlibCanvas):
 
             if "rlnTomoNominalStageTiltAngle" in df.columns:
                 # this is a tilt series
-                xvals = df["rlnTomoNominalStageTiltAngle"]
+                x = df["rlnTomoNominalStageTiltAngle"]
                 xlabel = "Nominal stage tilt angle (°)"
             else:
                 # just micrographs
-                xvals = df.index
+                x = df.index
                 xlabel = "Micrograph"
             defocus_u_um = df["rlnDefocusU"] / 10000
             defocus_v_um = df["rlnDefocusV"] / 10000
-            fig.scatter(xvals, defocus_u_um, name="U", size=self._size, alpha=0.5)
-            fig.scatter(xvals, defocus_v_um, name="V", size=self._size, alpha=0.5)
+            fig.scatter(
+                x, defocus_u_um, name="U", size=self._size, width=0.5, color="#1f17f483"
+            )
+            fig.scatter(
+                x, defocus_v_um, name="V", size=self._size, width=0.5, color="#ff77b483"
+            )
             fig.x.label = xlabel
             fig.y.label = "Def. (µm)"
-            fig.set_legend(font_size=9.0, location="top_right")
             self.update_model(WidgetDataModel(value=fig, type=StandardType.PLOT))
             self.tight_layout()
 
@@ -72,7 +75,7 @@ class QPlotCanvas(QModelMatplotlibCanvas):
                 xlabel = "Micrograph"
             if ycol in df.columns:
                 yvals = df[ycol]
-                fig.scatter(xvals, yvals, size=self._size, alpha=0.5)
+                fig.scatter(xvals, yvals, size=self._size, width=0.5, color="#1f17f483")
             fig.x.label = xlabel
             fig.y.label = ylabel
             self.update_model(WidgetDataModel(value=fig, type=StandardType.PLOT))

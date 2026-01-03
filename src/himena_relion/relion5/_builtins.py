@@ -1581,13 +1581,13 @@ def _setup_helix_params(widgets: dict[str, ValueWidget]) -> None:
     @widgets["do_helix"].changed.connect
     def _on_helical(value: bool):
         for name in helical_names:
-            widgets[name].visible = value
+            widgets[name].enabled = value
         _on_do_local_search_helical_symmetry(
             widgets["do_local_search_helical_symmetry"].value
         )
 
     for name in helical_names:
-        widgets[name].visible = False
+        widgets[name].enabled = False
 
     @widgets["do_local_search_helical_symmetry"].changed.connect
     def _on_do_local_search_helical_symmetry(value: bool):
@@ -1913,7 +1913,7 @@ class PostProcessJob(_Relion5Job):
 FIT_CTF_CHOICES = Literal["No", "Per-micrograph", "Per-particle"]
 
 
-class CtfRefineJob(_Relion5Job):
+class _CtfRefineJobBase(_Relion5Job):
     _do_ctf_args = ("do_defocus", "do_astig", "do_bfactor", "do_phase")
 
     @classmethod
@@ -1935,38 +1935,33 @@ class CtfRefineJob(_Relion5Job):
                 kwargs[name] = "No"
         return kwargs
 
+
+class CtfRefineJob(_CtfRefineJobBase):
+    @classmethod
+    def normalize_kwargs(cls, **kwargs):
+        kwargs = super().normalize_kwargs(**kwargs)
+        kwargs["do_aniso_mag"] = False
+        return kwargs
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs):
+        kwargs = super().normalize_kwargs_inv(**kwargs)
+        kwargs.pop("do_aniso_mag", None)
+        return kwargs
+
     def run(
         self,
         fn_data: _a.io.IN_PARTICLES = "",
         fn_post: _a.io.PROCESS_TYPE = "",
         # Fit
-        do_aniso_mag: Annotated[
-            bool, {"label": "Estimate anisotropic magnification", "group": "Fit"}
-        ] = False,
-        do_defocus: Annotated[
-            FIT_CTF_CHOICES, {"label": "Fit defocus", "group": "Fit"}
-        ] = "Per-micrograph",
-        do_astig: Annotated[
-            FIT_CTF_CHOICES, {"label": "Fit astigmatism", "group": "Fit"}
-        ] = "No",
-        do_bfactor: Annotated[
-            FIT_CTF_CHOICES, {"label": "Fit B-factor", "group": "Fit"}
-        ] = "No",
-        do_phase: Annotated[
-            FIT_CTF_CHOICES, {"label": "Fit phase shift", "group": "Fit"}
-        ] = "No",
-        do_tilt: Annotated[
-            bool, {"label": "Estimate beam tilt", "group": "Fit"}
-        ] = False,
-        do_trefoil: Annotated[
-            bool, {"label": "Estimate trefoil", "group": "Fit"}
-        ] = False,
-        do_4thorder: Annotated[
-            bool, {"label": "Estimate 4th order aberrations", "group": "Fit"}
-        ] = False,
-        minres: Annotated[
-            float, {"label": "Minimum resolution for fitting (A)", "group": "Fit"}
-        ] = 30,
+        do_defocus: _a.ctfrefine.DO_DEFOCUS = "Per-micrograph",
+        do_astig: _a.ctfrefine.DO_ASTIG = "No",
+        do_bfactor: _a.ctfrefine.DO_BFACTOR = "No",
+        do_phase: _a.ctfrefine.DO_PHASE = "No",
+        do_tilt: _a.ctfrefine.DO_TILT = False,
+        do_trefoil: _a.ctfrefine.DO_TREFOIL = False,
+        do_4thorder: _a.ctfrefine.DO_4THORDER = False,
+        minres: _a.ctfrefine.MINRES = 30,
         # Running
         nr_mpi: _a.running.NR_MPI = 1,
         nr_threads: _a.running.NR_THREADS = 1,
@@ -1975,19 +1970,43 @@ class CtfRefineJob(_Relion5Job):
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
+
+class CtfRefineAnisoMagJob(_CtfRefineJobBase):
     @classmethod
-    def setup_widgets(cls, widgets):
-        @widgets["do_aniso_mag"].changed.connect
-        def _on_do_aniso_mag_changed(value: bool):
-            for name in cls._do_ctf_args:
-                widgets[name].enabled = not value
+    def type_label(cls) -> str:
+        return "relion.ctfrefine.anisomag"
 
-        _on_do_aniso_mag_changed(widgets["do_aniso_mag"].value)
+    @classmethod
+    def normalize_kwargs(cls, **kwargs):
+        kwargs = super().normalize_kwargs(**kwargs)
+        kwargs["do_aniso_mag"] = True
+        kwargs["do_ctf"] = False
+        return kwargs
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs):
+        kwargs = super().normalize_kwargs_inv(**kwargs)
+        kwargs.pop("do_aniso_mag", None)
+        return kwargs
+
+    def run(
+        self,
+        fn_data: _a.io.IN_PARTICLES = "",
+        fn_post: _a.io.PROCESS_TYPE = "",
+        # Fit
+        do_tilt: _a.ctfrefine.DO_TILT = False,
+        do_trefoil: _a.ctfrefine.DO_TREFOIL = False,
+        do_4thorder: _a.ctfrefine.DO_4THORDER = False,
+        minres: _a.ctfrefine.MINRES = 30,
+        # Running
+        nr_mpi: _a.running.NR_MPI = 1,
+        nr_threads: _a.running.NR_THREADS = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")
 
 
-# "relion.joinstar.particles": "Join Particles",
-# "relion.joinstar.micrographs": "Join Micrographs",
-# "relion.joinstar.movies": "Join Movies",
 class _JoinStarBase(_Relion5Job):
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:

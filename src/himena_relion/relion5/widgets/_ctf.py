@@ -58,7 +58,7 @@ class QCtfFindViewer(QJobScrollArea):
         self._mic_list.current_changed.connect(self._mic_changed)
 
         self._viewer = Q2DViewer()
-        layout.addWidget(QtW.QLabel("<b>Defocus</b>"))
+        layout.addWidget(QtW.QLabel("<b>Defocus U/V</b>"))
         layout.addWidget(self._defocus_canvas)
         layout.addWidget(QtW.QLabel("<b>Astigmatism</b>"))
         layout.addWidget(self._astigmatism_canvas)

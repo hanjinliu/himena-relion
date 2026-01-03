@@ -88,7 +88,11 @@ class JobDirectory:
             return JOB_ID_MAP.get(label, label)
         if job_cls := self._to_job_class():
             return job_cls.job_title()
-        return "Unknown"
+        try:
+            label = JobStarModel.validate_file(self.job_star()).job.job_type_label
+            return JOB_ID_MAP[label]
+        except Exception:
+            return "Unknown"
 
     def himena_model_type(self) -> str:
         """Model type string specific to this job."""
