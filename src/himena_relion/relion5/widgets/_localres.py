@@ -35,10 +35,9 @@ class QLocalResViewer(QJobScrollArea):
         """Initialize the viewer with the job directory."""
         map_data, locres_data, mask_data, scale = _read_files(job_dir)
         cutoff_angst = np.min(locres_data[locres_data > 0.001])
-        cutoff_rel = map_data.shape[0] * scale / cutoff_angst
-        print(cutoff_angst, cutoff_rel)
+        cutoff_rel = scale / cutoff_angst
         map_filtered = _utils.lowpass_filter(map_data, cutoff_rel)
-        self._viewer.set_images(map_filtered, locres_data, mask_data)
+        self._viewer.set_images(map_filtered, locres_data, mask_data > 0.2)
 
 
 def _read_mrc(path: Path) -> tuple[np.ndarray, float]:

@@ -2157,6 +2157,22 @@ class LocalResolutionOwnJob(_LocalResolutionJobBase):
         kwargs["do_relion_locres"] = True
         return super().normalize_kwargs(**kwargs)
 
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
+        kwargs = super().normalize_kwargs_inv(**kwargs)
+        for name in [
+            "adhoc_bfac",
+            "do_relion_locres",
+            "do_reesmap_locres",
+            "fn_resmap",
+            "maxres",
+            "minres",
+            "pval",
+            "stepres",
+        ]:
+            kwargs.pop(name, None)
+        return kwargs
+
     def run(
         self,
         fn_in: _a.io.HALFMAP_TYPE = "",
