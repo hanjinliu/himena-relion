@@ -184,7 +184,10 @@ class QRelionPipelineFlowChart(QtW.QWidget):
             for job in self._state_to_job_map[NodeStatus.SCHEDULED].values():
                 # run all the scheduled jobs whose dependencies are met
                 if is_all_inputs_ready(job.path):
-                    execute_job(job.path.as_posix(), ignore_error=True)
+                    execute_job(
+                        job.path.as_posix(),
+                        cwd=pipeline._project_dir,
+                    )
                     ui.show_notification(f"Scheduled job {job.job_repr()} started.")
             ui.show_notification(
                 "\n".join(f"Job {job}/ succeeded." for job in succeeded)

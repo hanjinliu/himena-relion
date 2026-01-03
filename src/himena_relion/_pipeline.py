@@ -13,8 +13,9 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class RelionDefaultPipeline(Sequence["RelionJobInfo"]):
-    def __init__(self, nodes: list[RelionJobInfo]):
+    def __init__(self, nodes: list[RelionJobInfo], project_dir: str | Path):
         self._nodes = nodes
+        self._project_dir = Path(project_dir)
 
     def __len__(self) -> int:
         return len(self._nodes)
@@ -29,7 +30,12 @@ class RelionDefaultPipeline(Sequence["RelionJobInfo"]):
         yield from self._nodes
 
     @classmethod
+    def empty(cls) -> RelionDefaultPipeline:
+        return cls([], Path.cwd())
+
+    @classmethod
     def from_pipeline_star(cls, star_path: Path) -> RelionDefaultPipeline:
+        """Construct a RelionDefaultPipeline from a default_pipeline.star file."""
         try:
             pipeline_star = RelionPipelineModel.validate_file(star_path)
         except ValidationError:
@@ -71,7 +77,7 @@ class RelionDefaultPipeline(Sequence["RelionJobInfo"]):
                     job = RelionOutputFile(nodes[from_path.parent], from_path.name)
                     nodes[to_path].parents.append(job)
 
-        return cls(list(nodes.values()))
+        return cls(list(nodes.values()), project_dir=star_path.parent)
 
 
 class NodeStatus(Enum):

@@ -16,7 +16,7 @@ class QRelionPipelineFlowChartView(QFlowChartView):
         super().__init__(scene)
         self.item_right_clicked.connect(self._on_right_clicked)
         self._ui = ui
-        self._pipeline = RelionDefaultPipeline([])
+        self._pipeline = RelionDefaultPipeline.empty()
         self._relion_project_dir: Path = Path.cwd()
         self.item_left_double_clicked.connect(self._on_item_double_clicked)
         self.item_left_clicked.connect(self._update_selection_rect)

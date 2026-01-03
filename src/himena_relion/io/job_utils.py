@@ -63,7 +63,11 @@ def gentle_clean_relion_job(ui: MainWindow, model: WidgetDataModel):
     job_num = int(job_dir.job_number)
     # Work like this:
     # $ relion_pipeliner --gentle_clean 5
-    subprocess.run(["relion_pipeliner", "--gentle_clean", str(job_num)], check=True)
+    subprocess.run(
+        ["relion_pipeliner", "--gentle_clean", str(job_num)],
+        check=True,
+        cwd=job_dir.relion_project_dir,
+    )
     ui.show_notification(f"Gentle cleaned job {job_dir.job_normal_id()}.")
 
 
@@ -79,7 +83,11 @@ def harsh_clean_relion_job(ui: MainWindow, model: WidgetDataModel):
     job_num = int(job_dir.job_number)
     # Work like this:
     # $ relion_pipeliner --harsh_clean 5
-    subprocess.run(["relion_pipeliner", "--harsh_clean", str(job_num)], check=True)
+    subprocess.run(
+        ["relion_pipeliner", "--harsh_clean", str(job_num)],
+        check=True,
+        cwd=job_dir.relion_project_dir,
+    )
     ui.show_notification(f"Harsh cleaned job {job_dir.job_normal_id()}.")
 
 
@@ -144,7 +152,7 @@ def overwrite_relion_job(ui: MainWindow, model: WidgetDataModel):
     if job_cls is None:
         raise RuntimeError("Cannot determine job class.")
 
-    scheduler = job_cls._show_scheduler_widget(ui, {})
+    scheduler = job_cls._show_scheduler_widget(ui, {}, cwd=job_dir.relion_project_dir)
     scheduler.set_edit_mode(job_dir)
     scheduler.set_parameters(job_dir.get_job_params_as_dict())
 
@@ -167,8 +175,8 @@ def clone_relion_job(ui: MainWindow, model: WidgetDataModel):
     job_cls = job_dir._to_job_class()
     if job_cls is None:
         raise RuntimeError("Cannot determine job class.")
-    scheduler = job_cls._show_scheduler_widget(ui, {})
-    scheduler.update_by_job(job_cls)
+    scheduler = job_cls._show_scheduler_widget(ui, {}, cwd=job_dir.relion_project_dir)
+    scheduler.update_by_job(job_cls, cwd=job_dir.relion_project_dir)
     scheduler.set_parameters(job_dir.get_job_params_as_dict())
     scheduler.set_schedule_mode()
 

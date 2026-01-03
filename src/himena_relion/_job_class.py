@@ -143,7 +143,7 @@ class RelionJob(ABC):
         )
 
     @classmethod
-    def create_and_run_job(cls, **kwargs) -> RelionJobExecution | None:
+    def create_and_run_job(cls, _cwd, **kwargs) -> RelionJobExecution | None:
         with tempfile.TemporaryDirectory() as tmpdir:
             tmpdir = Path(tmpdir)
             job_star_path = tmpdir / "job.star"
@@ -155,7 +155,7 @@ class RelionJob(ABC):
             # The new job is scheduled but NOT run yet. To run the job, we need to
             # call relion_pipeliner --RunJobs <job_dir>
             args = ["relion_pipeliner", "--addJobFromStar", str(job_star_path)]
-            proc = subprocess.run(args)
+            proc = subprocess.run(args, cwd=_cwd)
             if proc.returncode != 0:
                 args_str = " ".join(args)
                 raise RuntimeError(
@@ -165,7 +165,7 @@ class RelionJob(ABC):
 
         d = last_job_directory()  # FIXME: not thread-safe
         if is_all_inputs_ready(d):
-            return execute_job(d)
+            return execute_job(d, cwd=_cwd)
 
     @classmethod
     @abstractmethod
@@ -179,7 +179,7 @@ class RelionJob(ABC):
         job_star_model.write(job_dir.job_star())
         to_run = str(job_dir.path.relative_to(job_dir.relion_project_dir))
         if is_all_inputs_ready(to_run):
-            return execute_job(to_run)
+            return execute_job(to_run, cwd=job_dir.relion_project_dir)
         else:
             default_pipeline_path = job_dir.relion_project_dir / "default_pipeline.star"
             if not default_pipeline_path.exists():
@@ -188,10 +188,10 @@ class RelionJob(ABC):
             update_default_pipeline(default_pipeline_path, to_run, state="Scheduled")
 
     @classmethod
-    def _show_scheduler_widget(cls, ui: MainWindow, context: AnyContext):
+    def _show_scheduler_widget(cls, ui: MainWindow, context: AnyContext, cwd=None):
         scheduler = _get_scheduler_widget(ui)
         try:
-            scheduler.update_by_job(cls)
+            scheduler.update_by_job(cls, cwd=cwd)
             if context:
                 scheduler.set_parameters(context)
         finally:
@@ -363,10 +363,10 @@ class _RelionBuiltinContinue(_RelionBuiltinJob):
     ):
         scheduler = _get_scheduler_widget(ui)
         try:
-            scheduler.update_by_job(cls)
             job_dir = model.value
             if not isinstance(job_dir, _job_dir.JobDirectory):
                 raise RuntimeError("Widget model does not contain a job directory.")
+            scheduler.update_by_job(cls, cwd=job_dir.relion_project_dir)
             orig_params = job_dir.get_job_params_as_dict()
             sig = cls._signature()
             for orig_key, orig_val in orig_params.items():
@@ -401,7 +401,7 @@ class _RelionBuiltinContinue(_RelionBuiltinJob):
         job_star = self.make_job_star(**kwargs)
         job_star.write(job_star_path)
         d = job_dir.path.relative_to(job_dir.relion_project_dir).as_posix()
-        return execute_job(d)
+        return execute_job(d, cwd=job_dir.relion_project_dir)
 
 
 @dataclass
@@ -521,25 +521,30 @@ def connect_jobs(
     )
 
 
-def execute_job(d: str | Path, ignore_error: bool = False) -> RelionJobExecution:
-    """Execute a RELION job named `d` (such as "Class3D/job012/")."""
-    d = normalize_job_id(d)
+def execute_job(
+    job_name: str | Path,
+    ignore_error: bool = False,
+    *,
+    cwd=None,
+) -> RelionJobExecution:
+    """Execute a RELION job named `job_name` (such as "Class3D/job012/")."""
+    job_name = normalize_job_id(job_name)
     try:
-        job_dir = _job_dir.JobDirectory(Path(d).resolve())
+        job_dir = _job_dir.JobDirectory(Path(job_name).resolve())
     except FileNotFoundError as e:
         if not ignore_error:
             raise e
-        _LOGGER.warning("Error executing RELION job %s", d, exc_info=True)
+        _LOGGER.warning("Error executing RELION job %s", job_name, exc_info=True)
         return None
-    args = ["relion_pipeliner", "--RunJobs", d]
+    args = ["relion_pipeliner", "--RunJobs", job_name]
     # NOTE: Because himena also uses Qt, RELION jobs that depend on napari (such as
     # ExcludeTiltSeries) may fail to start, saying no Qt bindings are available. This
     # seems to be due to environment variable QT_API being set to incompatible value
     # like "pyqt6".
     env = os.environ.copy()
     env.pop("QT_API", None)
-    proc = subprocess.Popen(args, start_new_session=True, env=env)
-    _LOGGER.info("Started RELION job %s with PID %d", d, proc.pid)
+    proc = subprocess.Popen(args, start_new_session=True, env=env, cwd=cwd)
+    _LOGGER.info("Started RELION job %s with PID %d", job_name, proc.pid)
     return RelionJobExecution(proc, job_dir)
 
 

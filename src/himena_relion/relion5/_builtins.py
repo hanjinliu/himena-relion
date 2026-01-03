@@ -1244,28 +1244,21 @@ class _Class3DJobBase(_Relion5Job):
             kwargs.pop("helical_tube_inner_diameter", -1),
             kwargs.pop("helical_tube_outer_diameter", -1),
         )
-        kwargs["offset_range_step"] = (
-            kwargs.pop("offset_range", 5),
-            kwargs.pop("offset_step", 1),
-        )
+        if "offset_range" in kwargs and "offset_step" in kwargs:
+            kwargs["offset_range_step"] = (
+                kwargs.pop("offset_range", 5),
+                kwargs.pop("offset_step", 1),
+            )
         kwargs.pop("fn_cont", None)
         return super().normalize_kwargs_inv(**kwargs)
 
     @classmethod
     def setup_widgets(cls, widgets):
-        @widgets["do_local_ang_searches"].changed.connect
-        def _on_do_local_ang_searches_changed(value: bool):
-            widgets["sigma_angles"].enabled = value
-            widgets["relax_sym"].enabled = value
-
         @widgets["do_ctf_correction"].changed.connect
         def _on_do_ctf_correction_changed(value: bool):
             widgets["ctf_intact_first_peak"].enabled = value
 
-        widgets["sigma_angles"].enabled = widgets["do_local_ang_searches"].value
-        widgets["relax_sym"].enabled = widgets["do_local_ang_searches"].value
-        widgets["ctf_intact_first_peak"].enabled = widgets["do_ctf_correction"].value
-
+        _on_do_ctf_correction_changed(widgets["do_ctf_correction"].value)
         _setup_helix_params(widgets)
 
 
@@ -1430,6 +1423,15 @@ class Class3DJob(_Class3DJobBase):
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
+    @classmethod
+    def setup_widgets(cls, widgets):
+        @widgets["do_local_ang_searches"].changed.connect
+        def _on_do_local_ang_searches_changed(value: bool):
+            widgets["sigma_angles"].enabled = value
+            widgets["relax_sym"].enabled = value
+
+        _on_do_local_ang_searches_changed(widgets["do_local_ang_searches"].value)
+
 
 class Refine3DJob(_Relion5Job):
     """3D auto-refinement of pre-aligned particles."""
@@ -1579,13 +1581,13 @@ def _setup_helix_params(widgets: dict[str, ValueWidget]) -> None:
     @widgets["do_helix"].changed.connect
     def _on_helical(value: bool):
         for name in helical_names:
-            widgets[name].enabled = value
+            widgets[name].visible = value
         _on_do_local_search_helical_symmetry(
             widgets["do_local_search_helical_symmetry"].value
         )
 
     for name in helical_names:
-        widgets[name].enabled = False
+        widgets[name].visible = False
 
     @widgets["do_local_search_helical_symmetry"].changed.connect
     def _on_do_local_search_helical_symmetry(value: bool):
@@ -1943,7 +1945,7 @@ class CtfRefineJob(_Relion5Job):
         ] = False,
         do_defocus: Annotated[
             FIT_CTF_CHOICES, {"label": "Fit defocus", "group": "Fit"}
-        ] = "No",
+        ] = "Per-micrograph",
         do_astig: Annotated[
             FIT_CTF_CHOICES, {"label": "Fit astigmatism", "group": "Fit"}
         ] = "No",

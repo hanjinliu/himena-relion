@@ -26,6 +26,7 @@ class QJobScheduler(QtW.QWidget):
     def __init__(self, ui: MainWindow):
         super().__init__()
         self._ui = ui
+        self._cwd = None
         layout = QtW.QVBoxLayout(self)
         self._title_label = QtW.QLabel("")  # job name
         font = self._title_label.font()
@@ -60,7 +61,7 @@ class QJobScheduler(QtW.QWidget):
         self._set_content(None, "No job selected")
         self._exec_btn.setVisible(False)
 
-    def update_by_job(self, job_cls: type[RelionJob]):
+    def update_by_job(self, job_cls: type[RelionJob], cwd=None):
         """Update the widget based on the job directory."""
         if issubclass(job_cls, _RelionBuiltinContinue):
             prefix = "Continue - "
@@ -68,6 +69,7 @@ class QJobScheduler(QtW.QWidget):
             prefix = "Job: "
         self._set_content(job_cls, prefix + job_cls.job_title())
         self._job_param_widget.update_by_job(job_cls)
+        self._cwd = cwd
 
     def set_parameters(self, params: dict):
         if (job_cls := self._current_job_cls) is None:
@@ -202,7 +204,7 @@ class ScheduleMode(Mode):
         if (job_cls := widget._current_job_cls) is None:
             raise RuntimeError("No job class selected.")
         params = widget.get_parameters()
-        proc = job_cls.create_and_run_job(**params)
+        proc = job_cls.create_and_run_job(**params, _cwd=widget._cwd)
         widget.clear_content()
         if isinstance(proc, RelionJobExecution):
             widget._ui.read_file(proc.job_directory.path, append_history=False)
