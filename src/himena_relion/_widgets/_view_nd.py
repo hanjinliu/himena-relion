@@ -5,7 +5,7 @@ from himena import StandardType, WidgetDataModel
 import numpy as np
 from numpy.typing import NDArray
 from qtpy import QtWidgets as QtW, QtCore
-from superqt import ensure_main_thread, QLabeledDoubleSlider
+from superqt import ensure_main_thread, QLabeledDoubleSlider, QLabeledDoubleRangeSlider
 from vispy.color import ColorArray
 from himena.qt._qlineedit import QIntLineEdit, QDoubleLineEdit
 from himena.plugins import validate_protocol
@@ -17,7 +17,7 @@ from himena_builtins.qt.widgets._image_components import (
 
 from himena_relion._image_readers import ArrayFilteredView
 from himena_relion._widgets._spinbox import QIntWidget
-from himena_relion._widgets._vispy import Vispy2DViewer, Vispy3DViewer
+from himena_relion._widgets._vispy import Vispy2DViewer, Vispy3DViewer, IsoSurface
 from himena_relion import _utils
 
 
@@ -252,10 +252,7 @@ class Q2DViewer(QViewer):
         self._canvas.update_canvas()
 
 
-class Q3DViewer(QViewer):
-    __himena_widget_id__ = "himena-relion:Q3DViewer"
-    __himena_display_name__ = "3D volume viewer"
-
+class Q3DViewerBase(QViewer):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._canvas = Vispy3DViewer(self)
@@ -263,12 +260,18 @@ class Q3DViewer(QViewer):
         self._canvas._viewbox.border_color = "#4A4A4A"
         self._canvas.native.setMaximumSize(400, 400)
         self._canvas.native.setMinimumSize(300, 300)
-        layout = QtW.QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
         self.setSizePolicy(
             QtW.QSizePolicy.Policy.Expanding,
             QtW.QSizePolicy.Policy.Expanding,
         )
+
+
+class Q3DViewer(Q3DViewerBase):
+    __himena_widget_id__ = "himena-relion:Q3DViewer"
+    __himena_display_name__ = "3D volume viewer"
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
         self._iso_slider = QLabeledDoubleSlider(QtCore.Qt.Orientation.Horizontal)
         self._iso_slider.valueChanged.connect(self._on_iso_changed)
         self._auto_threshold_btn = QtW.QPushButton("Auto")
@@ -279,6 +282,8 @@ class Q3DViewer(QViewer):
         dim_slider.setMaximumWidth(400)
         dim_slider.setMinimumWidth(300)
 
+        layout = QtW.QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self._canvas.native)
         layout.addWidget(dim_slider)
 
@@ -358,6 +363,100 @@ class Q3DViewer(QViewer):
     @validate_protocol
     def size_hint(self):
         return 330, 350
+
+
+class Q3DLocalResViewer(Q3DViewerBase):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._iso_slider = QLabeledDoubleSlider(QtCore.Qt.Orientation.Horizontal)
+        self._iso_slider.valueChanged.connect(self._on_iso_changed)
+        self._auto_threshold_btn = QtW.QPushButton("Auto")
+        self._auto_threshold_btn.setFixedWidth(40)
+        self._auto_threshold_btn.clicked.connect(lambda: self.auto_threshold())
+        self._clim_slider = QLabeledDoubleRangeSlider(QtCore.Qt.Orientation.Horizontal)
+        self._clim_slider.valueChanged.connect(self._on_clim_changed)
+        self._surface = IsoSurface(parent=self._canvas._viewbox.scene)
+        self._has_image = False
+        dim_slider = labeled("Threshold", self._iso_slider, self._auto_threshold_btn)
+        dim_slider.setMaximumWidth(400)
+        dim_slider.setMinimumWidth(300)
+        clim_slider = labeled("Color", self._clim_slider)
+        clim_slider.setMaximumWidth(400)
+        clim_slider.setMinimumWidth(300)
+        self._shading = QtW.QComboBox()
+        self._shading.setSizePolicy(
+            QtW.QSizePolicy.Policy.Expanding,
+            QtW.QSizePolicy.Policy.Fixed,
+        )
+        self._shading.addItems(["none", "flat", "smooth"])
+        self._shading.currentTextChanged.connect(self._on_shading_changed)
+
+        layout = QtW.QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(self._canvas.native)
+        layout.addWidget(dim_slider)
+        layout.addWidget(clim_slider)
+        layout.addWidget(labeled("Shading", self._shading))
+
+    def auto_threshold(self, thresh: float | None = None, update_now: bool = True):
+        """Automatically set the threshold based on the image data."""
+        img = self._surface._data
+        if self._surface.visible:
+            if thresh is None:
+                thresh = _utils.threshold_yen(_utils.bin_image(img, 4))
+            self._iso_slider.setValue(thresh)
+            self._iso_slider.setRange(*self._canvas._lims)
+        if update_now:
+            self._canvas.update_canvas()
+
+    def auto_fit(self, update_now: bool = True):
+        """Automatically fit the camera to the image."""
+        img = self._surface._data
+        self._canvas.camera.center = np.array(img.shape) / 2
+        self._canvas.camera.scale_factor = max(img.shape)
+        self._canvas.camera.update()
+        if update_now:
+            self._canvas.update_canvas()
+
+    def set_images(
+        self,
+        image: NDArray[np.float32],
+        locres: NDArray[np.float32],
+        mask: NDArray[np.bool_] | None = None,
+        *,
+        update_now: bool = True,
+    ):
+        if mask is None:
+            mask_sl = slice(None)
+        else:
+            mask_sl = mask
+        image_masked = image[mask_sl]
+        min0, max0 = np.min(image_masked), np.max(image_masked)
+        self._iso_slider.setRange(min0, max0)
+        self._iso_slider.setValue((min0 + max0) / 2)
+        locres_masked = locres[mask_sl]
+        locres_masked = locres_masked[locres_masked > 0.001]
+        min0, max0 = np.min(locres_masked), np.max(locres_masked)
+        self._clim_slider.setRange(min0, max0)
+        self._clim_slider.setValue((min0, max0))
+        self._surface.set_data(image, mask, clim=(min0, max0), color_array=locres)
+        self._on_shading_changed(self._shading.currentText())
+        if update_now:
+            self._canvas.update_canvas()
+
+    def _on_iso_changed(self, value: float):
+        self._surface.level = value
+        self._canvas.update_canvas()
+
+    def _on_clim_changed(self, clim: tuple[float, float]):
+        self._surface.clim = clim
+        self._canvas.update_canvas()
+
+    def _on_shading_changed(self, shading: str):
+        if shading == "none":
+            shading = None
+        self._surface.shading = shading
+        self._canvas.update_canvas()
 
 
 class Q2DFilterWidget(QtW.QWidget):

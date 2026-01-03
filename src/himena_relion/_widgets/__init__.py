@@ -9,7 +9,12 @@ from himena_relion._widgets._job_widgets import (
     QJobScrollArea,
     QRelionNodeItem,
 )
-from himena_relion._widgets._view_nd import Q2DViewer, Q3DViewer, Q2DFilterWidget
+from himena_relion._widgets._view_nd import (
+    Q2DViewer,
+    Q3DViewer,
+    Q3DLocalResViewer,
+    Q2DFilterWidget,
+)
 from himena_relion._widgets._spinbox import QIntWidget, QIntChoiceWidget
 from himena_relion._widgets._plot import QPlotCanvas
 from himena_relion._widgets._misc import (
@@ -27,6 +32,7 @@ __all__ = [
     "QPlotCanvas",
     "Q2DViewer",
     "Q3DViewer",
+    "Q3DLocalResViewer",
     "Q2DFilterWidget",
     "QIntWidget",
     "QIntChoiceWidget",
