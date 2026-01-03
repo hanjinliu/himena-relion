@@ -2163,7 +2163,7 @@ class LocalResolutionOwnJob(_LocalResolutionJobBase):
         for name in [
             "adhoc_bfac",
             "do_relion_locres",
-            "do_reesmap_locres",
+            "do_resmap_locres",
             "fn_resmap",
             "maxres",
             "minres",

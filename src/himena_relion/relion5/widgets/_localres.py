@@ -54,6 +54,13 @@ def _read_files(
     params = job_dir.get_job_params_as_dict()
     map_path = job_dir.resolve_path(params["fn_in"])
     map_data, scale = _read_mrc(map_path)
+    if map_path.stem.endswith("_half1"):
+        alt_map_path = map_path.with_name(
+            map_path.stem[:-5] + "half2" + map_path.suffix
+        )
+        if alt_map_path.exists():
+            alt_map_data, _ = _read_mrc(alt_map_path)
+            map_data = (map_data + alt_map_data) / 2
     locres_data, _ = _read_mrc(locres_path)
     if mask_path_rel := params.get("fn_mask", ""):
         mask_path = job_dir.resolve_path(mask_path_rel)

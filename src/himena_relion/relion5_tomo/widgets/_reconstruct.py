@@ -53,7 +53,7 @@ class QReconstructViewer(QJobScrollArea):
                 opt_model = OptimisationSetModel.validate_file(opt_path)
                 particles_path = opt_model.particles_star
             elif ptcl := params.get("in_particles", None):
-                particles_path = ptcl
+                particles_path = job_dir.resolve_path(ptcl)
             else:
                 return
             if not particles_path.exists():

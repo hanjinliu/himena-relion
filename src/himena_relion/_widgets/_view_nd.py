@@ -302,7 +302,6 @@ class Q3DViewer(Q3DViewerBase):
             self._canvas.image = image
             self._canvas.image_visual.visible = True
             self._has_image = True
-        self._canvas.set_iso_threshold(self._iso_slider.value())
         if not had_image:
             self.auto_threshold(update_now=False)
             self.auto_fit(update_now=False)
@@ -315,6 +314,7 @@ class Q3DViewer(Q3DViewerBase):
             prec = np.log10(th_max - th_min + 1e-8)
             n_decimals = max(0, -int(np.floor(prec)) + 2)
             self._iso_slider.setDecimals(n_decimals)
+        self._canvas.set_iso_threshold(self._iso_slider.value())
         if update_now:
             self._canvas.update_canvas()
 
@@ -384,11 +384,14 @@ class Q3DLocalResViewer(Q3DViewerBase):
         clim_slider.setMaximumWidth(400)
         clim_slider.setMinimumWidth(300)
         self._shading = QtW.QComboBox()
+        self._shading.setMinimumWidth(300)
+        self._shading.setMaximumWidth(400)
         self._shading.setSizePolicy(
             QtW.QSizePolicy.Policy.Expanding,
             QtW.QSizePolicy.Policy.Fixed,
         )
         self._shading.addItems(["none", "flat", "smooth"])
+        self._shading.setCurrentText("smooth")
         self._shading.currentTextChanged.connect(self._on_shading_changed)
 
         layout = QtW.QVBoxLayout(self)

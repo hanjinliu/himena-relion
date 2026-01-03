@@ -17,7 +17,7 @@ it for your real data processing.
 
 ## Highlights
 
-- [x] View RELION SPA (WIP) and tomography jobs.
+- [x] View RELION SPA and tomography jobs.
 - [x] Efficient 2D/3D rendering over SSH using [vispy](https://github.com/vispy/vispy) and EGL.
 - [x] View job flowchart, and open jobs from the flowchart.
 - [x] Run RELION jobs from the GUI. Drag-and-drop support for job inputs from outputs.

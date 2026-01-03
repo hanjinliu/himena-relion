@@ -108,19 +108,10 @@ class IsosurfaceVisual(MeshVisual):
             self._update_meshvisual = True
         if self._recolor:
             face_centers = self._vertices_cache[self._faces_cache].mean(axis=1)
-            values_face = ndi.map_coordinates(
-                self._color_array, face_centers.T[:, :, None], order=1, mode="nearest"
-            )
-            values_vert = ndi.map_coordinates(
-                self._color_array,
-                self._vertices_cache.T[:, :, None],
-                order=1,
-                mode="nearest",
-            )
-            values_face = _norm_values(values_face, self._clim)
-            values_vert = _norm_values(values_vert, self._clim)
-            self._vertex_colors = self._colormap.map(values_vert)
-            self._face_colors_cache = self._colormap.map(values_face)
+            values_face = _map_coordinates(self._color_array, face_centers)
+            values_vert = _map_coordinates(self._color_array, self._vertices_cache)
+            self._face_colors_cache = self._map_colors(values_face)
+            self._vertex_colors = self._map_colors(values_vert)
             self._recolor = False
             self._update_meshvisual = True
 
@@ -137,6 +128,12 @@ class IsosurfaceVisual(MeshVisual):
 
         return MeshVisual._prepare_draw(self, view)
 
+    def _map_colors(self, values: np.ndarray) -> np.ndarray:
+        """Map scalar values to colors using the colormap and clim."""
+        normed = _norm_values(values, self._clim)
+        colors = self._colormap.map(normed)
+        return colors
+
 
 def _norm_values(values, clim: tuple[float, float]) -> np.ndarray:
     """Normalize values to the range [0, 1] based on clim."""
@@ -144,6 +141,12 @@ def _norm_values(values, clim: tuple[float, float]) -> np.ndarray:
     normed = (values - cmin) / (cmax - cmin)
     normed = np.clip(normed, 0.0, 1.0)
     return normed
+
+
+def _map_coordinates(arr: np.ndarray, verts: np.ndarray) -> np.ndarray:
+    return ndi.map_coordinates(
+        arr, verts[:, :, np.newaxis], order=1, mode="nearest", prefilter=False
+    )
 
 
 IsoSurface = create_visual_node(IsosurfaceVisual)
