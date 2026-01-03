@@ -5,6 +5,7 @@ from typing import Any, Callable
 import numpy as np
 import pandas as pd
 from qtpy import QtWidgets as QtW, QtCore
+from superqt import QToggleSwitch
 from superqt.utils import thread_worker
 from himena_relion._widgets import (
     QJobScrollArea,
@@ -12,11 +13,9 @@ from himena_relion._widgets import (
     register_job,
     QIntWidget,
     QPlotCanvas,
-    spacer_widget,
     QNumParticlesLabel,
 )
 from himena_relion import _job_dir
-from himena_relion.schemas import ParticleMetaModel
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -28,13 +27,18 @@ class QRefine3DViewer(QJobScrollArea):
         super().__init__()
         layout = self._layout
         self._viewer = Q3DViewer()
+        self._arrow_visible = QToggleSwitch("Show angle distribution")
+        self._arrow_visible.setChecked(False)
+        self._arrow_visible.toggled.connect(self._on_arrow_visible_toggled)
+        self._viewer._canvas.arrow_visual.visible = False
         max_width = 400
         self._viewer.setMaximumWidth(max_width)
         self._fsc_plot = QPlotCanvas(self)
-        self._ang_dist_plot = QPlotCanvas(self)
         self._iter_choice = QIntWidget("Iteration", label_width=60)
         self._iter_choice.setMinimum(0)
         self._num_particles_label = QNumParticlesLabel()
+        layout.addWidget(QtW.QLabel("<b>Refined Map</b>"))
+        layout.addWidget(self._arrow_visible)
         layout.addWidget(self._viewer)
         _hor = QtW.QWidget()
         _hor.setMaximumWidth(max_width)
@@ -47,9 +51,6 @@ class QRefine3DViewer(QJobScrollArea):
         layout.addWidget(_hor)
         layout.addWidget(QtW.QLabel("<b>Fourier Shell Correlation</b>"))
         layout.addWidget(self._fsc_plot)
-        layout.addWidget(QtW.QLabel("<b>Angle Distribution</b>"))
-        layout.addWidget(self._ang_dist_plot)
-        layout.addWidget(spacer_widget())
         self._index_start = 1
         self._job_dir = _job_dir.Refine3DJobDirectory(job_dir.path)
 
@@ -84,7 +85,7 @@ class QRefine3DViewer(QJobScrollArea):
     def _read_items(self, niter, class_id: int = 1):
         res = self._job_dir.get_result(niter)
 
-        map0, map1 = res.halfmaps(class_id - self._index_start)
+        map0, map1, scale = res.halfmaps(class_id - self._index_start)
         if map0 is not None and map1 is not None:
             map_out = map0 + map1
         else:
@@ -95,24 +96,9 @@ class QRefine3DViewer(QJobScrollArea):
         if groups is not None:
             yield self._num_particles_label.set_number, groups.num_particles.sum()
 
-        path_data = self._job_dir.path / f"run_it{niter:0>3}_data.star"
-        if not path_data.exists():
-            yield self._set_ang_dist, None
-            return
-        model = ParticleMetaModel.validate_file(path_data)
-        part = model.particles
-        if part.angle_rot is not None and part.angle_tilt is not None:
-            rot = part.angle_rot.fillna(0.0)
-            tilt = part.angle_tilt.fillna(0.0)
-            heatmap, _, _ = np.histogram2d(
-                rot,
-                tilt,
-                bins=[36, 18],
-                range=[[-180, 180], [0, 180]],
-            )
-            yield self._set_ang_dist, heatmap.T
-        else:
-            yield self._set_ang_dist, None
+        if scale is not None:
+            tubes = res.angdist(class_id, scale)
+            yield self._set_angles, tubes
         self._worker = None
 
     def _on_yielded(self, yielded: tuple[Callable, Any]):
@@ -122,26 +108,17 @@ class QRefine3DViewer(QJobScrollArea):
     def _set_map(self, map_data: np.ndarray | None):
         self._viewer.set_image(map_data)
 
+    def _set_angles(self, tubes):
+        self._viewer._canvas.set_arrows(tubes)
+
+    def _on_arrow_visible_toggled(self, checked: bool):
+        self._viewer._canvas.arrow_visual.visible = checked
+
     def _set_fsc(self, df_fsc: pd.DataFrame | None):
         if df_fsc is not None:
             self._fsc_plot.plot_fsc_refine(df_fsc)
         else:
             self._fsc_plot.clear()
-
-    def _set_ang_dist(self, heatmap: np.ndarray | None):
-        if heatmap is not None:
-            axes = self._ang_dist_plot.figure.axes[0]
-            axes.imshow(heatmap, cmap="viridis")
-            axes.set_xlabel("Rot (deg)")
-            axes.set_ylabel("Tilt (deg)")
-            axes.set_xticks(
-                [0, 9, 18, 27, 36], labels=["-180", "-90", "0", "90", "180"]
-            )
-            axes.set_yticks([0, 9, 18], labels=["0", "90", "180"])
-            self._ang_dist_plot.tight_layout()
-            self._ang_dist_plot._canvas.draw()
-        else:
-            self._ang_dist_plot.clear()
 
     def widget_added_callback(self):
         self._fsc_plot.widget_added_callback()

@@ -53,10 +53,12 @@ from vispy.scene.visuals import (
     Image as VispyImage,
     Markers as VispyMarkers,
     Volume as VispyVolume,
+    Arrow as VispyArrow,
 )
 from vispy.util import keys as VispyKeys
 
 from himena.qt import QViewBox
+from himena_relion._bild import TubeObject
 
 
 @lru_cache(maxsize=1)
@@ -383,8 +385,16 @@ class _Vispy3DBase:
             interpolation="linear",
             method="iso",
         )
+        self._volume_visual.set_gl_state(preset="opaque")
         self._volume_visual.visible = False
         self._scene.events.mouse_double_click.connect(lambda _: self.auto_fit())
+        self._arrow_visual = VispyArrow(
+            connect="segments",
+            width=2.0,
+            antialias=False,
+            parent=self._viewbox.scene,
+        )
+        self._arrow_visual.set_gl_state(preset="translucent")
 
     def make_scene(self) -> scene.SceneCanvas:
         raise NotImplementedError
@@ -410,6 +420,10 @@ class _Vispy3DBase:
         return self._volume_visual
 
     @property
+    def arrow_visual(self) -> VispyArrow:
+        return self._arrow_visual
+
+    @property
     def camera(self) -> scene.ArcballCamera:
         return self._camera
 
@@ -431,6 +445,31 @@ class _Vispy3DBase:
         self._camera.center = np.array(img.shape) / 2
         self._camera.scale_factor = max(img.shape)
         self._camera.update()
+
+    def set_arrows(self, tubes: list[TubeObject]):
+        colors = []
+        arrow_colors = []
+        arrows = []
+        pos = []
+        for tube in tubes:
+            arrows.append(np.concatenate([tube.start, tube.end]))
+            arrow_colors.append(tube.color)
+            pos.append(tube.start)
+            pos.append(tube.end)
+            colors.append(tube.color)
+            colors.append(tube.color)
+        colors = np.stack(colors, axis=0)
+        arrow_colors = np.stack(arrow_colors, axis=0)
+        arrows = np.stack(arrows, axis=0)
+        pos = np.stack(pos, axis=0)
+        self._arrow_visual.set_data(
+            pos=pos,
+            color=colors,
+            width=2.0,
+            connect="segments",
+            arrows=arrows,
+        )
+        self._arrow_visual.arrow_color = arrow_colors
 
     def _cache_lims(self, img):
         _min, _max = np.min(img), np.max(img)

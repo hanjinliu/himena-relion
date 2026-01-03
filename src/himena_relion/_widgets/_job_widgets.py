@@ -55,7 +55,7 @@ class QJobScrollArea(QtW.QScrollArea, JobWidgetBase):
         layout = QtW.QVBoxLayout(self.inner)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setAlignment(
-            QtCore.Qt.AlignmentFlag.AlignTop | QtCore.Qt.AlignmentFlag.AlignHCenter
+            QtCore.Qt.AlignmentFlag.AlignTop | QtCore.Qt.AlignmentFlag.AlignLeft
         )
         layout.setSizeConstraint(QtW.QLayout.SizeConstraint.SetMinimumSize)
         self._layout = layout

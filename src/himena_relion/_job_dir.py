@@ -19,6 +19,7 @@ from himena_relion.consts import (
     JOB_ID_MAP,
     Type,
 )
+from himena_relion._bild import TubeObject
 from himena_relion._pipeline import RelionPipeline
 from himena_relion.schemas import (
     OptimisationSetModel,
@@ -903,21 +904,24 @@ class Refine3DResults(_3DResultsBase):
 
     def halfmaps(
         self, class_id: int
-    ) -> tuple[NDArray[np.floating] | None, NDArray[np.floating] | None]:
+    ) -> tuple[NDArray[np.floating] | None, NDArray[np.floating] | None, float | None]:
         """Return the half maps for a given class ID."""
         half1_path = self._half_class_mrc(class_id + 1, 1)
         half2_path = self._half_class_mrc(class_id + 1, 2)
+        scale = None
         try:
             with mrcfile.open(half1_path, mode="r") as mrc1:
                 img1 = mrc1.data
+                scale = mrc1.voxel_size.x
         except Exception:
             img1 = None
         try:
             with mrcfile.open(half2_path, mode="r") as mrc2:
                 img2 = mrc2.data
+                scale = mrc2.voxel_size.x
         except Exception:
             img2 = None
-        return img1, img2
+        return img1, img2, scale
 
     def model_dataframe(
         self, class_id: int = 1
@@ -930,14 +934,14 @@ class Refine3DResults(_3DResultsBase):
         model = ModelGroups.validate_block(star["model_groups"])
         return df_fsc, model
 
-    def angdist(self, class_id: int) -> list[CylinderObject]:
+    def angdist(self, class_id: int, map_scale: float) -> list[TubeObject]:
         """Return the angular distribution for a given class ID."""
         if self.it_str == "":
             path = f"run_class{class_id:03d}_angdist.bild"
         else:
             path = f"run{self.it_str}_half1_class{class_id:03d}_angdist.bild"
         full_path = self.path / path
-        cylinders: list[CylinderObject] = []
+        cylinders: list[TubeObject] = []
         with open(full_path) as f:
             while True:
                 color = f.readline()
@@ -946,10 +950,10 @@ class Refine3DResults(_3DResultsBase):
                 r0, g0, b0 = color[7:].split(" ")
                 cylinder = f.readline()
                 x1, y1, z1, x2, y2, z2, radius = cylinder[10:].split(" ")
-                cyl = CylinderObject(
-                    start=np.array([float(x1), float(y1), float(z1)]),
-                    end=np.array([float(x2), float(y2), float(z2)]),
-                    radius=float(radius),
+                cyl = TubeObject(
+                    start=np.array([float(x1), float(y1), float(z1)]) / map_scale,
+                    end=np.array([float(x2), float(y2), float(z2)]) / map_scale,
+                    radius=float(radius) / map_scale,
                     color=(float(r0), float(g0), float(b0)),
                 )
                 cylinders.append(cyl)
@@ -1142,13 +1146,3 @@ class FrameAlignTomoJobDirectory(JobDirectory):
 
 def _read_star_as_df(star_path: Path) -> pd.DataFrame:
     return read_star(star_path).first().trust_loop().to_pandas()
-
-
-@dataclass
-class CylinderObject:
-    """Data class for cylinder object in BILD file."""
-
-    start: np.ndarray
-    end: np.ndarray
-    radius: float
-    color: np.ndarray
