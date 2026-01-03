@@ -145,7 +145,7 @@ def _norm_values(values, clim: tuple[float, float]) -> np.ndarray:
 
 def _map_coordinates(arr: np.ndarray, verts: np.ndarray) -> np.ndarray:
     return ndi.map_coordinates(
-        arr, verts[:, :, np.newaxis], order=1, mode="nearest", prefilter=False
+        arr, verts.T[:, :, np.newaxis], order=1, mode="nearest", prefilter=False
     )
 
 
