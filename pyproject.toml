@@ -34,7 +34,7 @@ dependencies = [
   "tifffile>=2025.10.16",
   "watchfiles>=1.1.0",
   "superqt>=0.7.6",
-  "himena[pyqt6]>=0.1.4",
+  "himena>=0.1.4",
   "matplotlib>=3.7.2",
   "imagecodecs==2025.11.11",
 ]
@@ -44,6 +44,12 @@ testing = [
   "pytest",
   "pytest-qt",
   "pytest-cov",
+]
+pyqt5 = [
+  "himena[pyqt5]>=0.1.4",
+]
+pyqt6 = [
+  "himena[pyqt6]>=0.1.4",
 ]
 
 [project.urls]
