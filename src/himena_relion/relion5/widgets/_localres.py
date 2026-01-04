@@ -37,7 +37,10 @@ class QLocalResViewer(QJobScrollArea):
         cutoff_angst = np.min(locres_data[locres_data > 0.001])
         cutoff_rel = scale / cutoff_angst
         map_filtered = _utils.lowpass_filter(map_data, cutoff_rel)
-        self._viewer.set_images(map_filtered, locres_data, mask_data > 0.2)
+        self._viewer.set_images(
+            map_filtered, locres_data, mask_data > 0.2, update_now=False
+        )
+        self._viewer.auto_fit()
 
 
 def _read_mrc(path: Path) -> tuple[np.ndarray, float]:

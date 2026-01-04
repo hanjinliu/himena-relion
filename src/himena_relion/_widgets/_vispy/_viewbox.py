@@ -49,6 +49,8 @@ from qtpy import QtWidgets as QtW, QtCore, QtGui
 from vispy import scene
 from vispy.app import MouseEvent
 from vispy.util import keys as VispyKeys
+from vispy.util.quaternion import Quaternion
+from psygnal import Signal
 
 from himena.qt import QViewBox
 
@@ -282,6 +284,8 @@ class QNativeViewBox:
 
 
 class ArcballCamera(scene.ArcballCamera):
+    changed = Signal()
+
     def viewbox_mouse_event(self, event):
         # enable translation with middle mouse button
         super().viewbox_mouse_event(event)
@@ -310,6 +314,14 @@ class ArcballCamera(scene.ArcballCamera):
                 dx, dy, dz = ff[0] * dx, ff[1] * dy, dz * ff[2]
                 c = self._event_value
                 self.center = c[0] + dx, c[1] + dy, c[2] + dz
+
+    def view_changed(self):
+        super().view_changed()
+        self.changed.emit()
+
+    @property
+    def quaternion(self) -> Quaternion:
+        return self._quaternion
 
 
 BUTTONMAP = {

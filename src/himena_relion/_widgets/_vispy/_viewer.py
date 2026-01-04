@@ -155,7 +155,7 @@ class _Vispy3DBase:
         return self._arrow_visual
 
     @property
-    def camera(self) -> scene.ArcballCamera:
+    def camera(self) -> ArcballCamera:
         return self._camera
 
     @property

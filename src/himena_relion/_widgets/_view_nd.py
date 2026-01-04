@@ -7,6 +7,7 @@ from numpy.typing import NDArray
 from qtpy import QtWidgets as QtW, QtCore
 from superqt import ensure_main_thread, QLabeledDoubleSlider, QLabeledDoubleRangeSlider
 from vispy.color import ColorArray
+from scipy.spatial.transform import Rotation
 from himena.qt._qlineedit import QIntLineEdit, QDoubleLineEdit
 from himena.plugins import validate_protocol
 from himena_builtins.qt.widgets._shared import labeled
@@ -384,8 +385,6 @@ class Q3DLocalResViewer(Q3DViewerBase):
         clim_slider.setMaximumWidth(400)
         clim_slider.setMinimumWidth(300)
         self._shading = QtW.QComboBox()
-        self._shading.setMinimumWidth(300)
-        self._shading.setMaximumWidth(400)
         self._shading.setSizePolicy(
             QtW.QSizePolicy.Policy.Expanding,
             QtW.QSizePolicy.Policy.Fixed,
@@ -394,19 +393,40 @@ class Q3DLocalResViewer(Q3DViewerBase):
         self._shading.setCurrentText("smooth")
         self._shading.currentTextChanged.connect(self._on_shading_changed)
 
+        shading_widget = labeled("Shading", self._shading)
+        shading_widget.setMinimumWidth(300)
+        shading_widget.setMaximumWidth(400)
+
         layout = QtW.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self._canvas.native)
         layout.addWidget(dim_slider)
         layout.addWidget(clim_slider)
-        layout.addWidget(labeled("Shading", self._shading))
+        layout.addWidget(shading_widget)
+
+        # mesh lighting
+        self._canvas.camera.changed.connect(self._on_camera_change)
+
+    def _on_camera_change(self):
+        quat = self._canvas._camera.quaternion
+        x, y, z, w = quat.x, quat.y, quat.z, quat.w
+        # Calculate forward vector from quaternion
+        rot = Rotation.from_quat([x, y, z, w])
+        vec = rot.apply([1, 0, 0])
+        if self._surface.shading_filter is not None:
+            self._surface.shading_filter.light_dir = vec
 
     def auto_threshold(self, thresh: float | None = None, update_now: bool = True):
         """Automatically set the threshold based on the image data."""
         img = self._surface._data
+        mask = self._surface._mask
         if self._surface.visible:
             if thresh is None:
-                thresh = _utils.threshold_yen(_utils.bin_image(img, 4))
+                if mask is not None:
+                    sample_data = img[mask]
+                else:
+                    sample_data = img
+                thresh = _utils.threshold_yen(sample_data)
             self._iso_slider.setValue(thresh)
             self._iso_slider.setRange(*self._canvas._lims)
         if update_now:
@@ -441,8 +461,13 @@ class Q3DLocalResViewer(Q3DViewerBase):
         locres_masked = locres_masked[locres_masked > 0.001]
         min0, max0 = np.min(locres_masked), np.max(locres_masked)
         self._clim_slider.setRange(min0, max0)
-        self._clim_slider.setValue((min0, max0))
-        self._surface.set_data(image, mask, clim=(min0, max0), color_array=locres)
+        self._surface.set_data(image, mask, clim=None, color_array=locres)
+        self._surface.init_surface()
+        self._clim_slider.blockSignals(True)
+        try:
+            self._clim_slider.setValue(self._surface.clim)
+        finally:
+            self._clim_slider.blockSignals(False)
         self._on_shading_changed(self._shading.currentText())
         if update_now:
             self._canvas.update_canvas()
@@ -459,6 +484,7 @@ class Q3DLocalResViewer(Q3DViewerBase):
         if shading == "none":
             shading = None
         self._surface.shading = shading
+        self._surface.update()
         self._canvas.update_canvas()
 
 

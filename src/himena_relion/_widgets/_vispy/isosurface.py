@@ -1,3 +1,4 @@
+from typing import TYPE_CHECKING
 import numpy as np
 from vispy.visuals import MeshVisual
 from vispy.scene.visuals import create_visual_node
@@ -5,9 +6,14 @@ from vispy.color import Color, Colormap
 from scipy import ndimage as ndi
 from skimage.measure import marching_cubes
 
+if TYPE_CHECKING:
+    from vispy.visuals.filters import ShadingFilter
+
 
 class IsosurfaceVisual(MeshVisual):
     """Mesh visual for rendering a isosurface colored by another scalar field."""
+
+    shading_filter: "ShadingFilter"
 
     def __init__(
         self,
@@ -127,6 +133,34 @@ class IsosurfaceVisual(MeshVisual):
             self._update_meshvisual = False
 
         return MeshVisual._prepare_draw(self, view)
+
+    def init_surface(self):
+        self._vertices_cache, self._faces_cache, *_ = marching_cubes(
+            self._data,
+            self._level,
+            mask=self._mask,
+        )
+
+        face_centers = self._vertices_cache[self._faces_cache].mean(axis=1)
+        values_face = _map_coordinates(self._color_array, face_centers)
+        values_vert = _map_coordinates(self._color_array, self._vertices_cache)
+
+        # using the initial values to set the clim (0.5% saturation)
+        self._clim = tuple(np.quantile(values_face, [0.01, 0.95]))
+        self._face_colors_cache = self._map_colors(values_face)
+        self._vertex_colors = self._map_colors(values_vert)
+
+        MeshVisual.set_data(
+            self,
+            vertices=self._vertices_cache,
+            faces=self._faces_cache,
+            vertex_colors=self._vertex_colors,
+            face_colors=self._face_colors_cache,
+            color=self._color,
+        )
+        self._update_meshvisual = False
+        self._recompute = False
+        self._recolor = False
 
     def _map_colors(self, values: np.ndarray) -> np.ndarray:
         """Map scalar values to colors using the colormap and clim."""
