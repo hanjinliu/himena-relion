@@ -34,6 +34,11 @@ class RelionConfig:
         label="cryoCARE Directory",
         tooltip="Path to the cryoCARE directory",
     )
+    resmap: str = config_field(
+        default="ResMap",
+        label="ResMap Executable",
+        tooltip="Path to the ResMap executable",
+    )
     scratch_dir: str = config_field(
         default="",
         label="Scratch Directory",
@@ -76,6 +81,10 @@ def get_batchruntomo_exe() -> str:
 
 def get_aretomo2_exe() -> str:
     return _get_himena_relion_config().aretomo2
+
+
+def get_resmap_exe() -> str:
+    return _get_himena_relion_config().resmap
 
 
 def get_cryocare_dir() -> str:

@@ -16,7 +16,6 @@ authors = [
 classifiers = [
   "Development Status :: 4 - Beta",
   "Programming Language :: Python",
-  "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
@@ -35,9 +34,16 @@ dependencies = [
   "tifffile>=2025.10.16",
   "watchfiles>=1.1.0",
   "superqt>=0.7.6",
-  "himena>=0.1.4",
+  "himena[pyqt6]>=0.1.4",
   "matplotlib>=3.7.2",
   "imagecodecs==2025.11.11",
+]
+
+[project.optional-dependencies]
+testing = [
+  "pytest",
+  "pytest-qt",
+  "pytest-cov",
 ]
 
 [project.urls]
@@ -57,6 +63,12 @@ extra-dependencies = [
 ]
 [tool.hatch.envs.types.scripts]
 check = "mypy --install-types --non-interactive {args:src/himena_relion tests}"
+
+[tool.hatch.envs.test]
+features = ["testing"]
+
+[tool.hatch.envs.test.scripts]
+run = "pytest -v --cov --cov-report=xml"
 
 [tool.coverage.run]
 source_pkgs = ["himena_relion", "tests"]

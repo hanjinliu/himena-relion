@@ -62,7 +62,9 @@ class QJobScheduler(QtW.QWidget):
         self._exec_btn.setVisible(False)
 
     def update_by_job(self, job_cls: type[RelionJob], cwd=None):
-        """Update the widget based on the job directory."""
+        """Update the widget based on the job directory.
+
+        This method does NOT update the parameters; call `set_parameters` after this."""
         if issubclass(job_cls, _RelionBuiltinContinue):
             prefix = "Continue - "
         else:

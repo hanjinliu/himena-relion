@@ -29,6 +29,8 @@ class _ImportMoviesJobBase(_Relion5Job):
         kwargs["fn_in_other"] = ""
         kwargs["optics_group_particles"] = ""
         kwargs["do_raw"] = True
+        kwargs["min_dedicated"] = 1
+        kwargs["do_queue"] = False
         return kwargs
 
     @classmethod
@@ -130,6 +132,8 @@ class ImportOthersJob(_Relion5Job):
         kwargs["Q0"] = 0.1
         kwargs["beamtilt_x"] = 0
         kwargs["beamtilt_y"] = 0
+        kwargs["min_dedicated"] = 1
+        kwargs["do_queue"] = False
         return kwargs
 
     @classmethod
@@ -158,7 +162,12 @@ class _MotionCorrJobBase(_Relion5Job):
         kwargs["fn_motioncor2_exe"] = _configs.get_motioncor2_exe()
         if "patch" in kwargs:
             kwargs["patch_x"], kwargs["patch_y"] = kwargs.pop("patch")
-        return super().normalize_kwargs(**kwargs)
+        kwargs.setdefault("do_float16", False)
+        kwargs.setdefault("other_motioncor2_args", "")
+        kwargs.setdefault("group_for_ps", 4.0)
+        kwargs = super().normalize_kwargs(**kwargs)
+        kwargs.pop("use_gpu", None)
+        return kwargs
 
     @classmethod
     def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
@@ -182,6 +191,8 @@ class MotionCorr2Job(_MotionCorrJobBase):
     def normalize_kwargs(cls, **kwargs):
         kwargs["do_own_motioncor"] = False
         kwargs["do_save_ps"] = False
+        kwargs["group_for_ps"] = 4
+        kwargs["do_float16"] = False  # not supported
         return super().normalize_kwargs(**kwargs)
 
     @classmethod
@@ -189,6 +200,8 @@ class MotionCorr2Job(_MotionCorrJobBase):
         kwargs = super().normalize_kwargs_inv(**kwargs)
         kwargs.pop("do_own_motioncor", None)
         kwargs.pop("do_save_ps", None)
+        kwargs.pop("group_for_ps", None)
+        kwargs.pop("do_float16", None)
         return kwargs
 
     def run(
@@ -199,9 +212,7 @@ class MotionCorr2Job(_MotionCorrJobBase):
         dose_per_frame: _a.mcor.DOSE_PER_FRAME = 1.0,
         pre_exposure: _a.mcor.PRE_EXPOSURE = 0.0,
         eer_grouping: _a.mcor.EER_FRAC = 32,
-        do_float16: _a.io.DO_F16 = True,
         do_dose_weighting: _a.mcor.DO_DOSE_WEIGHTING = True,
-        group_for_ps: _a.mcor.SUM_EVERY_E = 4.0,
         # Motion correction
         bfactor: _a.mcor.BFACTOR = 150,
         group_frames: _a.mcor.GROUP_FRAMES = 1,
@@ -211,6 +222,7 @@ class MotionCorr2Job(_MotionCorrJobBase):
         gain_rot: _a.mcor.GAIN_ROT = "No rotation (0)",
         gain_flip: _a.mcor.GAIN_FLIP = "No flipping (0)",
         patch: _a.mcor.PATCH = (1, 1),
+        other_motioncor2_args: _a.mcor.OTHER_MOTIONCOR2_ARGS = "",
         gpu_ids: _a.compute.GPU_IDS = "0",
         # Running
         nr_mpi: _a.running.NR_MPI = 1,
@@ -241,11 +253,10 @@ class MotionCorrOwnJob(_MotionCorrJobBase):
 
     @classmethod
     def normalize_kwargs_inv(cls, **kwargs):
-        kwargs = super().normalize_kwargs_inv(**kwargs)
+        kwargs.pop("gpu_ids", None)
         kwargs.pop("do_own_motioncor", None)
         kwargs.pop("other_motioncor2_args", None)
-        kwargs.pop("gpu_ids", None)
-        return kwargs
+        return super().normalize_kwargs_inv(**kwargs)
 
     def run(
         self,
@@ -366,6 +377,9 @@ class ManualPickJob(_Relion5Job):
         kwargs["do_fom_threshold"] = kwargs["minimum_pick_fom"] is not None
         if kwargs["minimum_pick_fom"] is None:
             kwargs["minimum_pick_fom"] = 0
+        # these are not used, but exist in the job options
+        kwargs["do_queue"] = False
+        kwargs["min_dedicated"] = 1
         return kwargs
 
     @classmethod
@@ -527,11 +541,11 @@ class AutoPickLogJob(_AutoPickJob):
         kwargs = super().normalize_kwargs_inv(**kwargs)
         keys_to_pop = [
             "continue_manual", "minavgnoise_autopick", "do_log", "do_ref3d", "do_refs",
-            "log_upper_thr", "angpix_ref", "do_ctf_autopick",
-            "do_ignore_first_ctfpeak_autopick", "do_invert_refs", "fn_ref3d_autopick",
-            "fn_refs_autopick", "fn_topaz_exe", "highpass", "lowpass", "shrink",
-            "psi_sampling_autopick", "ref3d_sampling", "ref3d_symmetry", "gpu_ids",
-            "maxstddevnoise_autopick", "mindist_autopick", "threshold_autopick"
+            "angpix_ref", "do_ctf_autopick", "do_ignore_first_ctfpeak_autopick",
+            "do_invert_refs", "fn_ref3d_autopick", "fn_refs_autopick", "fn_topaz_exe",
+            "highpass", "lowpass", "shrink", "psi_sampling_autopick", "ref3d_sampling",
+            "ref3d_symmetry", "gpu_ids", "maxstddevnoise_autopick", "mindist_autopick",
+            "threshold_autopick"
         ]  # fmt: skip
         for key in kwargs:
             if key.startswith(("do_topaz", "topaz_")):
@@ -892,8 +906,6 @@ class ExtractJobBase(_Relion5Job):
     @classmethod
     def normalize_kwargs_inv(cls, **kwargs):
         kwargs = super().normalize_kwargs_inv(**kwargs)
-        kwargs.pop("do_reextract", None)
-        kwargs.pop("do_recenter", None)
         if kwargs.pop("do_fom_threshold", "No") == "No":
             kwargs["minimum_pick_fom"] = None
         return kwargs
@@ -933,6 +945,8 @@ class ExtractJob(ExtractJobBase):
             "recenter_y",
             "recenter_z",
             "do_rescale",
+            "do_reextract",
+            "do_recenter",
         ]:
             kwargs.pop(name, None)
         return kwargs
@@ -990,6 +1004,7 @@ class ReExtractJob(ExtractJobBase):
         for name in ["coords_suffix", "do_rescale"]:
             kwargs.pop(name, None)
         kwargs["recenter"] = tuple(kwargs.pop(f"recenter_{x}", 0) for x in "xyz")
+        kwargs.pop("do_reextract", None)
         return kwargs
 
     def run(
@@ -1277,17 +1292,32 @@ class Class3DNoAlignmentJob(_Class3DJobBase):
 
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
-        kwargs = super().normalize_kwargs(**kwargs)
         # force no alignment
         kwargs["dont_skip_align"] = False
         kwargs["highres_limit"] = -1
-        return kwargs
+        kwargs["do_local_ang_searches"] = False
+        kwargs["sampling"] = 0
+        kwargs["relax_sym"] = ""
+        kwargs["offset_range_step"] = (5, 1)
+        kwargs["do_local_search_helical_symmetry"] = False
+        kwargs["helical_twist_range"] = (0, 0, 0)
+        kwargs["helical_rise_range"] = (0, 0, 0)
+        kwargs["rot_tilt_psi_range"] = (-1, 15, 10)
+        kwargs["sigma_angles"] = 5
+        kwargs["allow_coarser"] = False
+        return super().normalize_kwargs(**kwargs)
 
     @classmethod
     def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
         kwargs = super().normalize_kwargs_inv(**kwargs)
-        kwargs.pop("dont_skip_align", None)
-        kwargs.pop("highres_limit", None)
+        for name in [
+            "dont_skip_align", "highres_limit", "sigma_angles", "offset_range_step",
+            "relax_sym", "sampling", "do_local_ang_searches", "allow_coarser",
+            "rot_tilt_psi_range", "do_local_search_helical_symmetry",
+            "helical_twist_range", "helical_rise_range",
+        ]:  # fmt: skip
+            kwargs.pop(name, None)
+
         return kwargs
 
     def run(
@@ -1313,7 +1343,6 @@ class Class3DNoAlignmentJob(_Class3DJobBase):
         # Helix
         do_helix: _a.helix.DO_HELIX = False,
         helical_tube_diameter_range: _a.helix.HELICAL_TUBE_DIAMETER_RANGE = (-1, -1),
-        rot_tilt_psi_range: _a.helix.ROT_TILT_PSI_RANGE = (-1, 15, 10),
         helical_range_distance: _a.helix.HELICAL_RANGE_DIST = -1,
         keep_tilt_prior_fixed: _a.helix.KEEP_TILT_PRIOR_FIXED = True,
         do_apply_helical_symmetry: _a.helix.DO_APPLY_HELICAL_SYMMETRY = True,
@@ -1321,9 +1350,6 @@ class Class3DNoAlignmentJob(_Class3DJobBase):
         helical_rise_initial: _a.helix.HELICAL_RISE_INITIAL = 0,
         helical_nr_asu: _a.helix.HELICAL_NR_ASU = 1,
         helical_z_percentage: _a.helix.HELICAL_Z_PERCENTAGE = 30,
-        do_local_search_helical_symmetry: _a.helix.DO_LOCAL_SEARCH_H_SYM = False,
-        helical_twist_range: _a.helix.HELICAL_TWIST_RANGE = (0, 0, 0),
-        helical_rise_range: _a.helix.HELICAL_RISE_RANGE = (0, 0, 0),
         # Compute
         do_fast_subsets: _a.compute.USE_FAST_SUBSET = False,
         do_parallel_discio: _a.compute.USE_PARALLEL_DISC_IO = True,
@@ -1582,20 +1608,28 @@ def _setup_helix_params(widgets: dict[str, ValueWidget]) -> None:
     def _on_helical(value: bool):
         for name in helical_names:
             widgets[name].enabled = value
-        _on_do_local_search_helical_symmetry(
-            widgets["do_local_search_helical_symmetry"].value
-        )
+        if "do_local_search_helical_symmetry" in widgets:
+            _on_do_local_search_helical_symmetry(
+                widgets["do_local_search_helical_symmetry"].value
+            )
 
     for name in helical_names:
-        widgets[name].enabled = False
+        if name in widgets:
+            widgets[name].enabled = False
 
-    @widgets["do_local_search_helical_symmetry"].changed.connect
-    def _on_do_local_search_helical_symmetry(value: bool):
-        widgets["helical_twist_range"].enabled = value
-        widgets["helical_rise_range"].enabled = value
+    if "do_local_search_helical_symmetry" in widgets:
 
-    widgets["helical_twist_range"].enabled = False
-    widgets["helical_rise_range"].enabled = False
+        @widgets["do_local_search_helical_symmetry"].changed.connect
+        def _on_do_local_search_helical_symmetry(value: bool):
+            if "helical_twist_range" in widgets:
+                widgets["helical_twist_range"].enabled = value
+            if "helical_rise_range" in widgets:
+                widgets["helical_rise_range"].enabled = value
+
+    if "helical_twist_range" in widgets:
+        widgets["helical_twist_range"].enabled = False
+    if "helical_rise_range" in widgets:
+        widgets["helical_rise_range"].enabled = False
 
 
 class _SelectJob(_Relion5Job):
@@ -1923,7 +1957,9 @@ class _CtfRefineJobBase(_Relion5Job):
     @classmethod
     def normalize_kwargs(cls, **kwargs):
         kwargs = super().normalize_kwargs(**kwargs)
-        kwargs["do_ctf"] = any(kwargs[name] != "No" for name in cls._do_ctf_args)
+        kwargs["do_ctf"] = any(
+            kwargs.get(name, "No") != "No" for name in cls._do_ctf_args
+        )
         return kwargs
 
     @classmethod
@@ -1972,6 +2008,9 @@ class CtfRefineJob(_CtfRefineJobBase):
 
 
 class CtfRefineAnisoMagJob(_CtfRefineJobBase):
+    _not_used = ["do_ctf", "do_bfactor", "do_4thorder", "do_defocus",
+        "do_tilt", "do_trefoil", "do_phase", "do_astig"]  # fmt: skip
+
     @classmethod
     def type_label(cls) -> str:
         return "relion.ctfrefine.anisomag"
@@ -1980,12 +2019,15 @@ class CtfRefineAnisoMagJob(_CtfRefineJobBase):
     def normalize_kwargs(cls, **kwargs):
         kwargs = super().normalize_kwargs(**kwargs)
         kwargs["do_aniso_mag"] = True
-        kwargs["do_ctf"] = False
+        for name in cls._not_used:
+            kwargs[name] = "No"
         return kwargs
 
     @classmethod
     def normalize_kwargs_inv(cls, **kwargs):
         kwargs = super().normalize_kwargs_inv(**kwargs)
+        for name in cls._not_used:
+            kwargs.pop(name, None)
         kwargs.pop("do_aniso_mag", None)
         return kwargs
 
@@ -1994,9 +2036,6 @@ class CtfRefineAnisoMagJob(_CtfRefineJobBase):
         fn_data: _a.io.IN_PARTICLES = "",
         fn_post: _a.io.PROCESS_TYPE = "",
         # Fit
-        do_tilt: _a.ctfrefine.DO_TILT = False,
-        do_trefoil: _a.ctfrefine.DO_TREFOIL = False,
-        do_4thorder: _a.ctfrefine.DO_4THORDER = False,
         minres: _a.ctfrefine.MINRES = 30,
         # Running
         nr_mpi: _a.running.NR_MPI = 1,
@@ -2101,11 +2140,21 @@ class JoinMoviesJob(_JoinStarBase):
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
-    # "relion.localres.own": "Local Resolution",
-    # "relion.localres.resmap": "Local Resolution",
 
+class _LocalResolutionJobBase(_Relion5Job):
+    @classmethod
+    def normalize_kwargs(cls, **kwargs):
+        kwargs = super().normalize_kwargs(**kwargs)
+        kwargs["fn_resmap"] = _configs.get_resmap_exe()
+        return kwargs
 
-class _LocalResolutionJobBase(_Relion5Job): ...
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs):
+        kwargs = super().normalize_kwargs_inv(**kwargs)
+        kwargs.pop("fn_resmap", None)
+        kwargs.pop("do_relion_locres", None)
+        kwargs.pop("do_resmap_locres", None)
+        return kwargs
 
 
 class LocalResolutionResmapJob(_LocalResolutionJobBase):
@@ -2118,13 +2167,23 @@ class LocalResolutionResmapJob(_LocalResolutionJobBase):
         kwargs = super().normalize_kwargs(**kwargs)
         kwargs["do_resmap_locres"] = True
         kwargs["do_relion_locres"] = False
-        return super().normalize_kwargs(**kwargs)
+        kwargs["adhoc_bfac"] = -100
+        kwargs["fn_mtf"] = ""
+        return kwargs
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
+        kwargs = super().normalize_kwargs_inv(**kwargs)
+        for name in ["adhoc_bfac", "fn_mtf"]:
+            kwargs.pop(name, None)
+        return kwargs
 
     def run(
         self,
         fn_in: _a.io.HALFMAP_TYPE = "",
         fn_mask: _a.io.IN_MASK = "",
         angpix: Annotated[float, {"label": "Pixel size (A)", "group": "I/O"}] = -1,
+        # ResMap parameters
         pval: Annotated[
             float, {"label": "P-value for significance", "group": "ResMap"}
         ] = 0.05,
@@ -2155,21 +2214,16 @@ class LocalResolutionOwnJob(_LocalResolutionJobBase):
         kwargs = super().normalize_kwargs(**kwargs)
         kwargs["do_resmap_locres"] = False
         kwargs["do_relion_locres"] = True
-        return super().normalize_kwargs(**kwargs)
+        kwargs["maxres"] = 0
+        kwargs["minres"] = 0
+        kwargs["pval"] = 0.05
+        kwargs["stepres"] = 1
+        return kwargs
 
     @classmethod
     def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
         kwargs = super().normalize_kwargs_inv(**kwargs)
-        for name in [
-            "adhoc_bfac",
-            "do_relion_locres",
-            "do_resmap_locres",
-            "fn_resmap",
-            "maxres",
-            "minres",
-            "pval",
-            "stepres",
-        ]:
+        for name in ["maxres", "minres", "pval", "stepres"]:
             kwargs.pop(name, None)
         return kwargs
 
@@ -2178,7 +2232,8 @@ class LocalResolutionOwnJob(_LocalResolutionJobBase):
         fn_in: _a.io.HALFMAP_TYPE = "",
         fn_mask: _a.io.IN_MASK = "",
         angpix: Annotated[float, {"label": "Pixel size (A)", "group": "I/O"}] = -1,
-        adhoc_bfactor: Annotated[
+        # Relion parameters
+        adhoc_bfac: Annotated[
             float, {"label": "User-provided B-factor (A^2)", "group": "Relion"}
         ] = -100,
         fn_mtf: Annotated[

@@ -84,6 +84,13 @@ class ImportTomoJob(_ImportTomoJob):
         dose = kwargs.pop("dose_rate_value", {})
         kwargs["dose_rate"] = dose.pop("dose_rate", 5.0)
         kwargs["dose_is_per_movie_frame"] = dose.pop("dose_is_per_movie_frame", False)
+        kwargs["in_coords"] = ""
+        kwargs["remove_substring"] = ""
+        kwargs["remove_substring2"] = ""
+        kwargs["is_center"] = False
+        kwargs["scale_factor"] = 1.0
+        kwargs["add_factor"] = 0.0
+        kwargs["do_queue"] = False
         return kwargs
 
     @classmethod
@@ -93,6 +100,11 @@ class ImportTomoJob(_ImportTomoJob):
             "dose_is_per_movie_frame": kwargs.pop("dose_is_per_movie_frame", False),
             "dose_rate": kwargs.pop("dose_rate", 5.0),
         }
+        for name in [
+            "in_coords", "do_queue", "remove_substring2", "is_center", "scale_factor",
+            "do_coords", "add_factor", "remove_substring"
+        ]:  # fmt: skip
+            kwargs.pop(name, None)
         return kwargs
 
     def run(
@@ -173,6 +185,7 @@ class MotionCorr2TomoJob(_Relion5TomoJob, MotionCorr2Job):
         gain_rot: _a.mcor.GAIN_ROT = "No rotation (0)",
         gain_flip: _a.mcor.GAIN_FLIP = "No flipping (0)",
         patch: _a.mcor.PATCH = (1, 1),
+        other_motioncor2_args: _a.mcor.OTHER_MOTIONCOR2_ARGS = "",
         gpu_ids: _a.compute.GPU_IDS = "0",
         # Running
         nr_mpi: _a.running.NR_MPI = 1,
@@ -271,7 +284,17 @@ class _AlignTiltSeriesJobBase(_Relion5TomoJob):
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
         kwargs["fn_aretomo_exe"] = _configs.get_aretomo2_exe()
         kwargs["fn_batchtomo_exe"] = _configs.get_batchruntomo_exe()
-        return super().normalize_kwargs(**kwargs)
+        kwargs.setdefault("do_aretomo_tiltcorrect", False)
+        kwargs.setdefault("aretomo_tiltcorrect_angle", 999)
+        kwargs.setdefault("other_aretomo_args", "")
+        kwargs.setdefault("patch_overlap", 50)
+        kwargs.setdefault("patch_size", 100)
+        kwargs.setdefault("do_aretomo_ctf", False)
+        kwargs.setdefault("do_aretomo_phaseshift", False)
+        kwargs.setdefault("fiducial_diameter", 10.0)
+        kwargs = super().normalize_kwargs(**kwargs)
+        kwargs.pop("use_gpu", None)
+        return kwargs
 
     @classmethod
     def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
@@ -301,12 +324,12 @@ class AlignTiltSeriesImodFiducial(_AlignTiltSeriesJobBase):
         kwargs["do_aretomo2"] = False
         kwargs["do_imod_patchtrack"] = False
         kwargs["tomogram_thickness"] = 300.0
+        kwargs = super().normalize_kwargs(**kwargs)
         kwargs["gpu_ids"] = ""
-        return super().normalize_kwargs(**kwargs)
+        return kwargs
 
     @classmethod
     def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
-        kwargs = super().normalize_kwargs_inv(**kwargs)
         kwargs.pop("do_imod_fiducials", None)
         kwargs.pop("do_aretomo2", None)
         kwargs.pop("do_imod_patchtrack", None)
@@ -319,7 +342,7 @@ class AlignTiltSeriesImodFiducial(_AlignTiltSeriesJobBase):
             "tomogram_thickness",
         ]:  # fmt: skip
             kwargs.pop(key, None)
-        return kwargs
+        return super().normalize_kwargs_inv(**kwargs)
 
     def run(
         self,
@@ -353,12 +376,12 @@ class AlignTiltSeriesImodPatch(_AlignTiltSeriesJobBase):
         kwargs["do_imod_fiducials"] = False
         kwargs["do_aretomo2"] = False
         kwargs["do_imod_patchtrack"] = True
-        kwargs["gpu_ids"] = ""
-        return super().normalize_kwargs(**kwargs)
+        kwrags = super().normalize_kwargs(**kwargs)
+        kwrags["gpu_ids"] = ""
+        return kwrags
 
     @classmethod
     def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
-        kwargs = super().normalize_kwargs_inv(**kwargs)
         kwargs.pop("do_imod_fiducials", None)
         kwargs.pop("do_aretomo2", None)
         kwargs.pop("do_imod_patchtrack", None)
@@ -369,7 +392,7 @@ class AlignTiltSeriesImodPatch(_AlignTiltSeriesJobBase):
         kwargs.pop("do_aretomo_ctf", None)
         kwargs.pop("do_aretomo_phaseshift", None)
         kwargs.pop("other_aretomo_args", None)
-        return kwargs
+        return super().normalize_kwargs_inv(**kwargs)
 
     def run(
         self,
@@ -405,6 +428,11 @@ class AlignTiltSeriesAreTomo2(_AlignTiltSeriesJobBase):
         kwargs["do_imod_fiducials"] = False
         kwargs["do_aretomo2"] = True
         kwargs["do_imod_patchtrack"] = False
+        if kwargs["aretomo_tiltcorrect_angle"] is not None:
+            kwargs["do_aretomo_tiltcorrect"] = True
+        else:
+            kwargs["do_aretomo_tiltcorrect"] = False
+            kwargs["aretomo_tiltcorrect_angle"] = 999
         return super().normalize_kwargs(**kwargs)
 
     @classmethod
@@ -416,13 +444,14 @@ class AlignTiltSeriesAreTomo2(_AlignTiltSeriesJobBase):
         kwargs.pop("do_imod_fiducials", None)
         kwargs.pop("do_aretomo2", None)
         kwargs.pop("do_imod_patchtrack", None)
+        if kwargs.pop("do_aretomo_tiltcorrect", "No") == "No":
+            kwargs["aretomo_tiltcorrect_angle"] = None
         return kwargs
 
     def run(
         self,
         in_tiltseries: _a.io.IN_TILT = "",
         tomogram_thickness: _a.tomo.TOMO_THICKNESS = 300.0,
-        do_aretomo_tiltcorrect: _a.tomo.DO_ARETOMO_TILTCORRECT = False,
         aretomo_tiltcorrect_angle: _a.tomo.ARETOMO_TILTCORRECT_ANGLE = 999,
         do_aretomo_ctf: _a.tomo.DO_ARETOMO_CTF = False,
         do_aretomo_phaseshift: _a.tomo.DO_ARETOMO_PHASESHIFT = False,
@@ -434,6 +463,14 @@ class AlignTiltSeriesAreTomo2(_AlignTiltSeriesJobBase):
         min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
+
+    @classmethod
+    def setup_widgets(cls, widgets):
+        @widgets["do_aretomo_ctf"].changed.connect
+        def _on_do_aretomo_ctf_changed(value: bool):
+            widgets["do_aretomo_phaseshift"].enabled = value
+
+        _on_do_aretomo_ctf_changed(widgets["do_aretomo_ctf"].value)
 
 
 class ReconstructTomogramJob(_Relion5TomoJob):
@@ -592,7 +629,9 @@ class _DenoiseJobBase(_Relion5TomoJob):
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
         kwargs["cryocare_path"] = _configs.get_cryocare_dir()
-        return super().normalize_kwargs(**kwargs)
+        kwargs = super().normalize_kwargs(**kwargs)
+        kwargs.pop("use_gpu", None)  # CryoCARE always uses GPU, so this arg is not used
+        return kwargs
 
     @classmethod
     def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
@@ -626,7 +665,6 @@ class DenoiseTrain(_DenoiseJobBase):
 
     @classmethod
     def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
-        kwargs = super().normalize_kwargs_inv(**kwargs)
         kwargs.pop("do_cryocare_predict", None)
         kwargs.pop("do_cryocare_train", None)
         kwargs.pop("care_denoising_model", None)
@@ -634,7 +672,7 @@ class DenoiseTrain(_DenoiseJobBase):
         kwargs.pop("ntiles_y", None)
         kwargs.pop("ntiles_z", None)
         kwargs.pop("denoising_tomo_name", None)
-        return kwargs
+        return super().normalize_kwargs_inv(**kwargs)
 
     def run(
         self,
@@ -685,7 +723,6 @@ class DenoisePredict(_DenoiseJobBase):
 
     @classmethod
     def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
-        kwargs = super().normalize_kwargs_inv(**kwargs)
         kwargs.pop("do_cryocare_predict", None)
         kwargs.pop("do_cryocare_train", None)
         kwargs.pop("tomograms_for_training", None)
@@ -696,7 +733,7 @@ class DenoisePredict(_DenoiseJobBase):
             kwargs.pop("ntiles_y", 2),
             kwargs.pop("ntiles_z", 2),
         )
-        return kwargs
+        return super().normalize_kwargs_inv(**kwargs)
 
     def run(
         self,

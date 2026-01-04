@@ -66,7 +66,7 @@ DO_ARETOMO_TILTCORRECT = Annotated[
     },
 ]
 ARETOMO_TILTCORRECT_ANGLE = Annotated[
-    int,
+    int | None,
     {
         "label": "Tilt angle offset",
         "tooltip": (

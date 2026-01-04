@@ -23,6 +23,7 @@ class JobOptionsValues(schema.LoopDataModel):
     value: schema.Series[object] = schema.Field("rlnJobOptionValue")
 
     def to_dict(self) -> dict[str, str]:
+        """Return the parameters as a dictionary."""
         return dict(zip(self.variable, self.value))
 
 

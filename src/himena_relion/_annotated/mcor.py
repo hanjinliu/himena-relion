@@ -262,3 +262,12 @@ EER_GROUPING = Annotated[
         ),
     },
 ]
+
+OTHER_MOTIONCOR2_ARGS = Annotated[
+    str,
+    {
+        "label": "Other MotionCor2 arguments",
+        "tooltip": ("Additional arguments that need to be passed to MOTIONCOR2."),
+        "group": "Motion Correction",
+    },
+]
