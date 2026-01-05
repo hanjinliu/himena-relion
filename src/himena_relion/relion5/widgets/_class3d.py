@@ -26,8 +26,8 @@ class QClass3DViewer(QJobScrollArea):
                 "Class",
                 "Population",
                 "Resolution",
-                "Rotation Accuracy",
-                "Translation Accuracy",
+                "Rot. Accuracy",
+                "Trans. Accuracy",
             ]
         )
         self._list_widget.verticalHeader().setVisible(False)
@@ -76,12 +76,14 @@ class QClass3DViewer(QJobScrollArea):
         nclasses = job_dir.num_classes()
         if nclasses == 0:
             return
+        was_empty = self._list_widget.rowCount() == 0
         niters = job_dir.num_iters()
         self._iter_choice.setMaximum(max(niters - 1, 0))
         self._iter_choice.setValue(self._iter_choice.maximum())
         self._on_iter_changed(self._iter_choice.value())
-        self._viewer.auto_threshold()
-        self._viewer.auto_fit()
+        if was_empty:
+            self._viewer.auto_threshold()
+            self._viewer.auto_fit()
         sym_name = self._job_dir.get_job_param("sym_name")
         self._symmetry_label.set_symmetry(sym_name)
 
@@ -123,7 +125,7 @@ class QClass3DViewer(QJobScrollArea):
 
     def _on_arrow_visible_toggled(self, checked: bool):
         self._viewer._canvas.arrow_visual.visible = checked
-        self._viewer._canvas.arrow_visual.update()
+        self._viewer._canvas.update_canvas()
 
 
 def _format_float(value: float, unit: str) -> str:

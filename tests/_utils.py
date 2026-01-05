@@ -15,6 +15,7 @@ def assert_param_name_match(a, b, allowed_diffs: Iterable[str] = ("other_args",)
 
 JOBS_DIR_SPA = Path(__file__).parent / "jobs_spa"
 JOBS_DIR_TOMO = Path(__file__).parent / "jobs_tomo"
+DEFAULT_PIPELINES_DIR = Path(__file__).parent / "default_pipelines"
 
 def iter_spa_job_dirs():
     yield from _iter_job_dirs(JOBS_DIR_SPA)

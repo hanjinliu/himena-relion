@@ -1277,6 +1277,7 @@ class Class3DNoAlignmentJob(_Class3DJobBase):
         kwargs["rot_tilt_psi_range"] = (-1, 15, 10)
         kwargs["sigma_angles"] = 5
         kwargs["allow_coarser"] = False
+        kwargs["gpu_ids"] = ""
         return super().normalize_kwargs(**kwargs)
 
     @classmethod
@@ -1286,7 +1287,7 @@ class Class3DNoAlignmentJob(_Class3DJobBase):
             "dont_skip_align", "highres_limit", "sigma_angles", "offset_range_step",
             "relax_sym", "sampling", "do_local_ang_searches", "allow_coarser",
             "rot_tilt_psi_range", "do_local_search_helical_symmetry",
-            "helical_twist_range", "helical_rise_range",
+            "helical_twist_range", "helical_rise_range", "gpu_ids",
         ]:  # fmt: skip
             kwargs.pop(name, None)
 
@@ -1330,7 +1331,6 @@ class Class3DNoAlignmentJob(_Class3DJobBase):
         do_pad1: _a.compute.DO_PAD1 = False,
         do_preread_images: _a.compute.DO_PREREAD = False,
         do_combine_thru_disc: _a.compute.DO_COMBINE_THRU_DISC = False,
-        gpu_ids: _a.compute.GPU_IDS = "",
         # Running
         nr_mpi: _a.running.NR_MPI = 1,
         nr_threads: _a.running.NR_THREADS = 1,

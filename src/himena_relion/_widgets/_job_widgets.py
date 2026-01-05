@@ -6,24 +6,28 @@ import logging
 from contextlib import suppress
 from pathlib import Path
 import html
-from typing import Iterator
+from typing import Iterator, TYPE_CHECKING
 import numpy as np
 from qtpy import QtWidgets as QtW, QtGui, QtCore
 from superqt import QToggleSwitch
 from superqt.utils import qthrottled, GeneratorWorker
 from himena.widgets import current_instance, set_status_tip
-from himena.qt import drag_files, QColoredSVGIcon
+from himena.qt import drag_files, QColoredSVGIcon, QColoredToolButton
 from himena_relion import _job_class, _job_dir
 from himena_relion._utils import (
     normalize_job_id,
     read_icon_svg,
     read_icon_svg_for_type,
+    path_icon_svg,
     read_or_show_job,
     monospace_font_family,
 )
 from himena_relion._pipeline import RelionPipeline
 from himena_relion._widgets._job_edit import QJobParameter
 from himena_relion.schemas._pipeline import RelionPipelineModel
+
+if TYPE_CHECKING:
+    from himena_relion._widgets._main import QRelionJobWidget
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -454,17 +458,24 @@ class QRelionNodeItem(QtW.QWidget):
 
 
 class QJobStateLabel(QtW.QWidget, JobWidgetBase):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent: QRelionJobWidget):
+        super().__init__(parent)
+        self._job_widget = parent
         layout = QtW.QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         self._job_desc = QtW.QLabel("XXX")
+        self._set_alias_btn = QColoredToolButton(
+            self._run_set_alias, path_icon_svg("edit")
+        )
         self._state_label = QtW.QLabel("Not started")
         self._state_label.setSizePolicy(
             QtW.QSizePolicy.Policy.Minimum, QtW.QSizePolicy.Policy.Preferred
         )
         self._state_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
         layout.addWidget(self._job_desc)
+        layout.addWidget(
+            self._set_alias_btn, alignment=QtCore.Qt.AlignmentFlag.AlignRight
+        )
         layout.addWidget(self._state_label)
         font = self.font()
         font.setPointSize(font.pointSize() + 3)
@@ -512,6 +523,12 @@ class QJobStateLabel(QtW.QWidget, JobWidgetBase):
         metric = QtGui.QFontMetrics(self._state_label.font())
         text_width = metric.horizontalAdvance(self._state_label.text())
         self._state_label.setFixedWidth(text_width + 10)
+
+    def _run_set_alias(self):
+        job_widget = self._job_widget
+        model = job_widget.to_model()
+        ui = job_widget._ui_ref()
+        ui.exec_action("himena-relion:set-job-alias", model_context=model)
 
 
 class QFileLabel(QtW.QWidget):

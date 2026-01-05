@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from himena import MainWindow, WidgetDataModel
 from himena.exceptions import Cancelled
 from himena.plugins import register_function
+from himena_relion._widgets._main import QRelionJobWidget
 from himena_relion.consts import Type, MenuId, RelionJobState, FileNames
 from himena_relion._utils import normalize_job_id, update_default_pipeline
 from himena_relion.schemas._pipeline import RelionPipelineModel
@@ -185,7 +186,7 @@ def clone_relion_job(ui: MainWindow, model: WidgetDataModel):
     menus=[MenuId.RELION_UTILS],
     types=[Type.RELION_JOB],
     title="Set Alias ...",
-    command_id="himena-relion:set-job-alias",
+    command_id="himena-relion:set-job-alias",  # do NOT change this ID, used elsewhere.
     group="07-job-operation",
 )
 def set_job_alias(ui: MainWindow, model: WidgetDataModel):
@@ -221,6 +222,13 @@ def set_job_alias(ui: MainWindow, model: WidgetDataModel):
         job_dir.path.relative_to(job_dir.relion_project_dir),
         alias=normalize_job_id(new_path),
     )
+    # update the job widget title
+    for window in ui.iter_windows():
+        if (
+            isinstance(widget := window.widget, QRelionJobWidget)
+            and widget._job_dir.path == job_dir.path
+        ):
+            widget._state_widget.initialize(job_dir)
 
 
 @register_function(

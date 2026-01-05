@@ -110,9 +110,9 @@ def run_function(argv: list[str] | None = None) -> None:
                 next(iterator)
             except StopIteration:
                 break
-            except Exception as e:
+            except Exception:
                 o_dir.joinpath(FileNames.EXIT_FAILURE).touch()
-                raise e
+                raise
             if o_dir.joinpath(FileNames.ABORT_NOW).exists():
                 raise RuntimeError("Job aborted by user.")
     else:
@@ -120,5 +120,6 @@ def run_function(argv: list[str] | None = None) -> None:
             job.run(**func_args)
         except Exception:
             o_dir.joinpath(FileNames.EXIT_FAILURE).touch()
+            raise
     if o_dir.exists():
         o_dir.joinpath(FileNames.EXIT_SUCCESS).touch()

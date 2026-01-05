@@ -120,7 +120,7 @@ class QRefine3DViewer(QJobScrollArea):
 
     def _on_arrow_visible_toggled(self, checked: bool):
         self._viewer._canvas.arrow_visual.visible = checked
-        self._viewer._canvas.arrow_visual.update()
+        self._viewer._canvas.update_canvas()
 
     def _set_fsc(self, df_fsc: pd.DataFrame | None):
         if df_fsc is not None:

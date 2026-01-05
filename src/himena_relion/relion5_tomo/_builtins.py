@@ -7,6 +7,7 @@ from himena_relion._pipeline import RelionPipeline
 from himena_relion import _annotated as _a
 from himena_relion.relion5._builtins import (
     CtfEstimationJob,
+    Class3DNoAlignmentJob,
     Class3DJob,
     MotionCorr2Job,
     MotionCorrOwnJob,
@@ -810,12 +811,72 @@ class InitialModelTomoJob(_Relion5TomoJob, InitialModelJob):
         widgets["ctf_intact_first_peak"].enabled = widgets["do_ctf_correction"].value
 
 
-class Class3DTomoJob(_Relion5TomoJob, Class3DJob):
-    """3D classification of subtomograms."""
+class Class3DNoAlignmentTomoJob(_Relion5TomoJob, Class3DNoAlignmentJob):
+    """3D classification of subtomograms without alignment."""
 
     @classmethod
-    def type_label(cls) -> str:
-        return "relion.class3d"
+    def command_id(cls):
+        return super().command_id() + "-tomo"
+
+    @classmethod
+    def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
+        kwargs["sigma_tilt"] = -1
+        return norm_optim(**Class3DNoAlignmentJob.normalize_kwargs(**kwargs))
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
+        kwargs.pop("sigma_tilt", None)
+        return norm_optim_inv(**Class3DNoAlignmentJob.normalize_kwargs_inv(**kwargs))
+
+    def run(
+        self,
+        in_optim: _a.io.IN_OPTIM = None,
+        fn_ref: _a.io.REF_TYPE = "",
+        fn_mask: _a.io.IN_MASK = "",
+        # Reference
+        ref_correct_greyscale: _a.misc.REF_CORRECT_GRAY = False,
+        trust_ref_size: _a.misc.TRUST_REF_SIZE = True,
+        ini_high: _a.misc.INITIAL_LOWPASS = 60,
+        sym_name: _a.misc.REF_SYMMETRY = "C1",
+        # CTF
+        do_ctf_correction: _a.misc.DO_CTF = True,
+        ctf_intact_first_peak: _a.misc.IGNORE_CTF = False,
+        # Optimisation
+        nr_classes: _a.class_.NUM_CLASS = 1,
+        nr_iter: _a.class_.NUM_ITER = 25,
+        tau_fudge: _a.misc.TAU_FUDGE = 1,
+        particle_diameter: _a.misc.MASK_DIAMETER = 200,
+        do_zero_mask: _a.misc.MASK_WITH_ZEROS = True,
+        do_blush: _a.misc.DO_BLUSH = False,
+        # Helix
+        do_helix: _a.helix.DO_HELIX = False,
+        helical_tube_diameter_range: _a.helix.HELICAL_TUBE_DIAMETER_RANGE = (-1, -1),
+        helical_range_distance: _a.helix.HELICAL_RANGE_DIST = -1,
+        keep_tilt_prior_fixed: _a.helix.KEEP_TILT_PRIOR_FIXED = True,
+        do_apply_helical_symmetry: _a.helix.DO_APPLY_HELICAL_SYMMETRY = True,
+        helical_twist_initial: _a.helix.HELICAL_TWIST_INITIAL = 0,
+        helical_rise_initial: _a.helix.HELICAL_RISE_INITIAL = 0,
+        helical_nr_asu: _a.helix.HELICAL_NR_ASU = 1,
+        helical_z_percentage: _a.helix.HELICAL_Z_PERCENTAGE = 30,
+        # Compute
+        do_fast_subsets: _a.compute.USE_FAST_SUBSET = False,
+        do_parallel_discio: _a.compute.USE_PARALLEL_DISC_IO = True,
+        use_scratch: _a.compute.USE_SCRATCH = False,
+        nr_pool: _a.compute.NUM_POOL = 3,
+        do_pad1: _a.compute.DO_PAD1 = False,
+        do_preread_images: _a.compute.DO_PREREAD = False,
+        do_combine_thru_disc: _a.compute.DO_COMBINE_THRU_DISC = False,
+        # Running
+        nr_mpi: _a.running.NR_MPI = 1,
+        nr_threads: _a.running.NR_THREADS = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")
+
+
+class Class3DTomoJob(_Relion5TomoJob, Class3DJob):
+    """3D classification of subtomograms."""
 
     @classmethod
     def command_id(cls):
@@ -851,20 +912,11 @@ class Class3DTomoJob(_Relion5TomoJob, Class3DJob):
         highres_limit: _a.class_.HIGH_RES_LIMIT = -1,
         do_blush: _a.misc.DO_BLUSH = False,
         # Sampling
-        dont_skip_align: Annotated[
-            bool, {"label": "Perform image alignment", "group": "Sampling"}
-        ] = True,
         sampling: _a.sampling.ANG_SAMPLING = "7.5 degrees",
         offset_range_step: _a.sampling.OFFSET_RANGE_STEP = (5, 1),
-        allow_coarser: Annotated[
-            bool, {"label": "Allow coarser sampling", "group": "Sampling"}
-        ] = False,
-        do_local_ang_searches: Annotated[
-            bool, {"label": "Perform local angular searches", "group": "Sampling"}
-        ] = False,
-        sigma_angles: Annotated[
-            float, {"label": "Local angular search range", "group": "Sampling"}
-        ] = 5,
+        allow_coarser: _a.sampling.ALLOW_COARSER_SAMPLING = False,
+        do_local_ang_searches: _a.sampling.LOCAL_ANG_SEARCH = False,
+        sigma_angles: _a.sampling.SIGMA_ANGLES = 5,
         relax_sym: _a.sampling.RELAX_SYMMETRY = "",
         sigma_tilt: _a.sampling.SIGMA_TILT = -1,
         # Helix
@@ -954,7 +1006,7 @@ class Refine3DTomoJob(_Relion5TomoJob, Refine3DJob):
         # Compute
         do_parallel_discio: _a.compute.USE_PARALLEL_DISC_IO = True,
         nr_pool: _a.compute.NUM_POOL = 3,
-        do_pad1: Annotated[bool, {"label": "Skip padding", "group": "Compute"}] = False,
+        do_pad1: _a.compute.DO_PAD1 = False,
         do_preread_images: _a.compute.DO_PREREAD = False,
         use_scratch: _a.compute.USE_SCRATCH = False,
         do_combine_thru_disc: _a.compute.DO_COMBINE_THRU_DISC = False,

@@ -34,12 +34,16 @@ class RelionDefaultPipeline(Sequence["RelionJobInfo"]):
         return cls([], Path.cwd())
 
     @classmethod
-    def from_pipeline_star(cls, star_path: Path) -> RelionDefaultPipeline:
+    def from_pipeline_star(
+        cls, star_path: Path, allow_empty: bool = True
+    ) -> RelionDefaultPipeline:
         """Construct a RelionDefaultPipeline from a default_pipeline.star file."""
         try:
             pipeline_star = RelionPipelineModel.validate_file(star_path)
         except ValidationError:
-            return cls([])  # project without any jobs
+            if allow_empty:
+                return cls.empty()  # project without any jobs
+            raise
         processes = pipeline_star.processes
         mappers = pipeline_star.input_edges
 
