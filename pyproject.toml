@@ -28,12 +28,12 @@ dependencies = [
   "starfile-rs>=0.1.5",
   "imodmodel>=0.1.0",
   "rich",
-  "scipy>=1.16.3",
+  "scipy>=1.15.3",
   "cmap>=0.6.2",
   "vispy>=0.15.2",
   "mrcfile>=1.5.4",
   "tifffile>=2025.10.16",
-  "imagecodecs",  # for viewing LZW compressed tiff files
+  "imagecodecs>=2025.11.11",  # for viewing LZW compressed tiff files
   "watchfiles>=1.1.0",
   "superqt>=0.7.6",
   "himena>=0.1.5",
