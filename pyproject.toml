@@ -33,7 +33,7 @@ dependencies = [
   "vispy>=0.15.2",
   "mrcfile>=1.5.4",
   "tifffile>=2025.10.16",
-  "imagecodecs==2025.11.11",  # for viewing LZW compressed tiff files
+  "imagecodecs",  # for viewing LZW compressed tiff files
   "watchfiles>=1.1.0",
   "superqt>=0.7.6",
   "himena>=0.1.5",
