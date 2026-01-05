@@ -12,6 +12,7 @@ from himena_relion._widgets import (
     QIntWidget,
     QIntChoiceWidget,
     QNumParticlesLabel,
+    QSymmetryLabel,
 )
 from himena_relion import _job_dir
 from himena_relion.schemas import ModelStarModel
@@ -24,7 +25,6 @@ _LOGGER = logging.getLogger(__name__)
 class QInitialModelViewer(QJobScrollArea):
     def __init__(self, job_dir: _job_dir.InitialModel3DJobDirectory):
         super().__init__()
-        layout = self._layout
         self._viewer = Q3DViewer()
 
         self._class_choice = QIntWidget("Class", label_width=50)
@@ -32,13 +32,24 @@ class QInitialModelViewer(QJobScrollArea):
         self._class_choice.setMinimum(1)
         self._iter_choice.setMinimum(0)
         self._num_particles_label = QNumParticlesLabel()
-        layout.addWidget(self._viewer)
-        layout.addWidget(self._num_particles_label)
-        hor_layout = QtW.QHBoxLayout()
+        self._num_particles_label.setMaximumWidth(400)
+        self._symmetry_label = QSymmetryLabel()
+        header = QtW.QWidget()
+        header_layout = QtW.QHBoxLayout(header)
+        header_layout.setContentsMargins(1, 0, 1, 0)
+        header_layout.addWidget(QtW.QLabel("<b>Initial Model Map</b>"))
+        header_layout.addWidget(self._symmetry_label)
+        header.setMaximumWidth(400)
+        self._layout.addWidget(header)
+        self._layout.addWidget(self._viewer)
+        self._layout.addWidget(self._num_particles_label)
+        _container = QtW.QWidget()
+        _container.setMaximumWidth(400)
+        hor_layout = QtW.QHBoxLayout(_container)
         hor_layout.addWidget(self._iter_choice)
         hor_layout.addWidget(self._class_choice)
         hor_layout.setContentsMargins(0, 0, 0, 0)
-        layout.addLayout(hor_layout)
+        self._layout.addWidget(_container)
         self._iter_choice.current_changed.connect(self._on_iter_changed)
         self._class_choice.valueChanged.connect(self._on_class_changed)
         self._index_start = 1
@@ -65,6 +76,8 @@ class QInitialModelViewer(QJobScrollArea):
         self._on_iter_changed(self._iter_choice.value())
         self._viewer.auto_threshold()
         self._viewer.auto_fit()
+        sym_name = self._job_dir.get_job_param("sym_name")
+        self._symmetry_label.set_symmetry(sym_name)
 
     def _on_iter_changed(self, value: int):
         self._update_for_value(value, self._class_choice.value())
@@ -85,7 +98,7 @@ class QInitialModelViewer(QJobScrollArea):
         res = self._job_dir.get_result(niter)
 
         res = self._job_dir.get_result(niter)
-        map0 = res.class_map(class_id - self._index_start)
+        map0, _ = res.class_map(class_id - self._index_start)
         yield self._viewer.set_image, map0
         starpath = self._job_dir.path / f"run_it{niter:0>3}_model.star"
         try:

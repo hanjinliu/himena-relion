@@ -146,6 +146,19 @@ class QNumParticlesLabel(QtW.QLabel):
             self.setText("??? particles")
 
 
+class QSymmetryLabel(QtW.QLabel):
+    def __init__(self):
+        super().__init__()
+        self.set_symmetry("C1")
+        self.setStyleSheet("QSymmetryLabel { color: gray; }")
+        self.setAlignment(
+            QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignVCenter
+        )
+
+    def set_symmetry(self, sym_name: str):
+        self.setText(f"Symmetry: <b>{sym_name}</b>")
+
+
 def spacer_widget():
     spacer = QtW.QWidget()
     spacer.setSizePolicy(

@@ -850,11 +850,11 @@ class _3DResultsBase:
 
 @dataclass
 class InitialModelResults(_3DResultsBase):
-    def class_map(self, class_id: int) -> NDArray[np.floating]:
-        """Return the 3D map for a given class ID."""
+    def class_map(self, class_id: int) -> tuple[NDArray[np.floating], float]:
+        """Return the 3D map and the scale for a given class ID."""
         mrc_path = self.path / f"run{self.it_str}_class{class_id + 1:03d}.mrc"
         with mrcfile.open(mrc_path, mode="r") as mrc:
-            return mrc.data
+            return mrc.data, mrc.voxel_size.x
 
 
 class InitialModel3DJobDirectory(JobDirectory):
@@ -945,23 +945,7 @@ class Refine3DResults(_3DResultsBase):
         else:
             path = f"run{self.it_str}_half1_class{class_id:03d}_angdist.bild"
         full_path = self.path / path
-        cylinders: list[TubeObject] = []
-        with open(full_path) as f:
-            while True:
-                color = f.readline()
-                if color.strip() == "":
-                    break
-                r0, g0, b0 = color[7:].split(" ")
-                cylinder = f.readline()
-                x1, y1, z1, x2, y2, z2, radius = cylinder[10:].split(" ")
-                cyl = TubeObject(
-                    start=np.array([float(x1), float(y1), float(z1)]) / map_scale,
-                    end=np.array([float(x2), float(y2), float(z2)]) / map_scale,
-                    radius=float(radius) / map_scale,
-                    color=(float(r0), float(g0), float(b0)),
-                )
-                cylinders.append(cyl)
-        return cylinders
+        return _read_tubes(full_path, map_scale)
 
     def _half_class_mrc(self, class_id: int, num: Literal[1, 2] = 1) -> Path:
         """Return the path to the half 1 class MRC file for this iteration."""
@@ -1010,11 +994,11 @@ class Refine3DJobDirectory(JobDirectory):
 
 
 class Class3DResults(_3DResultsBase):
-    def class_map(self, class_id: int) -> NDArray[np.floating]:
+    def class_map(self, class_id: int) -> tuple[NDArray[np.floating], float]:
         """Return the class 3D map for a given class ID."""
         mrc_path = self.path / f"run{self.it_str}_class{class_id + 1:03d}.mrc"
         with mrcfile.open(mrc_path, mode="r") as mrc:
-            return mrc.data
+            return mrc.data, mrc.voxel_size.x
 
     def fsc_dataframe(self, class_id: int) -> pd.DataFrame | None:
         starpath = self.path / f"run{self.it_str}_model.star"
@@ -1024,6 +1008,12 @@ class Class3DResults(_3DResultsBase):
         except Exception as e:
             _LOGGER.warning(f"Failed to read FSC data from {starpath}: {e}")
             return None
+
+    def angdist(self, class_id: int, map_scale: float) -> list[TubeObject]:
+        """Return the angular distribution for a given class ID."""
+        path = f"run{self.it_str}_class{class_id:03d}_angdist.bild"
+        full_path = self.path / path
+        return _read_tubes(full_path, map_scale)
 
 
 class Class3DJobDirectory(JobDirectory):
@@ -1150,3 +1140,23 @@ class FrameAlignTomoJobDirectory(JobDirectory):
 
 def _read_star_as_df(star_path: Path) -> pd.DataFrame:
     return read_star(star_path).first().trust_loop().to_pandas()
+
+
+def _read_tubes(full_path, map_scale: float) -> list[TubeObject]:
+    cylinders: list[TubeObject] = []
+    with open(full_path) as f:
+        while True:
+            color = f.readline()
+            if color.strip() == "":
+                break
+            r0, g0, b0 = color[7:].split(" ")
+            cylinder = f.readline()
+            x1, y1, z1, x2, y2, z2, radius = cylinder[10:].split(" ")
+            cyl = TubeObject(
+                start=np.array([float(x1), float(y1), float(z1)]) / map_scale,
+                end=np.array([float(x2), float(y2), float(z2)]) / map_scale,
+                radius=float(radius) / map_scale,
+                color=(float(r0), float(g0), float(b0)),
+            )
+            cylinders.append(cyl)
+    return cylinders

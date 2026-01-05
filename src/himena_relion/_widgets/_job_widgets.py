@@ -53,7 +53,7 @@ class QJobScrollArea(QtW.QScrollArea, JobWidgetBase):
         self.setWidget(self.inner)
         self.setWidgetResizable(False)
         layout = QtW.QVBoxLayout(self.inner)
-        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setContentsMargins(2, 2, 2, 2)
         layout.setAlignment(
             QtCore.Qt.AlignmentFlag.AlignTop | QtCore.Qt.AlignmentFlag.AlignLeft
         )
@@ -64,7 +64,7 @@ class QJobScrollArea(QtW.QScrollArea, JobWidgetBase):
     def resizeEvent(self, a0):
         super().resizeEvent(a0)
         if a0.size().width() > 420:
-            self.inner.setFixedWidth(a0.size().width())
+            self.inner.setFixedWidth(a0.size().width() - 20)
 
     def closeEvent(self, a0):
         self.window_closed_callback()

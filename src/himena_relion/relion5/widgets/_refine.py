@@ -2,7 +2,6 @@ from __future__ import annotations
 from pathlib import Path
 import logging
 from typing import Any, Callable
-import numpy as np
 import pandas as pd
 from qtpy import QtWidgets as QtW, QtCore
 from superqt import QToggleSwitch
@@ -14,6 +13,7 @@ from himena_relion._widgets import (
     QIntWidget,
     QPlotCanvas,
     QNumParticlesLabel,
+    QSymmetryLabel,
 )
 from himena_relion import _job_dir
 
@@ -35,6 +35,7 @@ class QRefine3DViewer(QJobScrollArea):
             "The _angdist.bild output file of the selected iteration is used to\n"
             "generate the arrows."
         )
+        self._symmetry_label = QSymmetryLabel()
         self._viewer._canvas.arrow_visual.visible = False
         max_width = 400
         self._viewer.setMaximumWidth(max_width)
@@ -43,7 +44,11 @@ class QRefine3DViewer(QJobScrollArea):
         self._iter_choice.setMinimum(0)
         self._num_particles_label = QNumParticlesLabel()
         layout.addWidget(QtW.QLabel("<b>Refined Map</b>"))
-        layout.addWidget(self._arrow_visible)
+        hor_layout = QtW.QHBoxLayout()
+        hor_layout.setContentsMargins(0, 0, 0, 0)
+        hor_layout.addWidget(self._arrow_visible)
+        hor_layout.addWidget(self._symmetry_label)
+        layout.addLayout(hor_layout)
         layout.addWidget(self._viewer)
         _hor = QtW.QWidget()
         _hor.setMaximumWidth(max_width)
@@ -74,6 +79,8 @@ class QRefine3DViewer(QJobScrollArea):
         self._iter_choice.setMaximum(max(niters - 1, 0))
         self._iter_choice.setValue(self._iter_choice.maximum())
         self._on_iter_changed(self._iter_choice.value())
+        sym_name = self._job_dir.get_job_param("sym_name")
+        self._symmetry_label.set_symmetry(sym_name)
 
     def _on_iter_changed(self, value: int):
         self._update_for_value(value)
@@ -95,7 +102,7 @@ class QRefine3DViewer(QJobScrollArea):
             map_out = map0 + map1
         else:
             map_out = None
-        yield self._set_map, map_out
+        yield self._viewer.set_image, map_out
         df_fsc, groups = res.model_dataframe(class_id)
         yield self._set_fsc, df_fsc
         if groups is not None:
@@ -103,18 +110,12 @@ class QRefine3DViewer(QJobScrollArea):
 
         if scale is not None:
             tubes = res.angdist(class_id, scale)
-            yield self._set_angles, tubes
+            yield self._viewer._canvas.set_arrows, tubes
         self._worker = None
 
     def _on_yielded(self, yielded: tuple[Callable, Any]):
         fn, args = yielded
         fn(args)
-
-    def _set_map(self, map_data: np.ndarray | None):
-        self._viewer.set_image(map_data)
-
-    def _set_angles(self, tubes):
-        self._viewer._canvas.set_arrows(tubes)
 
     def _on_arrow_visible_toggled(self, checked: bool):
         self._viewer._canvas.arrow_visual.visible = checked

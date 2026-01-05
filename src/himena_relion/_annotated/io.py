@@ -24,7 +24,7 @@ IN_COORDINATES = Annotated[
     {
         "label": "Input coordinates",
         "widget_type": PathDrop,
-        "type_label": "MicrographsCoords",
+        "type_label": ["MicrographsCoords", "MicrographCoordsGroup"],
         "group": "I/O",
     },
 ]

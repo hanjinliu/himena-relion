@@ -22,6 +22,7 @@ from himena_relion._widgets._misc import (
     QMicrographListWidget,
     QImageViewTextEdit,
     QNumParticlesLabel,
+    QSymmetryLabel,
 )
 from himena_relion._widgets._job_edit import QJobScheduler
 
@@ -42,6 +43,7 @@ __all__ = [
     "QMicrographListWidget",
     "QImageViewTextEdit",
     "QNumParticlesLabel",
+    "QSymmetryLabel",
     "spacer_widget",
 ]
 

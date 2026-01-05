@@ -3,12 +3,14 @@ from pathlib import Path
 
 import logging
 from qtpy import QtWidgets as QtW
+from superqt import QToggleSwitch
 from himena_relion._widgets import (
     QJobScrollArea,
     Q3DViewer,
     register_job,
     QIntWidget,
     QMicrographListWidget,
+    QSymmetryLabel,
 )
 from himena_relion import _job_dir
 
@@ -22,16 +24,29 @@ class QClass3DViewer(QJobScrollArea):
         self._list_widget = QMicrographListWidget(["Class", "Population", "Resolution"])
         self._list_widget.verticalHeader().setVisible(False)
         self._viewer = Q3DViewer()
+        self._arrow_visible = QToggleSwitch("Show angle distribution")
+        self._arrow_visible.setChecked(False)
+        self._arrow_visible.toggled.connect(self._on_arrow_visible_toggled)
+        self._arrow_visible.setToolTip(
+            "Show the particle angle distribution as arrows on the 3D map.\n"
+            "The _angdist.bild output file of the selected iteration is used to\n"
+            "generate the arrows."
+        )
+        self._symmetry_label = QSymmetryLabel()
         self._list_widget.setMinimumWidth(300)
         self._list_widget.setMaximumWidth(400)
         self._iter_choice = QIntWidget("Iteration", label_width=60)
         self._iter_choice.setMinimum(0)
         self._layout.addWidget(self._list_widget)
+        hor = QtW.QWidget()
+        hor.setMaximumWidth(400)
+        hor_layout = QtW.QHBoxLayout(hor)
+        hor_layout.setContentsMargins(0, 0, 0, 0)
+        hor_layout.addWidget(self._arrow_visible)
+        hor_layout.addWidget(self._symmetry_label)
+        self._layout.addWidget(hor)
         self._layout.addWidget(self._viewer)
-        hor_layout1 = QtW.QHBoxLayout()
-        hor_layout1.addWidget(self._iter_choice)
-        hor_layout1.setContentsMargins(0, 0, 0, 0)
-        self._layout.addLayout(hor_layout1)
+        self._layout.addWidget(self._iter_choice)
         self._index_start = 1
         self._job_dir = job_dir
 
@@ -57,6 +72,8 @@ class QClass3DViewer(QJobScrollArea):
         self._on_iter_changed(self._iter_choice.value())
         self._viewer.auto_threshold()
         self._viewer.auto_fit()
+        sym_name = self._job_dir.get_job_param("sym_name")
+        self._symmetry_label.set_symmetry(sym_name)
 
     def _on_iter_changed(self, value: int):
         class_id = int(self._list_widget.current_text() or 1)
@@ -69,8 +86,11 @@ class QClass3DViewer(QJobScrollArea):
 
     def _update_for_value(self, niter: int, class_id: int):
         res = self._job_dir.get_result(niter)
-        map0 = res.class_map(class_id - self._index_start)
+        map0, scale = res.class_map(class_id - self._index_start)
         self._viewer.set_image(map0)
+
+        tubes = res.angdist(class_id, scale)
+        self._viewer._canvas.set_arrows(tubes)
 
     def _update_summary_table(self, niter):
         res = self._job_dir.get_result(niter)
@@ -88,3 +108,7 @@ class QClass3DViewer(QJobScrollArea):
             reso = gr.classes.resolution[ith]
             choices.append((str(ith + 1), f"{dist:.2%}", f"{reso:.2f} A"))
         self._list_widget.set_choices(choices)
+
+    def _on_arrow_visible_toggled(self, checked: bool):
+        self._viewer._canvas.arrow_visual.visible = checked
+        self._viewer._canvas.arrow_visual.update()
