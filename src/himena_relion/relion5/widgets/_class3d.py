@@ -21,16 +21,26 @@ _LOGGER = logging.getLogger(__name__)
 class QClass3DViewer(QJobScrollArea):
     def __init__(self, job_dir: _job_dir.Class3DJobDirectory):
         super().__init__()
-        self._list_widget = QMicrographListWidget(["Class", "Population", "Resolution"])
+        self._list_widget = QMicrographListWidget(
+            [
+                "Class",
+                "Population",
+                "Resolution",
+                "Rotation Accuracy",
+                "Translation Accuracy",
+            ]
+        )
         self._list_widget.verticalHeader().setVisible(False)
         self._viewer = Q3DViewer()
+        _arrow_visible_default = False
+        self._viewer._canvas.arrow_visual.visible = _arrow_visible_default
         self._arrow_visible = QToggleSwitch("Show angle distribution")
-        self._arrow_visible.setChecked(False)
+        self._arrow_visible.setChecked(_arrow_visible_default)
         self._arrow_visible.toggled.connect(self._on_arrow_visible_toggled)
         self._arrow_visible.setToolTip(
             "Show the particle angle distribution as arrows on the 3D map.\n"
-            "The _angdist.bild output file of the selected iteration is used to\n"
-            "generate the arrows."
+            "The _angdist.bild output file of the selected iteration and class index \n"
+            "is used to generate the arrows."
         )
         self._symmetry_label = QSymmetryLabel()
         self._list_widget.setMinimumWidth(300)
@@ -105,10 +115,18 @@ class QClass3DViewer(QJobScrollArea):
         choices = []
         for ith in range(nclasses):
             dist = gr.classes.class_distribution[ith]
-            reso = gr.classes.resolution[ith]
-            choices.append((str(ith + 1), f"{dist:.2%}", f"{reso:.2f} A"))
+            reso = _format_float(gr.classes.resolution[ith], "A")
+            rot = _format_float(gr.classes.accuracy_rotation[ith], "deg")
+            trans = _format_float(gr.classes.accyracy_translation[ith], "A")
+            choices.append((str(ith + 1), f"{dist:.2%}", reso, rot, trans))
         self._list_widget.set_choices(choices)
 
     def _on_arrow_visible_toggled(self, checked: bool):
         self._viewer._canvas.arrow_visual.visible = checked
         self._viewer._canvas.arrow_visual.update()
+
+
+def _format_float(value: float, unit: str) -> str:
+    if value >= 998.99:
+        return "N/A"
+    return f"{value:.2f} {unit}"

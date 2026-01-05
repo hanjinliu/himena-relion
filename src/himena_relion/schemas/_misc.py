@@ -62,6 +62,12 @@ class ModelClasses(schema.LoopDataModel):
     """Reference image in 000000XXX@Class2D/jobXXX/*.mrcs format."""
     class_distribution: schema.Series[float] = schema.Field("rlnClassDistribution")
     resolution: schema.Series[float] = schema.Field("rlnEstimatedResolution")
+    accuracy_rotation: schema.Series[float] = schema.Field(
+        "rlnAccuracyRotations", default=None
+    )
+    accyracy_translation: schema.Series[float] = schema.Field(
+        "rlnAccuracyTranslationsAngst", default=None
+    )
 
 
 class ModelGroups(schema.LoopDataModel):

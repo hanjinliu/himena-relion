@@ -37,6 +37,7 @@ dependencies = [
   "superqt>=0.7.6",
   "himena>=0.1.5",
   "matplotlib>=3.7.2",
+  "scikit-image>=0.25.1",
   "psygnal>=0.15.0",
   "magicgui>=0.10.1",
 ]
