@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Union
 
 EXCLUDETILT_CACHE_SIZE = Annotated[
     int,
@@ -66,7 +66,7 @@ DO_ARETOMO_TILTCORRECT = Annotated[
     },
 ]
 ARETOMO_TILTCORRECT_ANGLE = Annotated[
-    int | None,
+    Union[int, None],
     {
         "label": "Tilt angle offset",
         "tooltip": (

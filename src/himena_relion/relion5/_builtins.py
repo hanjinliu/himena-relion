@@ -397,52 +397,24 @@ class ManualPickJob(_Relion5Job):
     def run(
         self,
         fn_in: _a.io.IN_MICROGRAPHS = "",
-        do_startend: Annotated[
-            bool, {"label": "Pick star-end coordinates helices", "group": "I/O"}
-        ] = False,
-        minimum_pick_fom: Annotated[
-            float | None,
-            {"label": "Minimum autopick FOM", "min": -10, "max": 10, "group": "I/O"},
-        ] = None,
+        do_startend: _a.manualpick.DO_STARTEND = False,
+        minimum_pick_fom: _a.manualpick.MINIMUM_PICK_FOM = None,
         # Display
-        diameter: Annotated[
-            float, {"label": "Particle diameter (A)", "group": "Display"}
-        ] = 100,
-        micscale: Annotated[
-            float, {"label": "Scale for micrographs", "group": "Display"}
-        ] = 0.2,
-        sigma_contrast: Annotated[
-            float, {"label": "Sigma contrast", "group": "Display"}
-        ] = 3,
-        white_val: Annotated[float, {"label": "White value", "group": "Display"}] = 0,
-        black_val: Annotated[float, {"label": "Black value", "group": "Display"}] = 0,
-        angpix: Annotated[float, {"label": "Pixel size (A)", "group": "Display"}] = -1,
-        filter_method: Annotated[
-            str,
-            {
-                "label": "Denoising method",
-                "choices": ["Band-pass", "Topaz"],
-                "group": "Display",
-            },
-        ] = "Band-pass",
-        lowpass: Annotated[
-            float, {"label": "Lowpass filter (A)", "group": "Display"}
-        ] = 20,
-        highpass: Annotated[
-            float, {"label": "Highpass filter (A)", "group": "Display"}
-        ] = -1,
+        diameter: _a.manualpick.DIAMETER = 100,
+        micscale: _a.manualpick.MICSCALE = 0.2,
+        sigma_contrast: _a.manualpick.SIGMA_CONTRAST = 3,
+        white_val: _a.manualpick.WHITE_VAL = 0,
+        black_val: _a.manualpick.BLACK_VAL = 0,
+        angpix: _a.manualpick.ANGPIX = -1,
+        filter_method: _a.manualpick.FILTER_METHOD = "Band-pass",
+        lowpass: _a.manualpick.LOWPASS = 20,
+        highpass: _a.manualpick.HIGHPASS = -1,
         # Colors
-        do_color: Annotated[
-            bool, {"label": "Color particles by metadata", "group": "Colors"}
-        ] = False,
-        color_label: Annotated[
-            str, {"label": "Color by this label", "group": "Colors"}
-        ] = "rlnAutopickFigureOfMerit",
-        fn_color: Annotated[
-            str, {"label": "STAR file with color label", "group": "Colors"}
-        ] = "",
-        blue_value: Annotated[float, {"label": "Blue value", "group": "Colors"}] = 0,
-        red_value: Annotated[float, {"label": "Red value", "group": "Colors"}] = 2,
+        do_color: _a.manualpick.DO_COLOR = False,
+        color_label: _a.manualpick.COLOR_LABEL = "rlnAutopickFigureOfMerit",
+        fn_color: _a.manualpick.FN_COLOR = "",
+        blue_value: _a.manualpick.BLUE_VALUE = 0,
+        red_value: _a.manualpick.RED_VALUE = 2,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 

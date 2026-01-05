@@ -2,7 +2,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections import defaultdict
 import logging
-from typing import Any
+from typing import Any, Union
 
 from himena import MainWindow
 from qtpy import QtWidgets as QtW, QtCore, QtGui
@@ -175,7 +175,11 @@ class QJobParameter(QtW.QScrollArea):
         for widget in self._mgui_widgets.values():
             if widget.name in params:
                 new_value = params.pop(widget.name)
-                widget.value = parse_string(new_value, widget.annotation)
+                if widget._nullable:
+                    annotation = Union[widget.annotation, type(None)]
+                else:
+                    annotation = widget.annotation
+                widget.value = parse_string(new_value, annotation)
             if not enabled:
                 widget.enabled = False
         if params:
