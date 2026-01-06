@@ -24,6 +24,7 @@ from himena_relion._utils import (
 )
 from himena_relion._pipeline import RelionPipeline
 from himena_relion._widgets._job_edit import QJobParameter
+from himena_relion._widgets._misc import spacer_widget
 from himena_relion.schemas._pipeline import RelionPipelineModel
 
 if TYPE_CHECKING:
@@ -464,24 +465,33 @@ class QJobStateLabel(QtW.QWidget, JobWidgetBase):
         layout = QtW.QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         self._job_desc = QtW.QLabel("XXX")
+        self._job_desc.setSizePolicy(
+            QtW.QSizePolicy.Policy.Minimum, QtW.QSizePolicy.Policy.Minimum
+        )
         self._set_alias_btn = QColoredToolButton(
             self._run_set_alias, path_icon_svg("edit")
         )
+        self._set_alias_btn.setFixedSize(18, 18)
+        self._set_alias_btn.update_color("gray")
         self._state_label = QtW.QLabel("Not started")
         self._state_label.setSizePolicy(
-            QtW.QSizePolicy.Policy.Minimum, QtW.QSizePolicy.Policy.Preferred
+            QtW.QSizePolicy.Policy.Minimum, QtW.QSizePolicy.Policy.Minimum
         )
-        self._state_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
+        self._state_label.setAlignment(
+            QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignVCenter
+        )
         layout.addWidget(self._job_desc)
         layout.addWidget(
-            self._set_alias_btn, alignment=QtCore.Qt.AlignmentFlag.AlignRight
+            self._set_alias_btn, alignment=QtCore.Qt.AlignmentFlag.AlignLeft
         )
+        layout.addWidget(spacer_widget())
         layout.addWidget(self._state_label)
         font = self.font()
         font.setPointSize(font.pointSize() + 3)
         self._job_desc.setFont(font)
         font.setPointSize(font.pointSize() - 1)
         self._state_label.setFont(font)
+        self.setFixedHeight(27)
 
     def on_job_updated(self, job_dir, fp):
         if fp.name == "default_pipeline.star" or fp.suffix == "":

@@ -54,6 +54,13 @@ def _inherit_particle_diameter(path: Path) -> float:
     return round(float(dia), 1)
 
 
+def _optimiser_last_iter(path: Path) -> str:
+    niter = get_nr_iter(path)
+    if niter is None:
+        return ""
+    return path / f"run_it{niter:03d}_optimiser.star"
+
+
 for _MotionCorJob in [_tomo.MotionCorr2TomoJob, _tomo.MotionCorrOwnTomoJob]:
     connect_jobs(
         _tomo.ImportTomoJob,
@@ -216,17 +223,54 @@ connect_jobs(
         _subtomo_crop_size: "crop_size",
     },
 )
-connect_jobs(
-    _tomo.InitialModelTomoJob,
-    _tomo.Class3DTomoJob,
-    node_mapping={
-        "optimisation_set.star": "in_optim.in_optimisation",
-        "initial_model.mrc": "fn_ref",
-    },
-    value_mapping={
-        _inherit_particle_diameter: "particle_diameter",
-    },
-)
+
+for class3d_job in [_tomo.Class3DTomoJob, _tomo.Class3DNoAlignmentTomoJob]:
+    connect_jobs(
+        _tomo.InitialModelTomoJob,
+        class3d_job,
+        node_mapping={
+            "optimisation_set.star": "in_optim.in_optimisation",
+            "initial_model.mrc": "fn_ref",
+        },
+        value_mapping={
+            _inherit_particle_diameter: "particle_diameter",
+        },
+    )
+    if class3d_job is _tomo.Class3DTomoJob:
+        connect_jobs(
+            class3d_job,
+            _spa.SelectClassesInteractiveJob,
+            node_mapping={_optimiser_last_iter: "fn_model"},
+        )
+        connect_jobs(
+            class3d_job,
+            _tomo.Refine3DTomoJob,
+            node_mapping={"run_class001.mrc": "fn_ref"},
+            value_mapping={
+                _inherit_particle_diameter: "particle_diameter",
+            },
+        )
+    connect_jobs(
+        _tomo.ReconstructParticlesJob,
+        class3d_job,
+        node_mapping={
+            _tomo.ReconstructParticlesJob.get_optimisation_set: "in_optim.in_optimisation",
+            "merged.mrc": "fn_ref",
+        },
+        value_mapping={_recon_diameter_a: "particle_diameter"},
+    )
+    connect_jobs(
+        _tomo.Refine3DTomoJob,
+        class3d_job,
+        node_mapping={
+            "run_optimisation_set.star": "in_optim.in_optimisation",
+            "run_class001.mrc": "fn_ref",
+        },
+        value_mapping={
+            _inherit_particle_diameter: "particle_diameter",
+        },
+    )
+
 connect_jobs(
     _tomo.InitialModelTomoJob,
     _tomo.Refine3DTomoJob,
@@ -234,13 +278,6 @@ connect_jobs(
         "optimisation_set.star": "in_optim.in_optimisation",
         "initial_model.mrc": "fn_ref",
     },
-    value_mapping={
-        _inherit_particle_diameter: "particle_diameter",
-    },
-)
-connect_jobs(
-    _tomo.Class3DTomoJob,
-    _tomo.Refine3DTomoJob,
     value_mapping={
         _inherit_particle_diameter: "particle_diameter",
     },
@@ -268,31 +305,6 @@ connect_jobs(
     node_mapping={"merged.mrc": "fn_in"},
 )
 
-
-def _optimiser_last_iter(path: Path) -> str:
-    niter = get_nr_iter(path)
-    if niter is None:
-        return ""
-    return path / f"run_it{niter:03d}_optimiser.star"
-
-
-connect_jobs(
-    _tomo.Class3DTomoJob,
-    _spa.SelectClassesInteractiveJob,
-    node_mapping={_optimiser_last_iter: "fn_model"},
-)
-
-connect_jobs(
-    _tomo.ReconstructParticlesJob,
-    _tomo.Class3DTomoJob,
-    node_mapping={
-        _tomo.ReconstructParticlesJob.get_optimisation_set: "in_optim.in_optimisation",
-        "merged.mrc": "fn_ref",
-    },
-    value_mapping={
-        _recon_diameter_a: "particle_diameter",
-    },
-)
 connect_jobs(
     _tomo.ReconstructParticlesJob,
     _tomo.Refine3DTomoJob,

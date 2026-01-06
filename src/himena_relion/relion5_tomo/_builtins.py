@@ -561,17 +561,8 @@ class PickJob(_Relion5TomoJob):
         self,
         in_tomoset: _a.io.IN_TILT = "",
         in_star_file: _a.io.IN_PARTICLES = "",
-        pick_mode: Annotated[
-            str,
-            {
-                "label": "Picking mode",
-                "choices": ["particles", "spheres", "surfaces", "filaments"],
-                "group": "I/O",
-            },
-        ] = "particles",
-        particle_spacing: Annotated[
-            float, {"label": "Particle spacing (A)", "group": "I/O"}
-        ] = -1,
+        pick_mode: _a.manualpick.PICK_MODE = "particles",
+        particle_spacing: _a.manualpick.PARTICLE_SPACING = -1,
         # Running
         do_queue: _a.running.DO_QUEUE = False,
         min_dedicated: _a.running.MIN_DEDICATED = 1,
@@ -677,16 +668,10 @@ class DenoiseTrain(_DenoiseJobBase):
 
     def run(
         self,
-        in_tomoset: Annotated[str, {"label": "Tomogram sets", "group": "I/O"}] = "",
-        tomograms_for_training: Annotated[
-            str, {"label": "Tomograms for training", "group": "Train"}
-        ] = "",
-        number_training_subvolumes: Annotated[
-            int, {"label": "Number of sub-volumes per tomogram", "group": "Train"}
-        ] = 1200,
-        subvolume_dimensions: Annotated[
-            int, {"label": "Sub-volume dimensions (pix)", "group": "Train"}
-        ] = 72,
+        in_tomoset: _a.tomo.IN_TOMOSET = "",
+        tomograms_for_training: _a.tomo.TOMOGRAMS_FOR_TRAINING = "",
+        number_training_subvolumes: _a.tomo.NUMBER_TRAINING_SUBVOLUMES = 1200,
+        subvolume_dimensions: _a.tomo.SUBVOLUME_DIMENSIONS = 72,
         gpu_ids: _a.compute.GPU_IDS = "0",
         # Running
         do_queue: _a.running.DO_QUEUE = False,
@@ -738,17 +723,10 @@ class DenoisePredict(_DenoiseJobBase):
 
     def run(
         self,
-        in_tomoset: Annotated[str, {"label": "Tomogram sets", "group": "I/O"}] = "",
-        care_denoising_model: Annotated[
-            str, {"label": "Denoising model", "group": "I/O"}
-        ] = "",
-        ntiles: Annotated[
-            tuple[int, int, int],
-            {"label": "Number of tiles (X, Y, Z)", "group": "Predict"},
-        ] = (2, 2, 2),
-        denoising_tomo_name: Annotated[
-            str, {"label": "Reconstruct only this tomogram"}
-        ] = "",
+        in_tomoset: _a.tomo.IN_TOMOSET = "",
+        care_denoising_model: _a.tomo.CARE_DENOISING_MODEL = "",
+        ntiles: _a.tomo.NTILES = (2, 2, 2),
+        denoising_tomo_name: _a.tomo.DENOISING_TOMO_NAME = "",
         gpu_ids: _a.compute.GPU_IDS = "0",
         # Running
         do_queue: _a.running.DO_QUEUE = False,
@@ -1037,29 +1015,17 @@ class ReconstructParticlesJob(_Relion5TomoJob):
         self,
         in_optim: _a.io.IN_OPTIM = None,
         # Average
-        binning: Annotated[
-            int, {"label": "Binning factor", "min": 1, "group": "Average"}
-        ] = 1,
-        box_size: Annotated[
-            int, {"label": "Box size (binned pix)", "group": "Average"}
-        ] = 128,
-        crop_size: Annotated[
-            int, {"label": "Crop size (binned pix)", "group": "Average"}
-        ] = -1,
-        snr: Annotated[float, {"label": "Wiener SNR constant", "group": "Average"}] = 0,
-        sym_name: Annotated[str, {"label": "Symmetry", "group": "Average"}] = "C1",
+        binning: _a.tomo.BINNING = 1,
+        box_size: _a.tomo.BOX_SIZE = 128,
+        crop_size: _a.tomo.CROP_SIZE = -1,
+        snr: _a.tomo.SNR = 0,
+        sym_name: _a.tomo.SYM_NAME = "C1",
         # Helix
         do_helix: _a.helix.DO_HELIX = False,
         helical_nr_asu: _a.helix.HELICAL_NR_ASU = 1,
-        helical_twist: Annotated[
-            float, {"label": "Helical twist (deg)", "group": "Helix"}
-        ] = -1,
-        helical_rise: Annotated[
-            float, {"label": "Helical rise (A)", "group": "Helix"}
-        ] = 4.75,
-        helical_tube_outer_diameter: Annotated[
-            float, {"label": "Outer helical diameter (A)", "group": "Helix"}
-        ] = 200,
+        helical_twist: _a.tomo.HELICAL_TWIST = -1,
+        helical_rise: _a.helix.HELICAL_RISE = 4.75,
+        helical_tube_outer_diameter: _a.helix.HELICAL_TUBE_DIAMETER = 200,
         helical_z_percentage: _a.helix.HELICAL_Z_PERCENTAGE = 20,
         # Running
         nr_mpi: _a.running.NR_MPI = 1,

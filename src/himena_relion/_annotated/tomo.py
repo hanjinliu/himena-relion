@@ -1,5 +1,7 @@
 from typing import Annotated, Union
 
+from himena_relion._widgets._path_input import PathDrop
+
 EXCLUDETILT_CACHE_SIZE = Annotated[
     int,
     {
@@ -229,5 +231,184 @@ CTF_INTACT_FIRST_PEAK = Annotated[
             "low-resolution contrast, but better high-resolution details."
         ),
         "group": "Filter",
+    },
+]
+
+# CryoCARE
+TOMOGRAMS_FOR_TRAINING = Annotated[
+    str,
+    {
+        "label": "Tomograms for training",
+        "tooltip": (
+            "List the tomograms to be used to train the denoising model. Ideally, "
+            "these should cover the defocus range of your tomograms. List the "
+            "tomograms according to their rlnTomoName, and separate the tomograms "
+            "using ':'. For exampple, input should look something like: TS_01:TS_02 "
+        ),
+        "group": "Train",
+    },
+]
+NUMBER_TRAINING_SUBVOLUMES = Annotated[
+    int,
+    {
+        "label": "Number of sub-volumes per tomogram",
+        "tooltip": (
+            "Number of sub-volumes to be extracted per training tomogram. Corresponds "
+            "to num_slices in cryoCARE_extract_train_data.py."
+        ),
+        "group": "Train",
+    },
+]
+SUBVOLUME_DIMENSIONS = Annotated[
+    int,
+    {
+        "label": "Sub-volume dimensions (pix)",
+        "tooltip": (
+            "Dimensions (XYZ) in pixels of the sub-volumes to be extracted from the "
+            "training tomograms. Corresponds to patch_size in "
+            "cryoCARE_extract_train_data.py."
+        ),
+        "group": "Train",
+    },
+]
+CARE_DENOISING_MODEL = Annotated[
+    str,
+    {
+        "label": "Denoising model",
+        "tooltip": (
+            "Provide the path to the denoising model generated in cryoCARE:train. This "
+            "should be in the output directory of a cryoCARE:train job as a .tar.gz "
+            "file."
+        ),
+        "group": "I/O",
+    },
+]
+NTILES = Annotated[
+    tuple[int, int, int],
+    {
+        "label": "Number of tiles (X, Y, Z)",
+        "tooltip": (
+            "Number of tiles to use in denoised tomogram generation (X, Y, and Z "
+            "dimension). Default is 2,2,2. Increase if you get a Out of Memory (OOM) "
+            "error in prediction. For us, 8,8,8 works well on a Nvidia GeForce RTX "
+            "2080."
+        ),
+        "group": "Predict",
+    },
+]
+DENOISING_TOMO_NAME = Annotated[
+    str,
+    {
+        "label": "Reconstruct only this tomogram",
+        "tooltip": (
+            "If not left empty, the program will only reconstruct this particular "
+            "tomogram. Use the name in <code>rlnTomoName</code> to specify tomogram."
+        ),
+        "group": "Predict",
+    },
+]
+IN_TOMOSET = Annotated[
+    str,
+    {
+        "label": "Tomogram sets",
+        "tooltip": (
+            "Input global tomograms star file. Must contain "
+            "rlnTomoReconstructedTomogramHalf1 and rlnTomoReconstructedTomogramHalf2 "
+            "labels denoting the tomogram halves generated for denoising in a "
+            "Reconstruct tomograms job."
+        ),
+        "widget_type": PathDrop,
+        "type_label": "TomogramGroupMetadata",
+        "group": "I/O",
+    },
+]
+BINNING = Annotated[
+    int,
+    {
+        "label": "Binning factor",
+        "min": 1,
+        "tooltip": (
+            "The tilt series images will be binned by this (real-valued) factor and "
+            "then reconstructed in the specified box size above. Note that thereby the "
+            "reconstructed region becomes larger when specifying binning factors "
+            "larger than one."
+        ),
+        "group": "Average",
+    },
+]
+BOX_SIZE = Annotated[
+    int,
+    {
+        "label": "Box size (binned pix)",
+        "tooltip": (
+            "Box size of the reconstruction. Note that this is independent of the box "
+            "size that has been used to refine the particle. This allows the user to "
+            "construct a 3D map of arbitrary size to gain an overview of the structure "
+            "surrounding the particle. A sufficiently large box size also allows more "
+            "of the high-frequency signal to be captured that has been delocalised by "
+            "the CTF."
+        ),
+        "group": "Average",
+    },
+]
+CROP_SIZE = Annotated[
+    int,
+    {
+        "label": "Crop size (binned pix)",
+        "tooltip": (
+            "If set to a positive value, the program will output an additional set of "
+            "maps that have been cropped to this size. This is useful if a map is "
+            "desired that is smaller than the box size required to retrieve the "
+            "CTF-delocalised signal."
+        ),
+        "group": "Average",
+    },
+]
+SNR = Annotated[
+    float,
+    {
+        "label": "Wiener SNR constant",
+        "tooltip": (
+            "If set to a positive value, apply a Wiener filter with this "
+            "signal-to-noise ratio. If omitted, the reconstruction will use a "
+            "heuristic to prevent divisions by excessively small numbers. Please note "
+            "that using a low (even though realistic) SNR might wash out the higher "
+            "frequencies, which could make the map unsuitable to be used for further "
+            "refinement."
+        ),
+        "group": "Average",
+    },
+]
+SYM_NAME = Annotated[
+    str,
+    {
+        "label": "Symmetry",
+        "tooltip": (
+            "If the molecule is asymmetric, set Symmetry group to C1. Note their are "
+            "multiple possibilities for icosahedral symmetry: \n"
+            "* I1: No-Crowther 222 (standard in Heymann, Chagoyen & Belnap, JSB, 151 "
+            "(2005) 196-207) \n "
+            "* I2: Crowther 222 \n "
+            "* I3: 52-setting (as used in SPIDER?)\n "
+            "* I4: A different 52 setting \n "
+            "The command <code>relion_refine --sym D2 --print_symmetry_ops</code> prints a list "
+            "of all symmetry operators for symmetry group D2. RELION uses XMIPP's "
+            "libraries for symmetry operations. Therefore, look at the "
+            "<a href='https://i2pc.github.io/docs/Utils/Conventions/index.html#symmetry'>XMIPP documentation</a> for "
+            "more details: "
+        ),
+        "group": "Average",
+    },
+]
+# Helix
+HELICAL_TWIST = Annotated[
+    float,
+    {
+        "label": "Helical twist (deg)",
+        "tooltip": (
+            "Set helical twist (in degrees) to positive value if it is a right-handed "
+            "helix. Helical rise is a positive value in Angstroms."
+        ),
+        "group": "Helix",
     },
 ]

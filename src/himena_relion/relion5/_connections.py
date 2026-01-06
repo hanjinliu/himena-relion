@@ -224,7 +224,7 @@ for class3d_job in [_spa.Class3DJob, _spa.Class3DNoAlignmentJob]:
     connect_jobs(
         _spa.Refine3DJob,
         class3d_job,
-        node_mapping={_particles_last_iter: "fn_img", "run_class001.mrc": "fn_ref"},
+        node_mapping={"run_data.star": "fn_img", "run_class001.mrc": "fn_ref"},
     )
     connect_jobs(
         class3d_job,

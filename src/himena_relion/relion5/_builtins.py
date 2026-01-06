@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Annotated, Any, Literal
+from typing import Any, Literal
 
 from magicgui.widgets.bases import ValueWidget
 from himena_relion._job_class import _RelionBuiltinJob, parse_string
@@ -2154,20 +2154,12 @@ class LocalResolutionResmapJob(_LocalResolutionJobBase):
         self,
         fn_in: _a.io.HALFMAP_TYPE = "",
         fn_mask: _a.io.IN_MASK = "",
-        angpix: Annotated[float, {"label": "Pixel size (A)", "group": "I/O"}] = -1,
+        angpix: _a.localres.ANGPIX = -1,
         # ResMap parameters
-        pval: Annotated[
-            float, {"label": "P-value for significance", "group": "ResMap"}
-        ] = 0.05,
-        minres: Annotated[
-            float, {"label": "Highest resolution (A)", "group": "ResMap"}
-        ] = 0,
-        maxres: Annotated[
-            float, {"label": "Lowest resolution (A)", "group": "ResMap"}
-        ] = 0,
-        stepres: Annotated[
-            float, {"label": "Resolution step (A)", "group": "ResMap"}
-        ] = 1,
+        pval: _a.localres.PVAL = 0.05,
+        minres: _a.localres.MINRES = 0,
+        maxres: _a.localres.MAXRES = 0,
+        stepres: _a.localres.STEPRES = 1,
         # Running
         nr_mpi: _a.running.NR_MPI = 1,
         do_queue: _a.running.DO_QUEUE = False,
@@ -2203,14 +2195,10 @@ class LocalResolutionOwnJob(_LocalResolutionJobBase):
         self,
         fn_in: _a.io.HALFMAP_TYPE = "",
         fn_mask: _a.io.IN_MASK = "",
-        angpix: Annotated[float, {"label": "Pixel size (A)", "group": "I/O"}] = -1,
+        angpix: _a.localres.ANGPIX = -1,
         # Relion parameters
-        adhoc_bfac: Annotated[
-            float, {"label": "User-provided B-factor (A^2)", "group": "Relion"}
-        ] = -100,
-        fn_mtf: Annotated[
-            str, {"label": "MTF of the detector", "group": "Relion"}
-        ] = "",
+        adhoc_bfac: _a.localres.ADHOC_BFAC = -100,
+        fn_mtf: _a.localres.FN_MTF = "",
         # Running
         nr_mpi: _a.running.NR_MPI = 1,
         do_queue: _a.running.DO_QUEUE = False,

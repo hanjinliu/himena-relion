@@ -106,7 +106,6 @@ class QRelionJobWidget(QtW.QWidget):
         """Callback when the application theme is changed."""
         for wdt in self.control_widget()._tool_buttons:
             wdt.update_theme(theme)
-        self._state_widget._set_alias_btn.update_theme(theme)
 
     @validate_protocol
     def control_widget(self) -> QRelionJobWidgetControl:

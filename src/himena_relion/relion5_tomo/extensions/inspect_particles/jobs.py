@@ -53,7 +53,9 @@ class InspectParticles(RelionExternalJob):
             tomogram_star=self._check_and_normalize_path(in_mics),
             particles_star=self._check_and_normalize_path(in_parts),
         )
-        star.with_loop_block("optimisation_set", opt_model.block.trust_loop())
+        star.with_loop_block(
+            "optimisation_set", opt_model.block.trust_loop().to_pandas()
+        )
         out_path = self.output_job_dir.path / "optimisation_set.star"
         star.write(out_path)
         self.console.log(f"Wrote output file to {out_path!r}")

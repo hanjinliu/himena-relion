@@ -16,6 +16,7 @@ def assert_param_name_match(a, b, allowed_diffs: Iterable[str] = ("other_args",)
 JOBS_DIR_SPA = Path(__file__).parent / "jobs_spa"
 JOBS_DIR_TOMO = Path(__file__).parent / "jobs_tomo"
 DEFAULT_PIPELINES_DIR = Path(__file__).parent / "default_pipelines"
+JOB_PIPELINES_DIR = Path(__file__).parent / "job_pipelines"
 
 def iter_spa_job_dirs():
     yield from _iter_job_dirs(JOBS_DIR_SPA)
@@ -31,3 +32,7 @@ def _iter_job_dirs(jobs_dir: Path) -> Iterable[str]:
             if subdir.is_dir() and subdir.name.startswith("job"):
                 if (subdir / "job.star").exists():
                     yield subdir.relative_to(jobs_dir).as_posix()
+
+def read_sample_job_pipeline_star(name: str):
+    pipeline_path = JOB_PIPELINES_DIR / name
+    return pipeline_path.read_text()

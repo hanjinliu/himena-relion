@@ -201,3 +201,27 @@ RED_VALUE = Annotated[
         "group": "Colors",
     },
 ]
+
+# Tomogram
+
+PICK_MODE = Annotated[
+    str,
+    {
+        "label": "Picking mode",
+        "choices": ["particles", "spheres", "surfaces", "filaments"],
+        "tooltip": "Type of picking mode to use",
+        "group": "I/O",
+    },
+]
+PARTICLE_SPACING = Annotated[
+    float,
+    {
+        "label": "Particle spacing (A)",
+        "tooltip": (
+            "Spacing (in Angstroms) between particles sampled on a sphere, on "
+            "surfaces, or in filaments. This option will be ignored if you are picking "
+            "individual particles"
+        ),
+        "group": "I/O",
+    },
+]
