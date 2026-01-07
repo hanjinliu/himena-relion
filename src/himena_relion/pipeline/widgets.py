@@ -5,7 +5,7 @@ from pathlib import Path
 import logging
 from qtpy import QtGui, QtWidgets as QtW, QtCore
 from cmap import Color
-from superqt import QSearchableComboBox
+from superqt import QSearchableComboBox, QElidingLabel
 from superqt.utils import thread_worker, GeneratorWorker
 from watchfiles import watch, Change
 
@@ -36,7 +36,8 @@ class QRelionPipelineFlowChart(QtW.QWidget):
 
     def __init__(self, ui: MainWindow):
         super().__init__()
-        self._directory_label = QtW.QLabel("RELION Pipeline Flow Chart", self)
+        self._directory_label = QElidingLabel("???", self)
+        self._directory_label.setElideMode(QtCore.Qt.TextElideMode.ElideLeft)
         self._scene = QtW.QGraphicsScene()
 
         self._flow_chart = QRelionPipelineFlowChartView(ui, self._scene)

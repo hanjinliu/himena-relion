@@ -186,6 +186,7 @@ class QOffScreenViewBox(QViewBox):
         if not vispy_event.handled:
             ev.ignore()
         self._update_pixmap()
+        ev.accept()
 
     def _modifiers(self, event: QtGui.QInputEvent):
         # Convert the QT modifier state into a tuple of active modifier keys.

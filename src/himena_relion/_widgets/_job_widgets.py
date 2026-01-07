@@ -209,7 +209,12 @@ class QNoteEdit(QTextEditBase):
     def initialize(self, job_dir: _job_dir.JobDirectory):
         self._job_dir = job_dir
         with suppress(Exception):
-            self.setText(job_dir.path.joinpath("note.txt").read_text(encoding="utf-8"))
+            # Check if the content is different before setting text. Without this,
+            # text will be initialized every time after the autosave, causing cursor
+            # jump.
+            incoming = job_dir.path.joinpath("note.txt").read_text(encoding="utf-8")
+            if incoming != self.toPlainText():
+                self.setText(incoming)
 
     def tab_title(self) -> str:
         return "Note"

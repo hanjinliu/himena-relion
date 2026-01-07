@@ -1013,7 +1013,10 @@ class Class3DResults(_3DResultsBase):
         """Return the angular distribution for a given class ID."""
         path = f"run{self.it_str}_class{class_id:03d}_angdist.bild"
         full_path = self.path / path
-        return _read_tubes(full_path, map_scale)
+        if full_path.exists():
+            return _read_tubes(full_path, map_scale)
+        # Class3D no-alignment jobs do not have angdist files
+        return []
 
 
 class Class3DJobDirectory(JobDirectory):
