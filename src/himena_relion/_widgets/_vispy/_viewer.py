@@ -189,10 +189,16 @@ class _Vispy3DBase:
             pos.append(tube.end)
             colors.append(tube.color)
             colors.append(tube.color)
-        colors = np.stack(colors, axis=0)
-        arrow_colors = np.stack(arrow_colors, axis=0)
-        arrows = np.stack(arrows, axis=0)
-        pos = np.stack(pos, axis=0)
+        if colors:
+            colors = np.stack(colors, axis=0)
+            arrow_colors = np.stack(arrow_colors, axis=0)
+            arrows = np.stack(arrows, axis=0)
+            pos = np.stack(pos, axis=0)
+        else:
+            colors = np.zeros((0, 4), dtype=np.float32)
+            arrow_colors = np.zeros((0, 4), dtype=np.float32)
+            arrows = np.zeros((0, 6), dtype=np.float32)
+            pos = np.zeros((0, 3), dtype=np.float32)
         self._arrow_visual.set_data(
             pos=pos,
             color=colors,
