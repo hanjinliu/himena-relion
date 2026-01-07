@@ -75,8 +75,9 @@ class QRelionPipelineFlowChartView(QFlowChartView):
             if parent_info.path not in parents:
                 parents.append(parent_info.path)
         item = RelionJobNodeItem(info)
-        qitem = self.add_child(item, parents=parents)
-        self._id_added.add(item.id())
+        if item.id() not in self._id_added:
+            qitem = self.add_child(item, parents=parents)
+            self._id_added.add(item.id())
         return qitem
 
     def _on_item_double_clicked(self, item: RelionJobNodeItem):
