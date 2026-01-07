@@ -64,7 +64,7 @@ class QRefine3DViewer(QJobScrollArea):
         self._index_start = 1
         self._job_dir = _job_dir.Refine3DJobDirectory(job_dir.path)
 
-        self._iter_choice.valueChanged.connect(self._on_iter_changed)
+        self._iter_choice.valueChanged.connect(self._update_for_value)
 
     def on_job_updated(self, job_dir: _job_dir.JobDirectory, path: str):
         """Handle changes to the job directory."""
@@ -78,14 +78,11 @@ class QRefine3DViewer(QJobScrollArea):
         niters = self._job_dir.num_iters()
         self._iter_choice.setMaximum(max(niters - 1, 0))
         self._iter_choice.setValue(self._iter_choice.maximum())
-        self._on_iter_changed(self._iter_choice.value())
+        self._update_for_value(self._iter_choice.value())
         sym_name = self._job_dir.get_job_param("sym_name")
         self._symmetry_label.set_symmetry(sym_name)
 
-    def _on_iter_changed(self, value: int):
-        self._update_for_value(value)
-
-    def _update_for_value(self, niter: int, class_id: int = 1):
+    def _update_for_value(self, niter: int, *, class_id: int = 1):
         if self._worker is not None and self._worker.is_running:
             self._worker.quit()
         self._worker = None

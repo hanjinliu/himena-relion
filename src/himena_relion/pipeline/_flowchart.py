@@ -1,14 +1,15 @@
 from __future__ import annotations
 from pathlib import Path
-from qtpy import QtGui, QtCore
+from qtpy import QtGui, QtCore, QtWidgets as QtW
 from cmap import Color
 
 from himena import MainWindow
 from himena.qt._qflowchart import QFlowChartView, BaseNodeItem
-from himena_relion.consts import JOB_ID_MAP
+from himena_relion.consts import JOB_ID_MAP, RelionJobState
 from himena_relion._utils import read_or_show_job
 from himena_relion._pipeline import RelionDefaultPipeline, RelionJobInfo, NodeStatus
 from himena_relion._job_dir import ExternalJobDirectory, JobDirectory
+from himena_relion.io import _impl
 
 
 class QRelionPipelineFlowChartView(QFlowChartView):
@@ -22,6 +23,7 @@ class QRelionPipelineFlowChartView(QFlowChartView):
         self.item_left_clicked.connect(self._update_selection_rect)
         self._last_selection_highlight_rect = None
         self._dodge_distance = 64
+        self._id_added = set()
 
     def set_pipeline(self, pipeline: RelionDefaultPipeline) -> None:
         if not isinstance(pipeline, RelionDefaultPipeline):
@@ -33,6 +35,7 @@ class QRelionPipelineFlowChartView(QFlowChartView):
         # clear all
         self.scene().clear()
         self._node_map.clear()
+        self._id_added.clear()
 
         # If the flowchart has been dragged, item positions are different from default.
         # Restore old positions
@@ -73,6 +76,7 @@ class QRelionPipelineFlowChartView(QFlowChartView):
                 parents.append(parent_info.path)
         item = RelionJobNodeItem(info)
         qitem = self.add_child(item, parents=parents)
+        self._id_added.add(item.id())
         return qitem
 
     def _on_item_double_clicked(self, item: RelionJobNodeItem):
@@ -105,7 +109,52 @@ class QRelionPipelineFlowChartView(QFlowChartView):
             node.setSelected(True)
 
     def _on_right_clicked(self, item: RelionJobNodeItem):
-        pass  # TODO
+        menu = self._prep_right_click_menu(item)
+        menu.exec(QtGui.QCursor.pos())
+
+    def _prep_right_click_menu(self, item: RelionJobNodeItem):
+        if node := self._node_map.get(item.id()):
+            node.setSelected(True)
+        path = self._relion_project_dir / item.id() / "job.star"
+        job_dir = JobDirectory.from_job_star(path)
+        state = job_dir.state()
+        menu = QtW.QMenu(self)
+        submenu_open = menu.addMenu("Open")
+        submenu_cleanup = menu.addMenu("Cleanup")
+        submenu_open.addAction(
+            "Open job.star as text",
+            lambda: _impl.open_relion_job_star(self._ui, job_dir),
+        )
+        submenu_open.addAction(
+            "Open job_pipeline.star as text",
+            lambda: _impl.open_relion_job_pipeline_star(self._ui, job_dir),
+        )
+        action = submenu_cleanup.addAction(
+            "Gentle clean", lambda: _impl.gentle_clean_relion_job(self._ui, job_dir)
+        )
+        action.setEnabled(state is RelionJobState.EXIT_SUCCESS)
+        action = submenu_cleanup.addAction(
+            "Harsh clean", lambda: _impl.harsh_clean_relion_job(self._ui, job_dir)
+        )
+        action.setEnabled(state is RelionJobState.EXIT_SUCCESS)
+        menu.addAction("Mark as finished", lambda: _impl.mark_as_finished(job_dir))
+        action.setEnabled(state is not RelionJobState.EXIT_SUCCESS)
+        menu.addAction("Mark as failed", lambda: _impl.mark_as_failed(job_dir))
+        action.setEnabled(state is not RelionJobState.EXIT_FAILURE)
+        menu.addSeparator()
+        action = menu.addAction(
+            "Abort", lambda: _impl.abort_relion_job(self._ui, job_dir)
+        )
+        action.setEnabled(state is RelionJobState.RUNNING)
+        menu.addAction(
+            "Overwrite ...", lambda: _impl.overwrite_relion_job(self._ui, job_dir)
+        )
+        menu.addAction("Clone ...", lambda: _impl.clone_relion_job(self._ui, job_dir))
+        menu.addAction("Set Alias ...", lambda: _impl.set_job_alias(self._ui, job_dir))
+        menu.addSeparator()
+        action = menu.addAction("Trash", lambda: _impl.trash_job(self._ui, job_dir))
+        action.setEnabled(state is not RelionJobState.RUNNING)
+        return menu
 
 
 class RelionJobNodeItem(BaseNodeItem):
