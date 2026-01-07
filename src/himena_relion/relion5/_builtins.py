@@ -1672,20 +1672,11 @@ class SelectClassesInteractiveJob(_SelectJob):
             return None
 
     @classmethod
-    def _search_opt(cls, path: Path) -> str | None:
-        """Only used for inspect particles of tomo extension."""
-        if job_class3d := cls._search_parent_class3d(path):
-            params = job_class3d.get_job_params_as_dict()
-            if opt_path := params.get("in_opimisation", None):
-                return opt_path
-        return None
-
-    @classmethod
     def _search_mics(cls, path: Path) -> str | None:
         """Only used for inspect particles of tomo extension."""
         if job_class3d := cls._search_parent_class3d(path):
             params = job_class3d.get_job_params_as_dict()
-            if opt_path := params.get("in_opimisation", None):
+            if opt_path := params.get("in_optimisation", None):
                 opt_path = job_class3d.relion_project_dir / opt_path
                 opt = OptimisationSetModel.validate_file(opt_path)
                 return opt.tomogram_star

@@ -64,10 +64,6 @@ class QRelionJobWidget(QtW.QWidget):
         self.add_job_widget(QJobParameterView())
         self.add_job_widget(QRunOutErrLog())
         self.add_job_widget(QNoteEdit())
-        try:
-            self._state_widget.initialize(job_dir)
-        except Exception as e:
-            _LOGGER.error(f"Failed to initialize job state widget: {e!r}")
         for wdt in self._iter_job_widgets():
             try:
                 t0 = default_timer()
@@ -153,14 +149,12 @@ class QRelionJobWidget(QtW.QWidget):
                 "Job directory has been deleted externally. This widget will no longer "
                 "respond to changes. Please close this job widget."
             )
-        if path.stem.startswith("RELION_JOB_"):
-            self._state_widget.on_job_updated(self._job_dir, path)
-        else:
-            for wdt in self._iter_job_widgets():
-                wdt.on_job_updated(self._job_dir, Path(path))
+        for wdt in self._iter_job_widgets():
+            wdt.on_job_updated(self._job_dir, Path(path))
 
     def _iter_job_widgets(self) -> Iterator[JobWidgetBase]:
         """Iterate over all job widgets in the tab widget."""
+        yield self._state_widget
         for i in range(self._tab_widget.count()):
             if isinstance(wdt := self._tab_widget.widget(i), JobWidgetBase):
                 yield wdt

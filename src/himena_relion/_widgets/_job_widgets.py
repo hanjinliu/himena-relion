@@ -469,6 +469,8 @@ class QRelionNodeItem(QtW.QWidget):
 
 
 class QJobStateLabel(QtW.QWidget, JobWidgetBase):
+    """Label that shows the current job title, state etc."""
+
     def __init__(self, parent: QRelionJobWidget):
         super().__init__(parent)
         self._job_widget = parent

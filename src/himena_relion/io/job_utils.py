@@ -275,7 +275,7 @@ def trash_job(ui: MainWindow, model: WidgetDataModel):
                 break
         message_lines.append("</ul>")
         message_lines.append(
-            "<br>You cannot untrash jobs from himena-relion yet! This "
+            "<br>You cannot untrash jobs from himena-relion yet!<br>This "
             "operation may be inconsistent with the operation from RELION GUI."
         )
         # ask user

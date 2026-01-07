@@ -139,7 +139,16 @@ connect_jobs(
     _spa.SelectClassesInteractiveJob,
     _tomo.ExtractParticlesTomoJob,
     node_mapping={
-        _spa.SelectClassesInteractiveJob._search_opt: "in_optim.in_optimisation",
+        "particles.star": "in_optim.in_particles",
+        _spa.SelectClassesInteractiveJob._search_mics: "in_optim.in_tomograms",
+    },
+)
+connect_jobs(
+    _spa.SelectClassesInteractiveJob,
+    _tomo.ReconstructParticlesJob,
+    node_mapping={
+        "particles.star": "in_optim.in_particles",
+        _spa.SelectClassesInteractiveJob._search_mics: "in_optim.in_tomograms",
     },
 )
 connect_jobs(
