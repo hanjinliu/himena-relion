@@ -101,7 +101,7 @@ def read_icon_svg_for_type(type_label: str) -> str:
         case "Mask3D":
             return read_icon_svg("mask")
         case "TomoOptimisationSet":
-            return read_icon_svg("star")
+            return read_icon_svg("optimisation_set")
         case "TomogramGroupMetadata":
             return read_icon_svg("tomograms")
         case "ParticleGroupMetadata":

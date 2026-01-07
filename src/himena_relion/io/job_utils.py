@@ -274,13 +274,14 @@ def trash_job(ui: MainWindow, model: WidgetDataModel):
                 message_lines.append("<li>...</li>")  # truncate long list
                 break
         message_lines.append("</ul>")
+        message_lines.append(
+            "<br>You cannot untrash jobs from himena-relion yet! This "
+            "operation may be inconsistent with the operation from RELION GUI."
+        )
         # ask user
         if (
             ui.exec_choose_one_dialog(
-                title=(
-                    "Trash job? You cannot untrash jobs from himena-relion yet! This "
-                    "operation may be inconsistent with the operation from RELION GUI."
-                ),
+                title="Trash job?",
                 message="".join(message_lines),
                 choices=["Yes, move to trash", "Cancel"],
             )

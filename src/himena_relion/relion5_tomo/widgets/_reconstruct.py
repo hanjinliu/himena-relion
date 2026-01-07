@@ -8,7 +8,6 @@ from himena_relion._widgets import (
     QJobScrollArea,
     Q3DViewer,
     register_job,
-    spacer_widget,
     QNumParticlesLabel,
 )
 from himena_relion import _job_dir
@@ -22,12 +21,12 @@ class QReconstructViewer(QJobScrollArea):
     def __init__(self, job_dir: _job_dir.ReconstructParticlesJobDirectory):
         super().__init__()
         self._viewer = Q3DViewer()
+        self._viewer.setMaximumWidth(400)
         self._num_particles_label = QNumParticlesLabel()
         self._num_particles_label.setAlignment(Qt.AlignmentFlag.AlignRight)
         self._num_particles_label.setMaximumWidth(self._viewer.maximumWidth())
         self._layout.addWidget(self._viewer)
         self._layout.addWidget(self._num_particles_label)
-        self._layout.addWidget(spacer_widget())
 
     def on_job_updated(
         self, job_dir: _job_dir.ReconstructParticlesJobDirectory, path: str

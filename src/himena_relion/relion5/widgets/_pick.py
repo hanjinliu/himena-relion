@@ -170,10 +170,6 @@ class QManualPickViewer(QJobScrollArea):
         yield self._update_points, None
         self._worker = None
 
-    def _on_yielded(self, val):
-        func, value = val
-        func(value)
-
     def _get_diameter(self) -> float:
         return float(self._job_dir.get_job_param("diameter"))
 

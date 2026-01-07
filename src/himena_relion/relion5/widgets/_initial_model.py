@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any, Callable
 from qtpy import QtWidgets as QtW
 from superqt.utils import thread_worker
 from himena_relion._widgets import (
@@ -108,7 +107,3 @@ class QInitialModelViewer(QJobScrollArea):
             num_particles = -1
             raise e
         yield self._num_particles_label.set_number, num_particles
-
-    def _on_yielded(self, yielded: tuple[Callable, Any]):
-        fn, args = yielded
-        fn(args)

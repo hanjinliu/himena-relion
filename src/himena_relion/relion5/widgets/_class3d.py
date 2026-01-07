@@ -4,6 +4,7 @@ from pathlib import Path
 import logging
 from qtpy import QtWidgets as QtW
 from superqt import QToggleSwitch
+from superqt.utils import thread_worker
 from himena_relion._widgets import (
     QJobScrollArea,
     Q3DViewer,
@@ -11,6 +12,7 @@ from himena_relion._widgets import (
     QIntWidget,
     QMicrographListWidget,
     QSymmetryLabel,
+    QNumParticlesLabel,
 )
 from himena_relion import _job_dir
 
@@ -47,6 +49,7 @@ class QClass3DViewer(QJobScrollArea):
         self._list_widget.setMaximumWidth(400)
         self._iter_choice = QIntWidget("Iteration", label_width=60)
         self._iter_choice.setMinimum(0)
+        self._num_particles_label = QNumParticlesLabel()
         self._layout.addWidget(self._list_widget)
         hor = QtW.QWidget()
         hor.setMaximumWidth(400)
@@ -56,7 +59,13 @@ class QClass3DViewer(QJobScrollArea):
         hor_layout.addWidget(self._symmetry_label)
         self._layout.addWidget(hor)
         self._layout.addWidget(self._viewer)
-        self._layout.addWidget(self._iter_choice)
+        hor = QtW.QWidget()
+        hor.setMaximumWidth(400)
+        hor_layout = QtW.QHBoxLayout(hor)
+        hor_layout.setContentsMargins(0, 0, 0, 0)
+        hor_layout.addWidget(self._iter_choice)
+        hor_layout.addWidget(self._num_particles_label)
+        self._layout.addWidget(hor)
         self._index_start = 1
         self._job_dir = job_dir
 
@@ -76,14 +85,10 @@ class QClass3DViewer(QJobScrollArea):
         nclasses = job_dir.num_classes()
         if nclasses == 0:
             return
-        was_empty = self._list_widget.rowCount() == 0
         niters = job_dir.num_iters()
         self._iter_choice.setMaximum(max(niters - 1, 0))
         self._iter_choice.setValue(self._iter_choice.maximum())
         self._on_iter_changed(self._iter_choice.value())
-        if was_empty:
-            self._viewer.auto_threshold()
-            self._viewer.auto_fit()
         sym_name = self._job_dir.get_job_param("sym_name")
         self._symmetry_label.set_symmetry(sym_name)
 
@@ -97,12 +102,10 @@ class QClass3DViewer(QJobScrollArea):
         self._update_for_value(self._iter_choice.value(), class_id)
 
     def _update_for_value(self, niter: int, class_id: int):
-        res = self._job_dir.get_result(niter)
-        map0, scale = res.class_map(class_id - self._index_start)
-        self._viewer.set_image(map0)
-
-        tubes = res.angdist(class_id, scale)
-        self._viewer._canvas.set_arrows(tubes)
+        self.window_closed_callback()
+        self._worker = self._read_items(niter, class_id)
+        self._worker.yielded.connect(self._on_yielded)
+        self._worker.start()
 
     def _update_summary_table(self, niter):
         res = self._job_dir.get_result(niter)
@@ -126,6 +129,25 @@ class QClass3DViewer(QJobScrollArea):
     def _on_arrow_visible_toggled(self, checked: bool):
         self._viewer._canvas.arrow_visual.visible = checked
         self._viewer._canvas.update_canvas()
+
+    @thread_worker
+    def _read_items(self, niter, class_id):
+        res = self._job_dir.get_result(niter)
+        map0, scale = res.class_map(class_id - self._index_start)
+        was_empty = not self._viewer.has_image
+        yield self._viewer.set_image, map0
+        if was_empty:
+            yield self._auto_threshold_and_fit, None
+        tubes = res.angdist(class_id, scale)
+        yield self._viewer._canvas.set_arrows, tubes
+        part = res.particles()
+        num_particles = len(part.particles.block)
+        yield self._num_particles_label.set_number_for_class3d, num_particles
+        self._worker = None
+
+    def _auto_threshold_and_fit(self, *_):
+        self._viewer.auto_threshold()
+        self._viewer.auto_fit()
 
 
 def _format_float(value: float, unit: str) -> str:

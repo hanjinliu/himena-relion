@@ -1018,6 +1018,11 @@ class Class3DResults(_3DResultsBase):
         # Class3D no-alignment jobs do not have angdist files
         return []
 
+    def particles(self) -> ParticleMetaModel:
+        """Return the particles model for this iteration."""
+        star_path = self._data_star()
+        return ParticleMetaModel.validate_file(star_path)
+
 
 class Class3DJobDirectory(JobDirectory):
     """Class for handling class 3D job directories in RELION."""

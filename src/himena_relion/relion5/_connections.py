@@ -135,6 +135,20 @@ def _optimiser_last_iter(path: Path) -> str:
     return path / f"run_it{niter:03d}_optimiser.star"
 
 
+def run_class001_last_iter(path: Path) -> str:
+    niter = get_nr_iter(path)
+    if niter is None:
+        return ""
+    return path / f"run_it{niter:03d}_class001.mrc"
+
+
+def inherit_particle_diameter(path: Path) -> float:
+    """Inherit particle diameter from the ExtractParticlesTomoJob."""
+    jobdir = JobDirectory(path)
+    dia = jobdir.get_job_param("particle_diameter")
+    return round(float(dia), 1)
+
+
 def _particles_last_iter(path: Path) -> str:
     niter = get_nr_iter(path)
     if niter is None:
@@ -206,10 +220,11 @@ for class3d_job in [_spa.Class3DJob, _spa.Class3DNoAlignmentJob]:
     connect_jobs(
         _spa.InitialModelJob,
         class3d_job,
-        {
+        node_mapping={
             _particles_last_iter: "fn_img",
             "initial_model.mrc": "fn_ref",
         },
+        value_mapping={inherit_particle_diameter: "particle_diameter"},
     )
     connect_jobs(
         class3d_job,
@@ -219,17 +234,19 @@ for class3d_job in [_spa.Class3DJob, _spa.Class3DNoAlignmentJob]:
     connect_jobs(
         class3d_job,
         _spa.Refine3DJob,
-        node_mapping={"run_class001.mrc": "fn_ref"},
+        node_mapping={run_class001_last_iter: "fn_ref"},
+        value_mapping={inherit_particle_diameter: "particle_diameter"},
     )
     connect_jobs(
         _spa.Refine3DJob,
         class3d_job,
         node_mapping={"run_data.star": "fn_img", "run_class001.mrc": "fn_ref"},
+        value_mapping={inherit_particle_diameter: "particle_diameter"},
     )
     connect_jobs(
         class3d_job,
         _spa.AutoPickTemplate3DJob,
-        node_mapping={"run_class001.mrc": "fn_ref3d_autopick"},
+        node_mapping={run_class001_last_iter: "fn_ref3d_autopick"},
         value_mapping={_make_get_template_angpix("run_class001.mrc"): "angpix_ref"},
     )
 
@@ -248,10 +265,11 @@ connect_jobs(
 connect_jobs(
     _spa.InitialModelJob,
     _spa.Refine3DJob,
-    {
+    node_mapping={
         _particles_last_iter: "fn_img",
         "initial_model.mrc": "fn_ref",
     },
+    value_mapping={inherit_particle_diameter: "particle_diameter"},
 )
 connect_jobs(
     _spa.Refine3DJob,

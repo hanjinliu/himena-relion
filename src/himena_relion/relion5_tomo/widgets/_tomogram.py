@@ -1,9 +1,7 @@
 from __future__ import annotations
-from contextlib import suppress
 from pathlib import Path
 import logging
 import numpy as np
-import pandas as pd
 from qtpy import QtWidgets as QtW
 from starfile_rs import read_star
 from superqt.utils import thread_worker
@@ -20,6 +18,7 @@ from himena_relion._image_readers import ArrayFilteredView
 _LOGGER = logging.getLogger(__name__)
 
 TOMO_VIEW_MIN_HEIGHT = 480
+TXT_OR_DIR = [".out", ".err", ".star", ""]
 
 
 @register_job("relion.reconstructtomograms", is_tomo=True)
@@ -110,12 +109,7 @@ class QDenoiseTomogramViewer(QJobScrollArea):
     def on_job_updated(self, job_dir: _job_dir.DenoiseJobDirectory, path: str):
         """Handle changes to the job directory."""
         fp = Path(path)
-        if fp.name.startswith("RELION_JOB_") or fp.suffix not in [
-            ".out",
-            ".err",
-            ".star",
-            "",
-        ]:
+        if fp.name.startswith("RELION_JOB_") or fp.suffix not in TXT_OR_DIR:
             self.initialize(job_dir)
             _LOGGER.debug("%s Updated", job_dir.job_number)
 
@@ -177,12 +171,7 @@ class QPickViewer(QJobScrollArea):
     def on_job_updated(self, job_dir: _job_dir.PickJobDirectory, path: str):
         """Handle changes to the job directory."""
         fp = Path(path)
-        if fp.name.startswith("RELION_JOB_") or fp.suffix not in [
-            ".out",
-            ".err",
-            ".star",
-            "",
-        ]:
+        if fp.name.startswith("RELION_JOB_") or fp.suffix not in TXT_OR_DIR:
             self.initialize(job_dir)
             _LOGGER.debug("%s Updated", job_dir.job_number)
 
@@ -212,37 +201,37 @@ class QPickViewer(QJobScrollArea):
 
     def _on_tomo_changed(self, texts: tuple[str, ...]):
         """Update the viewer when the selected tomogram changes."""
-        job_dir = self._job_dir
-        text = texts[0]
-        for info in job_dir.iter_tomogram():
+        self.window_closed_callback()
+        self._worker = self._read_items(texts[0])
+        self._worker.yielded.connect(self._on_yielded)
+        self._worker.start()
+
+    @thread_worker
+    def _read_items(self, text: str):
+        # first clear points
+        yield self._viewer.set_points, np.empty((0, 3), dtype=np.float32)
+        for info in self._job_dir.iter_tomogram():
             if info.tomo_name == text:
                 break
         else:
             return
-        if self._worker is not None and self._worker.is_running:
-            self._worker.quit()
-            self._worker = None
-        tomo_view = info.read_tomogram(job_dir.relion_project_dir)
-        self._viewer.set_points(
-            np.empty((0, 3), dtype=np.float32)
-        )  # first clear points
-        self._viewer.set_array_view(tomo_view, self._viewer._last_clim)
+        tomo_view = info.read_tomogram(self._job_dir.relion_project_dir)
+        self._filter_widget.set_image_scale(info.tomo_pixel_size)
+        yield self._set_tomo_view, tomo_view.with_filter(self._filter_widget.apply)
         if getter := info.get_particles:
-            self._current_info = info
-            worker = thread_worker(getter)()
-            self._worker = worker
-            worker.returned.connect(self._on_worker_returned)
-            worker.start()
-
-    def _on_worker_returned(self, point_df: pd.DataFrame):
-        self._worker = None
-        with suppress(RuntimeError):
-            info = self._current_info
-            if info is None:
-                return
+            point_df = getter()
             cols = [f"rlnCenteredCoordinate{x}Angst" for x in "ZYX"]
             points = point_df[cols].to_numpy(dtype=np.float32) / info.tomo_pixel_size
             sizes = np.array(info.tomo_shape, dtype=np.float32) / info.tomogram_binning
             center = (sizes - 1) / 2
-            self._viewer.set_points(points + center[np.newaxis])
-            self._viewer.redraw()
+            bin_factor = int(self._filter_widget._bin_factor.text() or "1")
+            points_processed = (points + center[np.newaxis]) / bin_factor
+            yield self._set_points_and_redraw, points_processed
+
+    def _set_tomo_view(self, tomo_view: ArrayFilteredView):
+        self._viewer.set_array_view(tomo_view, self._viewer._last_clim)
+        self._viewer.redraw()
+
+    def _set_points_and_redraw(self, points: np.ndarray):
+        self._viewer.set_points(points)
+        self._viewer.redraw()

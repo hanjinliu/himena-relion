@@ -1,7 +1,6 @@
 from __future__ import annotations
 from pathlib import Path
 import logging
-from typing import Any, Callable
 from qtpy import QtWidgets as QtW
 from superqt.utils import thread_worker
 from starfile_rs import read_star
@@ -87,7 +86,7 @@ class QCtfFindViewer(QJobScrollArea):
 
         self.window_closed_callback()
         self._worker = self._prep_data_to_plot(job_dir, path)
-        self._worker.yielded.connect(self._on_data_ready)
+        self._worker.yielded.connect(self._on_yielded)
         self._worker.start()
 
     @thread_worker
@@ -111,10 +110,6 @@ class QCtfFindViewer(QJobScrollArea):
         yield self._defocus_angle_canvas.plot_ctf_defocus_angle, df
         yield self._max_resolution_canvas.plot_ctf_max_resolution, df
         yield self._viewer.set_array_view, ts_view
-
-    def _on_data_ready(self, yielded: tuple[Callable, Any]):
-        fn, df = yielded
-        fn(df)
 
     def widget_added_callback(self):
         self._defocus_canvas.widget_added_callback()

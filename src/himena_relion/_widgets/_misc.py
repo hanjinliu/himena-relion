@@ -145,6 +145,12 @@ class QNumParticlesLabel(QtW.QLabel):
         else:
             self.setText("??? particles")
 
+    def set_number_for_class3d(self, num: int):
+        if num >= 0:
+            self.setText(f"Total <b>{num}</b> particles")
+        else:
+            self.setText("Total ??? particles")
+
 
 class QSymmetryLabel(QtW.QLabel):
     def __init__(self):

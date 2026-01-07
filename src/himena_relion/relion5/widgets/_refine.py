@@ -1,7 +1,6 @@
 from __future__ import annotations
 from pathlib import Path
 import logging
-from typing import Any, Callable
 import pandas as pd
 from qtpy import QtWidgets as QtW, QtCore
 from superqt import QToggleSwitch
@@ -113,10 +112,6 @@ class QRefine3DViewer(QJobScrollArea):
             tubes = res.angdist(class_id, scale)
             yield self._viewer._canvas.set_arrows, tubes
         self._worker = None
-
-    def _on_yielded(self, yielded: tuple[Callable, Any]):
-        fn, args = yielded
-        fn(args)
 
     def _on_arrow_visible_toggled(self, checked: bool):
         self._viewer._canvas.arrow_visual.visible = checked

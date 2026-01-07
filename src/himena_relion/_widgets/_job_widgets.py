@@ -6,7 +6,7 @@ import logging
 from contextlib import suppress
 from pathlib import Path
 import html
-from typing import Iterator, TYPE_CHECKING
+from typing import Any, Callable, Iterator, TYPE_CHECKING
 import numpy as np
 from qtpy import QtWidgets as QtW, QtGui, QtCore
 from superqt import QToggleSwitch
@@ -79,6 +79,10 @@ class QJobScrollArea(QtW.QScrollArea, JobWidgetBase):
         if self._worker is not None:
             self._worker.quit()
             self._worker = None
+
+    def _on_yielded(self, yielded: tuple[Callable, Any]):
+        fn, args = yielded
+        fn(args)
 
 
 class QTextEditBase(QtW.QWidget, JobWidgetBase):
@@ -203,7 +207,8 @@ class QNoteEdit(QTextEditBase):
 
     def on_job_updated(self, job_dir: _job_dir.JobDirectory, fp: Path):
         """Handle updates to the job directory."""
-        if fp.name == "note.txt":
+        if fp.name.startswith("RELION_JOB_"):
+            # note.txt is updated only when JOB started.
             self.initialize(job_dir)
 
     def initialize(self, job_dir: _job_dir.JobDirectory):
@@ -476,6 +481,7 @@ class QJobStateLabel(QtW.QWidget, JobWidgetBase):
         self._set_alias_btn = QColoredToolButton(
             self._run_set_alias, path_icon_svg("edit")
         )
+        self._set_alias_btn.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
         self._set_alias_btn.setFixedSize(18, 18)
         self._set_alias_btn.update_color("gray")
         self._state_label = QtW.QLabel("Not started")

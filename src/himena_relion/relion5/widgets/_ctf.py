@@ -4,7 +4,6 @@ import logging
 import time
 import numpy as np
 from numpy.typing import NDArray
-from typing import Any, Callable
 import pandas as pd
 from qtpy import QtWidgets as QtW
 from superqt.utils import thread_worker
@@ -92,7 +91,7 @@ class QCtfFindViewer(QJobScrollArea):
             return
         self._worker = self._prep_data_to_plot(self._job_dir)
         self._last_update = time.time()
-        self._worker.yielded.connect(self._on_data_ready)
+        self._worker.yielded.connect(self._on_yielded)
         self._worker.start()
 
     def _clear_everything(self, *_):
@@ -138,10 +137,6 @@ class QCtfFindViewer(QJobScrollArea):
         yield self._mic_list.set_choices, ctf_paths
 
         self._worker = None
-
-    def _on_data_ready(self, yielded: tuple[Callable, Any]):
-        fn, df = yielded
-        fn(df)
 
     def _mic_changed(self, row: tuple[str, str]):
         """Handle changes to selected micrograph."""

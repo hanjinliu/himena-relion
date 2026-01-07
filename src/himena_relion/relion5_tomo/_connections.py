@@ -1,7 +1,12 @@
 from pathlib import Path
 import logging
 from himena_relion.relion5 import _builtins as _spa
-from himena_relion.relion5._connections import get_nr_iter, mask_create_search_halfmap
+from himena_relion.relion5._connections import (
+    get_nr_iter,
+    mask_create_search_halfmap,
+    run_class001_last_iter,
+    inherit_particle_diameter,
+)
 from himena_relion.relion5_tomo import _builtins as _tomo
 from himena_relion._job_dir import JobDirectory
 from himena_relion._job_class import connect_jobs
@@ -45,13 +50,6 @@ def _recon_diameter_a(path: Path) -> float:
         )
         diameter_a = 200.0  # default value
     return round(diameter_a, 1)
-
-
-def _inherit_particle_diameter(path: Path) -> float:
-    """Inherit particle diameter from the ExtractParticlesTomoJob."""
-    jobdir = JobDirectory(path)
-    dia = jobdir.get_job_param("particle_diameter")
-    return round(float(dia), 1)
 
 
 def _optimiser_last_iter(path: Path) -> str:
@@ -233,7 +231,7 @@ for class3d_job in [_tomo.Class3DTomoJob, _tomo.Class3DNoAlignmentTomoJob]:
             "initial_model.mrc": "fn_ref",
         },
         value_mapping={
-            _inherit_particle_diameter: "particle_diameter",
+            inherit_particle_diameter: "particle_diameter",
         },
     )
     if class3d_job is _tomo.Class3DTomoJob:
@@ -245,10 +243,11 @@ for class3d_job in [_tomo.Class3DTomoJob, _tomo.Class3DNoAlignmentTomoJob]:
         connect_jobs(
             class3d_job,
             _tomo.Refine3DTomoJob,
-            node_mapping={"run_class001.mrc": "fn_ref"},
-            value_mapping={
-                _inherit_particle_diameter: "particle_diameter",
+            node_mapping={
+                "run_optimisation_set.star": "in_optim.in_optimisation",
+                run_class001_last_iter: "fn_ref",
             },
+            value_mapping={inherit_particle_diameter: "particle_diameter"},
         )
     connect_jobs(
         _tomo.ReconstructParticlesJob,
@@ -267,7 +266,7 @@ for class3d_job in [_tomo.Class3DTomoJob, _tomo.Class3DNoAlignmentTomoJob]:
             "run_class001.mrc": "fn_ref",
         },
         value_mapping={
-            _inherit_particle_diameter: "particle_diameter",
+            inherit_particle_diameter: "particle_diameter",
         },
     )
 
@@ -279,7 +278,7 @@ connect_jobs(
         "initial_model.mrc": "fn_ref",
     },
     value_mapping={
-        _inherit_particle_diameter: "particle_diameter",
+        inherit_particle_diameter: "particle_diameter",
     },
 )
 
