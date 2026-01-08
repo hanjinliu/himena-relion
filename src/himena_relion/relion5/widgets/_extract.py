@@ -100,8 +100,7 @@ class QExtractViewer(QJobScrollArea):
             f"{start + 1} - {min(start + self._num_page, self._current_num_extracts)}"
         )
         self._worker = self.plot_extracts(start, self._plot_session_id)
-        self._worker.yielded.connect(self._on_yielded)
-        self._worker.start()
+        self._start_worker()
 
     @thread_worker
     def plot_extracts(self, start_index: int, session: uuid.UUID):

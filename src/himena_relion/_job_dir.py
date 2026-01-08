@@ -19,7 +19,7 @@ from himena_relion.consts import (
     JOB_ID_MAP,
     Type,
 )
-from himena_relion._bild import TubeObject
+from himena_relion._impl_objects import TubeObject
 from himena_relion._pipeline import RelionPipeline
 from himena_relion.schemas import (
     OptimisationSetModel,
@@ -47,6 +47,8 @@ class JobDirectory:
         self.path = Path(path).resolve()
         if not self.path.exists():
             raise FileNotFoundError(f"Job directory {self.path} does not exist.")
+        if self.path.is_file():
+            raise NotADirectoryError(f"Job directory {self.path} is not a directory.")
 
     def __init_subclass__(cls):
         """Register the subclass in the type map."""
@@ -400,32 +402,6 @@ class CorrectedTiltSeriesInfo(TiltSeriesInfo):
         return out
 
 
-class MotionCorrBase(JobDirectory):
-    def iter_movies(self) -> Iterator[Path]:
-        """Iterate over all motion-corrected movie files (SPA)."""
-        for path in self.glob_in_subdirs("*.mrc"):
-            if path.stem.endswith("_PS"):
-                continue
-            yield path
-
-    def iter_tilt_series(self) -> Iterator[CorrectedTiltSeriesInfo]:
-        """Iterate over all motion correction info (Tomo)."""
-        fp = self.path / "corrected_tilt_series.star"
-        star = read_star(fp).first().trust_loop().to_pandas()
-        for _, row in star.iterrows():
-            yield CorrectedTiltSeriesInfo.from_series(row)
-
-
-class MotionCorrJobDirectory(MotionCorrBase):
-    _job_type = "relion.motioncorr.motioncor2"
-
-
-class MotionCorrOwnJobDirectory(MotionCorrBase):
-    """Class for handling motion correction job directories in RELION."""
-
-    _job_type = "relion.motioncorr.own"
-
-
 class CtfCorrectedTiltSeriesInfo(CorrectedTiltSeriesInfo):
     """Data class for CTF-corrected tilt series information."""
 
@@ -448,19 +424,6 @@ class CtfCorrectedTiltSeriesInfo(CorrectedTiltSeriesInfo):
         return ArrayFilteredView.from_mrcs([paths[i] for i in order])
 
 
-class CtfCorrectionJobDirectory(HasTiltSeriesJobDirectory):
-    """Class for handling CTF correction job directories in RELION."""
-
-    _job_type = "relion.ctffind.ctffind4"
-
-    def iter_tilt_series(self) -> Iterator[CtfCorrectedTiltSeriesInfo]:
-        """Iterate over all CTF-corrected tilt series info."""
-        fp = self.path / "tilt_series_ctf.star"
-        star = read_star(fp).first().trust_loop().to_pandas()
-        for _, row in star.iterrows():
-            yield CtfCorrectedTiltSeriesInfo.from_series(row)
-
-
 @dataclass
 class SelectedTiltSeriesInfo(CorrectedTiltSeriesInfo):
     tilt_series_star_file: Path = Path("")
@@ -471,23 +434,6 @@ class SelectedTiltSeriesInfo(CorrectedTiltSeriesInfo):
         out = super().from_series(series)
         out.tilt_series_star_file = Path(series.get("rlnTomoTiltSeriesStarFile", ""))
         return out
-
-
-class ExcludeTiltSeriesJobDirectory(HasTiltSeriesJobDirectory):
-    """Class for handling exclude tilt series job directories in RELION."""
-
-    _job_type = "relion.excludetilts"
-
-    def selected_tilt_series_star(self) -> Path:
-        """Return the path to the selected tilt series star file."""
-        return self.path / "selected_tilt_series.star"
-
-    def iter_tilt_series(self) -> Iterator[SelectedTiltSeriesInfo]:
-        """Iterate over all excluded tilt series info."""
-        if (path := self.selected_tilt_series_star()).exists():
-            star = read_star(path).first().trust_loop().to_pandas()
-            for _, row in star.iterrows():
-                yield SelectedTiltSeriesInfo.from_series(row)
 
 
 @dataclass
@@ -588,6 +534,10 @@ class TomogramInfo(AlignedTiltSeriesInfo):
         out.tomo_size_z = series.get("rlnTomoSizeZ", -1)
         if "rlnTomoReconstructedTomogram" in series:
             out.reconstructed_tomogram = [Path(series["rlnTomoReconstructedTomogram"])]
+        elif "rlnTomoReconstructedTomogramDenoised" in series:
+            out.reconstructed_tomogram = [
+                Path(series["rlnTomoReconstructedTomogramDenoised"])
+            ]
         else:
             out.reconstructed_tomogram = [
                 Path(series.get("rlnTomoReconstructedTomogramHalf1")),
@@ -945,7 +895,9 @@ class Refine3DResults(_3DResultsBase):
         else:
             path = f"run{self.it_str}_half1_class{class_id:03d}_angdist.bild"
         full_path = self.path / path
-        return _read_tubes(full_path, map_scale)
+        if full_path.exists():
+            return _read_tubes(full_path, map_scale)
+        return []
 
     def _half_class_mrc(self, class_id: int, num: Literal[1, 2] = 1) -> Path:
         """Return the path to the half 1 class MRC file for this iteration."""
@@ -1122,28 +1074,6 @@ class SplitParticlesJobDirectory(JobDirectory):
         path_ith_list.sort(key=lambda x: x[1])
         for path, _ in path_ith_list:
             yield path
-
-
-class CtfRefineTomoJobDirectory(HasTiltSeriesJobDirectory):
-    """Class for handling CTF refinement job directories in RELION."""
-
-    _job_type = "relion.ctfrefinetomo"
-
-
-class FrameAlignTomoJobDirectory(JobDirectory):
-    """Class for handling frame alignment job directories in RELION."""
-
-    _job_type = "relion.framealigntomo"
-
-
-# class JoinStarJobDirectory(JobDirectory):
-#     """Class for handling join star job directories in RELION."""
-
-#     _job_type = "relion.joinstar.particles"
-
-#     def output_star(self) -> Path:
-#         """Return the path to the output star file."""
-#         return self.path / "output.star"
 
 
 def _read_star_as_df(star_path: Path) -> pd.DataFrame:

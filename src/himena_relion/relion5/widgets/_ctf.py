@@ -41,7 +41,7 @@ def read_ctf_output_txt(path: Path) -> NDArray[np.float32] | None:
 class QCtfFindViewer(QJobScrollArea):
     def __init__(self, job_dir: _job_dir.JobDirectory):
         super().__init__()
-        self._job_dir = _job_dir.CtfCorrectionJobDirectory(job_dir.path)
+        self._job_dir = job_dir
         layout = self._layout
         self._defocus_canvas = QPlotCanvas(self)
         self._defocus_canvas.setFixedSize(360, 145)
@@ -91,8 +91,7 @@ class QCtfFindViewer(QJobScrollArea):
             return
         self._worker = self._prep_data_to_plot(self._job_dir)
         self._last_update = time.time()
-        self._worker.yielded.connect(self._on_yielded)
-        self._worker.start()
+        self._start_worker()
 
     def _clear_everything(self, *_):
         self._defocus_canvas.clear()

@@ -79,8 +79,7 @@ class QClass2DViewer(QJobScrollArea):
         self._text_edit.clear()
         self._plot_session_id = self._text_edit.prep_uuid()
         self._worker = self.plot_classes(value, self._plot_session_id)
-        self._worker.yielded.connect(self._on_class_yielded)
-        self._worker.start()
+        self._start_worker()
 
     @thread_worker
     def plot_classes(self, niter: int, session: uuid.UUID):
@@ -107,7 +106,7 @@ class QClass2DViewer(QJobScrollArea):
             img_slice = img[ith]
             text = f"{ith + 1}\n{distribution:.2f}%\n{resolution:.1f} A"
             img_str = self._text_edit.image_to_base64(img_slice, text)
-            yield img_str, session
+            yield self._on_class_yielded, (img_str, session)
 
     def _on_class_yielded(self, value: tuple[str, uuid.UUID]):
         if self._worker is None:

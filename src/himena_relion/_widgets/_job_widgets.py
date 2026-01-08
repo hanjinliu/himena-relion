@@ -14,6 +14,7 @@ from superqt.utils import qthrottled, GeneratorWorker
 from himena.widgets import current_instance, set_status_tip
 from himena.qt import drag_files, QColoredSVGIcon, QColoredToolButton
 from himena_relion import _job_class, _job_dir
+from himena_relion._impl_objects import start_worker
 from himena_relion._utils import (
     normalize_job_id,
     read_icon_svg,
@@ -84,6 +85,10 @@ class QJobScrollArea(QtW.QScrollArea, JobWidgetBase):
     def _on_yielded(self, yielded: tuple[Callable, Any]):
         fn, args = yielded
         fn(args)
+
+    def _start_worker(self):
+        self._worker.yielded.connect(self._on_yielded)
+        start_worker(self._worker)
 
 
 class QTextEditBase(QtW.QWidget, JobWidgetBase):

@@ -2,7 +2,6 @@ from __future__ import annotations
 from typing import Callable, Iterator
 from pathlib import Path
 import logging
-from contextlib import suppress
 
 from qtpy import QtWidgets as QtW
 import pandas as pd
@@ -57,43 +56,49 @@ class QInspectViewer(QtW.QWidget):
         self._on_tomo_changed(self._tomo_choice.currentText())
         self._viewer.auto_fit()
 
-    def _on_tomo_changed(self, text: str):
+    def _on_tomo_changed(self, texts: tuple[str, ...]):
         """Update the viewer when the selected tomogram changes."""
-        job_dir = self._job_dir
-        if job_dir is None:
-            return
-        for info in _iter_tomograms(job_dir):
+        if self._worker is not None and self._worker.is_running:
+            self._worker.quit()
+            self._worker = None
+        self._worker = self._read_items(texts[0])
+        self._worker.yielded.connect(self._on_yielded)
+        self._worker.start()
+
+    @thread_worker
+    def _read_items(self, text: str):
+        # first clear points
+        yield self._viewer.set_points, np.empty((0, 3), dtype=np.float32)
+        for info in _iter_tomograms(self._job_dir):
             if info.tomo_name == text:
                 break
         else:
             return
-        if self._worker is not None and self._worker.is_running:
-            self._worker.quit()
-            self._worker = None
-        tomo_view = info.read_tomogram(job_dir.relion_project_dir)
-        self._viewer.set_points(
-            np.empty((0, 3), dtype=np.float32)
-        )  # first clear points
-        self._viewer.set_array_view(tomo_view, self._viewer._last_clim)
+        tomo_view = info.read_tomogram(self._job_dir.relion_project_dir)
+        self._filter_widget.set_image_scale(info.tomo_pixel_size)
+        yield self._set_tomo_view, tomo_view.with_filter(self._filter_widget.apply)
         if getter := info.get_particles:
-            self._current_info = info
-            worker = thread_worker(getter)()
-            self._worker = worker
-            worker.returned.connect(self._on_worker_returned)
-            worker.start()
-
-    def _on_worker_returned(self, point_df: pd.DataFrame):
-        self._worker = None
-        with suppress(RuntimeError):
-            info = self._current_info
-            if info is None:
-                return
+            point_df = getter()
             cols = [f"rlnCenteredCoordinate{x}Angst" for x in "ZYX"]
             points = point_df[cols].to_numpy(dtype=np.float32) / info.tomo_pixel_size
             sizes = np.array(info.tomo_shape, dtype=np.float32) / info.tomogram_binning
             center = (sizes - 1) / 2
-            self._viewer.set_points(points + center[np.newaxis])
-            self._viewer.redraw()
+            bin_factor = int(self._filter_widget._bin_factor.text() or "1")
+            points_processed = (points + center[np.newaxis]) / bin_factor
+            yield self._set_points_and_redraw, points_processed
+        self._worker = None
+
+    def _set_tomo_view(self, tomo_view):
+        self._viewer.set_array_view(tomo_view, self._viewer._last_clim)
+        self._viewer.redraw()
+
+    def _set_points_and_redraw(self, points: np.ndarray):
+        self._viewer.set_points(points)
+        self._viewer.redraw()
+
+    def _on_yielded(self, yielded):
+        fn, args = yielded
+        fn(args)
 
 
 def _tomo_and_particles_star(

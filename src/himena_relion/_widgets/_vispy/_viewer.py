@@ -17,7 +17,7 @@ from himena_relion._widgets._vispy._viewbox import (
     ArcballCamera,
 )
 
-from himena_relion._bild import TubeObject
+from himena_relion._impl_objects import TubeObject
 
 
 @lru_cache(maxsize=1)

@@ -83,12 +83,9 @@ class QRefine3DViewer(QJobScrollArea):
         self._symmetry_label.set_symmetry(sym_name)
 
     def _update_for_value(self, niter: int, *, class_id: int = 1):
-        if self._worker is not None and self._worker.is_running:
-            self._worker.quit()
-        self._worker = None
+        self.window_closed_callback()
         self._worker = self._read_items(niter, class_id)
-        self._worker.yielded.connect(self._on_yielded)
-        self._worker.start()
+        self._start_worker()
 
     @thread_worker
     def _read_items(self, niter, class_id: int = 1):

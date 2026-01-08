@@ -18,7 +18,7 @@ TILT_VIEW_MIN_HEIGHT = 480
 
 @register_job("relion.motioncorr", is_tomo=True)
 class QMotionCorrViewer(QJobScrollArea):
-    def __init__(self, job_dir: _job_dir.MotionCorrBase):
+    def __init__(self, job_dir: _job_dir.JobDirectory):
         super().__init__()
         self._job_dir = job_dir
         layout = self._layout
@@ -35,7 +35,7 @@ class QMotionCorrViewer(QJobScrollArea):
         self._filter_widget.value_changed.connect(self._param_changed)
         self._binsize_old = -1
 
-    def on_job_updated(self, job_dir: _job_dir.MotionCorrBase, path: str):
+    def on_job_updated(self, job_dir: _job_dir.JobDirectory, path: str):
         """Handle changes to the job directory."""
         fp = Path(path)
         if fp.name.startswith("RELION_JOB_") or fp.suffix == ".mrc":
@@ -50,7 +50,7 @@ class QMotionCorrViewer(QJobScrollArea):
             self._binsize_old = new_binsize
             self._viewer.auto_fit()
 
-    def initialize(self, job_dir: _job_dir.MotionCorrBase):
+    def initialize(self, job_dir: _job_dir.JobDirectory):
         """Initialize the viewer with the job directory."""
         self._job_dir = job_dir
 
@@ -60,7 +60,7 @@ class QMotionCorrViewer(QJobScrollArea):
     def _process_update(self):
         choices = [
             (p.tomo_tilt_series_star_file.stem,)
-            for p in self._job_dir.iter_tilt_series()
+            for p in iter_tilt_series_mcor(self._job_dir)
         ]
         choices.sort(key=lambda x: x[0])
         self._ts_list.set_choices(choices)
@@ -71,7 +71,7 @@ class QMotionCorrViewer(QJobScrollArea):
         """Update the viewer when the selected tomogram changes."""
         job_dir = self._job_dir
         text = texts[0]
-        for info in job_dir.iter_tilt_series():
+        for info in iter_tilt_series_mcor(job_dir):
             if info.tomo_tilt_series_star_file.stem == text:
                 break
         else:
@@ -85,7 +85,7 @@ class QMotionCorrViewer(QJobScrollArea):
 class QExcludeTiltViewer(QJobScrollArea):
     def __init__(self, job_dir: _job_dir.JobDirectory):
         super().__init__()
-        self._job_dir = _job_dir.ExcludeTiltSeriesJobDirectory(job_dir.path)
+        self._job_dir = job_dir
         layout = self._layout
 
         self._viewer = Q2DViewer(zlabel="Tilt index")
@@ -122,7 +122,7 @@ class QExcludeTiltViewer(QJobScrollArea):
 
     def _process_update(self):
         choices: list[tuple[str, str]] = []
-        for p in self._job_dir.iter_tilt_series():
+        for p in iter_tilt_series_excludetilt(self._job_dir):
             file = self._job_dir.resolve_path(p.tomo_tilt_series_star_file)
             num_tilts = len(read_star(file).first().trust_loop())
             choices.append((file.stem, str(num_tilts)))
@@ -136,7 +136,7 @@ class QExcludeTiltViewer(QJobScrollArea):
         """Update the viewer when the selected tomogram changes."""
         job_dir = self._job_dir
         text = texts[0]
-        for info in job_dir.iter_tilt_series():
+        for info in iter_tilt_series_excludetilt(job_dir):
             if info.tomo_tilt_series_star_file.stem == text:
                 break
         else:
@@ -144,3 +144,23 @@ class QExcludeTiltViewer(QJobScrollArea):
         self._filter_widget.set_image_scale(info.tomo_tilt_series_pixel_size)
         ts_view = info.read_tilt_series(job_dir.relion_project_dir)
         self._viewer.set_array_view(ts_view.with_filter(self._filter_widget.apply))
+
+
+def iter_tilt_series_mcor(self: _job_dir.JobDirectory):
+    """Iterate over all motion correction info (Tomo)."""
+    star_path = self.path / "corrected_tilt_series.star"
+    if not star_path.exists():
+        return
+    star = read_star(star_path).first().trust_loop().to_pandas()
+    for _, row in star.iterrows():
+        yield _job_dir.CorrectedTiltSeriesInfo.from_series(row)
+
+
+def iter_tilt_series_excludetilt(self: _job_dir.JobDirectory):
+    """Iterate over all excluded tilt series info."""
+    star_path = self.path / "selected_tilt_series.star"
+    if not star_path.exists():
+        return
+    star = read_star(star_path).first().trust_loop().to_pandas()
+    for _, row in star.iterrows():
+        yield _job_dir.SelectedTiltSeriesInfo.from_series(row)

@@ -203,8 +203,7 @@ class QPickViewer(QJobScrollArea):
         """Update the viewer when the selected tomogram changes."""
         self.window_closed_callback()
         self._worker = self._read_items(texts[0])
-        self._worker.yielded.connect(self._on_yielded)
-        self._worker.start()
+        self._start_worker()
 
     @thread_worker
     def _read_items(self, text: str):
@@ -227,6 +226,7 @@ class QPickViewer(QJobScrollArea):
             bin_factor = int(self._filter_widget._bin_factor.text() or "1")
             points_processed = (points + center[np.newaxis]) / bin_factor
             yield self._set_points_and_redraw, points_processed
+        self._worker = None
 
     def _set_tomo_view(self, tomo_view: ArrayFilteredView):
         self._viewer.set_array_view(tomo_view, self._viewer._last_clim)

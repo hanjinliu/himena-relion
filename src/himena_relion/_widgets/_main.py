@@ -21,6 +21,7 @@ from himena_relion._widgets._job_widgets import (
     QJobParameterView,
 )
 from himena_relion._widgets._misc import spacer_widget
+from himena_relion._impl_objects import RelionJobIsTesting
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -53,7 +54,10 @@ class QRelionJobWidget(QtW.QWidget):
         self._job_dir = job_dir = model.value
         if not isinstance(job_dir, _job_dir.JobDirectory):
             raise TypeError(f"Expected JobDirectory, got {type(job_dir)}")
-        self._watcher = self._watch_job_directory(job_dir.path)
+        if isinstance(model.metadata, RelionJobIsTesting):
+            self._watcher = None
+        else:
+            self._watcher = self._watch_job_directory(job_dir.path)
 
         if wcls := RelionJobViewRegistry.instance().get_widget_class(job_dir):
             _LOGGER.info(f"Adding job widget for {job_dir.path}: {wcls!r}")

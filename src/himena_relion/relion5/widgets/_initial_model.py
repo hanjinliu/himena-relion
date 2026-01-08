@@ -89,8 +89,7 @@ class QInitialModelViewer(QJobScrollArea):
             self._worker.quit()
         self._worker = None
         self._worker = self._read_items(niter, class_id)
-        self._worker.yielded.connect(self._on_yielded)
-        self._worker.start()
+        self._start_worker()
 
     @thread_worker
     def _read_items(self, niter, class_id: int = 1):

@@ -32,7 +32,7 @@ class SliceResult(NamedTuple):
 
 
 class QViewer(QtW.QWidget):
-    pass
+    _always_force_sync: bool = False
 
 
 class Q2DViewer(QViewer):
@@ -148,7 +148,7 @@ class Q2DViewer(QViewer):
         if self._last_future:
             self._last_future.cancel()  # cancel last task
         if self._array_view is not None:
-            if force_sync:
+            if force_sync or self._always_force_sync:
                 val = self._get_image_slice(value)
                 future = Future()
                 future.set_result(val)

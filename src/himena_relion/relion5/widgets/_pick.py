@@ -124,8 +124,7 @@ class QManualPickViewer(QJobScrollArea):
     def _process_update(self, force_update: bool = False):
         if force_update or self._worker is None:
             self._worker = self._prep_mic_list()
-            self._worker.yielded.connect(self._on_yielded)
-            self._worker.start()
+            self._start_worker()
 
     @thread_worker
     def _prep_mic_list(self):

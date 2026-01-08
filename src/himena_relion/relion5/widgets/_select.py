@@ -5,7 +5,6 @@ import mrcfile
 import numpy as np
 from qtpy import QtGui
 from starfile_rs import read_star, read_star_block
-from superqt.utils import thread_worker
 
 from himena_relion._widgets import QJobScrollArea, register_job, QImageViewTextEdit
 from himena_relion import _job_dir
@@ -27,9 +26,12 @@ class QSelectJobBase(QJobScrollArea):
         self._text_edit.setFixedHeight(400)
         if self._worker:
             self._worker.quit()
-        self._worker = thread_worker(self.insert_html)(job_dir)
-        self._worker.yielded.connect(self._cb_html_requested)
-        self._worker.start()
+        self._worker = self._read_items(job_dir)
+        self._start_worker()
+
+    def _read_items(self, job_dir: _job_dir.SelectInteractiveJobDirectory):
+        for html in self.insert_html(job_dir):
+            yield self._cb_html_requested, html
 
     def insert_html(self, job_dir: _job_dir.SelectInteractiveJobDirectory):
         """Insert HTML into the text edit.

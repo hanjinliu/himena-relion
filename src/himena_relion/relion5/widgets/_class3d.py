@@ -104,8 +104,7 @@ class QClass3DViewer(QJobScrollArea):
     def _update_for_value(self, niter: int, class_id: int):
         self.window_closed_callback()
         self._worker = self._read_items(niter, class_id)
-        self._worker.yielded.connect(self._on_yielded)
-        self._worker.start()
+        self._start_worker()
 
     def _update_summary_table(self, niter):
         res = self._job_dir.get_result(niter)
