@@ -99,6 +99,9 @@ class QInitialModelViewer(QJobScrollArea):
         map0, _ = res.class_map(class_id - self._index_start)
         yield self._viewer.set_image, map0
         starpath = self._job_dir.path / f"run_it{niter:0>3}_model.star"
+        if not starpath.exists():
+            yield self._num_particles_label.set_number, -1
+            return
         try:
             model = ModelStarModel.validate_file(starpath)
             num_particles = model.groups.num_particles.sum()

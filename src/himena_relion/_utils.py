@@ -68,6 +68,7 @@ def threshold_yen(image: np.ndarray, nbins=256, use_positive: bool = True) -> fl
         input_arr = image[image > 0].ravel()
     else:
         input_arr = image.ravel()
+    nbins = min(nbins, input_arr.size)
     counts, edges = np.histogram(input_arr, nbins, density=False)
     bin_centers = (edges[:-1] + edges[1:]) / 2
 
@@ -77,7 +78,10 @@ def threshold_yen(image: np.ndarray, nbins=256, use_positive: bool = True) -> fl
         return bin_centers[0]
 
     # Calculate probability mass function
-    pmf = counts.astype("float32", copy=False) / counts.sum()
+    counts_sum = counts.sum()
+    if counts_sum == 0:
+        return float(bin_centers[0])
+    pmf = counts.astype("float32", copy=False) / counts_sum
     P1 = np.cumsum(pmf)  # Cumulative normalized histogram
     P1_sq = np.cumsum(pmf**2)
     # Get cumsum calculated from end of squared array:

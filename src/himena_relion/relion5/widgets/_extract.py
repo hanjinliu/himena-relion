@@ -100,6 +100,7 @@ class QExtractViewer(QJobScrollArea):
             f"{start + 1} - {min(start + self._num_page, self._current_num_extracts)}"
         )
         self._worker = self.plot_extracts(start, self._plot_session_id)
+        self._worker.yielded.connect(self._on_string_ready)
         self._start_worker()
 
     @thread_worker
@@ -113,9 +114,9 @@ class QExtractViewer(QJobScrollArea):
                 img_data = np.asarray(mrc_data[ith - 1], dtype=np.float32)
                 img_data = _utils.lowpass_filter(img_data, 0.2)
                 img_str = self._text_edit.image_to_base64(img_data, f"{ith}")
-                yield img_str, session
+                yield self._on_string_ready, (img_str, session)
 
-    def _on_yielded(self, value: tuple[str, uuid.UUID]):
+    def _on_string_ready(self, value: tuple[str, uuid.UUID]):
         if self._worker is None:
             return
         img_str, my_uuid = value

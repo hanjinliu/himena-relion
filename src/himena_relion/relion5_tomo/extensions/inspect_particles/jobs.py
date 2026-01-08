@@ -81,6 +81,11 @@ def _get_mic(path: Path) -> str:
     return opt.tomogram_star
 
 
+def _get_tomo_star_from_inspect(path: Path) -> str:
+    opt = OptimisationSetModel.validate_file(path / "optimisation_set.star")
+    return opt.tomogram_star
+
+
 connect_jobs(
     SelectClassesInteractiveJob,
     InspectParticles,
@@ -111,6 +116,14 @@ connect_jobs(
     InspectParticles,
     ExtractParticlesTomoJob,
     node_mapping={"optimisation_set.star": "in_optim.in_optimisation"},
+)
+connect_jobs(
+    ExtractParticlesTomoJob,
+    InspectParticles,
+    node_mapping={
+        "particles.star": "in_optim.in_particles",
+        _get_tomo_star_from_inspect: "in_optim.in_tomograms",
+    },
 )
 connect_jobs(
     InspectParticles,

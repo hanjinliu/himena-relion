@@ -104,6 +104,31 @@ class ModelStarModel(schema.StarModel):
     classes: ModelClasses = schema.Field("model_classes")
     groups: ModelGroups = schema.Field("model_groups")
 
+    @classmethod
+    def example(cls, size: int) -> "ModelStarModel":
+        """Create an example model with given size."""
+        return cls(
+            classes=ModelClasses(
+                ref_image=pd.Series(
+                    [
+                        f"000000{ith:03d}@Class2D/job001/000000001.mrcs"
+                        for ith in range(size)
+                    ],
+                    dtype="string",
+                ),
+                class_distribution=pd.Series([1.0 / size] * size, dtype="float"),
+                resolution=pd.Series([5.0] * size, dtype="float"),
+                accuracy_rotation=pd.Series([0.5] * size, dtype="float"),
+                accyracy_translation=pd.Series([1.0] * size, dtype="float"),
+            ),
+            groups=ModelGroups(
+                number=pd.Series([1] * size, dtype="int"),
+                name=pd.Series(["Group1"] * size, dtype="string"),
+                num_particles=pd.Series([100] * size, dtype="int"),
+                scale_correction=pd.Series([1.0] * size, dtype="float"),
+            ),
+        )
+
 
 class MicCoordSetModel(schema.LoopDataModel):
     """Model for coordinate star files."""

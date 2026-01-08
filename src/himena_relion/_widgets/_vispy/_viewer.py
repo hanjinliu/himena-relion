@@ -44,6 +44,7 @@ class _Vispy2DBase:
 
         # initialize image visual
         self._image = VispyImage(cmap="gray", parent=self._viewbox.scene)
+        self._image.set_gl_state(preset="opaque")
         self._image.set_data(np.zeros((1, 1), dtype=np.float32))
         self._image.visible = False
         self._markers = VispyMarkers(

@@ -1,10 +1,10 @@
 from typing import Callable
 from qtpy.QtWidgets import QApplication
 from pathlib import Path
-import mrcfile
 import numpy as np
 from himena_relion._job_dir import JobDirectory
 from himena_relion.relion5.widgets._frames import QMotionCorrViewer
+from himena_relion.testing import JobWidgetTester
 
 def test_motioncor_widget(
     qtbot,
@@ -14,43 +14,20 @@ def test_motioncor_widget(
     star_text = Path(jobs_dir_spa / "MotionCorr" / "job001" / "job.star").read_text()
     job_dir = make_job_directory(star_text)
 
-    widget = QMotionCorrViewer(job_dir)
-    qtbot.addWidget(widget)
-    widget.initialize(job_dir)
-    assert widget._mic_list.rowCount() == 0
+    tester = JobWidgetTester(QMotionCorrViewer(job_dir), job_dir)
 
-    rng = np.random.default_rng(29958293)
-    movies_path = job_dir.path / "Movies"
-    movies_path.mkdir()
-    basename = "Frame_00"
-    shape = (10, 10)
-    with mrcfile.new(movies_path.joinpath(f"{basename}.mrc")) as mrc:
-        arr = rng.standard_normal(shape, dtype=np.float32).astype(np.float16)
-        mrc.set_data(arr)
-    widget.on_job_updated(job_dir, movies_path.joinpath(f"{basename}.mrc"))
-    movies_path.joinpath(f"{basename}.log").write_text("log ...")
-    widget.on_job_updated(job_dir, movies_path.joinpath(f"{basename}.log"))
-    movies_path.joinpath(f"{basename}.star").write_text("star ...")
-    widget.on_job_updated(job_dir, movies_path.joinpath(f"{basename}.star"))
-    with mrcfile.new(movies_path.joinpath(f"{basename}_PS.mrc")) as mrc:
-        arr = rng.standard_normal(shape, dtype=np.float32).astype(np.float16)
-        mrc.set_data(arr)
-    widget.on_job_updated(job_dir, movies_path.joinpath(f"{basename}_PS.mrc"))
-    assert widget._mic_list.rowCount() == 1
+    qtbot.addWidget(tester.widget)
+    assert tester.widget._mic_list.rowCount() == 0
 
-    basename = "Frame_01"
-    with mrcfile.new(movies_path.joinpath(f"{basename}.mrc")) as mrc:
-        arr = rng.standard_normal(shape, dtype=np.float32).astype(np.float16)
-        mrc.set_data(arr)
-    widget.on_job_updated(job_dir, movies_path.joinpath(f"{basename}.mrc"))
-    movies_path.joinpath(f"{basename}.log").write_text("log ...")
-    widget.on_job_updated(job_dir, movies_path.joinpath(f"{basename}.log"))
-    movies_path.joinpath(f"{basename}.star").write_text("star ...")
-    widget.on_job_updated(job_dir, movies_path.joinpath(f"{basename}.star"))
-    with mrcfile.new(movies_path.joinpath(f"{basename}_PS.mrc")) as mrc:
-        arr = rng.standard_normal(shape, dtype=np.float32).astype(np.float16)
-        mrc.set_data(arr)
-    widget.on_job_updated(job_dir, movies_path.joinpath(f"{basename}_PS.mrc"))
-    assert widget._mic_list.rowCount() == 2
+    job_dir.path.joinpath("Movies").mkdir()
+    for i in range(3):
+        basename = f"Frame_{i:02d}"
+        tester.write_random_mrc(f"Movies/{basename}.mrc", (10, 10), dtype=np.float16)
+        tester.write_text(f"Movies/{basename}.log", "log ...")
+        tester.write_text(f"Movies/{basename}.star", "star ...")
+        tester.write_random_mrc(f"Movies/{basename}_PS.mrc", (10, 3), dtype=np.float16)
+
+        assert tester.widget._mic_list.rowCount() == i + 1
+
     for _ in range(3):
         QApplication.processEvents()

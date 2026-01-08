@@ -278,7 +278,11 @@ class QJobPipelineViewer(QtW.QWidget, JobWidgetBase):
         job_pipeline = RelionPipeline.from_star(path)
         for input_node in job_pipeline.inputs:
             input_path = rln_dir / input_node.path
-            item = QRelionNodeItem(input_path, filetype=input_node.type_label)
+            item = QRelionNodeItem(
+                rln_dir,
+                input_path,
+                filetype=input_node.type_label,
+            )
             list_item = QtW.QListWidgetItem(self._list_widget_in)
             list_item.setSizeHint(item.sizeHint())
             self._list_widget_in.addItem(list_item)
@@ -297,7 +301,10 @@ class QJobPipelineViewer(QtW.QWidget, JobWidgetBase):
         for output_node in outputs:
             output_path = rln_dir / output_node.path
             item = QRelionNodeItem(
-                output_path, filetype=output_node.type_label, show_dir=False
+                rln_dir,
+                output_path,
+                filetype=output_node.type_label,
+                show_dir=False,
             )
             list_item = QtW.QListWidgetItem(self._list_widget_out)
             list_item.setSizeHint(item.sizeHint())
@@ -368,6 +375,7 @@ class QRelionNodeList(QtW.QListWidget):
 class QRelionNodeItem(QtW.QWidget):
     def __init__(
         self,
+        relion_dir: Path,
         filepath: Path,
         filetype: str | None = None,
         show_dir: bool = True,
@@ -380,8 +388,11 @@ class QRelionNodeItem(QtW.QWidget):
         layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
         self.draggable_widgets: list[QFileLabel] = []
         if show_dir:
+            try:
+                self._filepath_rel = filepath.relative_to(relion_dir)
+            except ValueError:
+                self._filepath_rel = filepath
             if filepath.parent.stem.startswith("job"):
-                self._filepath_rel = Path(*filepath.parts[-3:])
                 widget_dir = QFileLabel(
                     self,
                     path=filepath.parent,
@@ -391,7 +402,6 @@ class QRelionNodeItem(QtW.QWidget):
                 widget_dir.dragged.connect(self._drag_dir_event)
                 widget_dir.double_clicked.connect(self._open_dir_event)
             else:
-                self._filepath_rel = filepath
                 widget_dir = QFileLabel(self)
             widget_dir.setFixedWidth(170)
             layout.addWidget(widget_dir)
@@ -561,6 +571,8 @@ class QJobStateLabel(QtW.QWidget, JobWidgetBase):
 
 
 class QFileLabel(QtW.QWidget):
+    """A widget with label such as Import/job001/ that can be dragged."""
+
     dragged = QtCore.Signal()
     right_clicked = QtCore.Signal(QtCore.QPoint)
     double_clicked = QtCore.Signal()
