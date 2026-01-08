@@ -50,10 +50,29 @@ class OptimisationSetEdit(ValuedContainerWidget):
 
     def __init__(self, **kwargs):
         self._toggle_switch = ToggleSwitch(text="Use direct entries", value=False)
-        self._in_opt = PathDrop("", type_label="TomoOptimisationSet")
-        self._in_particles = PathDrop("", type_label="ParticleGroupMetadata")
-        self._in_tomograms = PathDrop("", type_label="TomogramGroupMetadata")
-        self._in_trajectories = PathDrop("", type_label="TomoTrajectoryData")
+        self._in_opt = PathDrop(
+            "",
+            type_label="TomoOptimisationSet",
+            tooltip="Path to the optimisation_set.star file.",
+        )
+        self._in_particles = PathDrop(
+            "",
+            type_label="ParticleGroupMetadata",
+            tooltip=(
+                "Path to the particle star file (usually named particles.star or "
+                "*_data.star)"
+            ),
+        )
+        self._in_tomograms = PathDrop(
+            "",
+            type_label="TomogramGroupMetadata",
+            tooltip="Path to the tomogram.star file.",
+        )
+        self._in_trajectories = PathDrop(
+            "",
+            type_label="TomoTrajectoryData",
+            tooltip="Path to the trajectory star file.",
+        )
         widgets = [
             self._toggle_switch,
             self._in_opt,

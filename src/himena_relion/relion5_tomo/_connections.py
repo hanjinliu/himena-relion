@@ -10,7 +10,7 @@ from himena_relion.relion5._connections import (
 from himena_relion.relion5_tomo import _builtins as _tomo
 from himena_relion._job_dir import JobDirectory
 from himena_relion._job_class import connect_jobs
-from himena_relion.schemas import OptimisationSetModel
+from himena_relion.schemas import OptimisationSetModel, TomogramsGroupModel
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -18,6 +18,11 @@ _LOGGER = logging.getLogger(__name__)
 def _pixel_size_from_opt_star(path: Path) -> float:
     _opt = OptimisationSetModel.validate_file(path)
     _tomo = _opt.read_tomogram_model()
+    return _tomo.original_pixel_size.mean()
+
+
+def _pixel_size_from_tomogram_star(path: Path) -> float:
+    _tomo = TomogramsGroupModel.validate_file(path)
     return _tomo.original_pixel_size.mean()
 
 
@@ -40,9 +45,14 @@ def _recon_diameter_a(path: Path) -> float:
     """Extract particle diameter A from the job directory path."""
     box_size = _subtomo_box_size(path)
     bin_size = _subtomo_binning(path)
+    jobdir = JobDirectory(path)
+    params = jobdir.get_job_params_as_dict()
+    is_direct_input = params.get("in_optimisation", "").strip() == ""
     try:
-        jobdir = JobDirectory(path)
-        pix_size = _pixel_size_from_opt_star(jobdir.get_job_param("in_optimisation"))
+        if is_direct_input:
+            pix_size = _pixel_size_from_tomogram_star(params["in_tomograms"])
+        else:
+            pix_size = _pixel_size_from_opt_star(params["in_optimisation"])
         diameter_a = box_size * pix_size * bin_size
     except Exception:
         _LOGGER.warning(

@@ -26,6 +26,7 @@ from himena_relion._pipeline import RelionPipeline
 from himena_relion._widgets._job_edit import QJobParameter
 from himena_relion._widgets._misc import spacer_widget
 from himena_relion.schemas._pipeline import RelionPipelineModel
+from himena_relion.io import _impl
 
 if TYPE_CHECKING:
     from himena_relion._widgets._main import QRelionJobWidget
@@ -548,10 +549,10 @@ class QJobStateLabel(QtW.QWidget, JobWidgetBase):
         self._state_label.setFixedWidth(text_width + 10)
 
     def _run_set_alias(self):
+        """Set alias for the job."""
         job_widget = self._job_widget
-        model = job_widget.to_model()
-        ui = job_widget._ui_ref()
-        ui.exec_action("himena-relion:set-job-alias", model_context=model)
+        if ui := job_widget._ui_ref():
+            _impl.set_job_alias(ui, job_widget._job_dir)
 
 
 class QFileLabel(QtW.QWidget):

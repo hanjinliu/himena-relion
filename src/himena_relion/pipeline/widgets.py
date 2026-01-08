@@ -58,6 +58,7 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         self._finder.lineEdit().setPlaceholderText("Find job...")
 
         self._flow_chart.item_left_clicked.connect(self._on_item_left_clicked)
+        self._flow_chart.item_right_clicked.connect(self._on_item_left_clicked)
         self._flow_chart.background_left_clicked.connect(
             self._on_background_left_clicked
         )

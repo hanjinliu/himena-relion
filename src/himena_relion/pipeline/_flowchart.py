@@ -4,6 +4,7 @@ from qtpy import QtGui, QtCore, QtWidgets as QtW
 from cmap import Color
 
 from himena import MainWindow
+from himena.exceptions import Cancelled
 from himena.qt._qflowchart import QFlowChartView, BaseNodeItem
 from himena_relion.consts import JOB_ID_MAP, RelionJobState
 from himena_relion._utils import read_or_show_job
@@ -146,18 +147,34 @@ class QRelionPipelineFlowChartView(QFlowChartView):
         action.setEnabled(state is not RelionJobState.EXIT_FAILURE)
         menu.addSeparator()
         action = menu.addAction(
-            "Abort", lambda: _impl.abort_relion_job(self._ui, job_dir)
+            "Abort", _ignore_cancel(_impl.abort_relion_job, self._ui, job_dir)
         )
         action.setEnabled(state is RelionJobState.RUNNING)
         menu.addAction(
             "Overwrite ...", lambda: _impl.overwrite_relion_job(self._ui, job_dir)
         )
         menu.addAction("Clone ...", lambda: _impl.clone_relion_job(self._ui, job_dir))
-        menu.addAction("Set Alias ...", lambda: _impl.set_job_alias(self._ui, job_dir))
+        menu.addAction(
+            "Set Alias ...", _ignore_cancel(_impl.set_job_alias, self._ui, job_dir)
+        )
         menu.addSeparator()
-        action = menu.addAction("Trash", lambda: _impl.trash_job(self._ui, job_dir))
+        action = menu.addAction(
+            "Trash", _ignore_cancel(_impl.trash_job, self._ui, job_dir)
+        )
         action.setEnabled(state is not RelionJobState.RUNNING)
         return menu
+
+
+def _ignore_cancel(func, *args, **kwargs):
+    """Decorator to ignore Cancelled exception."""
+
+    def wrapper():
+        try:
+            return func(*args, **kwargs)
+        except Cancelled:
+            pass
+
+    return wrapper
 
 
 class RelionJobNodeItem(BaseNodeItem):

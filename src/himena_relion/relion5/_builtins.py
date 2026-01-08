@@ -1525,12 +1525,12 @@ class Refine3DJob(_Relion5Job):
         helical_tube_diameter_range: _a.helix.HELICAL_TUBE_DIAMETER_RANGE = (-1, -1),
         rot_tilt_psi_range: _a.helix.ROT_TILT_PSI_RANGE = (-1, 15, 10),
         helical_range_distance: _a.helix.HELICAL_RANGE_DIST = -1,
+        keep_tilt_prior_fixed: _a.helix.KEEP_TILT_PRIOR_FIXED = True,
         do_apply_helical_symmetry: _a.helix.DO_APPLY_HELICAL_SYMMETRY = True,
         helical_nr_asu: _a.helix.HELICAL_NR_ASU = 1,
         helical_twist_initial: _a.helix.HELICAL_TWIST_INITIAL = 0,
         helical_rise_initial: _a.helix.HELICAL_RISE_INITIAL = 0,
         helical_z_percentage: _a.helix.HELICAL_Z_PERCENTAGE = 30,
-        keep_tilt_prior_fixed: _a.helix.KEEP_TILT_PRIOR_FIXED = True,
         do_local_search_helical_symmetry: _a.helix.DO_LOCAL_SEARCH_H_SYM = False,
         helical_twist_range: _a.helix.HELICAL_TWIST_RANGE = (0, 0, 0),
         helical_rise_range: _a.helix.HELICAL_RISE_RANGE = (0, 0, 0),
@@ -1855,6 +1855,14 @@ class MaskCreationJob(_Relion5Job):
         min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
+
+    @classmethod
+    def setup_widgets(cls, widgets):
+        @widgets["do_helix"].changed.connect
+        def _on_helical(value: bool):
+            widgets["helical_z_percentage"].enabled = value
+
+        widgets["helical_z_percentage"].enabled = False
 
 
 class PostProcessJob(_Relion5Job):

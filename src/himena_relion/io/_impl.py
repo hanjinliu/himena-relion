@@ -3,10 +3,9 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 import subprocess
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Annotated
 from himena import MainWindow
 from himena.exceptions import Cancelled
-from himena_relion._widgets._main import QRelionJobWidget
 from himena_relion.consts import RelionJobState, FileNames
 from himena_relion._utils import normalize_job_id, update_default_pipeline
 from himena_relion.schemas._pipeline import RelionPipelineModel
@@ -115,7 +114,22 @@ def clone_relion_job(ui: MainWindow, job_dir: JobDirectory):
 
 def set_job_alias(ui: MainWindow, job_dir: JobDirectory):
     """Set alias for this RELION job."""
-    res = ui.exec_user_input_dialog({"alias": str}, title="Set Job Alias")
+    from himena_relion._widgets._main import QRelionJobWidget
+
+    default_pipeline_path = job_dir.relion_project_dir / "default_pipeline.star"
+    if not default_pipeline_path.exists():
+        raise FileNotFoundError("default_pipeline.star not found")
+    pipeline = RelionPipelineModel.validate_file(default_pipeline_path)
+    # look for current alias
+    _matched = pipeline.processes.process_name == job_dir.job_normal_id()
+    matched = pipeline.processes.alias[_matched]
+    if len(matched) == 1:
+        current_alias = matched.iloc[0]
+    else:
+        current_alias = ""
+    res = ui.exec_user_input_dialog(
+        {"alias": Annotated[str, {"value": current_alias}]}, title="Set Job Alias"
+    )
     if res is None:
         raise Cancelled
     alias = str(res["alias"]).strip()
@@ -141,7 +155,7 @@ def set_job_alias(ui: MainWindow, job_dir: JobDirectory):
         # no existing alias, create a new one
         new_path.symlink_to(job_dir.path, target_is_directory=True)
     update_default_pipeline(
-        job_dir.relion_project_dir / "default_pipeline.star",
+        default_pipeline_path,
         job_dir.path.relative_to(job_dir.relion_project_dir),
         alias=normalize_job_id(new_path),
     )
