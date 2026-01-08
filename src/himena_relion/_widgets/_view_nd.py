@@ -377,7 +377,6 @@ class Q3DLocalResViewer(Q3DViewerBase):
         self._clim_slider = QLabeledDoubleRangeSlider(QtCore.Qt.Orientation.Horizontal)
         self._clim_slider.valueChanged.connect(self._on_clim_changed)
         self._surface = IsoSurface(parent=self._canvas._viewbox.scene)
-        self._has_image = False
         dim_slider = labeled("Threshold", self._iso_slider, self._auto_threshold_btn)
         dim_slider.setMaximumWidth(400)
         dim_slider.setMinimumWidth(300)

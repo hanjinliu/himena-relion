@@ -26,5 +26,7 @@ class JobWidgetTester(Generic[_T]):
         self.widget.on_job_updated(self.job_dir, str(fp))
 
     def write_random_mrc(self, path: str, shape: tuple[int, ...], dtype=np.float32):
-        data = self._rng.normal(loc=1.0, scale=1.0, size=shape).astype(dtype)
-        self.write_mrc(path, data)
+        self.write_mrc(path, self.make_random_mrc(shape, dtype))
+
+    def make_random_mrc(self, shape: tuple[int, ...], dtype=np.float32) -> np.ndarray:
+        return self._rng.normal(loc=1.0, scale=1.0, size=shape).astype(dtype)

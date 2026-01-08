@@ -33,6 +33,8 @@ class QLocalResViewer(QJobScrollArea):
 
     def initialize(self, job_dir: _job_dir.JobDirectory):
         """Initialize the viewer with the job directory."""
+        if not (job_dir.path / "relion_locres.mrc").exists():
+            return
         map_data, locres_data, mask_data, scale = _read_files(job_dir)
         cutoff_angst = np.min(locres_data[locres_data > 0.001])
         cutoff_rel = scale / cutoff_angst
@@ -57,9 +59,13 @@ def _read_files(
     params = job_dir.get_job_params_as_dict()
     map_path = job_dir.resolve_path(params["fn_in"])
     map_data, scale = _read_mrc(map_path)
-    if map_path.stem.endswith("_half1"):
+    if "half1" in map_path.stem:
+        index = map_path.stem.rfind("half1")
         alt_map_path = map_path.with_name(
-            map_path.stem[:-5] + "half2" + map_path.suffix
+            map_path.stem[:index]
+            + "half2"
+            + map_path.stem[index + 5 :]
+            + map_path.suffix
         )
         if alt_map_path.exists():
             alt_map_data, _ = _read_mrc(alt_map_path)
