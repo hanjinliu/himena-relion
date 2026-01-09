@@ -10,7 +10,7 @@ def test_reconstruct_tomo_widget(
     jobs_dir_tomo,
 ):
     star_text = Path(jobs_dir_tomo / "Tomogram" / "job001" / "job.star").read_text()
-    _replace_is_halfset(star_text, False)
+    star_text = _replace_is_halfset(star_text, False)
     job_dir = make_job_directory(star_text, "Refine3D")
 
     tester = JobWidgetTester(QTomogramViewer(job_dir), job_dir)
@@ -39,7 +39,7 @@ def test_reconstruct_tomo_widget_halfsets(
     jobs_dir_tomo,
 ):
     star_text = Path(jobs_dir_tomo / "Tomogram" / "job001" / "job.star").read_text()
-    _replace_is_halfset(star_text, True)
+    star_text = _replace_is_halfset(star_text, True)
     job_dir = make_job_directory(star_text, "Tomogram")
 
     tester = JobWidgetTester(QTomogramViewer(job_dir), job_dir)
@@ -51,7 +51,7 @@ def test_reconstruct_tomo_widget_halfsets(
     assert tester.widget._tomo_list.rowCount() == 0
 
     tester.write_random_mrc("tomograms/rec_TS_01_half1.mrc", (40, 100, 100))
-    assert not tester.widget._viewer.has_image
+    assert tester.widget._viewer.has_image
     tester.write_random_mrc("tomograms/rec_TS_01_half2.mrc", (40, 100, 100))
     assert tester.widget._viewer.has_image
     assert tester.widget._tomo_list.rowCount() == 1

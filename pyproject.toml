@@ -35,7 +35,7 @@ dependencies = [
   "imagecodecs>=2025.11.11",  # for viewing LZW compressed tiff files
   "watchfiles>=1.1.0",
   "superqt>=0.7.6",
-  "himena>=0.1.5",
+  "himena>=0.1.6",
   "matplotlib>=3.7.2",
   "scikit-image>=0.25.1",
   "psygnal>=0.15.0",
@@ -50,10 +50,10 @@ testing = [
   "pytest-cov",
 ]
 pyqt5 = [
-  "himena[pyqt5]>=0.1.5",
+  "himena[pyqt5]>=0.1.6",
 ]
 pyqt6 = [
-  "himena[pyqt6]>=0.1.5",
+  "himena[pyqt6]>=0.1.6",
 ]
 
 [project.urls]

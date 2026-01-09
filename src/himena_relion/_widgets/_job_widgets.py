@@ -13,6 +13,7 @@ from superqt import QToggleSwitch
 from superqt.utils import qthrottled, GeneratorWorker
 from himena.widgets import current_instance, set_status_tip
 from himena.qt import drag_files, QColoredSVGIcon, QColoredToolButton
+from himena.exceptions import Cancelled
 from himena_relion import _job_class, _job_dir
 from himena_relion._impl_objects import start_worker
 from himena_relion._utils import (
@@ -567,7 +568,8 @@ class QJobStateLabel(QtW.QWidget, JobWidgetBase):
         """Set alias for the job."""
         job_widget = self._job_widget
         if ui := job_widget._ui_ref():
-            _impl.set_job_alias(ui, job_widget._job_dir)
+            with suppress(Cancelled):
+                _impl.set_job_alias(ui, job_widget._job_dir)
 
 
 class QFileLabel(QtW.QWidget):

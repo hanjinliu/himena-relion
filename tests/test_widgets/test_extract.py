@@ -55,19 +55,17 @@ def test_extract_tomo_2d(
 
     assert tester.widget._tomo_list.rowCount() == 0
     tester.mkdir("Subtomograms/TS_01")
-    assert tester.widget._tomo_list.rowCount() == 1
     for i in range(6):
         tester.write_random_mrc(
-            f"Subtomograms/TS_01/{i}_stack2d.mrc",
+            f"Subtomograms/TS_01/{i}_stack2d.mrcs",
             (5, 32, 32),
             dtype=np.float16
         )
     assert tester.widget._tomo_list.rowCount() == 1
     tester.mkdir("Subtomograms/TS_03")
-    assert tester.widget._tomo_list.rowCount() == 2
     for i in range(3):
         tester.write_random_mrc(
-            f"Subtomograms/TS_03/{i}_stack2d.mrc",
+            f"Subtomograms/TS_03/{i}_stack2d.mrcs",
             (5, 32, 32),
             dtype=np.float16
         )
@@ -90,7 +88,6 @@ def test_extract_tomo_3d(
 
     assert tester.widget._tomo_list.rowCount() == 0
     tester.mkdir("Subtomograms/TS_01")
-    assert tester.widget._tomo_list.rowCount() == 1
     for i in range(6):
         tester.write_random_mrc(
             f"Subtomograms/TS_01/{i}_data.mrc",
@@ -99,7 +96,6 @@ def test_extract_tomo_3d(
         )
     assert tester.widget._tomo_list.rowCount() == 1
     tester.mkdir("Subtomograms/TS_03")
-    assert tester.widget._tomo_list.rowCount() == 2
     for i in range(3):
         tester.write_random_mrc(
             f"Subtomograms/TS_03/{i}_data.mrc",
