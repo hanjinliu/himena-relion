@@ -71,6 +71,3 @@ def test_initial_model_widget(
     QApplication.processEvents()
     tester.widget._iter_choice.setValue(10)
     QApplication.processEvents()
-
-    for _ in range(10):
-        QApplication.processEvents()

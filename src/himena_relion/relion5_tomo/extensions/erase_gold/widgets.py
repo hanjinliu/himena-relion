@@ -4,7 +4,6 @@ import logging
 from typing import Iterator
 import imodmodel
 import mrcfile
-import numpy as np
 from qtpy import QtWidgets as QtW, QtCore
 from starfile_rs import read_star
 from himena_relion._image_readers import ArrayFilteredView
@@ -150,10 +149,7 @@ class QEraseGoldViewer(QtW.QWidget):
             return
         ts = TSModel.validate_file(star_path)
         rln_dir = self._job_dir.relion_project_dir
-        paths = [rln_dir / p for p in ts.micrograph_name]
-        tilt_angles = ts.nominal_stage_tilt_angle
-        order = np.argsort(tilt_angles)
-        paths = [paths[i] for i in order]
+        paths = ts.ts_paths_sorted(rln_dir)
         ts_view = ArrayFilteredView.from_mrcs(paths)
         with mrcfile.open(paths[0], header_only=True) as mrc:
             image_scale = mrc.voxel_size.x

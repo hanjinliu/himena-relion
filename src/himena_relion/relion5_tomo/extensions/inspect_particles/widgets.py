@@ -62,7 +62,6 @@ class QInspectViewer(QtW.QWidget):
             self._worker.quit()
             self._worker = None
         self._worker = self._read_items(texts[0])
-        self._worker.yielded.connect(self._on_yielded)
         self._worker.start()
 
     @thread_worker

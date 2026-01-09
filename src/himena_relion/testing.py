@@ -30,3 +30,7 @@ class JobWidgetTester(Generic[_T]):
 
     def make_random_mrc(self, shape: tuple[int, ...], dtype=np.float32) -> np.ndarray:
         return self._rng.normal(loc=1.0, scale=1.0, size=shape).astype(dtype)
+
+    def mkdir(self, name: str):
+        fp = self.job_dir.path / name
+        fp.mkdir(parents=True, exist_ok=True)

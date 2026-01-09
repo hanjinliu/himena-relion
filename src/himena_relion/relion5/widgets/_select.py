@@ -4,6 +4,7 @@ import logging
 import mrcfile
 import numpy as np
 from qtpy import QtGui
+from superqt.utils import thread_worker
 from starfile_rs import read_star, read_star_block
 
 from himena_relion._widgets import QJobScrollArea, register_job, QImageViewTextEdit
@@ -29,6 +30,7 @@ class QSelectJobBase(QJobScrollArea):
         self._worker = self._read_items(job_dir)
         self._start_worker()
 
+    @thread_worker
     def _read_items(self, job_dir: _job_dir.SelectInteractiveJobDirectory):
         for html in self.insert_html(job_dir):
             yield self._cb_html_requested, html

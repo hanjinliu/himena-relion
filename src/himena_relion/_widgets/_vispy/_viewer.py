@@ -167,6 +167,14 @@ class _Vispy3DBase:
     def contrast_limits(self, clim: tuple[float, float]):
         self._volume_visual.clim = clim
 
+    def set_rendering_mode(self, mode: str):
+        if mode == "Surface":
+            self._volume_visual.method = "iso"
+        elif mode == "Maximum":
+            self._volume_visual.method = "mip"
+        else:
+            raise ValueError("mode must be 'Surface' or 'Maximum'.")
+
     def set_iso_threshold(self, value):
         _min, _max = self._lims
         self._volume_visual.threshold = (value - _min) / (_max - _min)

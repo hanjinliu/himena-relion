@@ -1,11 +1,11 @@
 from __future__ import annotations
 from concurrent.futures import Future, ThreadPoolExecutor
-from typing import NamedTuple
+from typing import Literal, NamedTuple
 from himena import StandardType, WidgetDataModel
 import numpy as np
 from numpy.typing import NDArray
 from qtpy import QtWidgets as QtW, QtCore
-from superqt import ensure_main_thread, QLabeledDoubleSlider, QLabeledDoubleRangeSlider
+from superqt import ensure_main_thread
 from vispy.color import ColorArray
 from scipy.spatial.transform import Rotation
 from himena.qt._qlineedit import QIntLineEdit, QDoubleLineEdit
@@ -60,7 +60,8 @@ class Q2DViewer(QViewer):
         self._dims_slider.setMinimumWidth(150)
         self._histogram_view = QHistogramView()
         self._histogram_view.clim_changed.connect(self._on_clim_changed)
-        self._histogram_view.setFixedHeight(36)
+        self._histogram_view.setFixedHeight(32)
+        self._histogram_view.setValueFormat(".2f", always_show=True)
         self._auto_contrast_btn = QAutoContrastButton(self._auto_contrast)
         self._auto_contrast_btn.qminmax = (0.0001, 0.9999)
         self._zpos_box = QIntWidget("", label_width=0)
@@ -114,6 +115,9 @@ class Q2DViewer(QViewer):
         if not had_image:
             self._auto_contrast(force_update_view_range=True)
             self.auto_fit()
+            m0, m1 = self._histogram_view._minmax
+            fmt = _format_for_minmax(m0, m1)
+            self._histogram_view.setValueFormat(fmt, always_show=True)
 
     def set_points(
         self,
@@ -273,20 +277,34 @@ class Q3DViewer(Q3DViewerBase):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._iso_slider = QLabeledDoubleSlider(QtCore.Qt.Orientation.Horizontal)
-        self._iso_slider.valueChanged.connect(self._on_iso_changed)
-        self._auto_threshold_btn = QtW.QPushButton("Auto")
-        self._auto_threshold_btn.setFixedWidth(40)
-        self._auto_threshold_btn.clicked.connect(lambda: self.auto_threshold())
+        self._rendering = QtW.QComboBox()
+        self._rendering.addItems(["Surface", "Maximum"])
+        self._rendering.setCurrentIndex(0)
+        self._rendering.currentTextChanged.connect(self.set_rendering_mode)
+        self._hist_view = QHistogramView(mode="thresh")
+        self._hist_view.set_hist_scale("log")
+        self._hist_view.setFixedHeight(32)
+        self._hist_view.setValueFormat(".2f", always_show=True)
+        self._hist_view.threshold_changed.connect(self._on_iso_changed)
+        self._hist_view.clim_changed.connect(self._on_clim_changed)
+        self._auto_thresh_btn = QtW.QPushButton("Auto")
+        self._auto_thresh_btn.setFixedWidth(40)
+        self._auto_thresh_btn.clicked.connect(lambda: self.auto_threshold())
+        self._auto_thresh_btn.setToolTip("Automatically set the iso-surface threshold")
         self._has_image = False
-        dim_slider = labeled("Threshold", self._iso_slider, self._auto_threshold_btn)
-        dim_slider.setMaximumWidth(400)
-        dim_slider.setMinimumWidth(300)
+        _thresh = QtW.QWidget()
+        _thresh_layout = QtW.QHBoxLayout(_thresh)
+        _thresh_layout.setContentsMargins(0, 0, 0, 0)
+        _thresh_layout.addWidget(self._rendering)
+        _thresh_layout.addWidget(self._hist_view)
+        _thresh_layout.addWidget(self._auto_thresh_btn)
+        _thresh.setMaximumWidth(400)
+        _thresh.setMinimumWidth(300)
 
         layout = QtW.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self._canvas.native)
-        layout.addWidget(dim_slider)
+        layout.addWidget(_thresh)
 
     @property
     def has_image(self) -> bool:
@@ -296,28 +314,45 @@ class Q3DViewer(Q3DViewerBase):
         """Set the 3D image to be displayed."""
         had_image = self.has_image
         if image is None:
-            self._canvas.image = np.zeros((2, 2, 2))
+            self._canvas.image = image = np.zeros((2, 2, 2))
             self._canvas.image_visual.visible = False
             self._has_image = False
         else:
             self._canvas.image = image
             self._canvas.image_visual.visible = True
             self._has_image = True
+        view_min, view_max = self._canvas._lims
         if not had_image:
             self.auto_threshold(update_now=False)
             self.auto_fit(update_now=False)
+            th_min, th_max = view_min, view_max
         else:
-            th_min, th_max = self._canvas._lims
-            cur_th = self._iso_slider.value()
-            if cur_th < th_min or cur_th > th_max:
-                self._iso_slider.setValue((th_min + th_max) / 2)
-            self._iso_slider.setRange(th_min, th_max)
-            prec = np.log10(th_max - th_min + 1e-8)
-            n_decimals = max(0, -int(np.floor(prec)) + 2)
-            self._iso_slider.setDecimals(n_decimals)
-        self._canvas.set_iso_threshold(self._iso_slider.value())
+            th_min, th_max = image.min(), image.max()
+            cur_th = self._hist_view.threshold()
+            if cur_th < view_min or cur_th > view_max:
+                self._hist_view.set_threshold((view_min + view_max) / 2)
+        fmt = _format_for_minmax(th_min, th_max)
+        self._hist_view.setValueFormat(fmt, always_show=True)
+
+        if self._has_image:
+            self._hist_view.set_view_range(view_min, view_max)
+
+        self._hist_view.set_hist_for_array(image, (view_min, view_max))
+        self._hist_view.set_minmax((th_min, th_max))
+
+        self._canvas.set_iso_threshold(self._hist_view.threshold())
         if update_now:
             self._canvas.update_canvas()
+
+    def set_rendering_mode(self, mode: Literal["Surface", "Maximum"]):
+        """Set the rendering mode of the 3D viewer."""
+        if mode not in ["Surface", "Maximum"]:
+            raise ValueError("mode must be 'Surface' or 'Maximum'.")
+        if self._rendering.currentText() != mode:
+            self._rendering.setCurrentText(mode)
+        self._canvas.set_rendering_mode(mode)
+        self._hist_view.set_mode("thresh" if mode == "Surface" else "clim")
+        self._canvas.update_canvas()
 
     def auto_threshold(self, thresh: float | None = None, update_now: bool = True):
         """Automatically set the threshold based on the image data."""
@@ -325,8 +360,8 @@ class Q3DViewer(Q3DViewerBase):
         if self._canvas.image_visual.visible:
             if thresh is None:
                 thresh = _utils.threshold_yen(_utils.bin_image(img, 4))
-            self._iso_slider.setValue(thresh)
-            self._iso_slider.setRange(*self._canvas._lims)
+            self._hist_view.set_threshold(thresh)
+            self._hist_view.set_minmax(self._canvas._lims)
         if update_now:
             self._canvas.update_canvas()
 
@@ -341,6 +376,10 @@ class Q3DViewer(Q3DViewerBase):
 
     def _on_iso_changed(self, value: float):
         self._canvas.set_iso_threshold(value)
+        self._canvas.update_canvas()
+
+    def _on_clim_changed(self, clim: tuple[float, float]):
+        self._canvas.contrast_limits = clim
         self._canvas.update_canvas()
 
     @validate_protocol
@@ -367,20 +406,26 @@ class Q3DViewer(Q3DViewerBase):
 
 
 class Q3DLocalResViewer(Q3DViewerBase):
+    """A 3D viewer for displaying local resolution maps with iso-surface."""
+
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._iso_slider = QLabeledDoubleSlider(QtCore.Qt.Orientation.Horizontal)
-        self._iso_slider.valueChanged.connect(self._on_iso_changed)
+        self._iso_slider = QHistogramView(mode="thresh")
+        self._iso_slider.setFixedHeight(32)
+        self._iso_slider.threshold_changed.connect(self._on_iso_changed)
+        self._iso_slider.set_hist_scale("log")
         self._auto_threshold_btn = QtW.QPushButton("Auto")
         self._auto_threshold_btn.setFixedWidth(40)
         self._auto_threshold_btn.clicked.connect(lambda: self.auto_threshold())
-        self._clim_slider = QLabeledDoubleRangeSlider(QtCore.Qt.Orientation.Horizontal)
-        self._clim_slider.valueChanged.connect(self._on_clim_changed)
+        self._clim_slider = QHistogramView(mode="clim")
+        self._clim_slider.setFixedHeight(32)
+        self._clim_slider.clim_changed.connect(self._on_clim_changed)
+
         self._surface = IsoSurface(parent=self._canvas._viewbox.scene)
-        dim_slider = labeled("Threshold", self._iso_slider, self._auto_threshold_btn)
-        dim_slider.setMaximumWidth(400)
-        dim_slider.setMinimumWidth(300)
-        clim_slider = labeled("Color", self._clim_slider)
+        _thresh = labeled("Threshold", self._iso_slider, self._auto_threshold_btn)
+        _thresh.setMaximumWidth(400)
+        _thresh.setMinimumWidth(300)
+        clim_slider = labeled("Resolution (A)", self._clim_slider)
         clim_slider.setMaximumWidth(400)
         clim_slider.setMinimumWidth(300)
         self._shading = QtW.QComboBox()
@@ -399,9 +444,11 @@ class Q3DLocalResViewer(Q3DViewerBase):
         layout = QtW.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self._canvas.native)
-        layout.addWidget(dim_slider)
+        layout.addWidget(_thresh)
         layout.addWidget(clim_slider)
         layout.addWidget(shading_widget)
+
+        self._iso_slider.setValueFormat(".2f", always_show=True)
 
         # mesh lighting
         self._canvas.camera.changed.connect(self._on_camera_change)
@@ -426,8 +473,8 @@ class Q3DLocalResViewer(Q3DViewerBase):
                 else:
                     sample_data = img
                 thresh = _utils.threshold_yen(sample_data)
-            self._iso_slider.setValue(thresh)
-            self._iso_slider.setRange(*self._canvas._lims)
+            self._iso_slider.set_threshold(thresh)
+            self._iso_slider.set_minmax(self._canvas._lims)
         if update_now:
             self._canvas.update_canvas()
 
@@ -453,21 +500,31 @@ class Q3DLocalResViewer(Q3DViewerBase):
         else:
             mask_sl = mask
         image_masked = image[mask_sl]
-        min0, max0 = np.min(image_masked), np.max(image_masked)
-        self._iso_slider.setRange(min0, max0)
-        self._iso_slider.setValue((min0 + max0) / 2)
+        im_min0, im_max0 = np.min(image_masked), np.max(image_masked)
+        self._iso_slider.set_minmax((im_min0, im_max0))
+        self._iso_slider.set_threshold((im_min0 + im_max0) / 2)
+        fmt = _format_for_minmax(im_min0, im_max0)
+        self._iso_slider.setValueFormat(fmt, always_show=True)
+
         locres_masked = locres[mask_sl]
         locres_masked = locres_masked[locres_masked > 0.001]
-        min0, max0 = np.min(locres_masked), np.max(locres_masked)
-        self._clim_slider.setRange(min0, max0)
         self._surface.set_data(image, mask, clim=None, color_array=locres)
         self._surface.init_surface()
         self._clim_slider.blockSignals(True)
         try:
-            self._clim_slider.setValue(self._surface.clim)
+            self._clim_slider.set_clim(self._surface.clim)
         finally:
             self._clim_slider.blockSignals(False)
         self._on_shading_changed(self._shading.currentText())
+        self._iso_slider.set_hist_for_array(image, (im_min0, im_max0))
+        self._iso_slider.set_view_range(im_min0, im_max0)
+
+        min0, max0 = np.min(locres_masked), np.max(locres_masked)
+        self._clim_slider.set_minmax((min0, max0))
+        self._clim_slider.set_hist_for_array(locres, (min0, max0))
+        self._clim_slider.set_view_range(min0, max0)
+        self._clim_slider.setValueFormat(".2f", always_show=True)
+
         if update_now:
             self._canvas.update_canvas()
 
@@ -545,3 +602,9 @@ def _norm_color(color, num: int) -> NDArray[np.float32]:
             raise ValueError("Color array length does not match number of points.")
         carr = carr.rgba
     return carr.astype(np.float32, copy=False)
+
+
+def _format_for_minmax(m0, m1):
+    prec = np.log10(m1 - m0 + 1e-8)
+    n_decimals = max(0, -int(np.floor(prec)) + 3)
+    return f".{n_decimals}f"

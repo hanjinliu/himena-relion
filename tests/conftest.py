@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import TYPE_CHECKING, Callable, Iterator
 from pytest import fixture
+from qtpy.QtWidgets import QApplication
 import gc
 
 if TYPE_CHECKING:
@@ -31,6 +32,8 @@ def make_job_directory(tmpdir) -> "Iterator[Callable[[str], JobDirectory]]":
 
     yield job_directory_factory
 
+    for _ in range(10):
+        QApplication.processEvents()
     gc.collect()
 
 @fixture(scope="function")

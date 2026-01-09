@@ -114,6 +114,3 @@ def test_motioncor_tomo_widget(
     QApplication.processEvents()
     tester.widget._ts_list.setCurrentCell(2, 0)
     QApplication.processEvents()
-
-    for _ in range(10):
-        QApplication.processEvents()

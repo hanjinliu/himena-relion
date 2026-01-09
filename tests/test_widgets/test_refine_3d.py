@@ -26,7 +26,6 @@ def test_refine3d_widget(
     tester = JobWidgetTester(QRefine3DViewer(job_dir), job_dir)
     qtbot.addWidget(tester.widget)
     assert not tester.widget._viewer.has_image
-    tester.widget.show()
 
     tester.write_text(
         "run_it000_data.star",
@@ -66,6 +65,3 @@ def test_refine3d_widget(
     QApplication.processEvents()
     tester.widget._iter_choice.setValue(1)
     QApplication.processEvents()
-
-    for _ in range(10):
-        QApplication.processEvents()

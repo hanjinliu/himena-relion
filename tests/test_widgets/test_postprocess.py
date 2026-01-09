@@ -1,5 +1,4 @@
 from typing import Callable
-from qtpy.QtWidgets import QApplication
 from pathlib import Path
 from himena_relion._job_dir import JobDirectory
 from himena_relion.relion5.widgets._postprocess import QPostProcessViewer
@@ -21,9 +20,6 @@ def test_postprocess_widget(
     tester.write_text("postprocess.star", POSTPROCESS_STAR)
     tester.widget._use_mask.setChecked(True)
     tester.widget._use_mask.setChecked(False)
-    for _ in range(10):
-        QApplication.processEvents()
-
 
 POSTPROCESS_STAR = """
 # version 50001

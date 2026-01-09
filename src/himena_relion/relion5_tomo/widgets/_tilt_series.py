@@ -77,7 +77,11 @@ class QMotionCorrViewer(QJobScrollArea):
         if not ts_xx_star_path.exists():
             return
 
-        ts_view = read_tilt_seires(ts_xx_star_path, job_dir.relion_project_dir)
+        ts_view = ArrayFilteredView.from_mrcs(
+            TSModel.validate_file(ts_xx_star_path).ts_paths_sorted(
+                job_dir.relion_project_dir
+            )
+        )
         self._filter_widget.set_image_scale(ts_view.get_scale())
         self._viewer.set_array_view(ts_view.with_filter(self._filter_widget.apply))
 
@@ -155,10 +159,3 @@ def iter_tilt_series_excludetilt(self: _job_dir.JobDirectory):
     star = read_star(star_path).first().trust_loop().to_pandas()
     for _, row in star.iterrows():
         yield _job_dir.SelectedTiltSeriesInfo.from_series(row)
-
-
-def read_tilt_seires(path: Path, rln_dir: Path):
-    ts = TSModel.validate_file(path)
-    order = ts.nominal_stage_tilt_angle.argsort()
-    paths = [rln_dir / p for p in ts.micrograph_name]
-    return ArrayFilteredView.from_mrcs([paths[i] for i in order])

@@ -1,5 +1,4 @@
 from typing import Callable
-from qtpy.QtWidgets import QApplication
 from pathlib import Path
 from himena_relion._job_dir import JobDirectory
 from himena_relion.relion5_tomo.widgets._reconstruct import QReconstructViewer
@@ -21,6 +20,3 @@ def test_reconstruct_particle_widget(
     assert not tester.widget._viewer.has_image
     tester.write_random_mrc("merged.mrc", (32, 32, 32))
     assert tester.widget._viewer.has_image
-
-    for _ in range(10):
-        QApplication.processEvents()

@@ -1,3 +1,4 @@
+from pathlib import Path
 import starfile_rs.schema.pandas as schema
 
 
@@ -93,6 +94,11 @@ class TSModel(schema.LoopDataModel):
         "rlnMicrographName", default=None
     )
     ctf_image: schema.Series[str] = schema.Field("rlnCtfImage", default=None)
+
+    def ts_paths_sorted(self, rln_dir: Path) -> list[Path]:
+        order = self.nominal_stage_tilt_angle.argsort()
+        paths = [rln_dir / p for p in self.micrograph_name]
+        return [paths[i] for i in order]
 
 
 class TSAlignModel(schema.LoopDataModel):

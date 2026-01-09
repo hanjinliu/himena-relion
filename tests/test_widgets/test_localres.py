@@ -47,5 +47,3 @@ def test_localres_widget(
     assert tester.widget._viewer._surface._data is not None
 
     shutil.rmtree(prev_job)
-    for _ in range(10):
-        QApplication.processEvents()

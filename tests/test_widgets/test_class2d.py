@@ -30,6 +30,3 @@ def test_class2d(
     tester.widget._sort_by.setCurrentIndex(1)
     QApplication.processEvents()
     tester.widget._sort_by.setCurrentIndex(2)
-
-    for _ in range(10):
-        QApplication.processEvents()

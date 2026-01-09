@@ -96,7 +96,6 @@ class QRefine3DViewer(QJobScrollArea):
             map_out = map0 + map1
         else:
             map_out = None
-        print("****************", type(map_out))
         yield self._viewer.set_image, map_out
         df_fsc, groups = res.model_dataframe(class_id)
         yield self._set_fsc, df_fsc

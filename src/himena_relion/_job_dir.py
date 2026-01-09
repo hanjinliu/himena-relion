@@ -416,13 +416,6 @@ class CtfCorrectedTiltSeriesInfo(CorrectedTiltSeriesInfo):
         )
         return out
 
-    def read_ctf_series(self, rln_dir: Path) -> ArrayFilteredView:
-        """Read the tilt series from the file."""
-        ts = self._ts_model(rln_dir)
-        order = ts.nominal_stage_tilt_angle.argsort()
-        paths = [rln_dir / p for p in ts.ctf_image]
-        return ArrayFilteredView.from_mrcs([paths[i] for i in order])
-
 
 @dataclass
 class SelectedTiltSeriesInfo(CorrectedTiltSeriesInfo):
@@ -454,65 +447,6 @@ class AlignedTiltSeriesInfo(SelectedTiltSeriesInfo):
         out.imod_residual_error_stddev = series.get("rlnImodResidualErrorStddev", -1.0)
         out.imod_leave_out_error = series.get("rlnImodLeaveOutError", -1.0)
         return out
-
-
-class AlignTiltSeriesJobDirectory(HasTiltSeriesJobDirectory):
-    """Class for handling align tilt series job directories in RELION."""
-
-    _job_type = "relion.aligntiltseries"
-
-    def aligned_tilt_series_star(self) -> Path:
-        """Return the path to the aligned tilt series star file."""
-        return self.path / "aligned_tilt_series.star"
-
-    def iter_aligned_tilt_series(self) -> Iterator[AlignedTiltSeriesInfo]:
-        """Iterate over all aligned tilt series info."""
-        fp = self.aligned_tilt_series_star()
-        star = read_star(fp).first().trust_loop().to_pandas()
-        for _, row in star.iterrows():
-            yield AlignedTiltSeriesInfo.from_series(row)
-
-    def xf_file(self, tomoname: str) -> Path:
-        """Return the path to the .xf file for a given tomogram name."""
-        return self.path / "external" / tomoname / f"{tomoname}.xf"
-
-    def fid_file(self, tomoname: str) -> Path:
-        """Return the path to the .fid file for a given tomogram name."""
-        # this is the mod file of tracked fiducials
-        return self.path / "external" / tomoname / f"{tomoname}.fid"
-
-    def preali_file(self, tomoname: str) -> Path:
-        """Return the path to the .preali file for a given tomogram name."""
-        return self.path / "external" / tomoname / f"{tomoname}_preali.mrc"
-
-    def image_shape_params(self, tomoname: str) -> tuple[int, int, int] | None:
-        path_prenewst = self.path / "external" / tomoname / "prenewst.com"
-        path_tilt = self.path / "external" / tomoname / "tilt.com"
-        nbin_fid = ny = nx = -1
-        with path_prenewst.open("r") as f:
-            for line in f:
-                if line.startswith("BinByFactor	"):
-                    nbin_fid = int(line.split()[1])
-                    break
-
-        with path_tilt.open("r") as f:
-            # FULLIMAGE 3838 3710
-            for line in f:
-                if line.startswith("FULLIMAGE "):
-                    nx, ny = map(int, line.split()[1:3])
-        if nbin_fid > 0 and ny > 0 and nx > 0:
-            return (nbin_fid, ny, nx)
-        return None
-
-    def aligned_tilt_series(self, tomoname: str) -> AlignedTiltSeriesInfo:
-        """Return the first corrected tilt series info."""
-        fp = self.aligned_tilt_series_star()
-        star = read_star(fp).first().trust_loop().to_pandas()
-        star_filt = star[star["rlnTomoName"] == tomoname]
-        if len(star_filt) == 0:
-            raise ValueError(f"Tilt series {tomoname} not found in star file.")
-        row = star_filt.iloc[0]
-        return AlignedTiltSeriesInfo.from_series(row)
 
 
 @dataclass

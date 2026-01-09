@@ -72,8 +72,6 @@ class QTomogramViewer(QJobScrollArea):
     def _on_tomo_changed(self, texts: tuple[str, ...]):
         """Update the viewer when the selected tomogram changes."""
         job_dir = self._job_dir
-        if job_dir is None:
-            return
         text = texts[0]
         if self._is_split:
             mrc_path1 = job_dir.path / "tomograms" / f"rec_{text}_half1.mrc"
@@ -130,8 +128,6 @@ class QDenoiseTomogramViewer(QJobScrollArea):
         """Update the viewer when the selected tomogram changes."""
         job_dir = self._job_dir
         text = texts[0]
-        if job_dir is None:
-            return
         mrc_path = job_dir.path / "tomograms" / f"rec_{text}.mrc"
         if mrc_path.exists():
             tomo_view = ArrayFilteredView.from_mrc(mrc_path)

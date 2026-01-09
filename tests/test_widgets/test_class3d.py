@@ -85,6 +85,3 @@ def test_class3d_widget(
     tester.widget._list_widget.setCurrentCell(1, 0)
     QApplication.processEvents()
     assert tester.widget._list_widget.rowCount() == 3
-
-    for _ in range(10):
-        QApplication.processEvents()
