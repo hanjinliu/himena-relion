@@ -21,10 +21,10 @@ def make_job_directory(tmpdir) -> "Iterator[Callable[[str], JobDirectory]]":
     from himena_relion._job_dir import JobDirectory
 
     project_dir = Path(tmpdir)
-    job_dir_path = project_dir / "job025"
-    job_dir_path.mkdir()
 
-    def job_directory_factory(job_star_text: str) -> "JobDirectory":
+    def job_directory_factory(job_star_text: str, job_type: str = "Job") -> "JobDirectory":
+        job_dir_path = project_dir / job_type / "job025"
+        job_dir_path.mkdir(parents=True)
         star_path = job_dir_path / "job.star"
         star_path.write_text(job_star_text)
         return JobDirectory.from_job_star(star_path)

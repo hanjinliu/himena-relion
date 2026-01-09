@@ -10,7 +10,7 @@ from himena_relion.testing import JobWidgetTester
 
 def test_localres_widget(
     qtbot,
-    make_job_directory: Callable[[str], JobDirectory],
+    make_job_directory: Callable[[str, str], JobDirectory],
     jobs_dir_spa,
 ):
     # LocalRes widget requires previous job to work properly
@@ -24,7 +24,7 @@ def test_localres_widget(
         lines.append(line)
     star_text = "\n".join(lines)
 
-    job_dir = make_job_directory(star_text)
+    job_dir = make_job_directory(star_text, "LocalRes")
 
     prev_job = job_dir.path.parent.parent.joinpath("Refine3D", "job100")
     prev_job.mkdir(parents=True)

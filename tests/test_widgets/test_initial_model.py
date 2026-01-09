@@ -17,11 +17,11 @@ _BILD_TEXT = """
 
 def test_initial_model_widget(
     qtbot,
-    make_job_directory: Callable[[str], JobDirectory],
+    make_job_directory: Callable[[str, str], JobDirectory],
     jobs_dir_spa,
 ):
     star_text = Path(jobs_dir_spa / "InitialModel" / "job001" / "job.star").read_text()
-    job_dir = make_job_directory(star_text)
+    job_dir = make_job_directory(star_text, "InitialModel")
 
     tester = JobWidgetTester(QInitialModelViewer(job_dir), job_dir)
     qtbot.addWidget(tester.widget)

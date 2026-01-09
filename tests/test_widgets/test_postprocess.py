@@ -7,11 +7,11 @@ from himena_relion.testing import JobWidgetTester
 
 def test_postprocess_widget(
     qtbot,
-    make_job_directory: Callable[[str], JobDirectory],
+    make_job_directory: Callable[[str, str], JobDirectory],
     jobs_dir_spa,
 ):
     star_text = Path(jobs_dir_spa / "PostProcess" / "job001" / "job.star").read_text()
-    job_dir = make_job_directory(star_text)
+    job_dir = make_job_directory(star_text, "PostProcess")
 
     tester = JobWidgetTester(QPostProcessViewer(job_dir), job_dir)
     qtbot.addWidget(tester.widget)

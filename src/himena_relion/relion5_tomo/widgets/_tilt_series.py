@@ -3,6 +3,7 @@ from pathlib import Path
 import logging
 from qtpy import QtWidgets as QtW
 from starfile_rs import read_star
+from himena_relion._image_readers._array import ArrayFilteredView
 from himena_relion._widgets import (
     QJobScrollArea,
     Q2DViewer,
@@ -11,6 +12,7 @@ from himena_relion._widgets import (
     QMicrographListWidget,
 )
 from himena_relion import _job_dir
+from himena_relion.schemas import TSModel
 
 _LOGGER = logging.getLogger(__name__)
 TILT_VIEW_MIN_HEIGHT = 480
@@ -38,7 +40,7 @@ class QMotionCorrViewer(QJobScrollArea):
     def on_job_updated(self, job_dir: _job_dir.JobDirectory, path: str):
         """Handle changes to the job directory."""
         fp = Path(path)
-        if fp.name.startswith("RELION_JOB_") or fp.suffix == ".mrc":
+        if fp.name.startswith("RELION_JOB_") or fp.suffix == ".star":
             self._process_update()
             _LOGGER.debug("%s Updated", job_dir.job_number)
 
@@ -58,10 +60,10 @@ class QMotionCorrViewer(QJobScrollArea):
         self._viewer.auto_fit()
 
     def _process_update(self):
-        choices = [
-            (p.tomo_tilt_series_star_file.stem,)
-            for p in iter_tilt_series_mcor(self._job_dir)
-        ]
+        ts_dir = self._job_dir.path / "tilt_series"
+        choices = []
+        for p in ts_dir.glob("*.star"):
+            choices.append((p.stem,))
         choices.sort(key=lambda x: x[0])
         self._ts_list.set_choices(choices)
         if len(choices) == 0:
@@ -71,12 +73,11 @@ class QMotionCorrViewer(QJobScrollArea):
         """Update the viewer when the selected tomogram changes."""
         job_dir = self._job_dir
         text = texts[0]
-        for info in iter_tilt_series_mcor(job_dir):
-            if info.tomo_tilt_series_star_file.stem == text:
-                break
-        else:
+        ts_xx_star_path = job_dir.path / "tilt_series" / f"{text}.star"
+        if not ts_xx_star_path.exists():
             return
-        ts_view = info.read_tilt_series(job_dir.relion_project_dir)
+
+        ts_view = read_tilt_seires(ts_xx_star_path, job_dir.relion_project_dir)
         self._filter_widget.set_image_scale(ts_view.get_scale())
         self._viewer.set_array_view(ts_view.with_filter(self._filter_widget.apply))
 
@@ -146,16 +147,6 @@ class QExcludeTiltViewer(QJobScrollArea):
         self._viewer.set_array_view(ts_view.with_filter(self._filter_widget.apply))
 
 
-def iter_tilt_series_mcor(self: _job_dir.JobDirectory):
-    """Iterate over all motion correction info (Tomo)."""
-    star_path = self.path / "corrected_tilt_series.star"
-    if not star_path.exists():
-        return
-    star = read_star(star_path).first().trust_loop().to_pandas()
-    for _, row in star.iterrows():
-        yield _job_dir.CorrectedTiltSeriesInfo.from_series(row)
-
-
 def iter_tilt_series_excludetilt(self: _job_dir.JobDirectory):
     """Iterate over all excluded tilt series info."""
     star_path = self.path / "selected_tilt_series.star"
@@ -164,3 +155,10 @@ def iter_tilt_series_excludetilt(self: _job_dir.JobDirectory):
     star = read_star(star_path).first().trust_loop().to_pandas()
     for _, row in star.iterrows():
         yield _job_dir.SelectedTiltSeriesInfo.from_series(row)
+
+
+def read_tilt_seires(path: Path, rln_dir: Path):
+    ts = TSModel.validate_file(path)
+    order = ts.nominal_stage_tilt_angle.argsort()
+    paths = [rln_dir / p for p in ts.micrograph_name]
+    return ArrayFilteredView.from_mrcs([paths[i] for i in order])

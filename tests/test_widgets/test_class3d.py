@@ -17,15 +17,16 @@ _BILD_TEXT = """
 
 def test_class3d_widget(
     qtbot,
-    make_job_directory: Callable[[str], JobDirectory],
+    make_job_directory: Callable[[str, str], JobDirectory],
     jobs_dir_spa,
 ):
     star_text = Path(jobs_dir_spa / "Class3D" / "job001" / "job.star").read_text()
-    job_dir = make_job_directory(star_text)
+    job_dir = make_job_directory(star_text, "Class3D")
 
     tester = JobWidgetTester(QClass3DViewer(job_dir), job_dir)
     qtbot.addWidget(tester.widget)
     assert not tester.widget._viewer.has_image
+    tester.widget.show()
 
     tester.write_text(
         "run_it000_data.star",

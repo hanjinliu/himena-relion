@@ -8,11 +8,11 @@ from himena_relion.testing import JobWidgetTester
 
 def test_extract_spa(
     qtbot,
-    make_job_directory: Callable[[str], JobDirectory],
+    make_job_directory: Callable[[str, str], JobDirectory],
     jobs_dir_spa,
 ):
     star_text = Path(jobs_dir_spa / "Extract" / "job001" / "job.star").read_text()
-    job_dir = make_job_directory(star_text)
+    job_dir = make_job_directory(star_text, "Extract")
 
     tester = JobWidgetTester(QExtractViewer(job_dir), job_dir)
     qtbot.addWidget(tester.widget)
