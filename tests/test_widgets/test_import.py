@@ -142,7 +142,7 @@ def test_import_tomo_widget(
     tester.write_text("tilt_series.star", model.to_string())
 
 def _random_movie(tester: JobWidgetTester):
-    return tester._rng.integers(-100, 100, (4, 6)).astype(np.int8)
+    return tester._rng.integers(-100, 100, (32, 48)).astype(np.int8)
 
 def _random_micrograph(tester: JobWidgetTester):
     return tester._rng.random((32, 32)).astype(np.float32)

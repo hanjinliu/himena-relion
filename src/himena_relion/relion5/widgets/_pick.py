@@ -85,12 +85,10 @@ class QManualPickViewer(QJobScrollArea):
         self._update_points()
 
     def _reload_coords(self, path: str | Path):
-        if (
-            coords_path := self._job_dir.resolve_path(path)
-        ).exists() and coords_path.suffix == ".star":
-            self._coords = CoordsModel.validate_file(coords_path)
-        else:
-            self._coords = None
+        self._coords = None
+        if (coords_path := self._job_dir.resolve_path(path)).exists():
+            if coords_path.suffix == ".star":
+                self._coords = CoordsModel.validate_file(coords_path)
 
     def _clear_points(self, *_):
         """Clear all the points before reloading."""

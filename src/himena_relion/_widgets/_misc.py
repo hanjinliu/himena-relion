@@ -63,7 +63,7 @@ class QMicrographListWidget(QtW.QTableWidget):
                 self.setItem(i, j, QtW.QTableWidgetItem(str(name)))
             choices_0.append(entry[0])
         if current_text and current_text in choices_0:
-            ith = current_text.index(current_text)
+            ith = choices_0.index(current_text)
             self.blockSignals(True)
             try:
                 self.setCurrentCell(ith, 0)
