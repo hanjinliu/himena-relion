@@ -64,6 +64,7 @@ class QTomogramViewer(QJobScrollArea):
                     items.append((p.stem[4:-6], "half tomograms"))
             else:
                 items.append((p.stem[4:], "full tomogram"))
+        items.sort(key=lambda x: x[0])
         self._tomo_list.set_choices(items)
         if len(items) == 0:
             self._viewer.clear()

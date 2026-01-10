@@ -134,7 +134,9 @@ class TSGroupModel(schema.LoopDataModel):
         "rlnMicrographOriginalPixelSize"
     )
     tomo_hand: schema.Series[int] = schema.Field("rlnTomoHand")
-    optics_group_name: schema.Series[str] = schema.Field("rlnOpticsGroupName")
+    optics_group_name: schema.Series[str] = schema.Field(
+        "rlnOpticsGroupName", default=None
+    )
 
 
 class TomogramsGroupModel(schema.LoopDataModel):

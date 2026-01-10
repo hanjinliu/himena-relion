@@ -57,13 +57,18 @@ class QImportTiltSeriesViewer(QJobScrollArea):
             return
 
         ts_group = TSGroupModel.validate_file(tilt_series_star_path)
-        choices = []
+        if ts_group.optics_group_name is None:
+            optics_group_name = ["--"] * len(ts_group.tomo_name)
+        else:
+            optics_group_name = ts_group.optics_group_name
+        choices: list[tuple[str, str, str]] = []
         for tomo_name, opt, pix in zip(
             ts_group.tomo_name,
-            ts_group.optics_group_name,
+            optics_group_name,
             ts_group.original_pixel_size,
         ):
             choices.append((tomo_name, opt, str(round(pix, 3))))
+        choices.sort(key=lambda x: x[0])
         self._ts_list.set_choices(choices)
 
     def _ts_choice_changed(self, texts: tuple[str, ...]):
