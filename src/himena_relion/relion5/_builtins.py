@@ -571,6 +571,22 @@ class AutoPickLogJob(_AutoPickJob):
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
+    @classmethod
+    def setup_widgets(cls, widgets: dict[str, ValueWidget]) -> None:
+        @widgets["do_pick_helical_segments"].changed.connect
+        def _on_do_pick_helical_segments_changed(value: bool):
+            for name in [
+                "helical_tube_outer_diameter",
+                "helical_tube_length_min",
+                "helical_tube_kappa_max",
+                "helical_nr_asu",
+                "helical_rise",
+                "do_amyloid",
+            ]:
+                widgets[name].enabled = value
+
+        _on_do_pick_helical_segments_changed(widgets["do_pick_helical_segments"].value)
+
 
 class AutoPickTemplate2DJob(_AutoPickJob):
     """Automatic particle picking using template matching."""

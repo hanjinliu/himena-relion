@@ -28,6 +28,14 @@ def import_tilt_series_viewer(job_dir: _job_dir.JobDirectory):
     return QImportTiltSeriesViewer(job_dir)
 
 
+def _is_import_micrographs(job_dir: _job_dir.JobDirectory) -> bool:
+    try:
+        is_import_mics = job_dir.get_job_param("images_are_motion_corrected")
+    except KeyError:
+        is_import_mics = "No"
+    return is_import_mics == "Yes"
+
+
 class QImportTiltSeriesViewer(QJobScrollArea):
     def __init__(self, job_dir: _job_dir.JobDirectory):
         super().__init__()
@@ -37,15 +45,18 @@ class QImportTiltSeriesViewer(QJobScrollArea):
         self._viewer.setMinimumHeight(420)
         self._filter_widget = Q2DFilterWidget(bin_default=8, lowpass_default=30)
         self._ts_list = QMicrographListWidget(
-            ["Movie Name", "Optics Group", "Pixel Size (A)"]
+            ["Movie Name", "Voltage", "Cs", "Pixel Size", "Optics Group", "Tomo Hand"]
         )
         self._ts_list.current_changed.connect(self._ts_choice_changed)
-        self._layout.addWidget(QtW.QLabel("<b>Imported tilt series</b>"))
+        self._layout.addWidget(
+            QtW.QLabel("<b>Imported tilt series (movie projection)</b>")
+        )
         self._layout.addWidget(self._ts_list)
         self._layout.addWidget(self._filter_widget)
         self._layout.addWidget(self._viewer)
         self._filter_widget.value_changed.connect(self._filter_param_changed)
         self._binsize_old = -1
+        self._is_micrograph = _is_import_micrographs(job_dir)
 
     def on_job_updated(self, job_dir: _job_dir.JobDirectory, path: str):
         """Handle changes to the job directory."""
@@ -61,17 +72,18 @@ class QImportTiltSeriesViewer(QJobScrollArea):
             return
 
         ts_group = TSGroupModel.validate_file(tilt_series_star_path)
-        if ts_group.optics_group_name is None:
-            optics_group_name = ["--"] * len(ts_group.tomo_name)
-        else:
-            optics_group_name = ts_group.optics_group_name
-        choices: list[tuple[str, str, str]] = []
-        for tomo_name, opt, pix in zip(
-            ts_group.tomo_name,
-            optics_group_name,
-            ts_group.original_pixel_size,
-        ):
-            choices.append((tomo_name, opt, str(round(pix, 3))))
+        choices: list[tuple[str, ...]] = []
+        for val in ts_group.zip():
+            choices.append(
+                (
+                    val.tomo_name,
+                    f"{val.voltage:.0f} kV",
+                    f"{val.cs} mm",
+                    f"{val.original_pixel_size:.3f} Å",
+                    val.optics_group_name,
+                    f"{int(val.tomo_hand)}",
+                )
+            )
         choices.sort(key=lambda x: x[0])
         self._ts_list.set_choices(choices)
 
@@ -86,9 +98,13 @@ class QImportTiltSeriesViewer(QJobScrollArea):
             self._viewer.clear()
             return
         ts_model = TSModel.validate_file(ts_path)
-        movie_paths = ts_model.ts_movie_paths_sorted()
         self.window_closed_callback()
-        self._worker = self._uncompress_and_read_image(movie_paths)
+        if self._is_micrograph:
+            paths = ts_model.ts_paths_sorted()
+            self._worker = self._read_micrographs(paths)
+        else:
+            paths = ts_model.ts_movie_paths_sorted()
+            self._worker = self._uncompress_and_read_movies(paths)
         self._start_worker()
 
     def _on_movie_loaded(self, movie_view: ArrayFilteredView | None):
@@ -101,7 +117,7 @@ class QImportTiltSeriesViewer(QJobScrollArea):
         self._viewer._auto_contrast()
 
     @thread_worker
-    def _uncompress_and_read_image(self, movie_paths: list[Path]):
+    def _uncompress_and_read_movies(self, movie_paths: list[Path]):
         """If the movie is LZW-TIFF, uncompress it, then read it."""
         if len(movie_paths) == 0:
             yield self._on_movie_loaded, None
@@ -109,6 +125,16 @@ class QImportTiltSeriesViewer(QJobScrollArea):
             yield self._on_movie_loaded, ArrayFilteredView.from_mrc_movies(movie_paths)
         else:
             yield self._on_movie_loaded, ArrayFilteredView.from_tif_movies(movie_paths)
+
+    @thread_worker
+    def _read_micrographs(self, mic_paths: list[Path]):
+        """Read motion-corrected micrographs."""
+        if len(mic_paths) == 0:
+            yield self._on_movie_loaded, None
+        elif Path(mic_paths[0]).suffix == ".mrc":
+            yield self._on_movie_loaded, ArrayFilteredView.from_mrcs(mic_paths)
+        else:
+            raise ValueError("Unsupported micrograph format.")
 
     def _filter_param_changed(self):
         """Handle changes to filter parameters."""

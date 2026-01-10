@@ -183,11 +183,16 @@ def iter_micrograph_and_coordinates(
     mic_model = MicrographsStarModel.validate_file(job_dir.resolve_path(mic.path))
     for path in mic_model.micrographs.mic_name:
         fp = Path(path)
-        stem = fp.stem
-        movie_dir = job_dir.path / "/".join(fp.parts[2:-1])
-        if (pickpath := movie_dir.joinpath(stem + "_autopick.star")).exists():
+        # If micrographs are output of MotionCorr, path is like
+        # "MotionCorr/job002/Movies/xxx.mrc". However, if micrographs are directly imported,
+        # path is like "micrographs/xxx.mrc".
+        parts = fp.parts
+        if parts[0] == "MotionCorr":
+            parts = parts[2:]
+        movie_dir = job_dir.path / "/".join(parts[:-1])
+        if (pickpath := movie_dir.joinpath(fp.stem + "_autopick.star")).exists():
             pick_star = job_dir.make_relative_path(pickpath).as_posix()
-        elif (pickpath := movie_dir.joinpath(stem + "_manualpick.star")).exists():
+        elif (pickpath := movie_dir.joinpath(fp.stem + "_manualpick.star")).exists():
             pick_star = job_dir.make_relative_path(pickpath).as_posix()
         else:
             pick_star = None

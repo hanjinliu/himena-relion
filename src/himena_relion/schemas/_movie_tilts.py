@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Iterator, NamedTuple
 import starfile_rs.schema.pandas as schema
 
 
@@ -97,14 +98,17 @@ class TSModel(schema.LoopDataModel):
     )
     ctf_image: schema.Series[str] = schema.Field("rlnCtfImage", default=None)
 
-    def ts_paths_sorted(self, rln_dir: Path) -> list[Path]:
+    def ts_paths_sorted(self, rln_dir: Path | None = None) -> list[str]:
         order = self.nominal_stage_tilt_angle.argsort()
-        paths = [rln_dir / p for p in self.micrograph_name]
+        if rln_dir is None:
+            paths = list(self.micrograph_name)
+        else:
+            paths = [str(rln_dir / p) for p in self.micrograph_name]
         return [paths[i] for i in order]
 
     def ts_movie_paths_sorted(self) -> list[str]:
         order = self.nominal_stage_tilt_angle.argsort()
-        paths = [p for p in self.movie_name]
+        paths = list(self.movie_name)
         return [paths[i] for i in order]
 
 
@@ -133,6 +137,31 @@ class TSGroupModel(schema.LoopDataModel):
     optics_group_name: schema.Series[str] = schema.Field(
         "rlnOpticsGroupName", default=None
     )
+
+    def zip(self) -> Iterator["TSMeta"]:
+        """Zip the fields into a list of tuples."""
+        for val in zip(
+            self.tomo_name,
+            self.voltage,
+            self.cs,
+            self.amplitude_contrast,
+            self.original_pixel_size,
+            self.tomo_hand,
+            self.optics_group_name
+            if self.optics_group_name is not None
+            else ["--"] * len(self.tomo_name),
+        ):
+            yield TSMeta(*val)
+
+
+class TSMeta(NamedTuple):
+    tomo_name: str
+    voltage: float
+    cs: float
+    amplitude_contrast: float
+    original_pixel_size: float
+    tomo_hand: int
+    optics_group_name: str
 
 
 class TomogramsGroupModel(schema.LoopDataModel):
