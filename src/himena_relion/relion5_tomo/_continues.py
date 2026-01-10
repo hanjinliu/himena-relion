@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from himena_relion._job_class import _RelionBuiltinContinue
+from himena_relion._job_class import _Relion5BuiltinContinue
 from himena_relion.relion5_tomo._builtins import (
     InitialModelTomoJob,
     MotionCorr2TomoJob,
@@ -12,7 +12,7 @@ from himena_relion.relion5_tomo._builtins import (
 from himena_relion import _annotated as _a
 
 
-class _MotionCorContinue(_RelionBuiltinContinue):
+class _MotionCorContinue(_Relion5BuiltinContinue):
     def run(
         self,
         # Running
@@ -32,7 +32,7 @@ class MotionCorrOwnContinue(_MotionCorContinue):
     original_class = MotionCorrOwnTomoJob
 
 
-class CtfEstimationContinue(_RelionBuiltinContinue):
+class CtfEstimationContinue(_Relion5BuiltinContinue):
     original_class = CtfEstimationTomoJob
 
     def run(
@@ -52,7 +52,7 @@ def _latest_optimiser_star(path: Path) -> str:
     return str(opt[-1]) if opt else ""
 
 
-class InitialModelTomoContinue(_RelionBuiltinContinue):
+class InitialModelTomoContinue(_Relion5BuiltinContinue):
     original_class = InitialModelTomoJob
 
     def run(
@@ -79,7 +79,7 @@ class InitialModelTomoContinue(_RelionBuiltinContinue):
         return {_latest_optimiser_star: "fn_cont"}
 
 
-class Class3DTomoContinue(_RelionBuiltinContinue):
+class Class3DTomoContinue(_Relion5BuiltinContinue):
     original_class = Class3DTomoJob
 
     def run(
@@ -106,7 +106,7 @@ class Class3DTomoContinue(_RelionBuiltinContinue):
         return {_latest_optimiser_star: "fn_cont"}
 
 
-class Refine3DTomoContinue(_RelionBuiltinContinue):
+class Refine3DTomoContinue(_Relion5BuiltinContinue):
     original_class = Refine3DTomoJob
 
     def run(

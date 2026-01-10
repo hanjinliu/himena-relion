@@ -106,7 +106,7 @@ class TSModel(schema.LoopDataModel):
         paths = [rln_dir / p for p in self.micrograph_name]
         return [paths[i] for i in order]
 
-    def ts_movie_paths_sorted(self) -> list[Path]:
+    def ts_movie_paths_sorted(self) -> list[str]:
         order = self.nominal_stage_tilt_angle.argsort()
         paths = [p for p in self.movie_name]
         return [paths[i] for i in order]

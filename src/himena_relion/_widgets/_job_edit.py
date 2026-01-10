@@ -13,7 +13,7 @@ from himena_relion._job_class import (
     RelionJob,
     RelionJobExecution,
     parse_string,
-    _RelionBuiltinContinue,
+    _Relion5BuiltinContinue,
 )
 from magicgui.widgets.bases import ValueWidget
 from magicgui.signature import MagicParameter
@@ -65,7 +65,7 @@ class QJobScheduler(QtW.QWidget):
         """Update the widget based on the job directory.
 
         This method does NOT update the parameters; call `set_parameters` after this."""
-        if issubclass(job_cls, _RelionBuiltinContinue):
+        if issubclass(job_cls, _Relion5BuiltinContinue):
             prefix = "Continue - "
         else:
             prefix = "Job: "
@@ -227,7 +227,7 @@ class ContinueMode(Mode):
         self.job_dir = job_dir
 
     def exec(self, widget: QJobScheduler):
-        if not issubclass(job_cls := widget._current_job_cls, _RelionBuiltinContinue):
+        if not issubclass(job_cls := widget._current_job_cls, _Relion5BuiltinContinue):
             raise RuntimeError(f"Cannot continue this job type {job_cls!r}.")
         params = widget.get_parameters()
         proc = job_cls(self.job_dir).continue_job(**params)

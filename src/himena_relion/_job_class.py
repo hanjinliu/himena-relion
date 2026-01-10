@@ -125,7 +125,7 @@ class RelionJob(ABC):
         if (
             cls.__name__.startswith("_")
             or cls.__name__ == "RelionExternalJob"
-            or issubclass(cls, _RelionBuiltinContinue)
+            or issubclass(cls, _Relion5BuiltinContinue)
         ):
             return
         command_id = cls.command_id()
@@ -222,7 +222,7 @@ class RelionJob(ABC):
         return kwargs
 
 
-class _RelionBuiltinJob(RelionJob):
+class _Relion5BuiltinJob(RelionJob):
     @classmethod
     def command_id(cls) -> str:
         return cls.type_label()
@@ -283,7 +283,7 @@ class _RelionBuiltinJob(RelionJob):
         return JobStarModel(
             job=JobStarModel.Job(
                 job_type_label=cls.type_label(),
-                job_is_continue=int(issubclass(cls, _RelionBuiltinContinue)),
+                job_is_continue=int(issubclass(cls, _Relion5BuiltinContinue)),
                 job_is_tomo=int(cls.job_is_tomo()),
             ),
             joboptions_values=JobStarModel.Options(
@@ -293,7 +293,7 @@ class _RelionBuiltinJob(RelionJob):
         )
 
 
-class _RelionBuiltinContinue(_RelionBuiltinJob):
+class _Relion5BuiltinContinue(_Relion5BuiltinJob):
     original_class: type[RelionJob]
 
     @classmethod

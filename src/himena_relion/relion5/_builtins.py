@@ -2,19 +2,25 @@ from pathlib import Path
 from typing import Any, Literal
 
 from magicgui.widgets.bases import ValueWidget
-from himena_relion._job_class import _RelionBuiltinJob, parse_string
+from himena_relion._job_class import _Relion5BuiltinJob, parse_string
 from himena_relion._job_dir import JobDirectory
 from himena_relion import _configs, _annotated as _a
 from himena_relion.schemas import OptimisationSetModel
 
 
-class _Relion5Job(_RelionBuiltinJob):
+class _Relion5Job(_Relion5BuiltinJob):
     @classmethod
     def command_palette_title_prefix(cls):
         return "RELION 5:"
 
 
-class _ImportMoviesJobBase(_Relion5Job):
+class _Relion5SpaJob(_Relion5BuiltinJob):
+    @classmethod
+    def command_palette_title_prefix(cls):
+        return "RELION 5 SPA:"
+
+
+class _ImportMoviesJobBase(_Relion5SpaJob):
     """Import movies into RELION."""
 
     @classmethod
@@ -155,8 +161,18 @@ class ImportOthersJob(_Relion5Job):
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
+    @classmethod
+    def setup_widgets(cls, widgets):
+        @widgets["node_type"].changed.connect
+        def _on_node_type_changed(value: str):
+            widgets["optics_group_particles"].enabled = value.startswith(
+                "Particle coordinates"
+            )
 
-class _MotionCorrJobBase(_Relion5Job):
+        _on_node_type_changed(widgets["node_type"].value)  # initialize
+
+
+class _MotionCorrJobBase(_Relion5SpaJob):
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
         kwargs["fn_motioncor2_exe"] = _configs.get_motioncor2_exe()
@@ -297,7 +313,7 @@ class MotionCorrOwnJob(_MotionCorrJobBase):
         _on_save_ps(widgets["do_save_ps"].value)  # initialize
 
 
-class CtfEstimationJob(_Relion5Job):
+class CtfEstimationJob(_Relion5SpaJob):
     """Contrast transfer function (CTF) estimation using CTFFIND4."""
 
     @classmethod
@@ -362,7 +378,7 @@ class CtfEstimationJob(_Relion5Job):
         widgets["phase_range"].enabled = False
 
 
-class ManualPickJob(_Relion5Job):
+class ManualPickJob(_Relion5SpaJob):
     """Manual particle picking."""
 
     @classmethod
@@ -428,7 +444,7 @@ class ManualPickJob(_Relion5Job):
         _on_filter_method_changed(widgets["filter_method"].value)  # initialize
 
 
-class _AutoPickJob(_Relion5Job):
+class _AutoPickJob(_Relion5SpaJob):
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
         kwargs = super().normalize_kwargs(**kwargs)
@@ -848,7 +864,7 @@ class AutoPickTopazPick(_AutoPickJob):
         raise NotImplementedError("This is a builtin job placeholder.")
 
 
-class ExtractJobBase(_Relion5Job):
+class ExtractJobBase(_Relion5SpaJob):
     @classmethod
     def normalize_kwargs(cls, **kwargs):
         kwargs = super().normalize_kwargs(**kwargs)
@@ -1013,7 +1029,7 @@ class ReExtractJob(ExtractJobBase):
         raise NotImplementedError("This is a builtin job placeholder.")
 
 
-class Class2DJob(_Relion5Job):
+class Class2DJob(_Relion5SpaJob):
     @classmethod
     def type_label(cls) -> str:
         return "relion.class2d"
@@ -1120,7 +1136,7 @@ class Class2DJob(_Relion5Job):
         _on_do_helix_changed(widgets["do_helix"].value)  # initialize
 
 
-class InitialModelJob(_Relion5Job):
+class InitialModelJob(_Relion5SpaJob):
     @classmethod
     def type_label(cls) -> str:
         return "relion.initialmodel"
@@ -1173,7 +1189,7 @@ class InitialModelJob(_Relion5Job):
         widgets["ctf_intact_first_peak"].enabled = widgets["do_ctf_correction"].value
 
 
-class _Class3DJobBase(_Relion5Job):
+class _Class3DJobBase(_Relion5SpaJob):
     """3D classification."""
 
     @classmethod
@@ -1431,7 +1447,7 @@ class Class3DJob(_Class3DJobBase):
         _on_do_local_ang_searches_changed(widgets["do_local_ang_searches"].value)
 
 
-class Refine3DJob(_Relion5Job):
+class Refine3DJob(_Relion5SpaJob):
     """3D auto-refinement of pre-aligned particles."""
 
     @classmethod
@@ -1865,7 +1881,7 @@ class MaskCreationJob(_Relion5Job):
         widgets["helical_z_percentage"].enabled = False
 
 
-class PostProcessJob(_Relion5Job):
+class PostProcessJob(_Relion5SpaJob):
     @classmethod
     def type_label(cls) -> str:
         return "relion.postprocess"
@@ -1918,7 +1934,7 @@ class PostProcessJob(_Relion5Job):
 FIT_CTF_CHOICES = Literal["No", "Per-micrograph", "Per-particle"]
 
 
-class _CtfRefineJobBase(_Relion5Job):
+class _CtfRefineJobBase(_Relion5SpaJob):
     _do_ctf_args = ("do_defocus", "do_astig", "do_bfactor", "do_phase")
 
     @classmethod
@@ -2206,7 +2222,7 @@ class LocalResolutionOwnJob(_LocalResolutionJobBase):
         raise NotImplementedError("This is a builtin job placeholder.")
 
 
-class ParticleSubtractionJob(_Relion5Job):
+class ParticleSubtractionJob(_Relion5SpaJob):
     """Particle subtraction based on a 3D mask and a reference map."""
 
     @classmethod

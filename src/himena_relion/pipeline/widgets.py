@@ -41,7 +41,7 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         self._scene = QtW.QGraphicsScene()
 
         self._flow_chart = QRelionPipelineFlowChartView(ui, self._scene)
-        self._finder = QSearchableComboBox(self)
+        self._finder = QPipelineFinder(self)
         self._footer = QJobPipelineViewer()
         self._watcher: GeneratorWorker | None = None
         layout = QtW.QVBoxLayout(self)
@@ -198,3 +198,16 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         # Notify newly failed jobs
         if failed := set(failed_new.keys()) - set(failed_old.keys()):
             ui.show_notification("\n".join(f"Job {job}/ failed." for job in failed))
+
+    def keyPressEvent(self, a0):
+        _Ctrl = QtCore.Qt.KeyboardModifier.ControlModifier
+        if a0.key() == QtCore.Qt.Key.Key_F and a0.modifiers() & _Ctrl:
+            self._finder.setFocus()
+            self._finder.set_selected()
+            return
+        return super().keyPressEvent(a0)
+
+
+class QPipelineFinder(QSearchableComboBox):
+    def set_selected(self):
+        return self.lineEdit().selectAll()

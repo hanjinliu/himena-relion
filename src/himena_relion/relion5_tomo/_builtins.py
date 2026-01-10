@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Annotated, Any
 
-from himena_relion._job_class import _RelionBuiltinJob, parse_string
+from himena_relion._job_class import _Relion5BuiltinJob, parse_string
 from himena_relion import _configs
 from himena_relion._pipeline import RelionPipeline
 from himena_relion import _annotated as _a
@@ -41,7 +41,7 @@ def norm_optim_inv(**kwargs):
     return kwargs
 
 
-class _Relion5TomoJob(_RelionBuiltinJob):
+class _Relion5TomoJob(_Relion5BuiltinJob):
     @classmethod
     def command_palette_title_prefix(cls):
         return "RELION 5 Tomo:"

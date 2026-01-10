@@ -19,7 +19,11 @@ _LOGGER = logging.getLogger(__name__)
 
 @register_job("relion.importtomo", is_tomo=True)
 def import_tilt_series_viewer(job_dir: _job_dir.JobDirectory):
-    if job_dir.get_job_param("do_coords") == "Yes":
+    try:
+        is_import_coords = job_dir.get_job_param("do_coords")
+    except KeyError:
+        is_import_coords = "No"
+    if is_import_coords == "Yes":
         return QJobScrollArea()
     return QImportTiltSeriesViewer(job_dir)
 
@@ -101,7 +105,7 @@ class QImportTiltSeriesViewer(QJobScrollArea):
         """If the movie is LZW-TIFF, uncompress it, then read it."""
         if len(movie_paths) == 0:
             yield self._on_movie_loaded, None
-        elif movie_paths[0].suffix == ".mrc":
+        elif Path(movie_paths[0]).suffix == ".mrc":
             yield self._on_movie_loaded, ArrayFilteredView.from_mrcs(movie_paths)
         else:
             yield self._on_movie_loaded, ArrayFilteredView.from_tif_movies(movie_paths)

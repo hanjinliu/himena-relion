@@ -166,6 +166,7 @@ NODE_TYPE = Annotated[
             "3D mask (.mrc)",
             "Unfiltered half-map (unfil.mrc)",
         ],
+        "widget_type": "RadioButtons",
         "group": "I/O",
     },
 ]

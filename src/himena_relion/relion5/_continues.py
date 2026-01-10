@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from himena_relion._job_class import _RelionBuiltinContinue
+from himena_relion._job_class import _Relion5BuiltinContinue
 from himena_relion.relion5._builtins import (
     MotionCorr2Job,
     MotionCorrOwnJob,
@@ -18,7 +18,7 @@ from himena_relion.relion5._builtins import (
 from himena_relion import _annotated as _a
 
 
-class _MotionCorContinue(_RelionBuiltinContinue):
+class _MotionCorContinue(_Relion5BuiltinContinue):
     def run(
         self,
         # Running
@@ -38,7 +38,7 @@ class MotionCorrOwnContinue(_MotionCorContinue):
     original_class = MotionCorrOwnJob
 
 
-class CtfEstimationContinue(_RelionBuiltinContinue):
+class CtfEstimationContinue(_Relion5BuiltinContinue):
     original_class = CtfEstimationJob
 
     def run(
@@ -58,7 +58,7 @@ def _latest_optimiser_star(path: Path) -> str:
     return str(opt[-1]) if opt else ""
 
 
-class _AutoPickContinueManually(_RelionBuiltinContinue):
+class _AutoPickContinueManually(_Relion5BuiltinContinue):
     @classmethod
     def command_palette_title_prefix(cls) -> str:
         return "Continue Manually -"
@@ -89,7 +89,7 @@ class AutoPickTopazContinueManually(_AutoPickContinueManually):
     original_class = AutoPickTopazPick
 
 
-class Class2DContinue(_RelionBuiltinContinue):
+class Class2DContinue(_Relion5BuiltinContinue):
     original_class = Class2DJob
 
     def run(
@@ -126,7 +126,7 @@ class Class2DContinue(_RelionBuiltinContinue):
         return {_latest_optimiser_star: "fn_cont"}
 
 
-class InitialModelContinue(_RelionBuiltinContinue):
+class InitialModelContinue(_Relion5BuiltinContinue):
     original_class = InitialModelJob
 
     def run(
@@ -155,7 +155,7 @@ class InitialModelContinue(_RelionBuiltinContinue):
         return {_latest_optimiser_star: "fn_cont"}
 
 
-class Class3DNoAlignmentContinue(_RelionBuiltinContinue):
+class Class3DNoAlignmentContinue(_Relion5BuiltinContinue):
     original_class = Class3DNoAlignmentJob
 
     def run(
@@ -185,7 +185,7 @@ class Class3DNoAlignmentContinue(_RelionBuiltinContinue):
         return {_latest_optimiser_star: "fn_cont"}
 
 
-class Class3DContinue(_RelionBuiltinContinue):
+class Class3DContinue(_Relion5BuiltinContinue):
     original_class = Class3DJob
 
     def run(
@@ -222,7 +222,7 @@ class Class3DContinue(_RelionBuiltinContinue):
         return {_latest_optimiser_star: "fn_cont"}
 
 
-class Refine3DContinue(_RelionBuiltinContinue):
+class Refine3DContinue(_Relion5BuiltinContinue):
     original_class = Refine3DJob
 
     def run(
