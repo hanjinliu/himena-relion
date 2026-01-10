@@ -547,16 +547,16 @@ class Q3DLocalResViewer(Q3DViewerBase):
 class Q2DFilterWidget(QtW.QWidget):
     value_changed = QtCore.Signal()
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, bin_default: int = 4, lowpass_default: float = 10):
         super().__init__(parent)
         layout = QtW.QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
-        self._bin_factor = QIntLineEdit("4")
+        self._bin_factor = QIntLineEdit(str(bin_default))
         self._bin_factor.setFixedWidth(60)
         self._bin_factor.setMinimum(1)
         self._bin_factor.setMaximum(20)
-        self._lowpass_cutoff = QDoubleLineEdit("10")
+        self._lowpass_cutoff = QDoubleLineEdit(str(lowpass_default))
         self._lowpass_cutoff.setMinimum(0.0)
         self._lowpass_cutoff.setMaximum(200.0)
         self._lowpass_cutoff.setFixedWidth(80)

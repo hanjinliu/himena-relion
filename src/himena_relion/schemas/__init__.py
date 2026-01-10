@@ -16,6 +16,7 @@ from himena_relion.schemas._movie_tilts import (
     MicrographGroupMetaModel,
     TSModel,
     TSAlignModel,
+    TSGroupModel,
     TomogramsGroupModel,
 )
 
@@ -32,6 +33,7 @@ __all__ = [
     "MicrographGroupMetaModel",
     "TSModel",
     "TSAlignModel",
+    "TSGroupModel",
     "TomogramsGroupModel",
     "MicCoordSetModel",
     "CoordsModel",

@@ -291,10 +291,10 @@ class MotionCorrOwnJob(_MotionCorrJobBase):
     @classmethod
     def setup_widgets(cls, widgets: dict[str, ValueWidget]) -> None:
         @widgets["do_save_ps"].changed.connect
-        def _on_do_float16_changed(value: bool):
-            widgets["group_for_ps"].enabled = not value
+        def _on_save_ps(value: bool):
+            widgets["group_for_ps"].enabled = value
 
-        _on_do_float16_changed(widgets["do_save_ps"].value)  # initialize
+        _on_save_ps(widgets["do_save_ps"].value)  # initialize
 
 
 class CtfEstimationJob(_Relion5Job):

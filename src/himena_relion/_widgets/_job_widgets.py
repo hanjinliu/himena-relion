@@ -83,9 +83,10 @@ class QJobScrollArea(QtW.QScrollArea, JobWidgetBase):
             self._worker.quit()
             self._worker = None
 
-    def _on_yielded(self, yielded: tuple[Callable, Any]):
-        fn, args = yielded
-        fn(args)
+    def _on_yielded(self, yielded: tuple[Callable, Any] | None):
+        if yielded is not None:
+            fn, args = yielded
+            fn(args)
 
     def _start_worker(self):
         self._worker.yielded.connect(self._on_yielded)

@@ -93,11 +93,19 @@ class TSModel(schema.LoopDataModel):
     micrograph_name: schema.Series[str] = schema.Field(
         "rlnMicrographName", default=None
     )
+    micrograph_movie_name: schema.Series[str] = schema.Field(
+        "rlnMicrographMovieName", default=None
+    )
     ctf_image: schema.Series[str] = schema.Field("rlnCtfImage", default=None)
 
     def ts_paths_sorted(self, rln_dir: Path) -> list[Path]:
         order = self.nominal_stage_tilt_angle.argsort()
         paths = [rln_dir / p for p in self.micrograph_name]
+        return [paths[i] for i in order]
+
+    def ts_movie_paths_sorted(self) -> list[Path]:
+        order = self.nominal_stage_tilt_angle.argsort()
+        paths = [p for p in self.movie_name]
         return [paths[i] for i in order]
 
 
@@ -107,6 +115,22 @@ class TSAlignModel(schema.LoopDataModel):
     zrot: schema.Series[float] = schema.Field("rlnTomoZRot")  # 23
     xshift: schema.Series[float] = schema.Field("rlnTomoXShiftAngst")  # 24
     yshift: schema.Series[float] = schema.Field("rlnTomoYShiftAngst")  # 25
+
+
+class TSGroupModel(schema.LoopDataModel):
+    """Star file content such as TomogramsGroup.star"""
+
+    tomo_name: schema.Series[str] = schema.Field("rlnTomoName")
+    tomo_tilt_series_star_file: schema.Series[str] = schema.Field(
+        "rlnTomoTiltSeriesStarFile"
+    )
+    voltage: schema.Series[float] = schema.Field("rlnVoltage")
+    cs: schema.Series[float] = schema.Field("rlnSphericalAberration")
+    amplitude_contrast: schema.Series[float] = schema.Field("rlnAmplitudeContrast")
+    original_pixel_size: schema.Series[float] = schema.Field(
+        "rlnMicrographOriginalPixelSize"
+    )
+    tomo_hand: schema.Series[int] = schema.Field("rlnTomoHand")
 
 
 class TomogramsGroupModel(schema.LoopDataModel):
