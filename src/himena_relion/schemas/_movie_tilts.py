@@ -64,6 +64,9 @@ class MoviesStarModel(schema.StarModel):
     optics: OpticsModel = schema.Field()
     movies: MoviesModel = schema.Field()
 
+    Optics = OpticsModel
+    Movies = MoviesModel
+
 
 class MicrographsModel(schema.LoopDataModel):
     mic_name: schema.Series[str] = schema.Field("rlnMicrographName")
@@ -131,6 +134,7 @@ class TSGroupModel(schema.LoopDataModel):
         "rlnMicrographOriginalPixelSize"
     )
     tomo_hand: schema.Series[int] = schema.Field("rlnTomoHand")
+    optics_group_name: schema.Series[str] = schema.Field("rlnOpticsGroupName")
 
 
 class TomogramsGroupModel(schema.LoopDataModel):

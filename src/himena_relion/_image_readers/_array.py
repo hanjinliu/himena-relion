@@ -69,6 +69,11 @@ class ArrayFilteredView:
         """Read a tiff movie"""
         return cls(ArrayFromTif(path, split_into))
 
+    @classmethod
+    def from_tif_movies(cls, paths: list[PathLike]) -> ArrayFilteredView:
+        """Read tiff movies as a tilt series"""
+        return cls(ArrayFromTifMovies(paths))
+
 
 class ArrayViewBase(ABC):
     @abstractmethod
@@ -229,3 +234,18 @@ class ArrayFromTif(ArrayViewBase):
                     start = end
                 arr = np.stack(groups, axis=0)
             self._arr = arr
+
+
+class ArrayFromTifMovies(ArrayFromFiles):
+    def get_scale(self) -> float:
+        if len(self._paths) == 0:
+            return 1.0
+        return 1.0  # TODO: read from TIFF metadata?
+
+    def get_slice(self, index: int) -> Arr:
+        path = self._paths[index]
+        with tifffile.TiffFile(path) as tif:
+            arr = tif.asarray()
+        if arr.ndim == 3:
+            arr = arr.mean(axis=0)
+        return arr

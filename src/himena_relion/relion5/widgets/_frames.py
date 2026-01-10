@@ -124,9 +124,9 @@ class QMotionCorrViewer(QJobScrollArea):
         self._mic_list.current_changed.connect(self._mic_changed)
         self._filter_widget = Q2DFilterWidget()
         layout.addWidget(QtW.QLabel("<b>Motion-corrected micrographs</b>"))
+        layout.addWidget(self._mic_list)
         layout.addWidget(self._filter_widget)
         layout.addWidget(self._viewer)
-        layout.addWidget(self._mic_list)
         self._filter_widget.value_changed.connect(self._filter_param_changed)
         self._binsize_old = -1
 

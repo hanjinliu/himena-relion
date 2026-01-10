@@ -377,21 +377,6 @@ class TiltSeriesInfo:
         return TSModel.validate_file(rln_dir / self.tomo_tilt_series_star_file)
 
 
-class ImportJobDirectory(JobDirectory):
-    """Class for handling import job directories in RELION."""
-
-    _job_type = "relion.importtomo"
-
-    def tilt_series_star(self) -> Path:
-        """Return the path to the tilt series star file."""
-        return self.path / "tilt_series.star"
-
-    def iter_tilt_series(self) -> Iterator[TiltSeriesInfo]:
-        """Iterate over all tilt series info."""
-        for _, row in _read_star_as_df(self.tilt_series_star()).iterrows():
-            yield TiltSeriesInfo.from_series(row)
-
-
 @dataclass
 class CorrectedTiltSeriesInfo(TiltSeriesInfo):
     @classmethod

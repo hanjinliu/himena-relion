@@ -36,7 +36,7 @@ class QMotionCorrViewer(QJobScrollArea):
 
         self._viewer = Q2DViewer(zlabel="Tilt index")
         self._viewer.setMinimumHeight(TILT_VIEW_MIN_HEIGHT)
-        self._filter_widget = Q2DFilterWidget(lowpass_default=30)
+        self._filter_widget = Q2DFilterWidget(bin_default=8, lowpass_default=30)
         self._ts_list = QMicrographListWidget(["Tilt Series", "Processed"])
         self._ts_list.current_changed.connect(self._ts_choice_changed)
         layout.addWidget(QtW.QLabel("<b>Motion-corrected tilt series</b>"))
@@ -50,6 +50,7 @@ class QMotionCorrViewer(QJobScrollArea):
         self._import_job_ts_models: dict[str, TSModel] = {}
         self._mcor_paths: dict[str, CorrectedPaths] = {}
         self._last_update_time = time.time()
+        self._update_min_interval = 5.0
 
     def on_job_updated(self, job_dir: _job_dir.JobDirectory, path: str):
         """Handle changes to the job directory."""
@@ -76,7 +77,7 @@ class QMotionCorrViewer(QJobScrollArea):
 
     def _process_update(self, force_update: bool = False):
         t0 = time.time()
-        if force_update or t0 - self._last_update_time > 5.0:
+        if force_update or t0 - self._last_update_time > self._update_min_interval:
             self.window_closed_callback()
             self._worker = self._read_items()
             self._last_update_time = t0

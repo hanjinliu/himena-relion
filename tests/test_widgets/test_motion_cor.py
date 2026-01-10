@@ -97,6 +97,7 @@ def test_motioncor_tomo_widget(
 
     tester = JobWidgetTester(QMotionCorrViewer(job_dir), job_dir)
     qtbot.addWidget(tester.widget)
+    tester.widget._update_min_interval = 0.0
     assert tester.widget._ts_list.rowCount() == 0
     job_dir.path.joinpath("tilt_series").mkdir()
     job_dir.path.joinpath("frames").mkdir()
