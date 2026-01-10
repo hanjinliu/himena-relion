@@ -14,6 +14,11 @@ class JobWidgetTester(Generic[_T]):
         widget.initialize(job_dir)
         self._rng = np.random.default_rng(29958293)
 
+    @classmethod
+    def no_widget(cls, job_dir: JobDirectory) -> "JobWidgetTester[JobWidgetBase]":
+        widget = JobWidgetBase()
+        return cls(widget, job_dir)
+
     def write_text(self, path: str, text: str):
         fp = self.job_dir.path / path
         fp.write_text(text)

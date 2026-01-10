@@ -1,6 +1,8 @@
 from __future__ import annotations
 from pathlib import Path
+from dataclasses import dataclass
 import logging
+import time
 from qtpy import QtWidgets as QtW
 from superqt.utils import thread_worker
 from starfile_rs import read_star
@@ -19,6 +21,12 @@ _LOGGER = logging.getLogger(__name__)
 TILT_VIEW_MIN_HEIGHT = 480
 
 
+@dataclass
+class CorrectedPaths:
+    paths: list[Path]
+    total: int
+
+
 @register_job("relion.motioncorr", is_tomo=True)
 class QMotionCorrViewer(QJobScrollArea):
     def __init__(self, job_dir: _job_dir.JobDirectory):
@@ -29,24 +37,25 @@ class QMotionCorrViewer(QJobScrollArea):
         self._viewer = Q2DViewer(zlabel="Tilt index")
         self._viewer.setMinimumHeight(TILT_VIEW_MIN_HEIGHT)
         self._filter_widget = Q2DFilterWidget(lowpass_default=30)
-        self._ts_list = QMicrographListWidget(["Tilt Series", "Number of Tilts"])
+        self._ts_list = QMicrographListWidget(["Tilt Series", "Processed"])
         self._ts_list.current_changed.connect(self._ts_choice_changed)
         layout.addWidget(QtW.QLabel("<b>Motion-corrected tilt series</b>"))
-        layout.addWidget(self._filter_widget)
         layout.addWidget(self._ts_list)
+        layout.addWidget(self._filter_widget)
         layout.addWidget(self._viewer)
         self._filter_widget.value_changed.connect(self._param_changed)
         self._binsize_old = -1
 
         self._import_job_tilt_series_star_path: Path | None = None
         self._import_job_ts_models: dict[str, TSModel] = {}
-        self._mcor_paths: dict[str, list[Path]] = {}
+        self._mcor_paths: dict[str, CorrectedPaths] = {}
+        self._last_update_time = time.time()
 
     def on_job_updated(self, job_dir: _job_dir.JobDirectory, path: str):
         """Handle changes to the job directory."""
         fp = Path(path)
         if fp.name.startswith("RELION_JOB_") or fp.suffix == ".star":
-            self._process_update()
+            self._process_update(force_update=fp.name.startswith("RELION_JOB_"))
             _LOGGER.debug("%s Updated", job_dir.job_number)
 
     def _param_changed(self):
@@ -62,34 +71,52 @@ class QMotionCorrViewer(QJobScrollArea):
         rln_dir = job_dir.relion_project_dir
         mic_star_path = job_dir.get_job_param("input_star_mics")
         self._import_job_tilt_series_star_path = rln_dir / mic_star_path
-        self._process_update()
+        self._process_update(force_update=True)
         self._viewer.auto_fit()
 
-    def _process_update(self):
-        self.window_closed_callback()
-        self._worker = self._read_items()
-        self._start_worker()
+    def _process_update(self, force_update: bool = False):
+        t0 = time.time()
+        if force_update or t0 - self._last_update_time > 5.0:
+            self.window_closed_callback()
+            self._worker = self._read_items()
+            self._last_update_time = t0
+            self._start_worker()
 
     @thread_worker
     def _read_items(self):
-        self._cache_tilt_series_models()
+        # cache tilt series models
+        if self._import_job_tilt_series_star_path is None:
+            return
+        if not self._import_job_ts_models:
+            _import_job_ts_models = {}
+            tomo_meta = TSGroupModel.validate_file(
+                self._import_job_tilt_series_star_path
+            )
+            rln_dir = self._job_dir.relion_project_dir
+            for tomo_name, ts_path in zip(
+                tomo_meta.tomo_name,
+                tomo_meta.tomo_tilt_series_star_file,
+            ):
+                ts_model = TSModel.validate_file(rln_dir / ts_path)
+                _import_job_ts_models[tomo_name] = ts_model
+                yield
+            self._import_job_ts_models = _import_job_ts_models
+
         finished_tomo_names: list[str] = []
         new_mcor_paths = self._mcor_paths.copy()
         for tomo_name, ts_model in self._import_job_ts_models.items():
-            paths = ts_model.ts_movie_paths_sorted()
-            all_found = len(paths) > 0
+            paths_movies = ts_model.ts_movie_paths_sorted()
             new_paths = []
-            for path in paths:
-                path_in_mcor = self._job_dir.path / path
+            for path_mov in paths_movies:
+                path_in_mcor = self._job_dir.path / path_mov
                 name_mcor = path_in_mcor.stem.replace(".", "_") + ".mrc"
                 path_in_mcor = path_in_mcor.parent / name_mcor
-                if not path_in_mcor.exists():
-                    all_found = False
-                else:
+                if path_in_mcor.exists():
                     new_paths.append(path_in_mcor)
                 yield
-            new_mcor_paths[tomo_name] = new_paths
-            if all_found:
+            new_mcor_paths[tomo_name] = CorrectedPaths(new_paths, len(paths_movies))
+            if len(new_paths) == len(paths_movies) and len(paths_movies) > 0:
+                # no longer need to iterate over this tomogram
                 finished_tomo_names.append(tomo_name)
 
         # remove finished tomograms from the cache
@@ -99,9 +126,10 @@ class QMotionCorrViewer(QJobScrollArea):
         self._mcor_paths = new_mcor_paths
 
         # setup tilt series list
-        choices = []
-        for tomo_name, paths in self._mcor_paths.items():
-            choices.append((tomo_name, str(len(paths))))
+        choices: list[tuple[str, ...]] = []
+        for tomo_name, corrected in self._mcor_paths.items():
+            if (num_processed := len(corrected.paths)) > 0:
+                choices.append((tomo_name, f"{num_processed}/{corrected.total}"))
 
         yield self._ts_list.set_choices, choices
         self._worker = None
@@ -109,28 +137,13 @@ class QMotionCorrViewer(QJobScrollArea):
     def _ts_choice_changed(self, texts: tuple[str, ...]):
         """Update the viewer when the selected tomogram changes."""
         text = texts[0]
-        paths = self._mcor_paths.get(text, [])
-        if len(paths) == 0:
+        corrected = self._mcor_paths.get(text, None)
+        if corrected is None or len(corrected.paths) == 0:
             self._viewer.clear()
             return
-        ts_view = ArrayFilteredView.from_mrcs(paths)
+        ts_view = ArrayFilteredView.from_mrcs(corrected.paths)
         self._filter_widget.set_image_scale(ts_view.get_scale())
         self._viewer.set_array_view(ts_view.with_filter(self._filter_widget.apply))
-
-    def _cache_tilt_series_models(self):
-        """Cache tilt series models from the import job."""
-        if self._import_job_tilt_series_star_path is None:
-            return
-        if self._import_job_ts_models:
-            return  # Already cached
-        tomo_meta = TSGroupModel.validate_file(self._import_job_tilt_series_star_path)
-        rln_dir = self._job_dir.relion_project_dir
-        for tomo_name, ts_path in zip(
-            tomo_meta.tomo_name,
-            tomo_meta.tomo_tilt_series_star_file,
-        ):
-            ts_model = TSModel.validate_file(rln_dir / ts_path)
-            self._import_job_ts_models[tomo_name] = ts_model
 
 
 @register_job("relion.excludetilts", is_tomo=True)

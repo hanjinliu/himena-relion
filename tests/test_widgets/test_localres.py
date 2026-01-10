@@ -1,6 +1,4 @@
-import shutil
 from typing import Callable
-import mrcfile
 import numpy as np
 from qtpy.QtWidgets import QApplication
 from pathlib import Path
@@ -24,20 +22,19 @@ def test_localres_widget(
         lines.append(line)
     star_text = "\n".join(lines)
 
-    job_dir = make_job_directory(star_text, "LocalRes")
-
-    prev_job = job_dir.path.parent.parent.joinpath("Refine3D", "job100")
-    prev_job.mkdir(parents=True)
+    prev_job_dir = make_job_directory(
+        Path(jobs_dir_spa / "Refine3D" / "job001" / "job.star").read_text(),
+        "Refine3D/job100"
+    )
     mrc0 = np.arange(32 * 32 * 32, dtype=np.float32).reshape((32, 32, 32))
-    with mrcfile.new(prev_job / "run_half1_class001_unfil.mrc") as mrc:
-        mrc.set_data(mrc0)
-    with mrcfile.new(prev_job / "run_half2_class001_unfil.mrc") as mrc:
-        mrc.set_data(mrc0)
-    with mrcfile.new(prev_job / "mask.mrc") as mrc:
-        xx, yy, zz = np.indices((32, 32, 32))
-        sphere = (xx - 16) ** 2 + (yy - 16) ** 2 + (zz - 16) ** 2 < 14**2
-        mrc.set_data(sphere.astype(np.float32))
+    refine3d = JobWidgetTester.no_widget(prev_job_dir)
+    refine3d.write_mrc("run_half1_class001_unfil.mrc", mrc0)
+    refine3d.write_mrc("run_half2_class001_unfil.mrc", mrc0)
+    xx, yy, zz = np.indices((32, 32, 32))
+    sphere = (xx - 16) ** 2 + (yy - 16) ** 2 + (zz - 16) ** 2 < 14**2
+    refine3d.write_mrc("mask.mrc", sphere.astype(np.float32))
 
+    job_dir = make_job_directory(star_text, "LocalRes")
     tester = JobWidgetTester(QLocalResViewer(job_dir), job_dir)
     qtbot.addWidget(tester.widget)
 
@@ -45,5 +42,3 @@ def test_localres_widget(
     QApplication.processEvents()
     QApplication.processEvents()
     assert tester.widget._viewer._surface._data is not None
-
-    shutil.rmtree(prev_job)

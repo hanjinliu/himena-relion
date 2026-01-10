@@ -46,17 +46,15 @@ _rlnAmplitudeContrast #5
 _rlnMicrographOriginalPixelSize #6
 _rlnTomoHand #7
 _rlnOpticsGroupName #8
-_rlnTomoTiltSeriesPixelSize #9
-     TS_01 MotionCorr/job001/tilt_series/TS_01.star   300.000000     2.700000     0.100000     0.675000     -1.00000    optics1     1.350000
-     TS_02 MotionCorr/job001/tilt_series/TS_02.star   300.000000     2.700000     0.100000     0.675000     -1.00000    optics1     1.350000
-     TS_03 MotionCorr/job001/tilt_series/TS_03.star   300.000000     2.700000     0.100000     0.675000     -1.00000    optics1     1.350000
-
+TS_01	Import/job001/tilt_series/TS_01.star	300.0	2.7	0.1	0.6	-1	optics1
+TS_02	Import/job001/tilt_series/TS_02.star	300.0	2.7	0.1	0.6	-1	optics1
+TS_03	Import/job001/tilt_series/TS_03.star	300.0	2.7	0.1	0.6	-1	optics1
 """
 
 TS_XX_STAR_TXT = """
 # version 50001
 
-data_TS_01
+data_TS_0{i}
 
 loop_
 _rlnMicrographMovieName #1
@@ -65,17 +63,10 @@ _rlnTomoNominalStageTiltAngle #3
 _rlnTomoNominalTiltAxisAngle #4
 _rlnMicrographPreExposure #5
 _rlnTomoNominalDefocus #6
-_rlnCtfPowerSpectrum #7
-_rlnMicrographNameEven #8
-_rlnMicrographNameOdd #9
-_rlnMicrographName #10
-_rlnMicrographMetadata #11
-_rlnAccumMotionTotal #12
-_rlnAccumMotionEarly #13
-_rlnAccumMotionLate #14
-frames/TS_0{i}_000_0.0.mrc    8 0.001000 85.0 0.0 -4.0 MotionCorr/job025/frames/TS_0{i}_000_0_0_PS.mrc MotionCorr/job025/frames/TS_0{i}_000_0_0_EVN.mrc MotionCorr/job025/frames/TS_0{i}_000_0_0_ODD.mrc MotionCorr/job025/frames/TS_0{i}_000_0_0.mrc MotionCorr/job025/frames/TS_0{i}_000_0_0.star 2.297631 1.0 1.289649
-frames/TS_0{i}_001_40.0.mrc   8 3.001130 85.0 3.0 -4.0 MotionCorr/job025/frames/TS_0{i}_001_40_0_PS.mrc MotionCorr/job025/frames/TS_0{i}_001_40_0_EVN.mrc MotionCorr/job025/frames/TS_0{i}_001_3_0_ODD.mrc MotionCorr/job025/frames/TS_0{i}_001_40_0.mrc MotionCorr/job025/frames/TS_0{i}_001_40_0.star 2.384960 0.0 2.384960
-frames/TS_0{i}_002_-40.0.mrc  8 -2.99863 85.0 6.0 -4.0 MotionCorr/job025/frames/TS_0{i}_002_-40_0_PS.mrc MotionCorr/job025/frames/TS_0{i}_002_-40_0_EVN.mrc MotionCorr/job025/frames/TS_0{i}_002_-3_0_ODD.mrc MotionCorr/job025/frames/TS_0{i}_002_-40_0.mrc MotionCorr/job025/frames/TS_0{i}_001_-40_0.star 2.008728 0.0 2.008728
+frames/TS_0{i}_000_0.0.mrc	 8	  0.0 85.0	 0.0 -4.0
+frames/TS_0{i}_001_40.0.mrc	 8	 40.1 85.0	30.0 -4.1
+frames/TS_0{i}_002_-40.0.mrc 8	-39.9 85.0	60.0 -4.2
+
 """
 
 def test_motioncor_tomo_widget(
@@ -85,11 +76,26 @@ def test_motioncor_tomo_widget(
 ):
     from himena_relion.relion5_tomo.widgets._tilt_series import QMotionCorrViewer
 
-    star_text = Path(jobs_dir_tomo / "MotionCorr" / "job001" / "job.star").read_text()
-    job_dir = make_job_directory(star_text, "MotionCorr")
+    mcor_text = Path(jobs_dir_tomo / "MotionCorr" / "job001" / "job.star").read_text()
+    lines = []
+    for line in mcor_text.splitlines():
+        if line.strip().startswith("input_star_mics"):
+            line = "input_star_mics   Import/job001/tilt_series.star"
+        lines.append(line)
+    job_dir = make_job_directory("\n".join(lines), "MotionCorr")
+
+    prev_job = make_job_directory(
+        Path(jobs_dir_tomo / "Import" / "job001" / "job.star").read_text(),
+        "Import/job001"
+    )
+    importjob = JobWidgetTester.no_widget(prev_job)
+    importjob.mkdir("tilt_series")
+    importjob.write_text("tilt_series/TS_01.star", TS_XX_STAR_TXT.format(i=1))
+    importjob.write_text("tilt_series/TS_02.star", TS_XX_STAR_TXT.format(i=2))
+    importjob.write_text("tilt_series/TS_03.star", TS_XX_STAR_TXT.format(i=3))
+    importjob.write_text("tilt_series.star", TILT_SERIES_STAR_TXT)
 
     tester = JobWidgetTester(QMotionCorrViewer(job_dir), job_dir)
-
     qtbot.addWidget(tester.widget)
     assert tester.widget._ts_list.rowCount() == 0
     job_dir.path.joinpath("tilt_series").mkdir()
@@ -101,12 +107,7 @@ def test_motioncor_tomo_widget(
             tester.write_text(f"frames/{basename}.log", "log ...")
             tester.write_text(f"frames/{basename}.star", "star ...")
             tester.write_random_mrc(f"frames/{basename}_PS.mrc", (10, 3), dtype=np.float16)
-
-        tester.write_text(
-            f"tilt_series/TS_{i+1:02d}.star",
-            TS_XX_STAR_TXT.format(i=i + 1)
-        )
-    tester.write_text("corrected_tilt_series.star", TILT_SERIES_STAR_TXT)
+        assert tester.widget._ts_list.rowCount() == i + 1
     assert tester.widget._ts_list.rowCount() == 3
     tester.widget._ts_list.setCurrentCell(0, 0)
     QApplication.processEvents()

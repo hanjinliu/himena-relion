@@ -23,8 +23,11 @@ def make_job_directory(tmpdir) -> "Iterator[Callable[[str], JobDirectory]]":
 
     project_dir = Path(tmpdir)
 
-    def job_directory_factory(job_star_text: str, job_type: str = "Job") -> "JobDirectory":
-        job_dir_path = project_dir / job_type / "job025"
+    def job_directory_factory(job_star_text: str, job_type: str = "Refine3D") -> "JobDirectory":
+        if "/" in job_type:
+            job_dir_path = project_dir / job_type
+        else:
+            job_dir_path = project_dir / job_type / "job025"
         job_dir_path.mkdir(parents=True)
         star_path = job_dir_path / "job.star"
         star_path.write_text(job_star_text)
