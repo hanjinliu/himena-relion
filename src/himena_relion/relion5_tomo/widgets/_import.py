@@ -106,7 +106,7 @@ class QImportTiltSeriesViewer(QJobScrollArea):
         if len(movie_paths) == 0:
             yield self._on_movie_loaded, None
         elif Path(movie_paths[0]).suffix == ".mrc":
-            yield self._on_movie_loaded, ArrayFilteredView.from_mrcs(movie_paths)
+            yield self._on_movie_loaded, ArrayFilteredView.from_mrc_movies(movie_paths)
         else:
             yield self._on_movie_loaded, ArrayFilteredView.from_tif_movies(movie_paths)
 

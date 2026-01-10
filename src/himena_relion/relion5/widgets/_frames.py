@@ -12,7 +12,7 @@ from himena_relion._widgets import (
     register_job,
     QMicrographListWidget,
 )
-from himena_relion.schemas import MoviesStarModel, MicrographGroupMetaModel
+from himena_relion.schemas import MoviesStarModel, MicrographsStarModel
 from himena_relion import _job_dir
 
 _LOGGER = logging.getLogger(__name__)
@@ -98,12 +98,13 @@ class QImportMoviesViewer(QJobScrollArea):
         if movies_star_path.exists():
             mov = MoviesStarModel.validate_file(movies_star_path)
             it = zip(mov.movies.movie_name, mov.movies.optics_group)
+            optics_map = mov.optics.make_optics_map()
         elif micrographs_star_path.exists():
-            mic = MicrographGroupMetaModel.validate_file(movies_star_path)
+            mic = MicrographsStarModel.validate_file(micrographs_star_path)
             it = zip(mic.micrographs.mic_name, mic.micrographs.optics_group)
+            optics_map = mic.optics.make_optics_map()
         else:
             return
-        optics_map = mov.optics.make_optics_map()
         choices = []
         for img_name, opt_id in it:
             if opt := optics_map.get(opt_id):

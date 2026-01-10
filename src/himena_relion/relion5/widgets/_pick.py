@@ -18,7 +18,7 @@ from himena_relion._widgets import (
 )
 from himena_relion import _job_dir
 from himena_relion.relion5._connections import _get_template_for_pick
-from himena_relion.schemas import CoordsModel, MicrographGroupMetaModel
+from himena_relion.schemas import CoordsModel, MicrographsStarModel
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -180,7 +180,7 @@ def iter_micrograph_and_coordinates(
     mic = pipeline.get_input_by_type("MicrographGroupMetadata")
     if mic is None:
         return
-    mic_model = MicrographGroupMetaModel.validate_file(job_dir.resolve_path(mic.path))
+    mic_model = MicrographsStarModel.validate_file(job_dir.resolve_path(mic.path))
     for path in mic_model.micrographs.mic_name:
         fp = Path(path)
         stem = fp.stem

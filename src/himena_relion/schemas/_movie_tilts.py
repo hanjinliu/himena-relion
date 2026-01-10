@@ -33,12 +33,6 @@ class OpticsModel(schema.LoopDataModel):
         return optics_map
 
 
-def _ith_or_none(series: schema.Series | None, i: int):
-    if series is None:
-        return None
-    return series[i]
-
-
 class SingleOpticsModel(schema.SingleDataModel):
     optics_group_name: str = schema.Field("rlnOpticsGroupName")
     optics_group: int = schema.Field("rlnOpticsGroup")
@@ -49,7 +43,6 @@ class SingleOpticsModel(schema.SingleDataModel):
     voltage: float = schema.Field("rlnVoltage", default=300.0)
     cs: float = schema.Field("rlnSphericalAberration", default=2.7)
     amplitude_contrast: float = schema.Field("rlnAmplitudeContrast", default=0.1)
-    mc_pixel_size: float = schema.Field("rlnMicrographMoviePixelSize", default=None)
 
 
 class MoviesModel(schema.LoopDataModel):
@@ -75,8 +68,8 @@ class MoviesStarModel(schema.StarModel):
     Movies = MoviesModel
 
 
-class MicrographGroupMetaModel(schema.StarModel):
-    optics: SingleOpticsModel = schema.Field()
+class MicrographsStarModel(schema.StarModel):
+    optics: OpticsModel = schema.Field()
     micrographs: MicrographsModel = schema.Field()
 
     Optics = OpticsModel
@@ -165,3 +158,9 @@ class TomogramsGroupModel(schema.LoopDataModel):
     size_x: schema.Series[int] = schema.Field("rlnTomoSizeX")
     size_y: schema.Series[int] = schema.Field("rlnTomoSizeY")
     size_z: schema.Series[int] = schema.Field("rlnTomoSizeZ")
+
+
+def _ith_or_none(series: schema.Series | None, i: int):
+    if series is None:
+        return None
+    return series[i]

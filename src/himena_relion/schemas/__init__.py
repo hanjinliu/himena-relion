@@ -13,7 +13,7 @@ from himena_relion.schemas._misc import (
 from himena_relion.schemas._movie_tilts import (
     MoviesStarModel,
     MicrographsModel,
-    MicrographGroupMetaModel,
+    MicrographsStarModel,
     TSModel,
     TSAlignModel,
     TSGroupModel,
@@ -31,7 +31,7 @@ __all__ = [
     "ModelClasses",
     "ModelStarModel",
     "MicrographsModel",
-    "MicrographGroupMetaModel",
+    "MicrographsStarModel",
     "TSModel",
     "TSAlignModel",
     "TSGroupModel",

@@ -74,6 +74,11 @@ class ArrayFilteredView:
         """Read tiff movies as a tilt series"""
         return cls(ArrayFromTifMovies(paths))
 
+    @classmethod
+    def from_mrc_movies(cls, paths: list[PathLike]) -> ArrayFilteredView:
+        """Read mrc movies as a tilt series"""
+        return cls(ArrayFromMrcMovies(paths))
+
 
 class ArrayViewBase(ABC):
     @abstractmethod
@@ -246,6 +251,21 @@ class ArrayFromTifMovies(ArrayFromFiles):
         path = self._paths[index]
         with tifffile.TiffFile(path) as tif:
             arr = tif.asarray()
+        if arr.ndim == 3:
+            arr = arr.mean(axis=0)
+        return arr
+
+
+class ArrayFromMrcMovies(ArrayFromFiles):
+    def get_scale(self) -> float:
+        if len(self._paths) == 0:
+            return 1.0
+        return 1.0
+
+    def get_slice(self, index: int) -> Arr:
+        path = self._paths[index]
+        with mrcfile.open(path, mode="r") as mrc:
+            arr = np.asarray(mrc.data)
         if arr.ndim == 3:
             arr = arr.mean(axis=0)
         return arr

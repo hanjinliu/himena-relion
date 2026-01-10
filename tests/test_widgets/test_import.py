@@ -1,10 +1,11 @@
 from typing import Callable
+import mrcfile
 import tifffile
 from pathlib import Path
 import numpy as np
 from himena_relion._job_dir import JobDirectory
 from himena_relion.testing import JobWidgetTester
-from himena_relion.schemas import MoviesStarModel, TSGroupModel, TSModel
+from himena_relion.schemas import MoviesStarModel, MicrographsStarModel, TSGroupModel, TSModel
 
 def test_import_spa_widget(
     qtbot,
@@ -42,6 +43,49 @@ def test_import_spa_widget(
         movies=MoviesStarModel.Movies(movie_name=movies, optics_group=[1, 1, 1]),
     )
     tester.write_text("movies.star", model.to_string())
+    assert tester.widget._mic_list.rowCount() == 3
+    tester.widget._mic_list.setCurrentCell(1, 0)
+    tester.widget._mic_list.setCurrentCell(2, 0)
+    tester.widget._mic_list.setCurrentCell(0, 0)
+
+def test_import_mic_spa_widget(
+    qtbot,
+    make_job_directory: Callable[[str, str], JobDirectory],
+    jobs_dir_spa,
+):
+    from himena_relion.relion5.widgets._frames import QImportMoviesViewer
+
+    star_text = Path(jobs_dir_spa / "Import" / "job001" / "job.star").read_text()
+    job_dir = make_job_directory(star_text, "Import")
+
+    tester = JobWidgetTester(QImportMoviesViewer(job_dir), job_dir)
+
+    qtbot.addWidget(tester.widget)
+    raw_frames_dir = job_dir.relion_project_dir / "micrographs"
+    raw_frames_dir.mkdir()
+    micrographs = []
+    for i in range(3):
+        mrc_path = raw_frames_dir / f"Image_{i:02d}.mrc"
+        mic = _random_micrograph(tester)
+        with mrcfile.new(mrc_path, overwrite=True) as mrc:
+            mrc.set_data(mic)
+        micrographs.append(mrc_path.relative_to(job_dir.relion_project_dir).as_posix())
+
+    model = MicrographsStarModel(
+        optics=MicrographsStarModel.Optics(
+            optics_group_name=["optics1"],
+            optics_group=[1],
+            mtf_file_name=[""],
+            mic_orig_pixel_size=[1.0],
+            voltage=[300.0],
+            cs=[2.7],
+            amplitude_contrast=[0.1],
+        ),
+        micrographs=MicrographsStarModel.Micrographs(
+            mic_name=micrographs, optics_group=[1, 1, 1]
+        ),
+    )
+    tester.write_text("micrographs.star", model.to_string())
     assert tester.widget._mic_list.rowCount() == 3
     tester.widget._mic_list.setCurrentCell(1, 0)
     tester.widget._mic_list.setCurrentCell(2, 0)
@@ -99,3 +143,6 @@ def test_import_tomo_widget(
 
 def _random_movie(tester: JobWidgetTester):
     return tester._rng.integers(-100, 100, (4, 6)).astype(np.int8)
+
+def _random_micrograph(tester: JobWidgetTester):
+    return tester._rng.random((32, 32)).astype(np.float32)
