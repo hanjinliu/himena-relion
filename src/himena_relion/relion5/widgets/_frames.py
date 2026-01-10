@@ -12,7 +12,7 @@ from himena_relion._widgets import (
     register_job,
     QMicrographListWidget,
 )
-from himena_relion.schemas import MoviesStarModel
+from himena_relion.schemas import MoviesStarModel, MicrographGroupMetaModel
 from himena_relion import _job_dir
 
 _LOGGER = logging.getLogger(__name__)
@@ -43,7 +43,10 @@ class QImportMoviesViewer(QJobScrollArea):
     def on_job_updated(self, job_dir: _job_dir.JobDirectory, path: str):
         """Handle changes to the job directory."""
         fp = Path(path)
-        if fp.name.startswith("RELION_JOB_") or fp.name == "movies.star":
+        if fp.name.startswith("RELION_JOB_") or fp.name in [
+            "movies.star",
+            "micrographs.star",
+        ]:
             self._process_update()
             _LOGGER.debug("%s Updated", job_dir.job_number)
 
@@ -91,16 +94,22 @@ class QImportMoviesViewer(QJobScrollArea):
 
     def _process_update(self):
         movies_star_path = self._job_dir.path / "movies.star"
-        if not movies_star_path.exists():
+        micrographs_star_path = self._job_dir.path / "micrographs.star"
+        if movies_star_path.exists():
+            mov = MoviesStarModel.validate_file(movies_star_path)
+            it = zip(mov.movies.movie_name, mov.movies.optics_group)
+        elif micrographs_star_path.exists():
+            mic = MicrographGroupMetaModel.validate_file(movies_star_path)
+            it = zip(mic.micrographs.mic_name, mic.micrographs.optics_group)
+        else:
             return
-        mov = MoviesStarModel.validate_file(movies_star_path)
         optics_map = mov.optics.make_optics_map()
         choices = []
-        for movie_name, opt_id in zip(mov.movies.movie_name, mov.movies.optics_group):
+        for img_name, opt_id in it:
             if opt := optics_map.get(opt_id):
                 choices.append(
                     [
-                        movie_name,
+                        img_name,
                         opt.optics_group_name,
                         str(round(opt.mic_orig_pixel_size, 3)),
                     ]

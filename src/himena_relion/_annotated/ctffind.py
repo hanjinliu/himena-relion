@@ -3,7 +3,7 @@ from typing import Annotated
 USE_NODW = Annotated[
     bool,
     {
-        "label": "Use micrographs without dose-weighting",
+        "label": "Use noDW micrographs",
         "tooltip": (
             "If set to Yes, the CTF estimation will be done using the micrograph "
             "without dose-weighting as in rlnMicrographNameNoDW (_noDW.mrc from "

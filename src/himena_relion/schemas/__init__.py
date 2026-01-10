@@ -22,6 +22,7 @@ from himena_relion.schemas._movie_tilts import (
 
 __all__ = [
     "MoviesStarModel",
+    "MicrographsStarModel",
     "RelionPipelineModel",
     "OptimisationSetModel",
     "JobStarModel",

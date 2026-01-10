@@ -121,6 +121,7 @@ class QDenoiseTomogramViewer(QJobScrollArea):
             (p.stem[4:], "Denoised")
             for p in job_dir.path.joinpath("tomograms").glob("*.mrc")
         ]
+        items.sort(key=lambda x: x[0])
         self._tomo_list.set_choices(items)
         if len(items) == 0:
             self._viewer.clear()

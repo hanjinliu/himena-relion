@@ -58,6 +58,13 @@ class MoviesModel(schema.LoopDataModel):
     optics_group: schema.Series[int] = schema.Field("rlnOpticsGroup")
 
 
+class MicrographsModel(schema.LoopDataModel):
+    mic_name: schema.Series[str] = schema.Field("rlnMicrographName")
+    """Path to the micrograph file."""
+    optics_group: schema.Series[int] = schema.Field("rlnOpticsGroup")
+    ctf_image: schema.Series[str] = schema.Field("rlnCtfImage", default=None)
+
+
 class MoviesStarModel(schema.StarModel):
     """movies.star file content."""
 
@@ -68,16 +75,12 @@ class MoviesStarModel(schema.StarModel):
     Movies = MoviesModel
 
 
-class MicrographsModel(schema.LoopDataModel):
-    mic_name: schema.Series[str] = schema.Field("rlnMicrographName")
-    """Path to the micrograph file."""
-    optics_group: schema.Series[int] = schema.Field("rlnOpticsGroup")
-    ctf_image: schema.Series[str] = schema.Field("rlnCtfImage", default=None)
-
-
 class MicrographGroupMetaModel(schema.StarModel):
     optics: SingleOpticsModel = schema.Field()
     micrographs: MicrographsModel = schema.Field()
+
+    Optics = OpticsModel
+    Micrographs = MicrographsModel
 
 
 class TSModel(schema.LoopDataModel):

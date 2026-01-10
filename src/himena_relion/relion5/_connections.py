@@ -17,6 +17,11 @@ connect_jobs(
     node_mapping={"movies.star": "input_star_mics"},
 )
 connect_jobs(
+    _spa.ImportMicrographsJob,
+    _spa.CtfEstimationJob,
+    node_mapping={"micrographs.star": "input_star_mics"},
+)
+connect_jobs(
     _spa.MotionCorr2Job,
     _spa.CtfEstimationJob,
     node_mapping={"corrected_micrographs.star": "input_star_mics"},
