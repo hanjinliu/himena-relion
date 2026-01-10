@@ -132,6 +132,9 @@ class QMotionCorrViewer(QJobScrollArea):
                 choices.append((tomo_name, f"{num_processed}/{corrected.total}"))
 
         yield self._ts_list.set_choices, choices
+        if self._ts_list.current_text() in self._import_job_ts_models:
+            # not finished yet, need reload
+            self._ts_list._on_selection_changed()
         self._worker = None
 
     def _ts_choice_changed(self, texts: tuple[str, ...]):
