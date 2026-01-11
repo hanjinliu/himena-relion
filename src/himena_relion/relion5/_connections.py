@@ -6,6 +6,14 @@ from himena_relion._job_dir import JobDirectory
 from himena_relion.relion5 import _builtins as _spa
 from himena_relion.schemas import ModelClasses
 
+
+def inherit_particle_diameter(path: Path) -> float:
+    """Inherit particle diameter from the previous job."""
+    jobdir = JobDirectory(path)
+    dia = jobdir.get_job_param("particle_diameter")
+    return round(float(dia), 1)
+
+
 connect_jobs(
     _spa.ImportMoviesJob,
     _spa.MotionCorr2Job,
@@ -93,6 +101,14 @@ for autopick_job in [
             "autopick.star": "coords_suffix",
         },
     )
+
+connect_jobs(
+    _spa.AutoPickTopazTrain,
+    _spa.AutoPickTopazPick,
+    node_mapping={"model_epoch9.sav": "topaz_model"},
+    value_mapping={inherit_particle_diameter: "particle_diameter"},
+)
+
 for extract_job in [_spa.ExtractJob, _spa.ReExtractJob]:
     connect_jobs(
         extract_job,
@@ -145,13 +161,6 @@ def run_class001_last_iter(path: Path) -> str:
     if niter is None:
         return ""
     return path / f"run_it{niter:03d}_class001.mrc"
-
-
-def inherit_particle_diameter(path: Path) -> float:
-    """Inherit particle diameter from the ExtractParticlesTomoJob."""
-    jobdir = JobDirectory(path)
-    dia = jobdir.get_job_param("particle_diameter")
-    return round(float(dia), 1)
 
 
 def _particles_last_iter(path: Path) -> str:

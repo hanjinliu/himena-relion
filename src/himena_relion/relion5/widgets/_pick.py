@@ -4,6 +4,7 @@ import logging
 from typing import Iterator
 import mrcfile
 import numpy as np
+import pandas as pd
 from starfile_rs import read_star
 from superqt.utils import thread_worker
 from qtpy import QtWidgets as QtW, QtCore
@@ -15,12 +16,14 @@ from himena_relion._widgets import (
     register_job,
     QImageViewTextEdit,
     QMicrographListWidget,
+    QPlotCanvas,
 )
 from himena_relion import _job_dir
 from himena_relion.relion5._connections import _get_template_for_pick
 from himena_relion.schemas import CoordsModel, MicrographsStarModel
 
 _LOGGER = logging.getLogger(__name__)
+_DIAMETER_DEFAULT = 100.0
 
 
 @register_job("relion.manualpick")
@@ -107,7 +110,7 @@ class QManualPickViewer(QJobScrollArea):
             try:
                 diameter = self._get_diameter()
             except Exception:
-                diameter = 50.0
+                diameter = _DIAMETER_DEFAULT
             self._viewer.set_points(arr / bins, size=diameter / image_scale / bins)
             self._viewer.redraw()
 
@@ -205,7 +208,7 @@ class QAutopickViewerBase(QManualPickViewer):
 @register_job("relion.autopick")
 class QAutoViewer(QAutopickViewerBase):
     def _get_diameter(self) -> float:
-        return 50.0
+        return _DIAMETER_DEFAULT
 
 
 @register_job("relion.autopick.ref2d")
@@ -250,3 +253,53 @@ class QTemplatePick3DViewer(QAutopickViewerBase):
 class QLoGPickViewer(QAutopickViewerBase):
     def _get_diameter(self) -> float:
         return float(self._job_dir.get_job_param("log_diam_max"))
+
+
+@register_job("relion.autopick.topaz.pick")
+class QTopazPickViewer(QAutopickViewerBase):
+    def _get_diameter(self) -> float:
+        diameter = float(self._job_dir.get_job_param("topaz_particle_diameter"))
+        if diameter <= 0:
+            diameter = _DIAMETER_DEFAULT
+        return diameter
+
+
+@register_job("relion.autopick.topaz.train")
+class QTopazTrainPickViewer(QJobScrollArea):
+    def __init__(self, job_dir: _job_dir.JobDirectory):
+        super().__init__()
+        self._job_dir = job_dir
+
+        self._canvas0 = QPlotCanvas(self)
+        self._canvas1 = QPlotCanvas(self)
+        self._canvas2 = QPlotCanvas(self)
+        self._layout.addWidget(QtW.QLabel("<b>Topaz Model Training Metrics</b>"))
+        self._layout.addWidget(QtW.QLabel("<b>Loss</b>"))
+        self._layout.addWidget(self._canvas0)
+        self._layout.addWidget(QtW.QLabel("<b>True Positive</b>"))
+        self._layout.addWidget(self._canvas1)
+        self._layout.addWidget(QtW.QLabel("<b>False Positive</b>"))
+        self._layout.addWidget(self._canvas2)
+
+    def on_job_updated(self, job_dir: _job_dir.JobDirectory, path: str):
+        """Handle changes to the job directory."""
+        fp = Path(path)
+        if fp.name.startswith("RELION_JOB_") or fp.suffix == ".sav":
+            self.initialize(job_dir)
+            _LOGGER.debug("%s Updated", job_dir.job_number)
+
+    def initialize(self, job_dir: _job_dir.JobDirectory):
+        """Initialize the viewer with the job directory."""
+        model_training_txt = job_dir.path / "model_training.txt"
+        if not model_training_txt.exists():
+            return
+        # model_training.txt has columns:
+        # epoch, iter, split, loss, ge_penalty, precision, tpr, fpr, auprc
+        df = pd.read_csv(model_training_txt, sep="\t")
+        is_train = df["split"] == "train"
+        df_train = df[is_train]  # multiple values per epoch
+        df_test = df[~is_train]
+
+        self._canvas0.plot_train_and_test(df_train, df_test, "loss")
+        self._canvas1.plot_train_and_test(df_train, df_test, "tpr")
+        self._canvas2.plot_train_and_test(df_train, df_test, "fpr")

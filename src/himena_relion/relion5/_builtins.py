@@ -454,6 +454,12 @@ class _AutoPickJob(_Relion5SpaJob):
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
         kwargs = super().normalize_kwargs(**kwargs)
         kwargs["continue_manual"] = False
+        if kwargs.get("topaz_model", None) is None:
+            kwargs["topaz_model"] = ""
+        if kwargs.get("topaz_particle_diameter", None) is None:
+            kwargs["topaz_particle_diameter"] = -1
+        if kwargs.get("topaz_nr_particles", None) is None:
+            kwargs["topaz_nr_particles"] = -1
         # template pick
         for key, value in [
             ("do_refs", False),
@@ -771,12 +777,30 @@ class AutoPickTopazTrain(_AutoPickJob):
         kwargs["do_topaz"] = True
         kwargs["do_topaz_train"] = True
         kwargs["fn_topaz_exe"] = _configs.get_topaz_exe()
+        do_parts = kwargs["do_topaz_train_parts"]
+        # RELION 5 gives a very confusing error message here by default.
+        if not do_parts and kwargs["topaz_train_picks"] == "":
+            raise ValueError("Picked particles must be provided")
+        if do_parts and kwargs["topaz_train_parts"] == "":
+            raise ValueError("Picked particles must be provided")
         return kwargs
 
     @classmethod
     def normalize_kwargs_inv(cls, **kwargs):
         kwargs = super().normalize_kwargs_inv(**kwargs)
         kwargs.pop("fn_topaz_exe", None)
+        keys_to_pop = [
+            "angpix_ref", "continue_manual", "do_ctf_autopick",
+            "do_ignore_first_ctfpeak_autopick", "do_invert_refs", "do_log", "do_ref3d",
+            "do_refs", "fn_ref3d_autopick", "fn_refs_autopick", "highpass", "lowpass",
+            "minavgnoise_autopick", "psi_sampling_autopick", "ref3d_sampling",
+            "ref3d_symmetry",
+        ]  # fmt: skip
+        for key in kwargs:
+            if key.startswith(("do_topaz", "topaz_", "log_")):
+                keys_to_pop.append(key)
+        for key in keys_to_pop:
+            kwargs.pop(key, None)
         return kwargs
 
     def run(
@@ -784,8 +808,8 @@ class AutoPickTopazTrain(_AutoPickJob):
         fn_input_autopick: _a.io.IN_MICROGRAPHS = "",
         angpix: _a.autopick.ANGPIX = None,
         # Topaz
-        topaz_particle_diameter: _a.autopick.TOPAZ_PARTICLE_DIAMETER = -1,
-        topaz_nr_particles: _a.autopick.TOPAZ_NR_PARTICLES = -1,
+        topaz_particle_diameter: _a.autopick.TOPAZ_PARTICLE_DIAMETER = None,
+        topaz_nr_particles: _a.autopick.TOPAZ_NR_PARTICLES = None,
         do_topaz_train_parts: _a.autopick.DO_TOPAZ_TRAIN_PARTS = False,
         topaz_train_picks: _a.autopick.TOPAZ_TRAIN_PICKS = "",
         topaz_train_parts: _a.autopick.TOPAZ_TRAIN_PARTS = "",
@@ -839,10 +863,6 @@ class AutoPickTopazPick(_AutoPickJob):
         kwargs["do_topaz"] = True
         kwargs["do_topaz_pick"] = True
         kwargs["fn_topaz_exe"] = _configs.get_topaz_exe()
-        if kwargs.get("topaz_model", None) is None:
-            kwargs["topaz_model"] = ""
-        if kwargs.get("topaz_particle_diameter", None) is None:
-            kwargs["topaz_particle_diameter"] = -1
         return kwargs
 
     @classmethod
@@ -853,7 +873,7 @@ class AutoPickTopazPick(_AutoPickJob):
             "angpix_ref", "continue_manual", "do_ctf_autopick",
             "do_ignore_first_ctfpeak_autopick", "do_invert_refs", "do_log", "do_ref3d",
             "do_refs", "fn_ref3d_autopick", "fn_refs_autopick", "highpass", "lowpass",
-            "min_avgnoise_autopick", "psi_sampling_autopick", "ref3d_sampling",
+            "minavgnoise_autopick", "psi_sampling_autopick", "ref3d_sampling",
             "ref3d_symmetry",
         ]  # fmt: skip
         for key in kwargs:
@@ -900,6 +920,13 @@ class AutoPickTopazPick(_AutoPickJob):
     @classmethod
     def setup_widgets(cls, widgets):
         _autopick_helix_setup(widgets)
+
+        @widgets["do_topaz_filaments"].changed.connect
+        def _on_do_topaz_filaments_changed(value: bool):
+            for name in ["topaz_filament_threshold", "topaz_hough_length"]:
+                widgets[name].enabled = value
+
+        _on_do_topaz_filaments_changed(widgets["do_topaz_filaments"].value)
 
 
 class ExtractJobBase(_Relion5SpaJob):

@@ -4,7 +4,7 @@ from typing import Annotated
 from himena_relion._widgets._path_input import PathDrop
 
 ANGPIX = Annotated[
-    float,
+    float | None,
     {
         "label": "Micrograph pixel size (A)",
         "tooltip": (
@@ -384,7 +384,7 @@ REF3D_SAMPLING = Annotated[
 
 # Topaz
 TOPAZ_PARTICLE_DIAMETER = Annotated[
-    float,
+    float | None,
     {
         "label": "Particle diameter (A)",
         "tooltip": (
@@ -395,7 +395,7 @@ TOPAZ_PARTICLE_DIAMETER = Annotated[
     },
 ]
 TOPAZ_NR_PARTICLES = Annotated[
-    float,
+    float | None,
     {
         "label": "Number of particles per micrographs",
         "tooltip": "Expected average number of particles per micrograph",
@@ -422,6 +422,8 @@ TOPAZ_TRAIN_PICKS = Annotated[
             "Input STAR file (preferably with CTF information) with all micrographs to "
             "pick from."
         ),
+        "widget_type": PathDrop,
+        "type_label": "MicrographsCoords",
         "group": "Topaz",
     },
 ]
@@ -434,7 +436,7 @@ TOPAZ_TRAIN_PARTS = Annotated[
             "training, e.g. from a previous 2D or 3D classification or selection."
         ),
         "widget_type": PathDrop,
-        "type_label": "MicrographsCoords",
+        "type_label": ["ParticlesData", "ParticleGroupMetadata"],
         "group": "Topaz",
     },
 ]
