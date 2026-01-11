@@ -86,19 +86,18 @@ class QPlotCanvas(QModelMatplotlibCanvas):
     ):
         with self._plot_style():
             fig = hplt.figure()
-            x_train = df_train["epoch"]
+            epoch = df_test["epoch"]
             y_train_group = df_train.groupby("epoch", sort=True)[ycol]
+            y_test = df_test[ycol]
             fig.errorbar(
-                x_train,
+                epoch,
                 y_train_group.mean(),
                 y_error=y_train_group.std(),
                 capsize=0.2,
                 name="Train",
                 color="#1f77b4",
             )
-            x_test = df_test["epoch"]
-            y_test = df_test[ycol]
-            fig.plot(x_test, y_test, name="Test", color="#ff7f0e")
+            fig.plot(epoch, y_test, name="Test", color="#ff7f0e")
             fig.x.label = "Epoch"
             fig.set_legend(font_size=9.0)
             self.update_model(WidgetDataModel(value=fig, type=StandardType.PLOT))
