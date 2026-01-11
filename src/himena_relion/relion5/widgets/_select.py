@@ -242,18 +242,7 @@ class QSplitParticlesViewer(QSelectJobBase):
                 block = star["particles"].trust_loop()
             else:
                 continue
-            yield f"<h2>{path.name} = {len(block)} particles</h2>"
-            df = block.to_pandas()
-            particles_in_each_set = []
-            for col in ["rlnTomoName", "rlnMicrographName"]:
-                # tomo or SPA
-                if col in df.columns:
-                    for name, sub in df.groupby(col):
-                        particles_in_each_set.append((name, f"n = {sub.shape[0]}"))
-                    particles_in_each_set.sort(key=lambda x: x[0])
-                    yield np.array(particles_in_each_set, dtype=np.dtypes.StringDType())
-                    yield "<br>"
-            yield "<br>"
+            yield f"{path.name} = <b>{len(block)}</b> particles<br>"
 
     def iter_particles_stars(self) -> Iterator[Path]:
         """Iterate over all particles star files."""

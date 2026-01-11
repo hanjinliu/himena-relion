@@ -1720,6 +1720,8 @@ class _SelectJob(_Relion5Job):
             ("dendrogram_threshold", 0.85),
             ("dendrogram_minclass", -1000),
             ("min_dedicated", 1),
+            ("discard_label", "rlnImageName"),
+            ("discard_sigma", 4),
         ]:
             kwargs.setdefault(name, default)
         return super().normalize_kwargs(**kwargs)
