@@ -10,6 +10,7 @@ from himena_relion.relion5._builtins import (
     InitialModelJob,
     Class3DJob,
     Refine3DJob,
+    ManualPickJob,
     AutoPickLogJob,
     AutoPickTemplate2DJob,
     AutoPickTemplate3DJob,
@@ -69,6 +70,33 @@ class _AutoPickContinueManually(_Relion5BuiltinContinue):
         nr_mpi: _a.running.NR_MPI = 1,
         do_queue: _a.running.DO_QUEUE = False,
         min_dedicated: _a.running.MIN_DEDICATED = 1,
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")
+
+
+class ManualPickContinue(_Relion5BuiltinContinue):
+    original_class = ManualPickJob
+
+    def run(
+        self,
+        fn_in: _a.io.IN_MICROGRAPHS = "",
+        do_startend: _a.manualpick.DO_STARTEND = False,
+        # Display
+        diameter: _a.manualpick.DIAMETER = 100,
+        micscale: _a.manualpick.MICSCALE = 0.2,
+        sigma_contrast: _a.manualpick.SIGMA_CONTRAST = 3,
+        white_val: _a.manualpick.WHITE_VAL = 0,
+        black_val: _a.manualpick.BLACK_VAL = 0,
+        angpix: _a.manualpick.ANGPIX = -1,
+        filter_method: _a.manualpick.FILTER_METHOD = "Band-pass",
+        lowpass: _a.manualpick.LOWPASS = 20,
+        highpass: _a.manualpick.HIGHPASS = -1,
+        # Colors
+        do_color: _a.manualpick.DO_COLOR = False,
+        color_label: _a.manualpick.COLOR_LABEL = "rlnAutopickFigureOfMerit",
+        fn_color: _a.manualpick.FN_COLOR = "",
+        blue_value: _a.manualpick.BLUE_VALUE = 0,
+        red_value: _a.manualpick.RED_VALUE = 2,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
