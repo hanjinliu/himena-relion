@@ -516,7 +516,7 @@ class PickJobDirectory(JobDirectory):
         tomo_star, particles_star = self.tomo_and_particles_star()
         if tomo_star is None:
             return
-        star = _read_star_as_df(tomo_star)
+        star = read_star(tomo_star).first().trust_loop().to_pandas()
         for _, row in star.iterrows():
             info = TomogramInfo.from_series(row)
             getter = self._make_get_particles(particles_star, info.tomo_name)
@@ -809,37 +809,6 @@ class SelectInteractiveJobDirectory(JobDirectory):
         optimizer_star_path = Path(pipeline.input_edges.from_node.iloc[0])
         new_stem = optimizer_star_path.stem[: -len("optimiser")] + "optimisation_set"
         return self.relion_project_dir / optimizer_star_path.parent / f"{new_stem}.star"
-
-
-class RemoveDuplicatesJobDirectory(JobDirectory):
-    _job_type = "relion.select.removeduplicates"
-
-    def particles_star(self) -> Path:
-        """Return the path to the particles star file."""
-        return self.path / "particles.star"
-
-    def particles_removed_star(self) -> Path:
-        """Return the path to the particles_removed star file."""
-        return self.path / "particles_removed.star"
-
-
-class SplitParticlesJobDirectory(JobDirectory):
-    _job_type = "relion.select.split"
-
-    def iter_particles_stars(self) -> Iterator[Path]:
-        """Iterate over all particles star files."""
-        path_ith_list: list[tuple[Path, int]] = []
-        num = len("particles_split")
-        for path in self.path.glob("particles_split*.star"):
-            ith = int(path.stem[num:])
-            path_ith_list.append((path, ith))
-        path_ith_list.sort(key=lambda x: x[1])
-        for path, _ in path_ith_list:
-            yield path
-
-
-def _read_star_as_df(star_path: Path) -> pd.DataFrame:
-    return read_star(star_path).first().trust_loop().to_pandas()
 
 
 def _read_tubes(full_path, map_scale: float) -> list[TubeObject]:

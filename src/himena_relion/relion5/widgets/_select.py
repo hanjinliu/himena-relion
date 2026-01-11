@@ -1,6 +1,7 @@
 from __future__ import annotations
 from pathlib import Path
 import logging
+from typing import Iterator
 import mrcfile
 import numpy as np
 from qtpy import QtGui
@@ -43,7 +44,7 @@ class QSelectJobBase(QJobScrollArea):
         # implement this in the subclass
         yield ""
 
-    def on_job_updated(self, job_dir: _job_dir.RemoveDuplicatesJobDirectory, path: str):
+    def on_job_updated(self, job_dir: _job_dir.JobDirectory, path: str):
         """Handle changes to the job directory."""
         if Path(path).suffix not in [".out", ".err", ".star"]:
             self.initialize(job_dir)
@@ -87,10 +88,11 @@ class QSelectJobBase(QJobScrollArea):
 
 @register_job("relion.select.removeduplicates")
 class QRemoveDuplicatesViewer(QSelectJobBase):
-    def insert_html(self, job_dir: _job_dir.RemoveDuplicatesJobDirectory):
+    def insert_html(self, job_dir: _job_dir.JobDirectory):
         """Initialize the viewer with the job directory."""
-        path_sel = job_dir.particles_star()
-        path_rem = job_dir.particles_removed_star()
+
+        path_sel = job_dir.path / "particles.star"
+        path_rem = job_dir.path / "particles_removed.star"
         if not (path_sel.exists() and path_rem.exists()):
             return _NOT_ENOUGH_MSG
         yield "<h2>Summary</h2>"
@@ -229,8 +231,8 @@ class QSelectInteractiveViewer(QSelectJobBase):
 
 @register_job("relion.select.split")
 class QSplitParticlesViewer(QSelectJobBase):
-    def insert_html(self, job_dir: _job_dir.SplitParticlesJobDirectory):
-        for path in job_dir.iter_particles_stars():
+    def insert_html(self, job_dir: _job_dir.JobDirectory):
+        for path in self.iter_particles_stars():
             if not path.exists():
                 continue
             star = read_star(path)
@@ -252,6 +254,17 @@ class QSplitParticlesViewer(QSelectJobBase):
                     yield np.array(particles_in_each_set, dtype=np.dtypes.StringDType())
                     yield "<br>"
             yield "<br>"
+
+    def iter_particles_stars(self) -> Iterator[Path]:
+        """Iterate over all particles star files."""
+        path_ith_list: list[tuple[Path, int]] = []
+        num = len("particles_split")
+        for path in self._job_dir.path.glob("particles_split*.star"):
+            ith = int(path.stem[num:])
+            path_ith_list.append((path, ith))
+        path_ith_list.sort(key=lambda x: x[1])
+        for path, _ in path_ith_list:
+            yield path
 
 
 @register_job("relion.select.onvalue")
