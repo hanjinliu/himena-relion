@@ -68,7 +68,7 @@ class QInitialModelViewer(QJobScrollArea):
         if nclasses == 0:
             return
         niter_list = self._job_dir.niter_list()
-        _LOGGER.info("Job with %s classes and %s iterations", nclasses, max(niter_list))
+        _LOGGER.info("Job with %s classes", nclasses)
         self._class_choice.setMaximum(nclasses)
         self._iter_choice.set_choices(niter_list)
         self._iter_choice.setValue(self._iter_choice.maximum())

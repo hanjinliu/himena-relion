@@ -497,12 +497,16 @@ class _AutoPickJob(_Relion5SpaJob):
 
         # others
         kwargs["use_gpu"] = kwargs["gpu_ids"] != ""
+        if kwargs.get("angpix", None) is None:
+            kwargs["angpix"] = -1
         return kwargs
 
     @classmethod
     def normalize_kwargs_inv(cls, **kwargs):
         kwargs = super().normalize_kwargs_inv(**kwargs)
         kwargs.pop("use_gpu", None)
+        if "angpix" in kwargs and kwargs["angpix"] == -1:
+            kwargs["angpix"] = None
         return kwargs
 
 
@@ -550,7 +554,7 @@ class AutoPickLogJob(_AutoPickJob):
     def run(
         self,
         fn_input_autopick: _a.io.IN_MICROGRAPHS = "",
-        angpix: _a.autopick.ANGPIX = -1,
+        angpix: _a.autopick.ANGPIX = None,
         # Laplacian
         log_diam_min: _a.autopick.LOG_DIAM_MIN = 200,
         log_diam_max: _a.autopick.LOG_DIAM_MAX = 250,
@@ -634,7 +638,7 @@ class AutoPickTemplate2DJob(_AutoPickJob):
     def run(
         self,
         fn_input_autopick: _a.io.IN_MICROGRAPHS = "",
-        angpix: _a.autopick.ANGPIX = -1,
+        angpix: _a.autopick.ANGPIX = None,
         # References
         fn_refs_autopick: _a.autopick.FN_REFS_AUTOPICK = "",
         lowpass: _a.autopick.LOWPASS = 20,
@@ -667,6 +671,10 @@ class AutoPickTemplate2DJob(_AutoPickJob):
         min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
+
+    @classmethod
+    def setup_widgets(cls, widgets):
+        _autopick_helix_setup(widgets)
 
 
 class AutoPickTemplate3DJob(_AutoPickJob):
@@ -708,7 +716,7 @@ class AutoPickTemplate3DJob(_AutoPickJob):
         self,
         fn_input_autopick: _a.io.IN_MICROGRAPHS = "",
         fn_ref3d_autopick: _a.io.REF_TYPE = "",
-        angpix: _a.autopick.ANGPIX = -1,
+        angpix: _a.autopick.ANGPIX = None,
         # References
         ref3d_symmetry: _a.autopick.REF3D_SYMMETRY = "C1",
         ref3d_sampling: _a.autopick.REF3D_SAMPLING = "30 degrees",
@@ -745,18 +753,7 @@ class AutoPickTemplate3DJob(_AutoPickJob):
 
     @classmethod
     def setup_widgets(cls, widgets):
-        @widgets["do_pick_helical_segments"].changed.connect
-        def _on_do_pick_helical_segments_changed(value: bool):
-            widgets["helical_tube_outer_diameter"].enabled = value
-            widgets["helical_tube_length_min"].enabled = value
-            widgets["helical_tube_kappa_max"].enabled = value
-            widgets["helical_nr_asu"].enabled = value
-            widgets["helical_rise"].enabled = value
-            widgets["do_amyloid"].enabled = value
-
-        _on_do_pick_helical_segments_changed(
-            widgets["do_pick_helical_segments"].value
-        )  # initialize
+        _autopick_helix_setup(widgets)
 
 
 class AutoPickTopazTrain(_AutoPickJob):
@@ -785,7 +782,7 @@ class AutoPickTopazTrain(_AutoPickJob):
     def run(
         self,
         fn_input_autopick: _a.io.IN_MICROGRAPHS = "",
-        angpix: _a.autopick.ANGPIX = -1,
+        angpix: _a.autopick.ANGPIX = None,
         # Topaz
         topaz_particle_diameter: _a.autopick.TOPAZ_PARTICLE_DIAMETER = -1,
         topaz_nr_particles: _a.autopick.TOPAZ_NR_PARTICLES = -1,
@@ -816,15 +813,15 @@ class AutoPickTopazTrain(_AutoPickJob):
         raise NotImplementedError("This is a builtin job placeholder.")
 
     @classmethod
-    def setup_widgets(cls, widgets: dict[str, ValueWidget]) -> None:
+    def setup_widgets(cls, widgets):
+        _autopick_helix_setup(widgets)
+
         @widgets["do_topaz_train_parts"].changed.connect
         def _on_do_topaz_train_parts_changed(value: bool):
             widgets["topaz_train_parts"].enabled = value
             widgets["topaz_train_picks"].enabled = not value
 
-        _on_do_topaz_train_parts_changed(
-            widgets["do_topaz_train_parts"].value
-        )  # initialize
+        _on_do_topaz_train_parts_changed(widgets["do_topaz_train_parts"].value)
 
 
 class AutoPickTopazPick(_AutoPickJob):
@@ -842,20 +839,36 @@ class AutoPickTopazPick(_AutoPickJob):
         kwargs["do_topaz"] = True
         kwargs["do_topaz_pick"] = True
         kwargs["fn_topaz_exe"] = _configs.get_topaz_exe()
+        if kwargs.get("topaz_model", None) is None:
+            kwargs["topaz_model"] = ""
+        if kwargs.get("topaz_particle_diameter", None) is None:
+            kwargs["topaz_particle_diameter"] = -1
         return kwargs
 
     @classmethod
     def normalize_kwargs_inv(cls, **kwargs):
         kwargs = super().normalize_kwargs_inv(**kwargs)
         kwargs.pop("fn_topaz_exe", None)
+        keys_to_pop = [
+            "angpix_ref", "continue_manual", "do_ctf_autopick",
+            "do_ignore_first_ctfpeak_autopick", "do_invert_refs", "do_log", "do_ref3d",
+            "do_refs", "fn_ref3d_autopick", "fn_refs_autopick", "highpass", "lowpass",
+            "min_avgnoise_autopick", "psi_sampling_autopick", "ref3d_sampling",
+            "ref3d_symmetry",
+        ]  # fmt: skip
+        for key in kwargs:
+            if key.startswith(("do_topaz", "topaz_", "log_")):
+                keys_to_pop.append(key)
+        for key in keys_to_pop:
+            kwargs.pop(key, None)
         return kwargs
 
     def run(
         self,
         fn_input_autopick: _a.io.IN_MICROGRAPHS = "",
-        angpix: _a.autopick.ANGPIX = -1,
+        angpix: _a.autopick.ANGPIX = None,
         # Topaz
-        topaz_particle_diameter: _a.autopick.TOPAZ_PARTICLE_DIAMETER = -1,
+        topaz_particle_diameter: _a.autopick.TOPAZ_PARTICLE_DIAMETER = None,
         topaz_model: _a.autopick.TOPAZ_MODEL = "",
         do_topaz_filaments: _a.autopick.DO_TOPAZ_FILAMENTS = False,
         topaz_filament_threshold: _a.autopick.TOPAZ_FILAMENT_THRESHOLD = -5,
@@ -883,6 +896,10 @@ class AutoPickTopazPick(_AutoPickJob):
         min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
+
+    @classmethod
+    def setup_widgets(cls, widgets):
+        _autopick_helix_setup(widgets)
 
 
 class ExtractJobBase(_Relion5SpaJob):
@@ -2312,3 +2329,16 @@ class ParticleSubtractionJob(_Relion5SpaJob):
             widgets["center"].enabled = value == "User-defined"
 
         _on_center_method_changed(widgets["center_method"].value == "User-defined")
+
+
+def _autopick_helix_setup(widgets: dict[str, ValueWidget]) -> None:
+    @widgets["do_pick_helical_segments"].changed.connect
+    def _on_do_pick_helical_segments_changed(value: bool):
+        widgets["helical_tube_outer_diameter"].enabled = value
+        widgets["helical_tube_length_min"].enabled = value
+        widgets["helical_tube_kappa_max"].enabled = value
+        widgets["helical_nr_asu"].enabled = value
+        widgets["helical_rise"].enabled = value
+        widgets["do_amyloid"].enabled = value
+
+    _on_do_pick_helical_segments_changed(widgets["do_pick_helical_segments"].value)

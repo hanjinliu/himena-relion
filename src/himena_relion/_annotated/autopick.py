@@ -232,6 +232,8 @@ FN_REFS_AUTOPICK = Annotated[
     str,
     {
         "label": "2D reference",
+        "widget_type": PathDrop,
+        "type_label": "Image2DGroupMetadata",
         "tooltip": (
             "Input STAR file or MRC stack with the 2D references to be used for "
             "picking. Note that the absolute greyscale needs to be correct, so <b>only "

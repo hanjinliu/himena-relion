@@ -204,9 +204,10 @@ for sel_class_job in [_spa.SelectClassesInteractiveJob, _spa.SelectClassesAutoJo
     connect_jobs(
         sel_class_job,
         _spa.AutoPickTemplate2DJob,
-        # node_mapping={"particles.star": "fn_input_autopick"},
+        node_mapping={
+            "class_averages.star": "fn_refs_autopick",
+        },
         value_mapping={
-            _get_template_for_pick: "fn_refs_autopick",
             _get_angpix_from_template_pick: "angpix_ref",
         },
     )
