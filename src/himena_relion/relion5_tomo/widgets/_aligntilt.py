@@ -14,8 +14,8 @@ from himena_relion._widgets import (
     QMicrographListWidget,
 )
 from himena_relion import _job_dir, _utils
-from himena_relion.schemas import TSAlignModel
-from himena_relion.schemas._movie_tilts import TSModel
+from himena_relion.relion5_tomo._tomo_utils import project_fiducials, read_xyz
+from himena_relion.schemas._movie_tilts import TSModel, TSGroupModel
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -31,7 +31,6 @@ class QAlignTiltSeriesViewer(QJobScrollArea):
         self._viewer.setMinimumHeight(420)
         self._ts_list = QMicrographListWidget(["Tilt Series"])
         self._ts_list.current_changed.connect(self._ts_choice_changed)
-        self._current_ts_align: pd.DataFrame | None = None
         self._batchruntomo_log = QBatchruntomoLog()
         layout.addWidget(self._ts_list)
         layout.addWidget(QtW.QLabel("<b>Aligned tilt series</b>"))
@@ -60,41 +59,30 @@ class QAlignTiltSeriesViewer(QJobScrollArea):
     def _ts_choice_changed(self, texts: tuple[str, ...]):
         """Update the viewer when the selected tomogram changes."""
         job_dir = self._job_dir
-        text = texts[0]
+        text = texts[0]  # tomo name
         xf = xf_file(job_dir, text)
         if not xf.exists():
             return
 
         # Don't use the tilt series inside IMOD project directories. They are redundant
         # and can be deleted by users after this job finished.
-        pipeline = job_dir.parse_job_pipeline()
-        if node := pipeline.get_input_by_type("TomogramGroupMetadata"):
-            _LOGGER.debug("Found input: %s", node.path)
-            tilt_job_dir = _job_dir.JobDirectory.from_job_star(
-                job_dir.resolve_path(node.path_job / "job.star")
-            )
-            ts_dir = tilt_job_dir.path / "tilt_series"
-            for path in ts_dir.glob("*.star"):
-                if path.stem == text:
-                    break
-            else:
-                raise ValueError(f"Tilt series {text} not found.")
-
+        in_tilt = job_dir.get_job_param("in_tiltseries")
+        try:
+            ts_group = TSGroupModel.validate_file(in_tilt)
+            ts_file = ts_group.tomo_tilt_series_star_file[
+                ts_group.tomo_name == text
+            ].iloc[0]
             rln_dir = job_dir.relion_project_dir
-            ts_paths = TSModel.validate_file(path).ts_paths_sorted(rln_dir)
+            ts_paths = TSModel.validate_file(ts_file).ts_paths_sorted(rln_dir)
             ts_view = ArrayFilteredView.from_mrcs(ts_paths)
             nbin = max(round(16 / ts_view.get_scale()), 1)
             aligner = ImodImageAligner.from_xf(xf, nbin)
-            self._udpate_fiducials(text, aligner)
             self._viewer.set_array_view(ts_view.with_filter(aligner.transform_image))
-
-        # update current TS_XX.star content
-        ts_star = self._job_dir.path / "tilt_series" / f"{text}.star"
-        if ts_star.exists():
-            try:
-                self._current_ts_align = TSAlignModel.validate_file(ts_star)
-            except Exception:
-                self._current_ts_align = None
+            # TODO: not aligned well yet.
+            # self._udpate_fiducials(text, aligner)
+        except Exception:
+            _LOGGER.error("Failed to load tilt series", exc_info=True)
+            self._viewer.clear()
 
         # update batchruntomo log
         log_file = job_dir.path / "external" / text / "batchruntomo.log"
@@ -103,24 +91,26 @@ class QAlignTiltSeriesViewer(QJobScrollArea):
 
     def _udpate_fiducials(self, text: str, aligner: ImodImageAligner):
         # if tracked fiducials are available, display them
-        # return
-        # BUG: not aligned well
-        import imodmodel
-
         job_dir = self._job_dir
         if (fid_path := fid_file(job_dir, text)).exists() and (
             params := image_shape_params(job_dir, text)
         ):
             _LOGGER.debug("Fiducial file %s found. Load it.", fid_path)
-            fid = imodmodel.read(fid_path)[["z", "y", "x"]].to_numpy(dtype=np.float32)
-            nbin_prealign, ny, nx = params
-            fid[:, 1:3] *= nbin_prealign
-            fid[:, 1] -= (ny - 1) / 2
-            fid[:, 2] -= (nx - 1) / 2
-            fid_tr = aligner.transform_points(fid, self._viewer._dims_slider.value())
-            fid_tr[:, 1] += (ny - 1) / 2
-            fid_tr[:, 2] += (nx - 1) / 2
-            fid_tr[:, 1:3] /= aligner._nbin
+            fid = read_xyz(fid_path)[:, ::-1]  # to zyx
+            ny, nx = params
+
+            fid_proj = project_fiducials(
+                fid,
+                np.array([0, ny - 1, nx - 1]) / 2,
+                deg=np.loadtxt(fid_path.as_posix()[:-7] + "_fid.tlt"),
+                xf=aligner._components,
+                tilt_center=np.array([ny - 1, nx - 1]) / 2,
+            )
+            fid_proj[:, 1:] /= aligner._nbin
+            fid_tr = aligner.transform_points(
+                pd.DataFrame(fid_proj, columns=["z", "y", "x"]),
+                (ny, nx),
+            )
             self._viewer.set_points(fid_tr, size=10, out_of_slice=False)
             self._viewer.redraw()
         else:
@@ -146,7 +136,36 @@ class ImodImageAligner:
         return cls(components, nbin=nbin)
 
     def transform_image(self, img: np.ndarray, i: int) -> np.ndarray:
-        ny, nx = img.shape
+        mat = self.matrix(i, img.shape)
+        imgb = _utils.bin_image(img, self._nbin)
+        cval = np.mean(imgb[::50])
+        out = ndi.affine_transform(
+            imgb.astype(np.float32, copy=False), mat, order=1, cval=cval
+        )
+        return out
+
+    def transform_points(
+        self,
+        fid: pd.DataFrame,
+        shape: tuple[int, int],
+    ) -> np.ndarray:
+        """Transform fiducial points for tilt index i."""
+        # fid is zyx
+        fid_out = fid.to_numpy(np.float32, copy=True)
+        for z, sub in fid.groupby("z"):
+            mat = self.matrix(int(z), shape)
+            fid_yx = sub[["y", "x"]].to_numpy(np.float32, copy=False)
+            fid_yxz = np.hstack(
+                [fid_yx, np.ones((fid_yx.shape[0], 1), dtype=np.float32)]
+            )
+            mask = fid_out[:, 0] == z
+            fid_transformed = fid_yxz @ np.linalg.inv(mat.T)
+            fid_out[mask, 1:3] = fid_transformed[:, 0:2]
+        return fid_out
+
+    def matrix(self, i: int, shape: tuple[int, int]) -> np.ndarray:
+        """Get the transformation matrix for tilt index i."""
+        ny, nx = shape
         t = np.array(
             [[1, 0, ny // self._nbin / 2], [0, 1, nx // self._nbin / 2], [0, 0, 1]]
         )
@@ -155,20 +174,7 @@ class ImodImageAligner:
             [[a22, a21, dy / self._nbin], [a12, a11, dx / self._nbin], [0, 0, 1]]
         )
         mat = t @ np.linalg.inv(mat) @ np.linalg.inv(t)
-        imgb = _utils.bin_image(img, self._nbin)
-        cval = np.mean(imgb[::50])
-        out = ndi.affine_transform(
-            imgb.astype(np.float32, copy=False), mat, order=1, cval=cval
-        )
-        return out
-
-    def transform_points(self, fid: np.ndarray, i: int) -> np.ndarray:
-        """Transform fiducial points for tilt index i."""
-        a11, a12, a21, a22, dx, dy = self._components[i]
-        mat = np.array([[a22, a12], [a21, a11]])
-        fid = fid.copy()
-        fid[:, 1:3] = (fid[:, 1:3] @ mat) + np.array([dy, dx])
-        return fid
+        return mat
 
 
 class QBatchruntomoLog(QtW.QPlainTextEdit):
@@ -193,28 +199,20 @@ def xf_file(jobdir: _job_dir.JobDirectory, tomoname: str) -> Path:
 def fid_file(jobdir: _job_dir.JobDirectory, tomoname: str) -> Path:
     """Return the path to the .fid file for a given tomogram name."""
     # this is the mod file of tracked fiducials
-    return jobdir.path / "external" / tomoname / f"{tomoname}.fid"
+    return jobdir.path / "external" / tomoname / f"{tomoname}fid.xyz"
 
 
 def image_shape_params(
     jobdir: _job_dir.JobDirectory,
     tomoname: str,
-) -> tuple[int, int, int] | None:
+) -> tuple[int, int] | None:
     """Try to get image shape from tilt.com and prenewst.com files."""
-    path_prenewst = jobdir.path / "external" / tomoname / "prenewst.com"
     path_tilt = jobdir.path / "external" / tomoname / "tilt.com"
-    nbin_fid = ny = nx = -1
-    with path_prenewst.open("r") as f:
-        for line in f:
-            if line.startswith("BinByFactor	"):
-                nbin_fid = int(line.split()[1])
-                break
-
     with path_tilt.open("r") as f:
         # FULLIMAGE 3838 3710
         for line in f:
             if line.startswith("FULLIMAGE "):
                 nx, ny = map(int, line.split()[1:3])
-    if nbin_fid > 0 and ny > 0 and nx > 0:
-        return (nbin_fid, ny, nx)
+    if ny > 0 and nx > 0:
+        return (ny, nx)
     return None

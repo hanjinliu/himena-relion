@@ -56,7 +56,7 @@ class QJobScheduler(QtW.QWidget):
         return self._cwd
 
     def sizeHint(self) -> QtCore.QSize:
-        return QtCore.QSize(320, 600)
+        return QtCore.QSize(350, 600)
 
     def _set_content(self, job_cls: type[RelionJob] | None, title: str):
         self._current_job_cls = job_cls
@@ -72,7 +72,7 @@ class QJobScheduler(QtW.QWidget):
 
         This method does NOT update the parameters; call `set_parameters` after this."""
         if issubclass(job_cls, _Relion5BuiltinContinue):
-            prefix = "Continue - "
+            prefix = "Continue &mdash; "
         else:
             prefix = "Job: "
         self._set_content(job_cls, prefix + job_cls.job_title())
@@ -268,6 +268,8 @@ class EditMode(Mode):
 
 
 class QParameterNameLabel(QtW.QWidget):
+    """Label widget for parameter names with optional tooltip icon."""
+
     def __init__(self, name: str, tooltip: str | None = None):
         super().__init__()
         self._tooltip = tooltip
@@ -311,6 +313,7 @@ class QParameterInfoIcon(QtW.QLabel):
         self.setPixmap(icon.pixmap(12, 12))
         self.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
         self._last_press_pos = QtCore.QPoint()
+        self.setToolTip("Click to show more information about this parameter.")
 
     def mousePressEvent(self, event: QtGui.QMouseEvent) -> None:
         if event.buttons() & QtCore.Qt.MouseButton.LeftButton:
@@ -329,8 +332,8 @@ class QHTMLTextEdit(QtW.QTextEdit):
     def __init__(self, html: str = ""):
         super().__init__()
         self.setReadOnly(True)
-        self.setFixedSize(300, 150)
         self.setHtml(html)
+        self.setFixedSize(300, 150)
 
     def mousePressEvent(self, e: QtGui.QMouseEvent):
         self._anchor = self.anchorAt(e.pos())

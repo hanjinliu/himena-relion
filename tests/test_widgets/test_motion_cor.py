@@ -22,10 +22,10 @@ def test_motioncor_spa_widget(
     job_dir.path.joinpath("Movies").mkdir()
     for i in range(3):
         basename = f"Frame_{i:02d}"
-        tester.write_random_mrc(f"Movies/{basename}.mrc", (10, 10), dtype=np.float16)
+        tester.write_random_mrc(f"Movies/{basename}.mrc", (40, 40), dtype=np.float16)
         tester.write_text(f"Movies/{basename}.log", "log ...")
         tester.write_text(f"Movies/{basename}.star", "star ...")
-        tester.write_random_mrc(f"Movies/{basename}_PS.mrc", (10, 3), dtype=np.float16)
+        tester.write_random_mrc(f"Movies/{basename}_PS.mrc", (10, 10), dtype=np.float16)
 
         assert tester.widget._mic_list.rowCount() == i + 1
 
@@ -103,10 +103,10 @@ def test_motioncor_tomo_widget(
     for i in range(3):
         for i_tilt, tilt in enumerate(["0_0", "40_0", "-40_0"]):
             basename = f"TS_{i+1:02d}_{i_tilt:03d}_{tilt}"
-            tester.write_random_mrc(f"frames/{basename}.mrc", (10, 10), dtype=np.float16)
+            tester.write_random_mrc(f"frames/{basename}.mrc", (40, 40), dtype=np.float16)
             tester.write_text(f"frames/{basename}.log", "log ...")
             tester.write_text(f"frames/{basename}.star", "star ...")
-            tester.write_random_mrc(f"frames/{basename}_PS.mrc", (10, 3), dtype=np.float16)
+            tester.write_random_mrc(f"frames/{basename}_PS.mrc", (10, 10), dtype=np.float16)
         assert tester.widget._ts_list.rowCount() == i + 1
     assert tester.widget._ts_list.rowCount() == 3
     tester.widget._ts_list.setCurrentCell(0, 0)

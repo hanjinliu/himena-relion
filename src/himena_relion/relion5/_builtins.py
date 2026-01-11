@@ -51,6 +51,8 @@ class _ImportMoviesJobBase(_Relion5SpaJob):
 
 
 class ImportMoviesJob(_ImportMoviesJobBase):
+    """Import movies for single particle analysis."""
+
     @classmethod
     def param_matches(cls, job_params):
         return job_params["do_raw"] == "Yes"
@@ -81,6 +83,8 @@ class ImportMoviesJob(_ImportMoviesJobBase):
 
 
 class ImportMicrographsJob(_ImportMoviesJobBase):
+    """Import motion-corrected micrographs for single particle analysis."""
+
     @classmethod
     def param_matches(cls, job_params):
         return job_params["do_raw"] != "Yes"

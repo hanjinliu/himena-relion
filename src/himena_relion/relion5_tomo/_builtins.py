@@ -55,7 +55,7 @@ class _Relion5TomoJob(_Relion5BuiltinJob):
         return True
 
 
-class _ImportTomoJob(_Relion5TomoJob):
+class _ImportTomoOrCoordsJob(_Relion5TomoJob):
     @classmethod
     def type_label(cls) -> str:
         return "relion.importtomo"
@@ -65,19 +65,7 @@ class _ImportTomoJob(_Relion5TomoJob):
         return False
 
 
-class ImportTomoJob(_ImportTomoJob):
-    @classmethod
-    def command_id(cls):
-        return super().command_id()
-
-    @classmethod
-    def param_matches(cls, job_params: dict[str, str]) -> bool:
-        return job_params.get("do_coords", "No") == "No"
-
-    @classmethod
-    def job_title(cls) -> str:
-        return "Import Tomo"
-
+class _ImportTomoJob(_ImportTomoOrCoordsJob):
     @classmethod
     def normalize_kwargs(cls, **kwargs):
         kwargs = super().normalize_kwargs(**kwargs)
@@ -103,7 +91,7 @@ class ImportTomoJob(_ImportTomoJob):
         }
         for name in [
             "in_coords", "do_queue", "remove_substring2", "is_center", "scale_factor",
-            "do_coords", "add_factor", "remove_substring"
+            "do_coords", "add_factor", "remove_substring", "images_are_motion_corrected"
         ]:  # fmt: skip
             kwargs.pop(name, None)
         return kwargs
@@ -112,7 +100,6 @@ class ImportTomoJob(_ImportTomoJob):
         self,
         # General
         movie_files: _a.import_.MOVIE_FILES = "frames/*.mrc",
-        images_are_motion_corrected: _a.import_.IMAGES_ARE_MOTION_CORRECTED = False,
         mdoc_files: _a.import_.MDOC_FILES = "mdoc/*.mdoc",
         optics_group_name: _a.import_.OPTICS_GROUP_NAME = "",
         prefix: _a.import_.PREFIX = "",
@@ -131,7 +118,57 @@ class ImportTomoJob(_ImportTomoJob):
         raise NotImplementedError("This is a builtin job placeholder.")
 
 
-class ImportCoordinatesJob(_ImportTomoJob):
+class ImportTomoJob(_ImportTomoJob):
+    """Import tilt series from movies."""
+
+    @classmethod
+    def command_id(cls):
+        return super().command_id() + ".movies"
+
+    @classmethod
+    def param_matches(cls, job_params: dict[str, str]) -> bool:
+        return (
+            job_params.get("do_coords", "No") == "No"
+            and job_params.get("images_are_motion_corrected", "No") == "No"
+        )
+
+    @classmethod
+    def normalize_kwargs(cls, **kwargs):
+        kwargs = super().normalize_kwargs(**kwargs)
+        kwargs["images_are_motion_corrected"] = False
+        return kwargs
+
+    @classmethod
+    def job_title(cls) -> str:
+        return "Import Movies as Tilt Series"
+
+
+class ImportTomoMicrographsJob(_ImportTomoJob):
+    """Import tilt series from motion-corrected micrographs."""
+
+    @classmethod
+    def command_id(cls):
+        return super().command_id() + ".micrographs"
+
+    @classmethod
+    def param_matches(cls, job_params: dict[str, str]) -> bool:
+        return (
+            job_params.get("do_coords", "No") == "No"
+            and job_params.get("images_are_motion_corrected", "No") == "Yes"
+        )
+
+    @classmethod
+    def normalize_kwargs(cls, **kwargs):
+        kwargs = super().normalize_kwargs(**kwargs)
+        kwargs["images_are_motion_corrected"] = True
+        return kwargs
+
+    @classmethod
+    def job_title(cls) -> str:
+        return "Import Micrographs as Tilt Series"
+
+
+class ImportCoordinatesJob(_ImportTomoOrCoordsJob):
     @classmethod
     def command_id(cls):
         return super().command_id() + ".coords"

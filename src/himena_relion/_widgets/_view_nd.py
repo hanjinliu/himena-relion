@@ -175,10 +175,11 @@ class Q2DViewer(QViewer):
         else:
             min_, max_ = self._last_clim
         zs = self._points[:, 0]
-        thickness = self._point_size_normed() if self._out_of_slice else 0.01
+        point_size = self._point_size_normed()
+        thickness = point_size if self._out_of_slice else 0.01
         zdiff = zs - slider_value
         mask = np.abs(zdiff) < thickness / 2
-        sizes = np.sqrt((thickness) ** 2 - (zdiff[mask] * 2) ** 2)
+        sizes = np.sqrt(point_size**2 - (zdiff[mask] * 2) ** 2)
         return SliceResult(
             slice_image,
             (min_, max_),

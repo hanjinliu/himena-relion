@@ -1,7 +1,9 @@
 from __future__ import annotations
 
-from qtpy import QtWidgets as QtW, QtCore
+from qtpy import QtWidgets as QtW, QtCore, QtGui
 from himena.qt._qlineedit import QIntLineEdit
+
+from himena_relion._utils import monospace_font_family
 
 
 class QIntWidget(QtW.QWidget):
@@ -13,22 +15,39 @@ class QIntWidget(QtW.QWidget):
         super().__init__()
         layout = QtW.QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
         label = QtW.QLabel(text)
         layout.addWidget(label)
         self._int_edit = QIntLineEdit()
         self._int_edit.setText("0")
-        self._int_edit.setFixedWidth(40)
-        self._max_edit = QtW.QLabel("/0")
-        self._max_edit.setFixedWidth(40)
+        self._int_edit.setFixedSize(40, 16)
+        self._max_edit = QtW.QLabel(" /0")
+        self._max_edit.setFixedSize(40, 16)
         self._max_edit.setSizePolicy(
             QtW.QSizePolicy.Policy.Minimum, QtW.QSizePolicy.Policy.Fixed
         )
+        self._left_btn = spin_button("<", self._decrement)
+        self._right_btn = spin_button(">", self._increment)
+        layout.addWidget(self._left_btn)
         layout.addWidget(self._int_edit)
+        layout.addWidget(self._right_btn)
         layout.addWidget(self._max_edit)
         layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
         if label_width:
             label.setFixedWidth(label_width)
         self._int_edit.valueChanged.connect(self._on_value_changed)
+
+    def _increment(self):
+        """Increment the value by 1."""
+        current_value = self.value()
+        if current_value < self.maximum():
+            self.setValue(current_value + 1)
+
+    def _decrement(self):
+        """Decrement the value by 1."""
+        current_value = self.value()
+        if current_value > self.minimum():
+            self.setValue(current_value - 1)
 
     def _on_value_changed(self, value: str):
         if value == "":
@@ -61,6 +80,17 @@ class QIntWidget(QtW.QWidget):
     def setRange(self, min_value: int, max_value: int):
         self.setMinimum(min_value)
         self.setMaximum(max_value)
+
+
+def spin_button(char: str, callback) -> QtW.QPushButton:
+    button = QtW.QToolButton()
+    button.setText(char)
+    button.setFixedWidth(12)
+    button.setFont(QtGui.QFont(monospace_font_family()))
+    button.setStyleSheet("color: gray;")
+    button.clicked.connect(callback)
+    button.setToolTip(callback.__doc__)
+    return button
 
 
 class QIntChoiceWidget(QIntWidget):

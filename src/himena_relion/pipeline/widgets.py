@@ -25,6 +25,7 @@ from himena_relion.pipeline._flowchart import (
     QRelionPipelineFlowChartView,
     RelionJobNodeItem,
 )
+from himena_relion.pipeline._startscreen import QRelionPipelineStartScreen
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -40,13 +41,18 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         self._directory_label.setElideMode(QtCore.Qt.TextElideMode.ElideLeft)
         self._scene = QtW.QGraphicsScene()
 
+        self._stacked_widget = QtW.QStackedWidget()
         self._flow_chart = QRelionPipelineFlowChartView(ui, self._scene)
+        self._start_screen = QRelionPipelineStartScreen(ui)
+        self._stacked_widget.addWidget(self._flow_chart)
+        self._stacked_widget.addWidget(self._start_screen)
+        self._stacked_widget.setCurrentWidget(self._flow_chart)
         self._finder = QPipelineFinder(self)
         self._footer = QJobPipelineViewer()
         self._watcher: GeneratorWorker | None = None
         layout = QtW.QVBoxLayout(self)
         splitter = QtW.QSplitter(QtCore.Qt.Orientation.Vertical)
-        splitter.addWidget(self._flow_chart)
+        splitter.addWidget(self._stacked_widget)
         splitter.addWidget(self._footer)
         splitter.setSizes([800, 420])
 
@@ -93,9 +99,23 @@ class QRelionPipelineFlowChart(QtW.QWidget):
             self._directory_label.setText(f"{parts[-2]}/")
         self._watcher = self._watch_default_pipeline_star(src)
         self._state_to_job_map.clear()
+        num_nodes = 0
         for job in model.value.iter_nodes():
             _dict = self._state_to_job_map[job.status]
             _dict[job.path.as_posix()] = job
+            num_nodes += 1
+        _LOGGER.info(
+            "Started watching RELION pipeline at %s (%d jobs).",
+            src.parent.as_posix(),
+            num_nodes,
+        )
+        self._finder.clear()
+        if num_nodes == 0:
+            self._stacked_widget.setCurrentWidget(self._start_screen)
+            self._finder.hide()
+        else:
+            self._stacked_widget.setCurrentWidget(self._flow_chart)
+            self._finder.show()
 
     def _on_pipeline_updated(self, pipeline: RelionDefaultPipeline) -> None:
         self._flow_chart.set_pipeline(pipeline)
@@ -205,6 +225,11 @@ class QRelionPipelineFlowChart(QtW.QWidget):
             self._finder.setFocus()
             self._finder.set_selected()
             return
+        if a0.key() == QtCore.Qt.Key.Key_Return:
+            for item in self._flow_chart.scene().selectedItems():
+                if isinstance(item, RelionJobNodeItem):
+                    self._flow_chart._on_item_double_clicked(item)
+                    return
         return super().keyPressEvent(a0)
 
 

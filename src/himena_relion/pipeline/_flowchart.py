@@ -121,7 +121,7 @@ class QRelionPipelineFlowChartView(QFlowChartView):
             node.setSelected(True)
         path = self._relion_project_dir / item.id() / "job.star"
         job_dir = JobDirectory.from_job_star(path)
-        state = job_dir.state()
+        status = item._job.status
         menu = QtW.QMenu(self)
         submenu_open = menu.addMenu("Open")
         submenu_cleanup = menu.addMenu("Cleanup")
@@ -136,20 +136,20 @@ class QRelionPipelineFlowChartView(QFlowChartView):
         action = submenu_cleanup.addAction(
             "Gentle clean", lambda: _impl.gentle_clean_relion_job(self._ui, job_dir)
         )
-        action.setEnabled(state is RelionJobState.EXIT_SUCCESS)
+        action.setEnabled(status not in [NodeStatus.RUNNING, NodeStatus.SCHEDULED])
         action = submenu_cleanup.addAction(
             "Harsh clean", lambda: _impl.harsh_clean_relion_job(self._ui, job_dir)
         )
-        action.setEnabled(state is RelionJobState.EXIT_SUCCESS)
+        action.setEnabled(status not in [NodeStatus.RUNNING, NodeStatus.SCHEDULED])
         menu.addAction("Mark as finished", lambda: _impl.mark_as_finished(job_dir))
-        action.setEnabled(state is not RelionJobState.EXIT_SUCCESS)
+        action.setEnabled(status is not NodeStatus.SUCCEEDED)
         menu.addAction("Mark as failed", lambda: _impl.mark_as_failed(job_dir))
-        action.setEnabled(state is not RelionJobState.EXIT_FAILURE)
+        action.setEnabled(status is not NodeStatus.FAILED)
         menu.addSeparator()
         action = menu.addAction(
             "Abort", _ignore_cancel(_impl.abort_relion_job, self._ui, job_dir)
         )
-        action.setEnabled(state is RelionJobState.RUNNING)
+        action.setEnabled(status is RelionJobState.RUNNING)
         menu.addAction(
             "Overwrite ...", lambda: _impl.overwrite_relion_job(self._ui, job_dir)
         )
@@ -161,7 +161,7 @@ class QRelionPipelineFlowChartView(QFlowChartView):
         action = menu.addAction(
             "Trash", _ignore_cancel(_impl.trash_job, self._ui, job_dir)
         )
-        action.setEnabled(state is not RelionJobState.RUNNING)
+        action.setEnabled(status not in [NodeStatus.RUNNING, NodeStatus.SCHEDULED])
         return menu
 
 

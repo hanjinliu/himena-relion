@@ -16,7 +16,7 @@ from himena_relion.relion5_tomo.extensions.erase_gold.widgets import (
     QEraseGoldViewer,
 )
 from himena_relion.relion5_tomo.extensions.erase_gold import _impl
-
+from himena_relion.relion5_tomo._tomo_utils import project_fiducials
 
 TILT_ANGLE = "rlnTomoNominalStageTiltAngle"
 TILT_STAR = "rlnTomoTiltSeriesStarFile"
@@ -140,7 +140,7 @@ class EraseGold(RelionExternalJob):
             self.console.log(
                 f"{fid.shape[0]} fiducials found for tomogram {info.tomo_name}"
             )
-            fid_tr = _impl.project_fiducials(fid, tomo_center, deg, xf, tilt_center)
+            fid_tr = project_fiducials(fid, tomo_center, deg, xf, tilt_center)
             yield
             if process_halves:
                 col_list = [MIC_NAME, MIC_ODD, MIC_EVEN]
