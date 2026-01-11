@@ -98,6 +98,8 @@ class QInitialModelViewer(QJobScrollArea):
         res = self._job_dir.get_result(niter)
         map0, _ = res.class_map(class_id - self._index_start)
         yield self._viewer.set_image, map0
+        if self._num_particles_label.num_known():
+            return
         starpath = self._job_dir.path / f"run_it{niter:0>3}_model.star"
         if not starpath.exists():
             yield self._num_particles_label.set_number, -1

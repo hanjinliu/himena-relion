@@ -12,6 +12,7 @@ from himena_relion._widgets import (
     QIntChoiceWidget,
     register_job,
     QImageViewTextEdit,
+    QNumParticlesLabel,
 )
 from himena_relion._utils import wait_for_file
 from himena_relion import _job_dir
@@ -29,6 +30,7 @@ class QClass2DViewer(QJobScrollArea):
         self._sort_by.addItems(["Index", "Particle number", "Resolution"])
         self._sort_by.setCurrentIndex(1)
         self._sort_by.setFixedWidth(120)
+        self._num_particles_label = QNumParticlesLabel()
         self._text_edit = QImageViewTextEdit()
         self._text_edit.setMinimumHeight(360)
         self._iter_choice = QIntChoiceWidget("Iteration", label_width=60)
@@ -41,8 +43,8 @@ class QClass2DViewer(QJobScrollArea):
         label = QtW.QLabel("Sort by:")
         label.setMaximumWidth(80)
         hlayout.addWidget(label)
-        hlayout.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
-        hlayout.addWidget(self._sort_by)
+        hlayout.addWidget(self._sort_by, alignment=QtCore.Qt.AlignmentFlag.AlignLeft)
+        hlayout.addWidget(self._num_particles_label)
         layout.addLayout(hlayout)
         layout.addWidget(self._text_edit)
         hlayout = QtW.QHBoxLayout()
@@ -69,7 +71,8 @@ class QClass2DViewer(QJobScrollArea):
             else:
                 niters.append(iter_num)
         niters.sort()
-        self._iter_choice.set_choices(niters)
+        if self._iter_choice.choices() != niters:
+            self._iter_choice.set_choices(niters)
 
     def _sort_by_changed(self):
         self._iter_changed(self._iter_choice.value())
@@ -85,6 +88,7 @@ class QClass2DViewer(QJobScrollArea):
     def plot_classes(self, niter: int, session: uuid.UUID):
         path_img = self._job_dir.path / f"run_it{niter:03d}_classes.mrcs"
         path_model = self._job_dir.path / f"run_it{niter:03d}_model.star"
+        path_data = self._job_dir.path / f"run_it{niter:03d}_data.star"
         with mrcfile.open(path_img) as mrc:
             img = np.asarray(mrc.data)
         if not wait_for_file(path_model, num_retry=20):
@@ -107,6 +111,11 @@ class QClass2DViewer(QJobScrollArea):
             text = f"{ith + 1}\n{distribution:.2f}%\n{resolution:.1f} A"
             img_str = self._text_edit.image_to_base64(img_slice, text)
             yield self._on_class_yielded, (img_str, session)
+
+        if not self._num_particles_label.num_known():
+            if star := read_star(path_data).get("particles"):
+                num = len(star.trust_loop())
+                yield self._num_particles_label.set_number, num
 
     def _on_class_yielded(self, value: tuple[str, uuid.UUID]):
         if self._worker is None:

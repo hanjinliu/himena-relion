@@ -138,18 +138,27 @@ class QNumParticlesLabel(QtW.QLabel):
         super().__init__()
         self.setText("--- particles")
         self.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
+        self._num_particle_known = False
 
     def set_number(self, num: int):
         if num >= 0:
             self.setText(f"<b>{num}</b> particles")
+            self._num_particle_known = True
         else:
             self.setText("??? particles")
+            self._num_particle_known = False
 
     def set_number_for_class3d(self, num: int):
         if num >= 0:
             self.setText(f"Total <b>{num}</b> particles")
+            self._num_particle_known = True
         else:
             self.setText("Total ??? particles")
+            self._num_particle_known = False
+
+    def num_known(self) -> bool:
+        """Check if the number of particles is known."""
+        return self._num_particle_known
 
 
 class QSymmetryLabel(QtW.QLabel):

@@ -51,6 +51,18 @@ class ParticlesModel(schema.LoopDataModel):
     angle_rot: schema.Series[float] = schema.Field("rlnAngleRot", default=None)
     angle_tilt: schema.Series[float] = schema.Field("rlnAngleTilt", default=None)
 
+    @classmethod
+    def example(cls, size: int) -> "ParticleMetaModel":
+        return cls(
+            tomo_name=pd.Series(["TS_01", "TS_02"], dtype="string"),
+            centered_x=pd.Series([0.0] * size, dtype="float"),
+            centered_y=pd.Series([1.0] * size, dtype="float"),
+            centered_z=pd.Series([2.0] * size, dtype="float"),
+            class_number=pd.Series([1] * size, dtype="int"),
+            angle_rot=pd.Series([5.0] * size, dtype="float"),
+            angle_tilt=pd.Series([8.0] * size, dtype="float"),
+        )
+
 
 class ParticleMetaModel(schema.StarModel):
     particles: ParticlesModel = schema.Field()
@@ -58,17 +70,7 @@ class ParticleMetaModel(schema.StarModel):
     @classmethod
     def example(cls, size: int) -> "ParticleMetaModel":
         """Create an example model with given size."""
-        return cls(
-            particles=ParticlesModel(
-                tomo_name=pd.Series(["TS_01", "TS_02"], dtype="string"),
-                centered_x=pd.Series([0.0] * size, dtype="float"),
-                centered_y=pd.Series([1.0] * size, dtype="float"),
-                centered_z=pd.Series([2.0] * size, dtype="float"),
-                class_number=pd.Series([1] * size, dtype="int"),
-                angle_rot=pd.Series([5.0] * size, dtype="float"),
-                angle_tilt=pd.Series([8.0] * size, dtype="float"),
-            )
-        )
+        return cls(particles=ParticlesModel.example(size))
 
 
 class ModelClasses(schema.LoopDataModel):

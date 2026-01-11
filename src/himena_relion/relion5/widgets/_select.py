@@ -228,13 +228,18 @@ class QSelectInteractiveViewer(QSelectJobBase):
 
 
 @register_job("relion.select.split")
-class SplitParticlesViewer(QSelectJobBase):
+class QSplitParticlesViewer(QSelectJobBase):
     def insert_html(self, job_dir: _job_dir.SplitParticlesJobDirectory):
         for path in job_dir.iter_particles_stars():
             if not path.exists():
                 continue
-            block = read_star(path).first().trust_loop()
-            # TODO: wrong
+            star = read_star(path)
+            if len(star) == 1:
+                block = star.first().trust_loop()
+            elif "particles" in star:
+                block = star["particles"].trust_loop()
+            else:
+                continue
             yield f"<h2>{path.name} = {len(block)} particles</h2>"
             df = block.to_pandas()
             particles_in_each_set = []
@@ -245,11 +250,12 @@ class SplitParticlesViewer(QSelectJobBase):
                         particles_in_each_set.append((name, f"n = {sub.shape[0]}"))
                     particles_in_each_set.sort(key=lambda x: x[0])
                     yield np.array(particles_in_each_set, dtype=np.dtypes.StringDType())
-                    yield "<br><br>"
+                    yield "<br>"
+            yield "<br>"
 
 
 @register_job("relion.select.onvalue")
-class SelectOnValueViewer(QSelectJobBase):
+class QSelectOnValueViewer(QSelectJobBase):
     def insert_html(self, job_dir: _job_dir.JobDirectory):
         path_mic = job_dir.path / "micrographs.star"
         path_particles = job_dir.path / "particles.star"

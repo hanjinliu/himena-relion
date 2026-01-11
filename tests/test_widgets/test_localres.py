@@ -30,9 +30,7 @@ def test_localres_widget(
     refine3d = JobWidgetTester.no_widget(prev_job_dir)
     refine3d.write_mrc("run_half1_class001_unfil.mrc", mrc0)
     refine3d.write_mrc("run_half2_class001_unfil.mrc", mrc0)
-    xx, yy, zz = np.indices((32, 32, 32))
-    sphere = (xx - 16) ** 2 + (yy - 16) ** 2 + (zz - 16) ** 2 < 14**2
-    refine3d.write_mrc("mask.mrc", sphere.astype(np.float32))
+    refine3d.write_sphere_mrc("mask.mrc", 32)
 
     job_dir = make_job_directory(star_text, "LocalRes")
     tester = JobWidgetTester(QLocalResViewer(job_dir), job_dir)

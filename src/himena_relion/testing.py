@@ -33,6 +33,12 @@ class JobWidgetTester(Generic[_T]):
     def write_random_mrc(self, path: str, shape: tuple[int, ...], dtype=np.float32):
         self.write_mrc(path, self.make_random_mrc(shape, dtype))
 
+    def write_sphere_mrc(self, path: str, size: int, dtype=np.float32):
+        xx, yy, zz = np.indices((size, size, size))
+        c = (size - 1) / 2
+        sphere = (xx - c) ** 2 + (yy - c) ** 2 + (zz - c) ** 2 < (c * 0.8) ** 2
+        self.write_mrc(path, sphere.astype(dtype))
+
     def make_random_mrc(self, shape: tuple[int, ...], dtype=np.float32) -> np.ndarray:
         return self._rng.normal(loc=1.0, scale=1.0, size=shape).astype(dtype)
 

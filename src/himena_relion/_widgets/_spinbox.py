@@ -102,6 +102,10 @@ class QIntChoiceWidget(QIntWidget):
         self._choices: list[int] = []
         self._iter_current_value = 0
 
+    def choices(self) -> list[int]:
+        """Get the list of available choices."""
+        return self._choices.copy()
+
     def set_choices(self, choices: list[int]):
         self._choices = choices
         if choices:

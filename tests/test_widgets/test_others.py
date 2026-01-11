@@ -2,6 +2,7 @@ from typing import Callable
 from pathlib import Path
 from himena_relion._job_dir import JobDirectory
 from himena_relion.relion5.widgets._postprocess import QPostProcessViewer
+from himena_relion.relion5.widgets._mask_create import QMaskCreateViewer
 from himena_relion.testing import JobWidgetTester
 
 def test_postprocess_widget(
@@ -43,3 +44,16 @@ _rlnCorrectedFourierShellCorrelationPhaseRandomizedMaskedMaps #8
            5     0.019290    51.840002     0.999806     0.999977     0.999749     0.999806     0.999803
            6     0.023148    43.200002     0.999749     0.999956     0.999526     0.999749     0.999757
 """
+
+def test_mask_create_widget(
+    qtbot,
+    make_job_directory: Callable[[str, str], JobDirectory],
+    jobs_dir_spa,
+):
+    star_text = Path(jobs_dir_spa / "MaskCreate" / "job001" / "job.star").read_text()
+    job_dir = make_job_directory(star_text, "MaskCreate")
+
+    tester = JobWidgetTester(QMaskCreateViewer(job_dir), job_dir)
+    qtbot.addWidget(tester.widget)
+
+    tester.write_sphere_mrc("mask.mrc", 32)

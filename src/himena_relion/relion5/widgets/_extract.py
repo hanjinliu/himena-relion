@@ -13,6 +13,7 @@ from himena_relion._widgets import (
     register_job,
     QMicrographListWidget,
     QImageViewTextEdit,
+    QNumParticlesLabel,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -29,7 +30,7 @@ class QExtractViewer(QJobScrollArea):
         self._current_extract_path = None
         self._current_num_extracts = 0
         self._num_page = 50
-        self._num_particles_label = QtW.QLabel("0 particles")
+        self._num_particles_label = QNumParticlesLabel()
         self._text_edit = QImageViewTextEdit(font_size=11)
         self._text_edit.setMinimumHeight(350)
         self._slider = QtW.QSlider(QtCore.Qt.Orientation.Horizontal)
@@ -38,7 +39,6 @@ class QExtractViewer(QJobScrollArea):
         self._mic_list.setFixedHeight(130)
         self._mic_list.current_changed.connect(self._mic_changed)
         layout.addWidget(QtW.QLabel("<b>Extracted Micrographs</b>"))
-        layout.addWidget(self._num_particles_label)
         hlayout = QtW.QHBoxLayout()
         hlayout.setContentsMargins(0, 0, 0, 0)
         hlayout.addWidget(QtW.QLabel("Display Range:"))
@@ -47,6 +47,7 @@ class QExtractViewer(QJobScrollArea):
 
         layout.addLayout(hlayout)
         layout.addWidget(self._text_edit)
+        layout.addWidget(self._num_particles_label)
         layout.addWidget(self._mic_list)
         self._slider.valueChanged.connect(self._slider_value_changed)
         self._plot_session_id = self._text_edit.prep_uuid()
@@ -74,7 +75,7 @@ class QExtractViewer(QJobScrollArea):
             choices.append((fp.name, str(nparticles), rel_path))
             num_total += nparticles
         self._mic_list.set_choices(choices)
-        self._num_particles_label.setText(f"<b>{num_total}</b> particles")
+        self._num_particles_label.set_number(num_total)
 
     def _mic_changed(self, row: tuple[str, str, str]):
         """Handle changes to selected micrograph."""
