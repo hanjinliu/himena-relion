@@ -783,6 +783,19 @@ class AutoPickTopazTrain(_AutoPickJob):
             raise ValueError("Picked particles must be provided")
         if do_parts and kwargs["topaz_train_parts"] == "":
             raise ValueError("Picked particles must be provided")
+        kwargs["threshold_autopick"] = 0.05
+        kwargs["mindist_autopick"] = 100
+        kwargs["maxstddevnoise_autopick"] = 1.1
+        kwargs["do_write_fom_maps"] = False
+        kwargs["do_read_fom_maps"] = False
+        kwargs["shrink"] = 0
+        kwargs["do_pick_helical_segments"] = False
+        kwargs["helical_tube_outer_diameter"] = 200
+        kwargs["helical_tube_length_min"] = -1
+        kwargs["helical_tube_kappa_max"] = 0.1
+        kwargs["helical_nr_asu"] = 1
+        kwargs["helical_rise"] = -1
+        kwargs["do_amyloid"] = False
         return kwargs
 
     @classmethod
@@ -794,10 +807,12 @@ class AutoPickTopazTrain(_AutoPickJob):
             "do_ignore_first_ctfpeak_autopick", "do_invert_refs", "do_log", "do_ref3d",
             "do_refs", "fn_ref3d_autopick", "fn_refs_autopick", "highpass", "lowpass",
             "minavgnoise_autopick", "psi_sampling_autopick", "ref3d_sampling",
-            "ref3d_symmetry",
+            "ref3d_symmetry", "threshold_autopick", "mindist_autopick",
+            "maxstddevnoise_autopick", "do_write_fom_maps", "do_read_fom_maps",
+            "shrink", "do_pick_helical_segments", "do_amyloid",
         ]  # fmt: skip
         for key in kwargs:
-            if key.startswith(("do_topaz", "topaz_", "log_")):
+            if key.startswith(("do_topaz", "topaz_", "log_", "helical_")):
                 keys_to_pop.append(key)
         for key in keys_to_pop:
             kwargs.pop(key, None)
@@ -814,21 +829,7 @@ class AutoPickTopazTrain(_AutoPickJob):
         topaz_train_picks: _a.autopick.TOPAZ_TRAIN_PICKS = "",
         topaz_train_parts: _a.autopick.TOPAZ_TRAIN_PARTS = "",
         # Autopicking
-        threshold_autopick: _a.autopick.THRESHOLD_AUTOPICK = 0.05,
-        mindist_autopick: _a.autopick.MINDIST_AUTOPICK = 100,
-        maxstddevnoise_autopick: _a.autopick.MAXSTDDEVNOISE_AUTOPICK = 1.1,
-        do_write_fom_maps: _a.autopick.DO_WHITE_FOM_MAPS = False,
-        do_read_fom_maps: _a.autopick.DO_READ_FOM_MAPS = False,
-        shrink: _a.autopick.SHRINK = 0,
         gpu_ids: _a.compute.GPU_IDS = "",
-        # Helical
-        do_pick_helical_segments: _a.autopick.DO_PICK_HELICAL_SEGMENTS = False,
-        helical_tube_outer_diameter: _a.helix.HELICAL_TUBE_DIAMETER = 200,
-        helical_tube_length_min: _a.autopick.HELICAL_TUBE_LENGTH_MIN = -1,
-        helical_tube_kappa_max: _a.autopick.HELICAL_TUBE_KAPPA_MAX = 0.1,
-        helical_nr_asu: _a.helix.HELICAL_NR_ASU = 1,
-        helical_rise: _a.helix.HELICAL_RISE = -1,
-        do_amyloid: _a.autopick.DO_AMYLOID = False,
         # Running
         nr_mpi: _a.running.NR_MPI = 1,
         do_queue: _a.running.DO_QUEUE = False,

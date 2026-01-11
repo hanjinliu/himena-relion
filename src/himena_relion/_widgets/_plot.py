@@ -89,15 +89,15 @@ class QPlotCanvas(QModelMatplotlibCanvas):
             epoch = df_test["epoch"]
             y_train_group = df_train.groupby("epoch", sort=True)[ycol]
             y_test = df_test[ycol]
+            fig.plot(epoch, y_test, name="Test", color="#ff7f0e")
             fig.errorbar(
                 epoch,
                 y_train_group.mean(),
                 y_error=y_train_group.std(),
-                capsize=0.2,
+                capsize=2,
                 name="Train",
                 color="#1f77b4",
             )
-            fig.plot(epoch, y_test, name="Test", color="#ff7f0e")
             fig.x.label = "Epoch"
             fig.set_legend(font_size=9.0)
             self.update_model(WidgetDataModel(value=fig, type=StandardType.PLOT))

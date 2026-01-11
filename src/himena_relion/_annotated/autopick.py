@@ -423,7 +423,7 @@ TOPAZ_TRAIN_PICKS = Annotated[
             "pick from."
         ),
         "widget_type": PathDrop,
-        "type_label": "MicrographsCoords",
+        "type_label": ["MicrographsCoords", "MicrographCoordsGroup"],
         "group": "Topaz",
     },
 ]
