@@ -89,6 +89,7 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         if not isinstance(src := model.source, Path):
             raise TypeError("RELION default_pipeline.star source file not found.")
         assert isinstance(model.value, RelionDefaultPipeline)
+        self._finder.clear()
         self.widget_closed_callback()
         self._on_pipeline_updated(model.value)
         self._flow_chart._relion_project_dir = src.parent
@@ -109,7 +110,6 @@ class QRelionPipelineFlowChart(QtW.QWidget):
             src.parent.as_posix(),
             num_nodes,
         )
-        self._finder.clear()
         if num_nodes == 0:
             self._stacked_widget.setCurrentWidget(self._start_screen)
             self._finder.hide()

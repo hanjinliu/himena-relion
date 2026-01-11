@@ -53,8 +53,10 @@ class ParticlesModel(schema.LoopDataModel):
 
     @classmethod
     def example(cls, size: int) -> "ParticleMetaModel":
+        s0 = size // 2
+        s1 = size - s0
         return cls(
-            tomo_name=pd.Series(["TS_01", "TS_02"], dtype="string"),
+            tomo_name=pd.Series(["TS_01"] * s0 + ["TS_02"] * s1, dtype="string"),
             centered_x=pd.Series([0.0] * size, dtype="float"),
             centered_y=pd.Series([1.0] * size, dtype="float"),
             centered_z=pd.Series([2.0] * size, dtype="float"),
