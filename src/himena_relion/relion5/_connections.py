@@ -106,7 +106,6 @@ connect_jobs(
     _spa.AutoPickTopazTrain,
     _spa.AutoPickTopazPick,
     node_mapping={"model_epoch9.sav": "topaz_model"},
-    value_mapping={inherit_particle_diameter: "particle_diameter"},
 )
 
 for extract_job in [_spa.ExtractJob, _spa.ReExtractJob]:

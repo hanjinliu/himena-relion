@@ -839,8 +839,6 @@ class AutoPickTopazTrain(_AutoPickJob):
 
     @classmethod
     def setup_widgets(cls, widgets):
-        _autopick_helix_setup(widgets)
-
         @widgets["do_topaz_train_parts"].changed.connect
         def _on_do_topaz_train_parts_changed(value: bool):
             widgets["topaz_train_parts"].enabled = value
