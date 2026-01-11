@@ -394,8 +394,9 @@ class ManualPickJob(_Relion5SpaJob):
         kwargs = super().normalize_kwargs(**kwargs)
         filter_method = kwargs.pop("filter_method", "Band-pass")
         kwargs["do_topaz_denoise"] = filter_method == "Topaz"
-        kwargs["do_fom_threshold"] = kwargs["minimum_pick_fom"] is not None
-        if kwargs["minimum_pick_fom"] is None:
+        min_pick_fom = kwargs.get("minimum_pick_fom", None)
+        kwargs["do_fom_threshold"] = min_pick_fom is not None
+        if min_pick_fom is None:
             kwargs["minimum_pick_fom"] = 0
         # these are not used, but exist in the job options
         kwargs["do_queue"] = False

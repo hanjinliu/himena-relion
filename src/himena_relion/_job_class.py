@@ -347,11 +347,13 @@ class _Relion5BuiltinContinue(_Relion5BuiltinJob):
 
     @classmethod
     def normalize_kwargs(cls, **kwargs):
-        if "fn_cont" in kwargs:
+        has_fn_cont = "fn_cont" in kwargs
+        if has_fn_cont:
             # fn_cont is usually overwriten in normalize_kwargs but we need to keep.
             fn_cont = kwargs["fn_cont"]
         kwargs_out = cls.original_class.normalize_kwargs(**kwargs)
-        kwargs_out["fn_cont"] = fn_cont
+        if has_fn_cont:
+            kwargs_out["fn_cont"] = fn_cont
         return kwargs_out
 
     @classmethod
