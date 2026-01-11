@@ -359,12 +359,6 @@ class TiltSeriesInfo:
             tomo_hand=series.get("rlnTomoHand", 1),
         )
 
-    def read_tilt_series_star(self, job_dir: Path) -> pd.DataFrame:
-        """Read the tilt series star file."""
-        rln_job_dir = job_dir.parent.parent
-        df = _read_star_as_df(rln_job_dir / self.tomo_tilt_series_star_file)
-        return df
-
     def read_tilt_series(self, rln_dir: Path) -> ArrayFilteredView:
         """Read the tilt series from the file."""
         ts = self._ts_model(rln_dir)
@@ -384,21 +378,6 @@ class CorrectedTiltSeriesInfo(TiltSeriesInfo):
         """Create a CorrectedTiltSeriesInfo instance from a pandas Series."""
         out = super().from_series(series)
         out.tomo_tilt_series_pixel_size = series.get("rlnTomoTiltSeriesPixelSize", -1.0)
-        return out
-
-
-class CtfCorrectedTiltSeriesInfo(CorrectedTiltSeriesInfo):
-    """Data class for CTF-corrected tilt series information."""
-
-    tomo_tilt_series_ctf_image: Path = Path("")
-
-    @classmethod
-    def from_series(cls, series: pd.Series) -> Self:
-        """Create a CtfCorrectedTiltSeriesInfo instance from a pandas Series."""
-        out = super().from_series(series)
-        out.tomo_tilt_series_ctf_image = Path(
-            series.get("rlnTomoTiltSeriesCtfImage", "")
-        )
         return out
 
 
@@ -507,43 +486,6 @@ class TomogramInfo(AlignedTiltSeriesInfo):
             return ArrayFilteredView.from_mrc(rln_dir / self.reconstructed_tomogram[0])
 
 
-class TomogramJobDirectory(HasTomogramsJobDirectory):
-    """Class for handling reconstructed tomogram job directories in RELION."""
-
-    _job_type = "relion.reconstructtomograms"
-
-    def tomograms_star(self) -> Path:
-        """Return the path to the tomograms star file."""
-        return self.path / "tomograms.star"
-
-    def iter_tomogram_info(self) -> Iterator[TomogramInfo]:
-        """Iterate over all tilt series info."""
-        star = _read_star_as_df(self.tomograms_star())
-        for _, row in star.iterrows():
-            yield TomogramInfo.from_series(row)
-
-
-class DenoiseJobDirectory(JobDirectory):
-    """Class for handling denoise/predict job directories in RELION."""
-
-    _job_type = "relion.denoisetomo"
-
-    def __init__(self, path: str | Path):
-        super().__init__(path)
-        self._is_train = self.get_job_param("do_cryocare_train") == "Yes"
-        self._is_predict = self.get_job_param("do_cryocare_predict") == "Yes"
-
-    def tomograms_star(self) -> Path:
-        """Return the path to the tomograms star file."""
-        return self.path / "tomograms.star"
-
-    def iter_tomogram(self) -> Iterator[TomogramInfo]:
-        """Iterate over all tilt series info."""
-        star = _read_star_as_df(self.tomograms_star())
-        for _, row in star.iterrows():
-            yield TomogramInfo.from_series_denoised(row)
-
-
 class PickJobDirectory(JobDirectory):
     """Class for handling particle picking job directories in RELION."""
 
@@ -598,72 +540,6 @@ class PickJobDirectory(JobDirectory):
         return get_particles
 
 
-class ExtractJobDirectory(JobDirectory):
-    """Class for handling particle extraction job directories in RELION."""
-
-    _job_type = "relion.pseudosubtomo"
-
-    def particles_star(self) -> Path:
-        """Return the path to the particles star file."""
-        return self.path / "particles.star"
-
-    def particles(self) -> pd.DataFrame:
-        """Return the particles DataFrame for this iteration."""
-        star_path = self.particles_star()
-        return read_star_block(star_path, "particles").trust_loop().to_pandas()
-
-    def is_2d(self) -> bool:
-        """Return whether the extraction is 2D stack or 3D subtomogram."""
-        return self.get_job_param("do_stack2d") == "Yes"
-
-    def max_num_subtomograms(self, tomoname: str) -> int:
-        """Return the number of subtomograms for a given tomogram name."""
-        tomo_dir = self.path / "Subtomograms" / tomoname
-        if self.is_2d():
-            suffix = "_stack2d.mrcs"
-        else:
-            suffix = "_data.mrc"
-        ndigits = 1
-        while True:
-            question_marks = "?" * ndigits
-            if next(tomo_dir.glob(f"{question_marks}{suffix}"), None):
-                ndigits += 1
-            else:
-                break
-        if ndigits == 1:
-            return 0
-        path = next(tomo_dir.rglob(f"{'?' * (ndigits - 1)}{suffix}"))
-        return int(path.name[: -len(suffix)])
-
-    def iter_subtomogram_paths(
-        self,
-        tomoname: str,
-        indices: list[int],
-    ) -> Iterator[tuple[int, Path]]:
-        """Iterate over all subtomogram paths for a given tomogram name."""
-        tomo_dir = self.path / "Subtomograms" / tomoname
-        if self.is_2d():
-            suffix = "_stack2d.mrcs"
-        else:
-            suffix = "_data.mrc"
-        for i in indices:
-            path = tomo_dir / f"{i}{suffix}"
-            yield i, path
-
-    def iter_subtomograms(
-        self,
-        tomoname: str,
-        indices: list[int],
-    ) -> Iterator[tuple[int, NDArray[np.floating] | None]]:
-        """Iterate over all subtomogram paths for a given tomogram name."""
-        for i, path in self.iter_subtomogram_paths(tomoname, indices):
-            try:
-                with mrcfile.open(path, mode="r") as mrc:
-                    yield i, mrc.data
-            except Exception:
-                yield i, None
-
-
 @dataclass
 class _3DResultsBase:
     path: Path
@@ -674,24 +550,6 @@ class _3DResultsBase:
         """Create an instance from a path and iteration number."""
         it_str = f"_it{niter:03d}"
         return cls(path=path, it_str=it_str)
-
-    # def angdist(self, class_id: int) -> list[np.ndarray]:
-    #     """Return the angular distribution for a given class ID."""
-    #     if self.it_str == "":
-    #         paths = [f"run_class{class_id:03d}_angdist.bild"]
-    #     else:
-    #         paths = [
-    #             f"run{self.it_str}_half1_class{class_id:03d}_angdist.bild",
-    #             f"run{self.it_str}_half2_class{class_id:03d}_angdist.bild",
-    #         ]
-    #     angdist = []
-    #     for path in paths:
-    #         full_path = self.path / path
-    #         with open(full_path, "r") as f:
-    #             color = f.readline()
-    #             cylinder = f.readline()
-
-    #      angdist.append(data)
 
     def model_groups(self) -> ModelStarModel:
         return ModelStarModel.validate_file(self._model_star())
@@ -922,21 +780,6 @@ class Class3DJobDirectory(JobDirectory):
     def num_iters(self) -> int:
         """Return the number of iterations in the class 3D job."""
         return len(list(self.path.glob("run_it*_model.star")))
-
-
-class ReconstructParticlesJobDirectory(JobDirectory):
-    """Class for handling reconstruct particles job directories in RELION."""
-
-    _job_type = "relion.reconstructparticletomo"
-
-    def merged_mrc(self) -> NDArray[np.floating] | None:
-        """Return the path to the merged MRC file if exists."""
-        path = self.path / "merged.mrc"
-        try:
-            with mrcfile.open(path, mode="r") as mrc:
-                return mrc.data
-        except Exception:
-            return None
 
 
 class SelectInteractiveJobDirectory(JobDirectory):

@@ -254,17 +254,19 @@ class SelectOnValueViewer(QSelectJobBase):
         path_mic = job_dir.path / "micrographs.star"
         path_particles = job_dir.path / "particles.star"
         job_params = job_dir.get_job_params_as_dict()
-        if path_mic.exists() and (fn := job_params.get("fn_mic")):
+        if path_mic.exists() and (fn_pre := job_params.get("fn_mic")):
             # this is split-micrograph job
             block_name = "micrographs"
-        elif path_particles.exists() and (fn := job_params.get("fn_data")):
+            fn_this = path_mic
+        elif path_particles.exists() and (fn_pre := job_params.get("fn_data")):
             # this is split-particle job
             block_name = "particles"
+            fn_this = path_particles
         else:
             yield "Not supported job output."
             return
-        loop = read_star_block(fn, block_name).trust_loop()
-        loop_pre = read_star_block(fn, block_name).trust_loop()
+        loop = read_star_block(fn_this, block_name).trust_loop()
+        loop_pre = read_star_block(fn_pre, block_name).trust_loop()
         n_selected = len(loop)
         n_removed = len(loop_pre) - n_selected
         yield self._get_summary_table(n_selected, n_removed, n_selected + n_removed)

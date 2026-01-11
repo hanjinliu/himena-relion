@@ -591,6 +591,11 @@ class Q2DFilterWidget(QtW.QWidget):
 
         return img
 
+    def set_params(self, bin_factor: int, lowpass_cutoff: float):
+        """Set the binning factor and lowpass cutoff frequency."""
+        self._bin_factor.setText(str(bin_factor))
+        self._lowpass_cutoff.setText(str(lowpass_cutoff))
+
 
 def _norm_color(color, num: int) -> NDArray[np.float32]:
     """Normalize color input to an array of RGBA colors."""

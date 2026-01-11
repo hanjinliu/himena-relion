@@ -2,6 +2,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections import defaultdict
 import logging
+from pathlib import Path
 from typing import Any, Union
 
 from himena import MainWindow
@@ -26,7 +27,7 @@ class QJobScheduler(QtW.QWidget):
     def __init__(self, ui: MainWindow):
         super().__init__()
         self._ui = ui
-        self._cwd = None
+        self._cwd: Path | None = None
         layout = QtW.QVBoxLayout(self)
         self._title_label = QtW.QLabel("")  # job name
         font = self._title_label.font()
@@ -49,6 +50,11 @@ class QJobScheduler(QtW.QWidget):
         layout.addWidget(self._job_param_widget)
         layout.addWidget(self._exec_btn)
 
+    @property
+    def cwd(self) -> Path | None:
+        """Current working directory, usually the RELION project directory."""
+        return self._cwd
+
     def sizeHint(self) -> QtCore.QSize:
         return QtCore.QSize(320, 600)
 
@@ -61,7 +67,7 @@ class QJobScheduler(QtW.QWidget):
         self._set_content(None, "No job selected")
         self._exec_btn.setVisible(False)
 
-    def update_by_job(self, job_cls: type[RelionJob], cwd=None):
+    def update_by_job(self, job_cls: type[RelionJob], cwd: Path | None = None):
         """Update the widget based on the job directory.
 
         This method does NOT update the parameters; call `set_parameters` after this."""
@@ -71,6 +77,7 @@ class QJobScheduler(QtW.QWidget):
             prefix = "Job: "
         self._set_content(job_cls, prefix + job_cls.job_title())
         self._job_param_widget.update_by_job(job_cls)
+        assert isinstance(cwd, Path) or cwd is None
         self._cwd = cwd
 
     def set_parameters(self, params: dict):

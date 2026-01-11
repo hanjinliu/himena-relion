@@ -100,10 +100,12 @@ class QImportTiltSeriesViewer(QJobScrollArea):
         ts_model = TSModel.validate_file(ts_path)
         self.window_closed_callback()
         if self._is_micrograph:
-            paths = ts_model.ts_paths_sorted()
+            paths = [self._job_dir.resolve_path(p) for p in ts_model.ts_paths_sorted()]
             self._worker = self._read_micrographs(paths)
         else:
-            paths = ts_model.ts_movie_paths_sorted()
+            paths = [
+                self._job_dir.resolve_path(p) for p in ts_model.ts_movie_paths_sorted()
+            ]
             self._worker = self._uncompress_and_read_movies(paths)
         self._start_worker()
 

@@ -8,7 +8,7 @@ from magicgui.backends._qtpy.widgets import QBaseValueWidget
 from himena.qt import QColoredSVGIcon
 from himena.widgets import current_instance
 from himena_relion._utils import read_icon_svg_for_type
-from himena_relion._widgets import QRelionNodeItem
+from himena_relion._widgets import QRelionNodeItem, QJobScheduler
 
 
 class QPathDropWidget(QtW.QWidget):
@@ -31,6 +31,19 @@ class QPathDropWidget(QtW.QWidget):
         self.setAcceptDrops(True)
         self._btn.clicked.connect(self._on_browse_clicked)
 
+    def get_parent_job_scheduler(self) -> QJobScheduler | None:
+        parent = self.parent()
+        while parent is not None:
+            if isinstance(parent, QJobScheduler):
+                return parent
+            parent = parent.parent()
+        return None
+
+    def get_relion_directory(self) -> Path:
+        if job_scheduler := self.get_parent_job_scheduler():
+            return job_scheduler.cwd or Path.cwd()
+        return Path.cwd()
+
     def set_type_label(self, label: str | list[str]) -> None:
         if isinstance(label, str):
             self._type_labels = [label]
@@ -47,6 +60,11 @@ class QPathDropWidget(QtW.QWidget):
                 a0.accept()
                 a0.setDropAction(QtCore.Qt.DropAction.CopyAction)
                 return
+        elif a0.mimeData().hasUrls():
+            # Support drag-and-drop from file explorer
+            a0.accept()
+            a0.setDropAction(QtCore.Qt.DropAction.CopyAction)
+            return
         a0.ignore()
 
     def dropEvent(self, a0):
@@ -54,7 +72,19 @@ class QPathDropWidget(QtW.QWidget):
             path_rel = src._filepath_rel
             self._path_line_edit.setText(path_rel.as_posix())
             a0.accept()
-        # TODO: also support dragging from file explorer
+        elif a0.mimeData().hasUrls():
+            # Support drag-and-drop from file explorer
+            urls = a0.mimeData().urls()
+            if urls:
+                path_abs = Path(urls[0].toLocalFile())
+                rln_dir = self.get_relion_directory()
+                if path_abs.is_relative_to(rln_dir):
+                    path_rel = path_abs.relative_to(rln_dir)
+                else:
+                    path_rel = path_abs
+                self._path_line_edit.setText(path_rel.as_posix())
+                self.valueChanged.emit(self._path_line_edit.text())
+                a0.accept()
 
     def value(self) -> str:
         return self._path_line_edit.text()
@@ -70,7 +100,7 @@ class QPathDropWidget(QtW.QWidget):
         else:
             caption = f"Select {' or '.join(self._type_labels)} file"
         # look for .Nodes/<type_label>/ directory.
-        start_dir = Path.cwd().joinpath(".Nodes")
+        start_dir = self.get_relion_directory().joinpath(".Nodes")
         for type_label in self._type_labels:
             candidate_dir = start_dir.joinpath(type_label)
             if candidate_dir.is_dir() and candidate_dir.exists():
@@ -91,9 +121,9 @@ class QPathDropWidget(QtW.QWidget):
                 path_real = Path(*parts[:node_index], *parts[node_index + 2 :])
                 if path_real.exists():
                     path_abs = path_real
-
-            if path_abs.is_relative_to(Path.cwd()):
-                path_rel = path_abs.relative_to(Path.cwd())
+            rln_dir = self.get_relion_directory()
+            if path_abs.is_relative_to(rln_dir):
+                path_rel = path_abs.relative_to(rln_dir)
             else:
                 path_rel = path_abs
             self._path_line_edit.setText(path_rel.as_posix())

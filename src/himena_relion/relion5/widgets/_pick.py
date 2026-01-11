@@ -42,7 +42,7 @@ class QManualPickViewer(QJobScrollArea):
         self._mic_list.current_changed.connect(self._mic_changed)
         self._num_picked_label = QtW.QLabel("")
         self._num_picked_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
-        self._filter_widget = Q2DFilterWidget()
+        self._filter_widget = Q2DFilterWidget(bin_default=8, lowpass_default=20)
         layout.addWidget(QtW.QLabel("<b>Micrographs with picked particles</b>"))
         layout.addWidget(self._filter_widget)
         layout.addWidget(self._viewer)
@@ -174,11 +174,11 @@ class QManualPickViewer(QJobScrollArea):
 def iter_micrograph_and_coordinates(
     job_dir: _job_dir.JobDirectory,
 ) -> Iterator[tuple[str, str | None]]:
-    pipeline = job_dir.parse_job_pipeline()
-    mic = pipeline.get_input_by_type("MicrographGroupMetadata")
-    if mic is None:
-        return
-    mic_model = MicrographsStarModel.validate_file(job_dir.resolve_path(mic.path))
+    if job_dir.job_type_label().startswith("relion.manualpick"):
+        mic = job_dir.get_job_param("fn_in")
+    else:
+        mic = job_dir.get_job_param("fn_input_autopick")
+    mic_model = MicrographsStarModel.validate_file(job_dir.resolve_path(mic))
     for path in mic_model.micrographs.mic_name:
         fp = Path(path)
         # If micrographs are output of MotionCorr, path is like

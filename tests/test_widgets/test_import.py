@@ -124,7 +124,7 @@ def test_import_tomo_widget(
             pre_exposure=[0.0, 5.0, 10.0, 15.0, 20.0],
             nominal_defocus=[3.5] * 5,
             micrograph_name=[""] * 5,
-            micrograph_movie_name=[""] * 5,
+            micrograph_movie_name=[f"frames/TS_{i+1:02d}_{j:03d}.tif" for j in range(5)],
             ctf_image=[""] * 5,
         )
         tester.write_text(f"tilt_series/TS_{i+1:02d}.star", ts.to_string())
@@ -135,11 +135,19 @@ def test_import_tomo_widget(
         voltage=[300.0] * 3,
         cs=[2.7] * 3,
         amplitude_contrast=[0.1] * 3,
-        original_pixel_size=[0.84 for i in range(3)],
+        original_pixel_size=[0.84] * 3,
         tomo_hand=[-1] * 3,
         optics_group_name=["optics1"] * 3,
     )
     tester.write_text("tilt_series.star", model.to_string())
+    tester.write_exit_with_success()
+    assert tester.widget._ts_list.rowCount() == 3
+
+    tester.widget._ts_list.setCurrentCell(1, 0)
+    tester.widget._ts_list.setCurrentCell(2, 0)
+    tester.widget._ts_list.setCurrentCell(0, 0)
+
+    tester.initialize()
 
 def _random_movie(tester: JobWidgetTester):
     return tester._rng.integers(-100, 100, (32, 48)).astype(np.int8)

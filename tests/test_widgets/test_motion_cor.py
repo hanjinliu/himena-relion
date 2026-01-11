@@ -29,8 +29,7 @@ def test_motioncor_spa_widget(
 
         assert tester.widget._mic_list.rowCount() == i + 1
 
-    for _ in range(3):
-        QApplication.processEvents()
+    tester.widget._filter_widget.set_params(4, 20)
 
 TILT_SERIES_STAR_TXT = """
 # version 50001
@@ -116,3 +115,4 @@ def test_motioncor_tomo_widget(
     QApplication.processEvents()
     tester.widget._ts_list.setCurrentCell(2, 0)
     QApplication.processEvents()
+    tester.widget._filter_widget.set_params(4, 20)

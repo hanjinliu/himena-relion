@@ -2,6 +2,8 @@ from __future__ import annotations
 from pathlib import Path
 import logging
 
+import mrcfile
+import numpy as np
 from qtpy.QtCore import Qt
 from starfile_rs import read_star
 from himena_relion._widgets import (
@@ -18,7 +20,7 @@ _LOGGER = logging.getLogger(__name__)
 
 @register_job("relion.reconstructparticletomo", is_tomo=True)
 class QReconstructViewer(QJobScrollArea):
-    def __init__(self, job_dir: _job_dir.ReconstructParticlesJobDirectory):
+    def __init__(self, job_dir: _job_dir.JobDirectory):
         super().__init__()
         self._viewer = Q3DViewer()
         self._viewer.setMaximumWidth(400)
@@ -28,18 +30,16 @@ class QReconstructViewer(QJobScrollArea):
         self._layout.addWidget(self._viewer)
         self._layout.addWidget(self._num_particles_label)
 
-    def on_job_updated(
-        self, job_dir: _job_dir.ReconstructParticlesJobDirectory, path: str
-    ):
+    def on_job_updated(self, job_dir: _job_dir.JobDirectory, path: str):
         """Handle changes to the job directory."""
         fp = Path(path)
         if fp.name.startswith("RELION_JOB_") or fp.suffix == ".mrc":
             self.initialize(job_dir)
             _LOGGER.debug("%s Updated", job_dir.job_number)
 
-    def initialize(self, job_dir: _job_dir.ReconstructParticlesJobDirectory):
+    def initialize(self, job_dir: _job_dir.JobDirectory):
         """Initialize the viewer with the job directory."""
-        img = job_dir.merged_mrc()
+        img = merged_mrc(job_dir)
         self._viewer.set_image(img, update_now=False)
         self._viewer.auto_threshold(update_now=False)
         self._viewer.auto_fit()
@@ -71,3 +71,13 @@ class QReconstructViewer(QJobScrollArea):
                 exc_info=True,
             )
         self._num_particles_label.set_number(n_particles)
+
+
+def merged_mrc(job_dir: _job_dir.JobDirectory) -> np.ndarray | None:
+    """Return the path to the merged MRC file if exists."""
+    path = job_dir.path / "merged.mrc"
+    try:
+        with mrcfile.open(path, mode="r") as mrc:
+            return mrc.data
+    except Exception:
+        return None

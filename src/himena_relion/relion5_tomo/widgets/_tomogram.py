@@ -23,7 +23,7 @@ TXT_OR_DIR = [".out", ".err", ".star", ""]
 
 @register_job("relion.reconstructtomograms", is_tomo=True)
 class QTomogramViewer(QJobScrollArea):
-    def __init__(self, job_dir: _job_dir.TomogramJobDirectory):
+    def __init__(self, job_dir: _job_dir.JobDirectory):
         super().__init__()
         self._job_dir = job_dir
         layout = self._layout
@@ -41,14 +41,14 @@ class QTomogramViewer(QJobScrollArea):
         self._filter_widget.value_changed.connect(self._viewer.redraw)
         self._is_split = False
 
-    def on_job_updated(self, job_dir: _job_dir.TomogramJobDirectory, path: str):
+    def on_job_updated(self, job_dir: _job_dir.JobDirectory, path: str):
         """Handle changes to the job directory."""
         fp = Path(path)
         if fp.name.startswith("RELION_JOB_") or fp.suffix == ".mrc":
             self.initialize(job_dir)
             _LOGGER.debug("%s Updated", job_dir.job_number)
 
-    def initialize(self, job_dir: _job_dir.TomogramJobDirectory):
+    def initialize(self, job_dir: _job_dir.JobDirectory):
         """Initialize the viewer with the job directory."""
         items: list[tuple[str, ...]] = []
         job_dir = self._job_dir
@@ -91,8 +91,15 @@ class QTomogramViewer(QJobScrollArea):
 
 
 @register_job("relion.denoisetomo", is_tomo=True)
+def denoise_tomogram_viewer(job_dir: _job_dir.JobDirectory):
+    if job_dir.get_job_param("do_cryocare_train") == "Yes":
+        return QJobScrollArea()
+    else:
+        return QDenoiseTomogramViewer(job_dir)
+
+
 class QDenoiseTomogramViewer(QJobScrollArea):
-    def __init__(self, job_dir: _job_dir.DenoiseJobDirectory):
+    def __init__(self, job_dir: _job_dir.JobDirectory):
         super().__init__()
         self._job_dir = job_dir
         layout = self._layout
@@ -105,18 +112,16 @@ class QDenoiseTomogramViewer(QJobScrollArea):
         layout.addWidget(self._tomo_list)
         layout.addWidget(self._viewer)
 
-    def on_job_updated(self, job_dir: _job_dir.DenoiseJobDirectory, path: str):
+    def on_job_updated(self, job_dir: _job_dir.JobDirectory, path: str):
         """Handle changes to the job directory."""
         fp = Path(path)
         if fp.name.startswith("RELION_JOB_") or fp.suffix not in TXT_OR_DIR:
             self.initialize(job_dir)
             _LOGGER.debug("%s Updated", job_dir.job_number)
 
-    def initialize(self, job_dir: _job_dir.DenoiseJobDirectory):
+    def initialize(self, job_dir: _job_dir.JobDirectory):
         """Initialize the viewer with the job directory."""
         self._job_dir = job_dir
-        if job_dir._is_train:
-            return
         items = [
             (p.stem[4:], "Denoised")
             for p in job_dir.path.joinpath("tomograms").glob("*.mrc")

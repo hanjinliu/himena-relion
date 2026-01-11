@@ -21,7 +21,7 @@ _LOGGER = logging.getLogger(__name__)
 
 @register_job("relion.pseudosubtomo", is_tomo=True)
 class QExtractJobViewer(QJobScrollArea):
-    def __init__(self, job_dir: _job_dir.ExtractJobDirectory):
+    def __init__(self, job_dir: _job_dir.JobDirectory):
         super().__init__()
         self._job_dir = job_dir
 
@@ -52,7 +52,7 @@ class QExtractJobViewer(QJobScrollArea):
         self._slider.valueChanged.connect(self._slider_value_changed)
         self._plot_session_id = self._text_edit.prep_uuid()
 
-    def on_job_updated(self, job_dir: _job_dir.ExtractJobDirectory, path: str):
+    def on_job_updated(self, job_dir: _job_dir.JobDirectory, path: str):
         """Handle changes to the job directory."""
         fp = Path(path)
         is_subtomo_update = fp.name.endswith(("_stack2d.mrcs", "_data.mrc"))
@@ -62,7 +62,7 @@ class QExtractJobViewer(QJobScrollArea):
                 self._last_updated_dir = fp.parent.name
             _LOGGER.debug("%s Updated", self._job_dir.job_number)
 
-    def initialize(self, job_dir: _job_dir.ExtractJobDirectory):
+    def initialize(self, job_dir: _job_dir.JobDirectory):
         """Initialize the viewer with the job directory."""
         subtomo_dir = self._job_dir.path.joinpath("Subtomograms")
         if not subtomo_dir.exists():
@@ -79,7 +79,7 @@ class QExtractJobViewer(QJobScrollArea):
         ]
         tomo_names.sort(key=lambda x: x[0])
         self._tomo_list.set_choices(tomo_names)
-        if self._job_dir.is_2d():
+        if _is_2d(self._job_dir):
             self._subtomogram_label.setText("<b>Extracted 2D stacks (zero tilt)</b>")
             self._subtomo_pattern = "{ith}_stack2d.mrcs"
         else:
@@ -100,7 +100,7 @@ class QExtractJobViewer(QJobScrollArea):
         if value is None:
             return
         tomo_name = value[0]
-        max_num = self._job_dir.max_num_subtomograms(tomo_name)
+        max_num = _max_num_subtomograms(self._job_dir, tomo_name)
         self._current_num_extracts = max_num
         current_pos = self._slider.value()
         self._slider.setRange(0, max_num // self._num_page)
@@ -160,3 +160,28 @@ class QExtractJobViewer(QJobScrollArea):
         if my_uuid != self._plot_session_id:
             return
         self._text_edit.insert_base64_image(img_str)
+
+
+def _max_num_subtomograms(job_dir: _job_dir.JobDirectory, tomoname: str) -> int:
+    """Return the number of subtomograms for a given tomogram name."""
+    tomo_dir = job_dir.path / "Subtomograms" / tomoname
+    if _is_2d(job_dir):
+        suffix = "_stack2d.mrcs"
+    else:
+        suffix = "_data.mrc"
+    ndigits = 1
+    while True:
+        question_marks = "?" * ndigits
+        if next(tomo_dir.glob(f"{question_marks}{suffix}"), None):
+            ndigits += 1
+        else:
+            break
+    if ndigits == 1:
+        return 0
+    path = next(tomo_dir.rglob(f"{'?' * (ndigits - 1)}{suffix}"))
+    return int(path.name[: -len(suffix)])
+
+
+def _is_2d(job_dir: _job_dir.JobDirectory) -> bool:
+    """Return whether the extraction is 2D stack or 3D subtomogram."""
+    return job_dir.get_job_param("do_stack2d") == "Yes"

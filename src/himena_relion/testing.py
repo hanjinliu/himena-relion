@@ -39,3 +39,10 @@ class JobWidgetTester(Generic[_T]):
     def mkdir(self, name: str):
         fp = self.job_dir.path / name
         fp.mkdir(parents=True, exist_ok=True)
+
+    def initialize(self):
+        """Re-initialize the widget with the job directory."""
+        self.widget.initialize(self.job_dir)
+
+    def write_exit_with_success(self):
+        self.write_text("RELION_JOB_EXIT_SUCCESS", "")
