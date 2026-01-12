@@ -39,6 +39,16 @@ class RelionConfig:
         label="ResMap Executable",
         tooltip="Path to the ResMap executable",
     )
+    dynamight: str = config_field(
+        default="relion_python_dynamight",
+        label="DynaMight Executable",
+        tooltip="Path to the DynaMight executable",
+    )
+    modelangelo: str = config_field(
+        default="relion_python_modelangelo",
+        label="ModelAngelo Executable",
+        tooltip="Path to the ModelAngelo executable",
+    )
     scratch_dir: str = config_field(
         default="",
         label="Scratch Directory",
@@ -85,6 +95,14 @@ def get_aretomo2_exe() -> str:
 
 def get_resmap_exe() -> str:
     return _get_himena_relion_config().resmap
+
+
+def get_dynamight_exe() -> str:
+    return _get_himena_relion_config().dynamight
+
+
+def get_modelangelo_exe() -> str:
+    return _get_himena_relion_config().modelangelo
 
 
 def get_cryocare_dir() -> str:

@@ -331,6 +331,7 @@ class _Relion5BuiltinContinue(_Relion5BuiltinJob):
             title=f"{cls.command_palette_title_prefix()} {cls.job_title()}",
             command_id=command_id,
             palette=False,
+            tooltip=getattr(cls, "__doc__", "Continue this job"),
         )
 
         # auto connect jobs

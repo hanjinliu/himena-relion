@@ -139,9 +139,13 @@ class QClass3DViewer(QJobScrollArea):
             yield self._auto_threshold_and_fit, None
         tubes = res.angdist(class_id, scale)
         yield self._viewer._canvas.set_arrows, tubes
-        part = res.particles()
-        num_particles = len(part.particles.block)
-        yield self._num_particles_label.set_number_for_class3d, num_particles
+        try:
+            part = res.particles()
+        except Exception:
+            pass  # This happens when the star file is not complete.
+        else:
+            num_particles = len(part.particles.block)
+            yield self._num_particles_label.set_number_for_class3d, num_particles
         self._worker = None
 
     def _auto_threshold_and_fit(self, *_):

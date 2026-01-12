@@ -101,6 +101,11 @@ for autopick_job in [
             "autopick.star": "coords_suffix",
         },
     )
+    connect_jobs(
+        _spa.JoinMicrographsJob,
+        autopick_job,
+        node_mapping={"join_micrographs.star": "fn_input_autopick"},
+    )
 
 connect_jobs(
     _spa.AutoPickTopazTrain,
@@ -294,6 +299,51 @@ connect_jobs(
     _spa.Refine3DJob,
     _spa.PostProcessJob,
     node_mapping={"run_half1_class001_unfil.mrc": "fn_in"},
+)
+connect_jobs(
+    _spa.JoinParticlesJob,
+    _spa.InitialModelJob,
+    node_mapping={"join_particles.star": "fn_img"},
+)
+connect_jobs(
+    _spa.JoinMoviesJob,
+    _spa.MotionCorr2Job,
+    node_mapping={"join_movies.star": "input_star_mics"},
+)
+connect_jobs(
+    _spa.JoinMoviesJob,
+    _spa.MotionCorrOwnJob,
+    node_mapping={"join_movies.star": "input_star_mics"},
+)
+connect_jobs(
+    _spa.JoinMicrographsJob,
+    _spa.CtfEstimationJob,
+    node_mapping={"join_micrographs.star": "input_star_mics"},
+)
+connect_jobs(
+    _spa.JoinMicrographsJob,
+    _spa.ManualPickJob,
+    node_mapping={"join_micrographs.star": "fn_in"},
+)
+connect_jobs(
+    _spa.Refine3DJob,
+    _spa.BayesianPolishTrainJob,
+    node_mapping={"run_data.star": "fn_data"},
+)
+connect_jobs(
+    _spa.Refine3DJob,
+    _spa.BayesianPolishJob,
+    node_mapping={"run_data.star": "fn_data"},
+)
+connect_jobs(
+    _spa.CtfRefineJob,
+    _spa.BayesianPolishTrainJob,
+    node_mapping={"particles_ctf_refine.star": "fn_data"},
+)
+connect_jobs(
+    _spa.CtfRefineJob,
+    _spa.BayesianPolishJob,
+    node_mapping={"particles_ctf_refine.star": "fn_data"},
 )
 
 

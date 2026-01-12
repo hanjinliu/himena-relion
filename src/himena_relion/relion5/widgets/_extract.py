@@ -57,11 +57,14 @@ class QExtractViewer(QJobScrollArea):
         """Handle changes to the job directory."""
         fp = Path(path)
         if fp.name.startswith("RELION_JOB_") or fp.suffix == ".star":
-            self.initialize(job_dir)
+            self._process_update(force=fp.name.startswith("RELION_JOB_"))
             _LOGGER.debug("%s Updated", job_dir.job_number)
 
     def initialize(self, job_dir: _job_dir.JobDirectory):
         """Initialize the viewer with the job directory."""
+        self._process_update(force=True)
+
+    def _process_update(self, force: bool = False):
         choices = []
         num_total = 0
         for mrcs_path in self._job_dir.glob_in_subdirs("*.mrcs"):
@@ -111,15 +114,25 @@ class QExtractViewer(QJobScrollArea):
             for ith in range(start_index + 1, end_index + 1):
                 if mrc_data.shape[0] < ith:
                     break
+                if ith == start_index + 1:  # first
+                    angst = mrc.voxel_size.x
+                    size = mrc.header.nx
+                    msg = f"Image size: {size} pix ({size * angst:.1f} A)"
+                    yield self._on_text_ready, (msg + "\n\n", session)
+
                 img_data = np.asarray(mrc_data[ith - 1], dtype=np.float32)
                 img_data = _utils.lowpass_filter(img_data, 0.2)
                 img_str = self._text_edit.image_to_base64(img_data, f"{ith}")
                 yield self._on_string_ready, (img_str, session)
 
-    def _on_string_ready(self, value: tuple[str, uuid.UUID]):
-        if self._worker is None:
+    def _on_text_ready(self, value: tuple[str, uuid.UUID]):
+        text, my_uuid = value
+        if my_uuid != self._plot_session_id or self._worker is None:
             return
+        self._text_edit.insertPlainText(text)
+
+    def _on_string_ready(self, value: tuple[str, uuid.UUID]):
         img_str, my_uuid = value
-        if my_uuid != self._plot_session_id:
+        if my_uuid != self._plot_session_id or self._worker is None:
             return
         self._text_edit.insert_base64_image(img_str)

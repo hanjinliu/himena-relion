@@ -43,6 +43,9 @@ from himena_relion._annotated import (
     localres,
     select,
     post,
+    dynamight,
+    modelangelo,
+    polish,
     running,
 )
 
@@ -65,5 +68,8 @@ __all__ = [
     "compute",
     "select",
     "post",
+    "dynamight",
+    "modelangelo",
+    "polish",
     "running",
 ]

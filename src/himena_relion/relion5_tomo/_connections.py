@@ -447,3 +447,13 @@ connect_jobs(
         _ctfrefine_search_mask: "fn_mask",
     },
 )
+connect_jobs(
+    _spa.JoinMoviesJob,
+    _tomo.MotionCorr2TomoJob,
+    node_mapping={"join_movies.star": "input_star_mics"},
+)
+connect_jobs(
+    _spa.JoinMoviesJob,
+    _tomo.MotionCorrOwnTomoJob,
+    node_mapping={"join_movies.star": "input_star_mics"},
+)

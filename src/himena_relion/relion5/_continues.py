@@ -2,6 +2,7 @@ from pathlib import Path
 
 from himena_relion._job_class import _Relion5BuiltinContinue
 from himena_relion.relion5._builtins import (
+    DynaMightJob,
     MotionCorr2Job,
     MotionCorrOwnJob,
     CtfEstimationJob,
@@ -275,3 +276,115 @@ class Refine3DContinue(_Relion5BuiltinContinue):
     @classmethod
     def more_node_mappings(cls) -> dict[str, str]:
         return {_latest_optimiser_star: "fn_cont"}
+
+
+class _DynaMightContinue(_Relion5BuiltinContinue):
+    original_class = DynaMightJob
+
+    @classmethod
+    def more_node_mappings(cls) -> dict[str, str]:
+        return {_latest_optimiser_star: "fn_cont"}
+
+
+class DynaMightVisualizeJob(_DynaMightContinue):
+    """Visualize the deformations in napari"""
+
+    @classmethod
+    def command_id(cls) -> str:
+        return "dynamight.visualize.continue"
+
+    @classmethod
+    def job_title(cls) -> str:
+        return "DynaMight Visualize"
+
+    @classmethod
+    def normalize_kwargs(cls, **kwargs):
+        kwargs = super().normalize_kwargs(**kwargs)
+        kwargs["do_visualize"] = True
+        return kwargs
+
+    def run(
+        self,
+        # I/O
+        fn_checkpoint: _a.dynamight.IN_CHECKPOINT = "",
+        gpu_id: _a.dynamight.GPU_ID = 0,
+        do_preload: _a.dynamight.DO_PRELOAD = False,
+        # Task
+        halfset: _a.dynamight.HALFSET = 1,
+        # Running
+        nr_threads: _a.running.NR_THREADS = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")
+
+
+class DynaMightInverseDeformationJob(_DynaMightContinue):
+    """Perform inverse deformation to reconstruct deformed maps"""
+
+    original_class = DynaMightJob
+
+    @classmethod
+    def command_id(cls) -> str:
+        return "dynamight.inversedeformation.continue"
+
+    @classmethod
+    def job_title(cls) -> str:
+        return "DynaMight Inverse Deformation"
+
+    @classmethod
+    def normalize_kwargs(cls, **kwargs):
+        kwargs = super().normalize_kwargs(**kwargs)
+        kwargs["do_inverse"] = True
+        return kwargs
+
+    def run(
+        self,
+        # I/O
+        fn_checkpoint: _a.dynamight.IN_CHECKPOINT = "",
+        gpu_id: _a.dynamight.GPU_ID = 0,
+        do_preload: _a.dynamight.DO_PRELOAD = False,
+        # Task
+        nr_epochs: _a.dynamight.NR_EPOCHS = 200,
+        do_store_deform: _a.dynamight.DO_STORE_DEFORM = False,
+        # Running
+        nr_threads: _a.running.NR_THREADS = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")
+
+
+class DynaMightReconstructJob(_DynaMightContinue):
+    """Perform backprojection of the deformations"""
+
+    original_class = DynaMightJob
+
+    @classmethod
+    def command_id(cls) -> str:
+        return "dynamight.reconstruct.continue"
+
+    @classmethod
+    def job_title(cls) -> str:
+        return "DynaMight Reconstruct"
+
+    @classmethod
+    def normalize_kwargs(cls, **kwargs):
+        kwargs = super().normalize_kwargs(**kwargs)
+        kwargs["do_reconstruct"] = True
+        return kwargs
+
+    def run(
+        self,
+        # I/O
+        fn_checkpoint: _a.dynamight.IN_CHECKPOINT = "",
+        gpu_id: _a.dynamight.GPU_ID = 0,
+        do_preload: _a.dynamight.DO_PRELOAD = False,
+        # Task
+        backproject_batchsize: _a.dynamight.BACKPROJECT_BATCHSIZE = 10,
+        # Running
+        nr_threads: _a.running.NR_THREADS = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")

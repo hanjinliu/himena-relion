@@ -91,6 +91,10 @@ class QClass2DViewer(QJobScrollArea):
         path_data = self._job_dir.path / f"run_it{niter:03d}_data.star"
         with mrcfile.open(path_img) as mrc:
             img = np.asarray(mrc.data)
+            size = mrc.header.nx
+            angst = mrc.voxel_size.x
+        msg = f"Image size: {size} pix ({size * angst:.1f} A)\n\n"
+        yield self._on_text_ready, (msg, session)
         if not wait_for_file(path_model, num_retry=20):
             _LOGGER.error("Failed to find %s", path_model)
             return
@@ -118,9 +122,13 @@ class QClass2DViewer(QJobScrollArea):
                 yield self._num_particles_label.set_number, num
 
     def _on_class_yielded(self, value: tuple[str, uuid.UUID]):
-        if self._worker is None:
-            return
         img_str, my_uuid = value
-        if my_uuid != self._plot_session_id:
+        if my_uuid != self._plot_session_id or self._worker is None:
             return
         self._text_edit.insert_base64_image(img_str)
+
+    def _on_text_ready(self, value: tuple[str, uuid.UUID]):
+        text, my_uuid = value
+        if my_uuid != self._plot_session_id or self._worker is None:
+            return
+        self._text_edit.insertPlainText(text)

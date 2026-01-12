@@ -511,7 +511,7 @@ class _AutoPickJob(_Relion5SpaJob):
     def normalize_kwargs_inv(cls, **kwargs):
         kwargs = super().normalize_kwargs_inv(**kwargs)
         kwargs.pop("use_gpu", None)
-        if "angpix" in kwargs and kwargs["angpix"] == -1:
+        if "angpix" in kwargs and float(kwargs["angpix"]) < 0:
             kwargs["angpix"] = None
         return kwargs
 
@@ -947,12 +947,14 @@ class ExtractJobBase(_Relion5SpaJob):
         kwargs["recenter_x"], kwargs["recenter_y"], kwargs["recenter_z"] = (0, 0, 0)
 
         # normalize
-        kwargs["do_rescale"] = kwargs["extract_size"] != kwargs.get(
-            "rescale", (0, 0, 0)
-        )
         kwargs["do_fom_threshold"] = kwargs.get("minimum_pick_fom", None) is not None
         if kwargs["minimum_pick_fom"] is None:
             kwargs["minimum_pick_fom"] = 0.0
+        if (_rescale := kwargs.get("rescale", None)) is None:
+            kwargs["rescale"] = kwargs["extract_size"]
+        else:
+            kwargs["do_rescale"] = _rescale != kwargs["extract_size"]
+
         return kwargs
 
     @classmethod
@@ -960,6 +962,11 @@ class ExtractJobBase(_Relion5SpaJob):
         kwargs = super().normalize_kwargs_inv(**kwargs)
         if kwargs.pop("do_fom_threshold", "No") == "No":
             kwargs["minimum_pick_fom"] = None
+        if not kwargs.get("do_rescale", False):
+            kwargs["rescale"] = None
+        for name in ["bg_diameter", "white_dust", "black_dust"]:
+            if float(kwargs.get(name, -1)) < 0:
+                kwargs[name] = None
         return kwargs
 
     @classmethod
@@ -1011,12 +1018,12 @@ class ExtractJob(ExtractJobBase):
         do_float16: _a.mcor.DO_F16 = True,
         # Extract
         extract_size: _a.extract.SIZE = 128,
-        rescale: _a.extract.DO_RESCALE = 128,
+        rescale: _a.extract.RESCALE = 128,
         do_invert: _a.extract.DO_INVERT = True,
         do_norm: _a.extract.DO_NORM = True,
-        bg_diameter: _a.extract.DIAMETER = -1,
-        white_dust: _a.extract.WIGHT_DUST = -1,
-        black_dust: _a.extract.BLACK_DUST = -1,
+        bg_diameter: _a.extract.DIAMETER = None,
+        white_dust: _a.extract.WIGHT_DUST = None,
+        black_dust: _a.extract.BLACK_DUST = None,
         minimum_pick_fom: _a.extract.MINIMUM_PICK_FOM = None,
         # Helix
         do_extract_helix: _a.helix.DO_HELIX = False,
@@ -1044,9 +1051,8 @@ class ReExtractJob(ExtractJobBase):
     @classmethod
     def normalize_kwargs(cls, **kwargs):
         kwargs = super().normalize_kwargs(**kwargs)
-        kwargs["recenter_x"], kwargs["recenter_y"], kwargs["recenter_z"] = kwargs.pop(
-            "recenter"
-        )
+        recenter = kwargs.pop("recenter", (0.0, 0.0, 0.0))
+        kwargs["recenter_x"], kwargs["recenter_y"], kwargs["recenter_z"] = recenter
         kwargs["do_reextract"] = True
         return kwargs
 
@@ -1070,12 +1076,12 @@ class ReExtractJob(ExtractJobBase):
         do_float16: _a.io.DO_F16 = True,
         # Extract
         extract_size: _a.extract.SIZE = 128,
-        rescale: _a.extract.DO_RESCALE = 128,
+        rescale: _a.extract.RESCALE = None,
         do_invert: _a.extract.DO_INVERT = True,
         do_norm: _a.extract.DO_NORM = True,
-        bg_diameter: _a.extract.DIAMETER = -1,
-        white_dust: _a.extract.WIGHT_DUST = -1,
-        black_dust: _a.extract.BLACK_DUST = -1,
+        bg_diameter: _a.extract.DIAMETER = None,
+        white_dust: _a.extract.WIGHT_DUST = None,
+        black_dust: _a.extract.BLACK_DUST = None,
         minimum_pick_fom: _a.extract.MINIMUM_PICK_FOM = None,
         # Helix
         do_extract_helix: _a.helix.DO_HELIX = False,
@@ -1503,6 +1509,8 @@ class Class3DJob(_Class3DJobBase):
 
     @classmethod
     def setup_widgets(cls, widgets):
+        super().setup_widgets(widgets)
+
         @widgets["do_local_ang_searches"].changed.connect
         def _on_do_local_ang_searches_changed(value: bool):
             widgets["sigma_angles"].enabled = value
@@ -2126,6 +2134,8 @@ class _JoinStarBase(_Relion5Job):
 
 
 class JoinParticlesJob(_JoinStarBase):
+    """Join multiple particle star files into one."""
+
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
         kwargs = super().normalize_kwargs(**kwargs)
@@ -2149,6 +2159,8 @@ class JoinParticlesJob(_JoinStarBase):
 
 
 class JoinMicrographsJob(_JoinStarBase):
+    """Join multiple micrograph star files into one."""
+
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
         kwargs = super().normalize_kwargs(**kwargs)
@@ -2172,6 +2184,8 @@ class JoinMicrographsJob(_JoinStarBase):
 
 
 class JoinMoviesJob(_JoinStarBase):
+    """Join multiple movie star files into one."""
+
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
         kwargs = super().normalize_kwargs(**kwargs)
@@ -2211,6 +2225,8 @@ class _LocalResolutionJobBase(_Relion5Job):
 
 
 class LocalResolutionResmapJob(_LocalResolutionJobBase):
+    """Local resolution estimation using ResMap."""
+
     @classmethod
     def type_label(cls):
         return "relion.localres.resmap"
@@ -2250,6 +2266,8 @@ class LocalResolutionResmapJob(_LocalResolutionJobBase):
 
 
 class LocalResolutionOwnJob(_LocalResolutionJobBase):
+    """Local resolution estimation using RELION's own algorithm."""
+
     @classmethod
     def type_label(cls):
         return "relion.localres.own"
@@ -2357,6 +2375,239 @@ class ParticleSubtractionJob(_Relion5SpaJob):
             widgets["center"].enabled = value == "User-defined"
 
         _on_center_method_changed(widgets["center_method"].value == "User-defined")
+
+
+class BayesianPolishTrainJob(_Relion5SpaJob):
+    """Train Bayesian polishing model."""
+
+    @classmethod
+    def type_label(cls) -> str:
+        return "relion.polish.train"
+
+    @classmethod
+    def job_title(cls) -> str:
+        return "Bayesian Polish (Train)"
+
+    @classmethod
+    def normalize_kwargs(cls, **kwargs):
+        kwargs = super().normalize_kwargs(**kwargs)
+        kwargs["do_polish"] = False
+        kwargs["do_param_optim"] = True
+        kwargs["do_own_params"] = True
+        kwargs["opt_params"] = ""
+        kwargs["sigma_vel"] = 0.2
+        kwargs["sigma_div"] = 5000
+        kwargs["sigma_acc"] = 2
+        kwargs["minres"] = 20
+        kwargs["maxres"] = -1
+        for f in ["extract_size", "rescale"]:
+            if f in kwargs and kwargs[f] is None:
+                kwargs[f] = -1
+        return kwargs
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs):
+        kwargs = super().normalize_kwargs_inv(**kwargs)
+        for name in [
+            "do_own_params", "opt_params", "sigma_vel", "sigma_div", "sigma_acc",
+            "minres", "maxres", "do_polish", "do_param_optim",
+        ]:  # fmt: skip
+            kwargs.pop(name, None)
+        for f in ["extract_size", "rescale"]:
+            if kwargs.get(f, -1) < 0:
+                kwargs[f] = None
+        return kwargs
+
+    def run(
+        self,
+        # I/O
+        fn_data: _a.io.IN_PARTICLES = "",
+        fn_mic: _a.io.IN_MICROGRAPHS = "",
+        fn_post: _a.io.PROCESS_TYPE = "",
+        # TODO: do we need following parameters?
+        first_frame: _a.polish.FIRST_FRAME = 1,
+        last_frame: _a.polish.LAST_FRAME = -1,
+        extract_size: _a.polish.EXTRACT_SIZE = None,
+        rescale: _a.polish.RESCALE = None,
+        do_float16: _a.io.DO_F16 = True,
+        # Train
+        eval_frac: _a.polish.EVAL_FRAC = 0.5,
+        optim_min_part: _a.polish.OPTIM_MIN_PART = 10000,
+        # Running
+        nr_mpi: _a.running.NR_MPI = 1,
+        nr_threads: _a.running.NR_THREADS = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")
+
+
+class BayesianPolishJob(_Relion5SpaJob):
+    """Apply Bayesian polishing to particles."""
+
+    @classmethod
+    def type_label(cls) -> str:
+        return "relion.polish"
+
+    @classmethod
+    def job_title(cls) -> str:
+        return "Bayesian Polish"
+
+    @classmethod
+    def normalize_kwargs(cls, **kwargs):
+        kwargs = super().normalize_kwargs(**kwargs)
+        kwargs["do_polish"] = True
+        kwargs["do_param_optim"] = False
+        kwargs["eval_frac"] = 0.5
+        kwargs["optim_min_part"] = 10000
+        return kwargs
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs):
+        kwargs = super().normalize_kwargs_inv(**kwargs)
+        for name in ["do_polish", "do_param_optim", "eval_frac", "optim_min_part"]:
+            kwargs.pop(name, None)
+        return kwargs
+
+    def run(
+        self,
+        # I/O
+        fn_data: _a.io.IN_PARTICLES = "",
+        fn_mic: _a.io.IN_MICROGRAPHS = "",
+        fn_post: _a.io.PROCESS_TYPE = "",
+        first_frame: _a.polish.FIRST_FRAME = 1,
+        last_frame: _a.polish.LAST_FRAME = -1,
+        extract_size: _a.polish.EXTRACT_SIZE = -1,
+        rescale: _a.polish.RESCALE = -1,
+        do_float16: _a.io.DO_F16 = True,
+        # Polish
+        do_own_params: _a.polish.DO_OWN_PARAMS = True,
+        opt_params: _a.polish.OPT_PARAMS = "",
+        sigma_vel: _a.polish.SIGMA_VEL = 0.2,
+        sigma_div: _a.polish.SIGMA_DIV = 5000,
+        sigma_acc: _a.polish.SIGMA_ACC = 2,
+        minres: _a.polish.MINRES = 20,
+        maxres: _a.polish.MAXRES = None,
+        # Running
+        nr_mpi: _a.running.NR_MPI = 1,
+        nr_threads: _a.running.NR_THREADS = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")
+
+    @classmethod
+    def setup_widgets(cls, widgets):
+        @widgets["do_own_params"].changed.connect
+        def _on_do_own_params_changed(value: bool):
+            widgets["opt_params"].enabled = value
+            widgets["sigma_vel"].enabled = not value
+            widgets["sigma_div"].enabled = not value
+            widgets["sigma_acc"].enabled = not value
+
+        _on_do_own_params_changed(widgets["do_own_params"].value)
+
+
+class DynaMightJob(_Relion5SpaJob):
+    """Run DynaMight for analysis of molecular motions and flexibility."""
+
+    @classmethod
+    def type_label(cls) -> str:
+        return "dynamight"
+
+    @classmethod
+    def normalize_kwargs(cls, **kwargs):
+        kwargs = super().normalize_kwargs(**kwargs)
+        kwargs["fn_dynamight_exe"] = _configs.get_dynamight_exe()
+        kwargs["do_visualize"] = False
+        kwargs["do_inverse"] = False
+        kwargs["do_reconstruct"] = False
+        kwargs["fn_checkpoint"] = ""
+        kwargs["halfset"] = ""
+        kwargs["do_store_deform"] = False
+        kwargs["backproject_batchsize"] = 10
+        kwargs["nr_epochs"] = 200
+        return kwargs
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs):
+        kwargs = super().normalize_kwargs_inv(**kwargs)
+        kwargs.pop("fn_dynamight_exe", None)
+        for name in [
+            "do_visualize", "do_inverse", "do_reconstruct", "fn_checkpoint", "halfset",
+            "do_store_deform", "backproject_batchsize", "nr_epochs",
+        ]:  # fmt: skip
+            kwargs.pop(name, None)
+        return kwargs
+
+    def run(
+        self,
+        # I/O
+        fn_star: _a.dynamight.FN_STAR = "",
+        fn_map: _a.dynamight.FN_MAP = "",
+        nr_gaussians: _a.dynamight.NR_GAUSSIANS = 10000,
+        initial_threshold: _a.dynamight.INITIAL_THRESHOLD = None,
+        reg_factor: _a.dynamight.REG_FACTOR = 1,
+        gpu_id: _a.dynamight.GPU_ID = 0,
+        do_preload: _a.dynamight.DO_PRELOAD = False,
+        # Running
+        nr_threads: _a.running.NR_THREADS = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")
+
+
+class ModelAngeloJob(_Relion5SpaJob):
+    """ModelAngelo job placeholder."""
+
+    @classmethod
+    def type_label(cls) -> str:
+        return "modelangelo"
+
+    @classmethod
+    def normalize_kwargs(cls, **kwargs):
+        kwargs = super().normalize_kwargs(**kwargs)
+        kwargs["fn_modelangelo_exe"] = _configs.get_modelangelo_exe()
+        return kwargs
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs):
+        kwargs = super().normalize_kwargs_inv(**kwargs)
+        kwargs.pop("fn_modelangelo_exe", None)
+        return kwargs
+
+    def run(
+        self,
+        # I/O
+        fn_map: _a.modelangelo.FN_MAP = "",
+        p_seq: _a.modelangelo.P_SEQ = "",
+        d_seq: _a.modelangelo.D_SEQ = "",
+        r_seq: _a.modelangelo.R_SEQ = "",
+        # Compute
+        gpu_id: _a.modelangelo.GPU_ID = 0,
+        # HMMer
+        do_hhmer: _a.modelangelo.DO_HHMER = False,
+        fn_lib: _a.modelangelo.FN_LIB = "",
+        alphabet: _a.modelangelo.ALPHABET = "amino",
+        F1: _a.modelangelo.F1 = 10,
+        F2: _a.modelangelo.F2 = 0.002,
+        F3: _a.modelangelo.F3 = 1e-05,
+        E: _a.modelangelo.E = 0.02,
+        # Running
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")
+
+    @classmethod
+    def setup_widgets(cls, widgets):
+        @widgets["do_hhmer"].changed.connect
+        def _on_do_hhmer_changed(value: bool):
+            for name in ["fn_lib", "alphabet", "F1", "F2", "F3", "E"]:
+                widgets[name].enabled = value
+
+        _on_do_hhmer_changed(widgets["do_hhmer"].value)
 
 
 def _autopick_helix_setup(widgets: dict[str, ValueWidget]) -> None:
