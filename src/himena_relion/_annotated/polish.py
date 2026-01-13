@@ -188,3 +188,81 @@ MAXRES = Annotated[
         "group": "Polish",
     },
 ]
+
+# Tomograms
+BOX_SIZE = Annotated[
+    int,
+    {
+        "label": "Box size for estimation (pix)",
+        "tooltip": (
+            "Box size to be used for the estimation. Note that this can be larger than "
+            "the box size of the reference map. A sufficiently large box size allows "
+            "more of the high-frequency signal to be captured that has been "
+            "delocalised by the CTF."
+        ),
+        "group": "Polish",
+    },
+]
+MAX_ERROR = Annotated[
+    int,
+    {
+        "label": "Max position error (pix)",
+        "tooltip": (
+            "maximal assumed error in the initial 2D particle-positions (distances "
+            "between the projected 3D positions and their true positions in the "
+            "images), given in pixels."
+        ),
+        "group": "Polish",
+    },
+]
+DO_SHIFT_ALIGN = Annotated[
+    bool,
+    {
+        "label": "Align by shift only",
+        "tooltip": (
+            "If set to Yes, tilt series projection shifts are refined based on "
+            "cross-correlation. Useful for very badly aligned frames. No iterative "
+            "optimisation."
+        ),
+        "group": "Polish",
+    },
+]
+SHIFT_ALIGN_TYPE = Annotated[
+    str,
+    {
+        "label": "Alignment model",
+        "choices": ["Entire micrographs", "Only particles"],
+        "tooltip": (
+            'If set to "Only particles", it estimates rigid shift by aligning only '
+            "the particles instead of by predicting entire micrographs. In this case, "
+            "only misalignments smaller than half the box size of the particle can be "
+            "corrected."
+        ),
+        "group": "Polish",
+    },
+]
+DO_MOTION = Annotated[
+    bool,
+    {
+        "label": "Fit per-particle motion",
+        "tooltip": (
+            "If set to Yes, then the subtomogram version of Bayesian polishing will be "
+            "used to fit per-particle (3D) motion tracks, besides the rigid part of the "
+            "motion in the tilt series."
+        ),
+        "group": "Polish",
+    },
+]
+DO_SQ_EXP_KER = Annotated[
+    bool,
+    {
+        "label": "Use Gaussian decay",
+        "tooltip": (
+            "If set to Yes, then assume that the correlation of the velocities of two "
+            "particles decays as a Gaussian over their distance, instead of as an "
+            "exponential. This will produce spatially smoother motion and result in a "
+            "shorter program runtime."
+        ),
+        "group": "Polish",
+    },
+]

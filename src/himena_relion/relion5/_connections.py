@@ -409,3 +409,8 @@ connect_jobs(
     _spa.Refine3DJob,
     node_mapping={"particles_ctf_refine.star": "fn_img"},
 )
+connect_jobs(
+    _spa.PostProcessJob,
+    _spa.ModelAngeloJob,
+    node_mapping={"postprocess_masked.mrc": "fn_map"},
+)

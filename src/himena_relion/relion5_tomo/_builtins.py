@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Any
 
 from himena_relion._job_class import _Relion5BuiltinJob, parse_string
 from himena_relion import _configs
@@ -1133,7 +1133,12 @@ class CtfRefineTomoJob(_Relion5TomoJob):
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
         kwargs = norm_optim(**super().normalize_kwargs(**kwargs))
         if "lambda" not in kwargs:
-            kwargs["lambda"] = kwargs.pop("lambda_param", 0.1)
+            kwargs["lambda"] = kwargs.pop("lambda_param", None)
+        if kwargs["lambda"] is None:
+            kwargs["lambda"] = 0.1
+            kwargs["do_reg_def"] = False
+        else:
+            kwargs["do_reg_def"] = True
         return kwargs
 
     @classmethod
@@ -1141,6 +1146,8 @@ class CtfRefineTomoJob(_Relion5TomoJob):
         kwargs = norm_optim_inv(**super().normalize_kwargs_inv(**kwargs))
         if "lambda" in kwargs:
             kwargs["lambda_param"] = kwargs.pop("lambda")
+        if not kwargs.pop("do_reg_def", False):
+            kwargs["lambda_param"] = None
         return kwargs
 
     def run(
@@ -1150,30 +1157,13 @@ class CtfRefineTomoJob(_Relion5TomoJob):
         in_refmask: _a.io.IN_MASK = "",
         in_post: _a.io.PROCESS_TYPE = "",
         # CTF Refinement
-        box_size: Annotated[
-            int, {"label": "Box size of estimation (pix)", "group": "Defocus"}
-        ] = 128,
-        do_defocus: Annotated[
-            bool, {"label": "Refine defocus", "group": "Defocus"}
-        ] = True,
-        focus_range: Annotated[
-            float, {"label": "Defocus search range (A)", "group": "Defocus"}
-        ] = 3000,
-        do_reg_def: Annotated[
-            bool, {"label": "Do defocus regularisation", "group": "Defocus"}
-        ] = False,
-        lambda_param: Annotated[
-            float, {"label": "Defocus regularisation lambda", "group": "Defocus"}
-        ] = 0.1,
-        do_scale: Annotated[
-            bool, {"label": "Refine contrast scale", "group": "Defocus"}
-        ] = True,
-        do_frame_scale: Annotated[
-            bool, {"label": "Refine scale per frame", "group": "Defocus"}
-        ] = True,
-        do_tomo_scale: Annotated[
-            bool, {"label": "Refine scale per tomogram", "group": "Defocus"}
-        ] = False,
+        box_size: _a.ctfrefine.BOX_SIZE = 128,
+        do_defocus: _a.ctfrefine.DO_DEFOCUS_TOMO = True,
+        focus_range: _a.ctfrefine.FOCUS_RANGE = 3000,
+        lambda_param: _a.ctfrefine.LAMBDA_PARAM = 0.1,
+        do_scale: _a.ctfrefine.DO_SCALE = True,
+        do_frame_scale: _a.ctfrefine.DO_FRAME_SCALE = True,
+        do_tomo_scale: _a.ctfrefine.DO_TOMO_SCALE = False,
         # Running
         nr_mpi: _a.running.NR_MPI = 1,
         nr_threads: _a.running.NR_THREADS = 1,
@@ -1184,15 +1174,80 @@ class CtfRefineTomoJob(_Relion5TomoJob):
 
     @classmethod
     def setup_widgets(cls, widgets):
-        @widgets["do_reg_def"].changed.connect
-        def _on_do_reg_def_changed(value: bool):
+        @widgets["do_defocus"].changed.connect
+        def _on_do_defocus_changed(value: bool):
+            widgets["focus_range"].enabled = value
             widgets["lambda_param"].enabled = value
 
-        widgets["lambda_param"].enabled = widgets["do_reg_def"].value
+        _on_do_defocus_changed(widgets["do_defocus"].value)
+
+        @widgets["do_scale"].changed.connect
+        def _on_do_scale_changed(value: bool):
+            widgets["do_frame_scale"].enabled = value
+            widgets["do_tomo_scale"].enabled = value
+
+        _on_do_scale_changed(widgets["do_scale"].value)
 
 
 class PostProcessTomoJob(_Relion5TomoJob, PostProcessJob):
-    pass
+    """Run post-processing on a subtomogram average."""
+
+    # parameters are the same
 
 
-# class FrameAlignTomoJob(_Relion5TomoJob):
+class FrameAlignTomoJob(_Relion5TomoJob):
+    """Run Bayesian polishing on tilt series frames."""
+
+    @classmethod
+    def type_label(cls) -> str:
+        return "relion.framealigntomo"
+
+    @classmethod
+    def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
+        kwargs = norm_optim(**super().normalize_kwargs(**kwargs))
+        return kwargs
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
+        kwargs = norm_optim_inv(**super().normalize_kwargs_inv(**kwargs))
+        return kwargs
+
+    def run(
+        self,
+        # I/O
+        in_optim: _a.io.IN_OPTIM = None,
+        in_halfmaps: _a.io.HALFMAP_TYPE = "",
+        in_refmask: _a.io.IN_MASK = "",
+        in_post: _a.io.PROCESS_TYPE = "",
+        # Polish
+        box_size: _a.polish.BOX_SIZE = 128,
+        max_error: _a.polish.MAX_ERROR = 5,
+        do_shift_align: _a.polish.DO_SHIFT_ALIGN = True,
+        shift_align_type: _a.polish.SHIFT_ALIGN_TYPE = "Entire micrographs",
+        do_motion: _a.polish.DO_MOTION = False,
+        sigma_vel: _a.polish.SIGMA_VEL = 0.2,
+        sigma_div: _a.polish.SIGMA_DIV = 5000,
+        do_sq_exp_ker: _a.polish.DO_SQ_EXP_KER = False,
+        # Running
+        nr_mpi: _a.running.NR_MPI = 1,
+        nr_threads: _a.running.NR_THREADS = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")
+
+    @classmethod
+    def setup_widgets(cls, widgets):
+        @widgets["do_shift_align"].changed.connect
+        def _on_do_shift_align_changed(value: bool):
+            widgets["shift_align_type"].enabled = value
+
+        _on_do_shift_align_changed(widgets["do_shift_align"].value)
+
+        @widgets["do_motion"].changed.connect
+        def _on_do_motion_changed(value: bool):
+            widgets["sigma_vel"].enabled = value
+            widgets["sigma_div"].enabled = value
+            widgets["do_sq_exp_ker"].enabled = value
+
+        _on_do_motion_changed(widgets["do_motion"].value)

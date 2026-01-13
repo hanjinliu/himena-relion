@@ -240,8 +240,8 @@ class QRelionJobWidgetControl(QtW.QWidget):
         self._oneline_msg.setTextInteractionFlags(
             QtCore.Qt.TextInteractionFlag.TextSelectableByMouse
         )
-        self._oneline_msg.setFont(QtGui.QFont(monospace_font_family(), 6))
-        self._oneline_msg.setToolTip("The last line of run.out")
+        self._oneline_msg.setFont(QtGui.QFont(monospace_font_family(), 7))
+        self._oneline_msg.setToolTip("The last two lines of run.out")
         self._tool_buttons = [
             QColoredToolButton(self.refresh_widget, _utils.path_icon_svg("refresh")),
         ]

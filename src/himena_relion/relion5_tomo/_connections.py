@@ -457,3 +457,9 @@ connect_jobs(
     _tomo.MotionCorrOwnTomoJob,
     node_mapping={"join_movies.star": "input_star_mics"},
 )
+
+connect_jobs(
+    _tomo.PostProcessJob,
+    _spa.ModelAngeloJob,
+    node_mapping={"postprocess_masked.mrc": "fn_map"},
+)
