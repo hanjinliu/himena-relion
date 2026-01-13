@@ -4,6 +4,7 @@ from pathlib import Path
 import uuid
 import mrcfile
 import numpy as np
+import pandas as pd
 from starfile_rs import read_star
 from superqt.utils import thread_worker
 from qtpy import QtWidgets as QtW, QtCore
@@ -95,12 +96,15 @@ class QClass2DViewer(QJobScrollArea):
             angst = mrc.voxel_size.x
         msg = f"Image size: {size} pix ({size * angst:.1f} A)\n\n"
         yield self._on_text_ready, (msg, session)
-        if not wait_for_file(path_model, num_retry=20):
-            _LOGGER.error("Failed to find %s", path_model)
-            return
-        df = read_star(path_model)["model_classes"].trust_loop().to_pandas()
-        dist_percent = df["rlnClassDistribution"] * 100
-        resolutions = df["rlnEstimatedResolution"]
+        if not wait_for_file(path_model, num_retry=100, delay=0.3):
+            msg = f"Failed to load model file {path_model}. Cannot get class distributions and resolutions.\n\n"
+            yield self._on_text_ready, (msg, session)
+            dist_percent = pd.Series([0] * img.shape[0])
+            resolutions = pd.Series([0] * img.shape[0])
+        else:
+            _df = read_star(path_model)["model_classes"].trust_loop().to_pandas()
+            dist_percent = _df["rlnClassDistribution"] * 100
+            resolutions = _df["rlnEstimatedResolution"]
         # sorting
         if self._sort_by.currentIndex() == 1:
             sort_indices = np.argsort(-dist_percent.values)
@@ -116,7 +120,7 @@ class QClass2DViewer(QJobScrollArea):
             img_str = self._text_edit.image_to_base64(img_slice, text)
             yield self._on_class_yielded, (img_str, session)
 
-        if not self._num_particles_label.num_known():
+        if not self._num_particles_label.num_known() and path_data.exists():
             if star := read_star(path_data).get("particles"):
                 num = len(star.trust_loop())
                 yield self._num_particles_label.set_number, num
