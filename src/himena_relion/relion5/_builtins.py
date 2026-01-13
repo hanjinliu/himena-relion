@@ -399,6 +399,9 @@ class ManualPickJob(_Relion5SpaJob):
         kwargs["do_fom_threshold"] = min_pick_fom is not None
         if min_pick_fom is None:
             kwargs["minimum_pick_fom"] = 0
+        for name in ["angpix", "highpass"]:
+            if name in kwargs and kwargs[name] is None:
+                kwargs[name] = -1
         # these are not used, but exist in the job options
         kwargs["do_queue"] = False
         kwargs["min_dedicated"] = 1
@@ -414,6 +417,9 @@ class ManualPickJob(_Relion5SpaJob):
             kwargs["minimum_pick_fom"] = None
         for name in ["do_queue", "min_dedicated"]:
             kwargs.pop(name, None)
+        for name in ["angpix", "highpass"]:
+            if name in kwargs and float(kwargs[name]) < 0:
+                kwargs[name] = None
         return kwargs
 
     def run(
@@ -427,10 +433,10 @@ class ManualPickJob(_Relion5SpaJob):
         sigma_contrast: _a.manualpick.SIGMA_CONTRAST = 3,
         white_val: _a.manualpick.WHITE_VAL = 0,
         black_val: _a.manualpick.BLACK_VAL = 0,
-        angpix: _a.manualpick.ANGPIX = -1,
+        angpix: _a.manualpick.ANGPIX = None,
         filter_method: _a.manualpick.FILTER_METHOD = "Band-pass",
         lowpass: _a.manualpick.LOWPASS = 20,
-        highpass: _a.manualpick.HIGHPASS = -1,
+        highpass: _a.manualpick.HIGHPASS = None,
         # Colors
         do_color: _a.manualpick.DO_COLOR = False,
         color_label: _a.manualpick.COLOR_LABEL = "rlnAutopickFigureOfMerit",
@@ -470,8 +476,6 @@ class _AutoPickJob(_Relion5SpaJob):
             ("ref3d_symmetry", "C1"),
             ("ref3d_sampling", "30 degrees"),
             ("lowpass", 20),
-            ("highpass", -1),
-            ("angpix_ref", -1),
             ("psi_sampling_autopick", 5),
             ("do_invert_refs", True),
             ("do_ctf_autopick", True),
@@ -501,19 +505,21 @@ class _AutoPickJob(_Relion5SpaJob):
             ("topaz_train_picks", ""),
         ]:
             kwargs.setdefault(key, value)
+        for key in ["highpass", "angpix_ref", "angpix"]:
+            if kwargs.get(key, None) is None:
+                kwargs[key] = -1
 
         # others
         kwargs["use_gpu"] = kwargs["gpu_ids"] != ""
-        if kwargs.get("angpix", None) is None:
-            kwargs["angpix"] = -1
         return kwargs
 
     @classmethod
     def normalize_kwargs_inv(cls, **kwargs):
         kwargs = super().normalize_kwargs_inv(**kwargs)
         kwargs.pop("use_gpu", None)
-        if "angpix" in kwargs and float(kwargs["angpix"]) < 0:
-            kwargs["angpix"] = None
+        for name in ["angpix_ref", "highpass", "angpix"]:
+            if name in kwargs and float(kwargs[name]) < 0:
+                kwargs[name] = None
         return kwargs
 
 
@@ -649,8 +655,8 @@ class AutoPickTemplate2DJob(_AutoPickJob):
         # References
         fn_refs_autopick: _a.autopick.FN_REFS_AUTOPICK = "",
         lowpass: _a.autopick.LOWPASS = 20,
-        highpass: _a.autopick.HIGHPASS = -1,
-        angpix_ref: _a.autopick.ANGPIX_REF = -1,
+        highpass: _a.autopick.HIGHPASS = None,
+        angpix_ref: _a.autopick.ANGPIX_REF = None,
         psi_sampling_autopick: _a.autopick.PSI_SAMPLING_AUTOPICK = 5,
         do_invert_refs: _a.autopick.DO_INVERT_REFS = True,
         do_ctf_autopick: _a.autopick.DO_CTF_AUTOPICK = True,
@@ -728,8 +734,8 @@ class AutoPickTemplate3DJob(_AutoPickJob):
         ref3d_symmetry: _a.autopick.REF3D_SYMMETRY = "C1",
         ref3d_sampling: _a.autopick.REF3D_SAMPLING = "30 degrees",
         lowpass: _a.autopick.LOWPASS = 20,
-        highpass: _a.autopick.HIGHPASS = -1,
-        angpix_ref: _a.autopick.ANGPIX_REF = -1,
+        highpass: _a.autopick.HIGHPASS = None,
+        angpix_ref: _a.autopick.ANGPIX_REF = None,
         psi_sampling_autopick: _a.autopick.PSI_SAMPLING_AUTOPICK = 5,
         do_invert_refs: _a.autopick.DO_INVERT_REFS = True,
         do_ctf_autopick: _a.autopick.DO_CTF_AUTOPICK = True,
@@ -1125,7 +1131,7 @@ class Class2DJob(_Relion5SpaJob):
             kwargs["do_grad"] = True
             kwargs["nr_iter_grad"] = algo["niter"]
             kwargs.setdefault("nr_iter_em", 25)
-            if kwargs.get("nr_mpi", 1) > 1:
+            if int(kwargs.get("nr_mpi", 1)) > 1:
                 # VDAM with MPI is not supported.
                 warnings.warn(
                     "MPI parallelisation is not supported with VDAM. Setting number of "
@@ -1133,6 +1139,8 @@ class Class2DJob(_Relion5SpaJob):
                     UserWarning,
                 )
                 kwargs["nr_mpi"] = 1
+        if kwargs.get("highres_limit", None) is None:
+            kwargs["highres_limit"] = -1
         return kwargs
 
     @classmethod
@@ -1155,6 +1163,8 @@ class Class2DJob(_Relion5SpaJob):
             kwargs.pop("offset_range", 5),
             kwargs.pop("offset_step", 1),
         )
+        if "highres_limit" in kwargs and float(kwargs["highres_limit"]) < 0:
+            kwargs["highres_limit"] = None
         # remove internal
         kwargs.pop("do_grad", None)
         kwargs.pop("fn_cont", None)
@@ -1173,7 +1183,7 @@ class Class2DJob(_Relion5SpaJob):
         algorithm: _a.class_.OPTIM_ALGORIGHM = {"algorithm": "VDAM", "niter": 200},
         particle_diameter: _a.misc.MASK_DIAMETER = 200,
         do_zero_mask: _a.misc.MASK_WITH_ZEROS = True,
-        highres_limit: _a.class_.HIGH_RES_LIMIT = -1,
+        highres_limit: _a.class_.HIGH_RES_LIMIT = None,
         do_center: _a.class_.DO_CENTER = True,
         # Sampling
         dont_skip_align: _a.sampling.DONT_SKIP_ALIGN = True,
@@ -1451,12 +1461,16 @@ class Class3DJob(_Class3DJobBase):
         kwargs = super().normalize_kwargs(**kwargs)
         # force no alignment
         kwargs["dont_skip_align"] = True
+        if kwargs.get("highres_limit", None) is None:
+            kwargs["highres_limit"] = -1
         return kwargs
 
     @classmethod
     def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
         kwargs = super().normalize_kwargs_inv(**kwargs)
         kwargs.pop("dont_skip_align", None)
+        if "highres_limit" in kwargs and float(kwargs["highres_limit"]) < 0:
+            kwargs["highres_limit"] = None
         return kwargs
 
     def run(
@@ -1478,7 +1492,7 @@ class Class3DJob(_Class3DJobBase):
         tau_fudge: _a.misc.TAU_FUDGE = 1,
         particle_diameter: _a.misc.MASK_DIAMETER = 200,
         do_zero_mask: _a.misc.MASK_WITH_ZEROS = True,
-        highres_limit: _a.class_.HIGH_RES_LIMIT = -1,
+        highres_limit: _a.class_.HIGH_RES_LIMIT = None,
         do_blush: _a.misc.DO_BLUSH = False,
         # Sampling
         sampling: _a.sampling.ANG_SAMPLING = "7.5 degrees",
@@ -1731,11 +1745,7 @@ class _SelectJob(_Relion5Job):
             ("duplicate_threshold", 30.0),
             ("image_angpix", -1.0),
             ("rank_threshold", 0.5),
-            ("select_nr_classes", -1),
-            ("select_nr_parts", -1),
             ("nr_groups", 1),
-            ("split_size", 100),
-            ("nr_split", -1),
             ("dendrogram_threshold", 0.85),
             ("dendrogram_minclass", -1000),
             ("min_dedicated", 1),
@@ -1743,6 +1753,14 @@ class _SelectJob(_Relion5Job):
             ("discard_sigma", 4),
         ]:
             kwargs.setdefault(name, default)
+
+        # set unset integer/float params to -1
+        for name in [
+            "select_nr_parts", "select_nr_classes", "image_angpix", "split_size",
+            "nr_split"
+        ]:  # fmt: skip
+            if kwargs.get(name, None) is None:
+                kwargs[name] = -1
         return super().normalize_kwargs(**kwargs)
 
     @classmethod
@@ -1752,6 +1770,12 @@ class _SelectJob(_Relion5Job):
         for name in list(kwargs.keys()):
             if name not in params:
                 kwargs.pop(name)
+            if name in [
+                "select_nr_parts", "select_nr_classes", "image_angpix", "split_size",
+                "nr_split"
+            ]:  # fmt: skip
+                if name in kwargs and float(kwargs[name]) < 0:
+                    kwargs[name] = None
         return kwargs
 
 
@@ -1801,8 +1825,8 @@ class SelectClassesAutoJob(_SelectJob):
         self,
         fn_model: _a.io.IN_OPTIMISER = "",
         rank_threshold: _a.select.RANK_THRESHOLD = 0.5,
-        select_nr_parts: _a.select.SELECT_NR_PARTS = -1,
-        select_nr_classes: _a.select.SELECT_NR_CLASSES = -1,
+        select_nr_parts: _a.select.SELECT_NR_PARTS = None,
+        select_nr_classes: _a.select.SELECT_NR_CLASSES = None,
         do_recenter: _a.select.DO_RECENTER = False,
         do_regroup: _a.select.DO_REGROUP = False,
         nr_groups: _a.select.NR_GROUPS = 1,
@@ -1879,13 +1903,13 @@ class SelectRemoveDuplicatesJob(_SelectJob):
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
         kwargs = super().normalize_kwargs(**kwargs)
         kwargs["do_remove_duplicates"] = True
-        return super().normalize_kwargs(**kwargs)
+        return kwargs
 
     def run(
         self,
         fn_data: _a.io.IN_PARTICLES = "",
         duplicate_threshold: _a.select.DUPLICATE_THRESHOLD = 30,
-        image_angpix: _a.select.IMAGE_ANGPIX = -1,
+        image_angpix: _a.select.IMAGE_ANGPIX = None,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -1901,14 +1925,16 @@ class SelectSplitJob(_SelectJob):
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
         kwargs = super().normalize_kwargs(**kwargs)
         kwargs["do_split"] = True
-        return super().normalize_kwargs(**kwargs)
+        if int(kwargs["split_size"]) < 0 and int(kwargs["nr_split"]) < 0:
+            raise ValueError("Either split_size or nr_split must be set.")
+        return kwargs
 
     def run(
         self,
         fn_data: _a.io.IN_PARTICLES = "",
         do_random: _a.select.DO_RANDOM = False,
-        split_size: _a.select.SPLIT_SIZE = 100,
-        nr_split: _a.select.NR_SPLIT = -1,
+        split_size: _a.select.SPLIT_SIZE = None,
+        nr_split: _a.select.NR_SPLIT = None,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -1922,7 +1948,7 @@ class SelectFilamentsJob(_SelectJob):
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
         kwargs = super().normalize_kwargs(**kwargs)
         kwargs["do_filaments"] = True
-        return super().normalize_kwargs(**kwargs)
+        return kwargs
 
     def run(
         self,
@@ -1940,11 +1966,25 @@ class MaskCreationJob(_Relion5Job):
     def type_label(cls) -> str:
         return "relion.maskcreate"
 
+    @classmethod
+    def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
+        kwargs = super().normalize_kwargs(**kwargs)
+        if kwargs.get("angpix", None) is None:
+            kwargs["angpix"] = -1
+        return kwargs
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
+        kwargs = super().normalize_kwargs_inv(**kwargs)
+        if float(kwargs.get("angpix", -1)) < 0:
+            kwargs["angpix"] = None
+        return kwargs
+
     def run(
         self,
         fn_in: _a.io.MAP_TYPE = "",
         lowpass_filter: _a.post.LOWPASS_FILTER = 15,
-        angpix: _a.post.ANGPIX_MASK = -1,
+        angpix: _a.post.ANGPIX_MASK = None,
         inimask_threshold: _a.post.INIMASK_THRESHOLD = 0.02,
         extend_inimask: _a.post.EXTEND_INIMASK = 3,
         width_mask_edge: _a.post.WIDTH_MASK_EDGE = 3,
@@ -1980,6 +2020,8 @@ class PostProcessJob(_Relion5SpaJob):
         kwargs["autob_lowres"] = b_factor.get("autob_lowres", 10)
         kwargs["do_adhoc_bfac"] = b_factor.get("do_adhoc_bfac", False)
         kwargs["adhoc_bfac"] = b_factor.get("adhoc_bfac", -1000)
+        if kwargs.get("angpix", None) is None:
+            kwargs["angpix"] = -1
         return kwargs
 
     @classmethod
@@ -1995,6 +2037,8 @@ class PostProcessJob(_Relion5SpaJob):
             "do_adhoc_bfac": parse_string(do_adhoc_bfac, bool),
             "adhoc_bfac": parse_string(adhoc_bfac, float),
         }
+        if float(kwargs.get("angpix", -1)) < 0:
+            kwargs["angpix"] = None
         return kwargs
 
     def run(
@@ -2002,7 +2046,7 @@ class PostProcessJob(_Relion5SpaJob):
         # I/O
         fn_in: _a.io.HALFMAP_TYPE = "",
         fn_mask: _a.io.IN_MASK = "",
-        angpix: _a.post.ANGPIX_POST = -1,
+        angpix: _a.post.ANGPIX_POST = None,
         # Sharpen
         b_factor: _a.misc.B_FACTOR = None,
         do_skip_fsc_weighting: _a.post.DO_SKIP_FSC_WEIGHTING = False,
@@ -2224,6 +2268,8 @@ class _LocalResolutionJobBase(_Relion5Job):
     def normalize_kwargs(cls, **kwargs):
         kwargs = super().normalize_kwargs(**kwargs)
         kwargs["fn_resmap"] = _configs.get_resmap_exe()
+        if kwargs.get("angpix", None) is None:
+            kwargs["angpix"] = -1
         return kwargs
 
     @classmethod
@@ -2232,6 +2278,8 @@ class _LocalResolutionJobBase(_Relion5Job):
         kwargs.pop("fn_resmap", None)
         kwargs.pop("do_relion_locres", None)
         kwargs.pop("do_resmap_locres", None)
+        if float(kwargs.get("angpix", -1)) < 0:
+            kwargs["angpix"] = None
         return kwargs
 
 
@@ -2262,7 +2310,7 @@ class LocalResolutionResmapJob(_LocalResolutionJobBase):
         self,
         fn_in: _a.io.HALFMAP_TYPE = "",
         fn_mask: _a.io.IN_MASK = "",
-        angpix: _a.localres.ANGPIX = -1,
+        angpix: _a.localres.ANGPIX = None,
         # ResMap parameters
         pval: _a.localres.PVAL = 0.05,
         minres: _a.localres.MINRES = 0,
@@ -2305,7 +2353,7 @@ class LocalResolutionOwnJob(_LocalResolutionJobBase):
         self,
         fn_in: _a.io.HALFMAP_TYPE = "",
         fn_mask: _a.io.IN_MASK = "",
-        angpix: _a.localres.ANGPIX = -1,
+        angpix: _a.localres.ANGPIX = None,
         # Relion parameters
         adhoc_bfac: _a.localres.ADHOC_BFAC = -100,
         fn_mtf: _a.localres.FN_MTF = "",
@@ -2424,9 +2472,9 @@ class BayesianPolishTrainJob(_Relion5SpaJob):
             "minres", "maxres", "do_polish", "do_param_optim",
         ]:  # fmt: skip
             kwargs.pop(name, None)
-        for f in ["extract_size", "rescale"]:
-            if kwargs.get(f, -1) < 0:
-                kwargs[f] = None
+        for name in ["extract_size", "rescale"]:
+            if name in kwargs and float(kwargs[name]) < 0:
+                kwargs[name] = None
         return kwargs
 
     def run(
@@ -2471,6 +2519,9 @@ class BayesianPolishJob(_Relion5SpaJob):
         kwargs["do_param_optim"] = False
         kwargs["eval_frac"] = 0.5
         kwargs["optim_min_part"] = 10000
+        for f in ["extract_size", "rescale"]:
+            if f in kwargs and kwargs[f] is None:
+                kwargs[f] = -1
         return kwargs
 
     @classmethod
@@ -2478,6 +2529,9 @@ class BayesianPolishJob(_Relion5SpaJob):
         kwargs = super().normalize_kwargs_inv(**kwargs)
         for name in ["do_polish", "do_param_optim", "eval_frac", "optim_min_part"]:
             kwargs.pop(name, None)
+        for f in ["extract_size", "rescale"]:
+            if f in kwargs and float(kwargs[f]) < 0:
+                kwargs[f] = None
         return kwargs
 
     def run(
@@ -2488,8 +2542,8 @@ class BayesianPolishJob(_Relion5SpaJob):
         fn_post: _a.io.PROCESS_TYPE = "",
         first_frame: _a.polish.FIRST_FRAME = 1,
         last_frame: _a.polish.LAST_FRAME = -1,
-        extract_size: _a.polish.EXTRACT_SIZE = -1,
-        rescale: _a.polish.RESCALE = -1,
+        extract_size: _a.polish.EXTRACT_SIZE = None,
+        rescale: _a.polish.RESCALE = None,
         do_float16: _a.io.DO_F16 = True,
         # Polish
         do_own_params: _a.polish.DO_OWN_PARAMS = True,

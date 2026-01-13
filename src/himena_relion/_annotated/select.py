@@ -11,23 +11,25 @@ RANK_THRESHOLD = Annotated[
     },
 ]
 SELECT_NR_PARTS = Annotated[
-    int,
+    int | None,
     {
         "label": "Minimum number of particles to select",
         "tooltip": (
             "Even if they have scores below the minimum threshold, select at least "
             "this many particles with the best scores."
         ),
+        "min": 1,
     },
 ]
 SELECT_NR_CLASSES = Annotated[
-    int,
+    int | None,
     {
         "label": "Or minimum number of classes to select",
         "tooltip": (
             "Even if they have scores below the minimum threshold, select at least "
             "this many classes with the best scores."
         ),
+        "min": 1,
     },
 ]
 DO_RECENTER = Annotated[
@@ -103,7 +105,7 @@ DUPLICATE_THRESHOLD = Annotated[
     },
 ]
 IMAGE_ANGPIX = Annotated[
-    float,
+    float | None,
     {
         "label": "Image pixel size (A)",
         "tooltip": (
@@ -113,6 +115,7 @@ IMAGE_ANGPIX = Annotated[
             "specify it here. In other words, this is the pixel size after binning "
             "during motion correction, but before down-sampling during extraction."
         ),
+        "min": 0.0,
     },
 ]
 DO_RANDOM = Annotated[
@@ -126,13 +129,15 @@ DO_RANDOM = Annotated[
     },
 ]
 SPLIT_SIZE = Annotated[
-    int,
+    int | None,
     {
         "label": "Number of particles per subset",
         "tooltip": (
-            "The number of lines in each of the output subsets. When this is -1, items "
-            "are divided into a number of subsets specified in the next option."
+            "The number of lines in each of the output subsets. When this is not "
+            "given, items are divided into a number of subsets specified in the next "
+            "option."
         ),
+        "min": 1,
     },
 ]
 NR_SPLIT = Annotated[
@@ -146,6 +151,7 @@ NR_SPLIT = Annotated[
             "possibly missing some items. When this is -1, all items are used, "
             "generating as many subsets as necessary."
         ),
+        "min": 1,
     },
 ]
 DENDROGRAM_THRESHOLD = Annotated[
@@ -167,7 +173,7 @@ DENDROGRAM_MINCLASS = Annotated[
         "label": "Minimum class size",
         "tooltip": (
             "If set to a positive value, then particle star files with clusters that "
-            "have at least this number of particles will be written out. Keep th "
+            "have at least this number of particles will be written out. Keep this "
             "default negative value for faster testing of the threshold."
         ),
     },

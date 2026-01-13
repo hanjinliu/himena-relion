@@ -154,13 +154,15 @@ class QRelionJobWidget(QtW.QWidget):
                 "Job directory has been deleted externally. This widget will no longer "
                 "respond to changes. Please close this job widget."
             )
-        msg = ""
-        for wdt in self._iter_job_widgets():
-            wdt.on_job_updated(self._job_dir, Path(path))
-            if isinstance(wdt, QRunOutErrLog):
-                msg = wdt.last_lines()
         if self._job_dir.state() is RelionJobState.RUNNING:
+            msg = ""
+            for wdt in self._iter_job_widgets():
+                wdt.on_job_updated(self._job_dir, Path(path))
+                if isinstance(wdt, QRunOutErrLog):
+                    msg = wdt.last_lines()
             self._control_widget.set_msg(msg)
+        else:
+            self._control_widget.set_msg("")
 
     def _iter_job_widgets(self) -> Iterator[JobWidgetBase]:
         """Iterate over all job widgets in the tab widget."""
@@ -238,13 +240,14 @@ class QRelionJobWidgetControl(QtW.QWidget):
         self._oneline_msg.setTextInteractionFlags(
             QtCore.Qt.TextInteractionFlag.TextSelectableByMouse
         )
-        self._oneline_msg.setFont(QtGui.QFont(monospace_font_family(), 8))
+        self._oneline_msg.setFont(QtGui.QFont(monospace_font_family(), 6))
         self._oneline_msg.setToolTip("The last line of run.out")
         self._tool_buttons = [
             QColoredToolButton(self.refresh_widget, _utils.path_icon_svg("refresh")),
         ]
         layout = QtW.QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
+        layout.addSpacing(26)
         layout.addWidget(self._oneline_msg)
         for btn in self._tool_buttons:
             layout.addWidget(btn)

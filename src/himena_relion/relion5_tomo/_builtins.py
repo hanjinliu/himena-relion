@@ -26,6 +26,8 @@ def norm_optim(**kwargs):
     kwargs["in_particles"] = optim.get("in_particles", "")
     kwargs["in_tomograms"] = optim.get("in_tomograms", "")
     kwargs["in_trajectories"] = optim.get("in_trajectories", "")
+    if "sigma_tilt" in kwargs and kwargs["sigma_tilt"] is None:
+        kwargs["sigma_tilt"] = -1.0
     return kwargs
 
 
@@ -38,6 +40,8 @@ def norm_optim_inv(**kwargs):
             "in_tomograms": kwargs.pop("in_tomograms", ""),
             "in_trajectories": kwargs.pop("in_trajectories", ""),
         }
+    if "sigma_tilt" in kwargs and float(kwargs["sigma_tilt"]) < 0:
+        kwargs["sigma_tilt"] = None
     return kwargs
 
 
@@ -591,6 +595,18 @@ class PickJob(_Relion5TomoJob):
         return "relion.picktomo"
 
     @classmethod
+    def normalize_kwargs(cls, **kwargs):
+        if kwargs.get("particle_spacing") is None:
+            kwargs["particle_spacing"] = -1
+        return super().normalize_kwargs(**kwargs)
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
+        if "particle_spacing" in kwargs and float(kwargs["particle_spacing"]) < 0:
+            kwargs["particle_spacing"] = None
+        return super().normalize_kwargs_inv(**kwargs)
+
+    @classmethod
     def job_is_tomo(cls):
         return False
 
@@ -599,7 +615,7 @@ class PickJob(_Relion5TomoJob):
         in_tomoset: _a.io.IN_TILT = "",
         in_star_file: _a.io.IN_PARTICLES = "",
         pick_mode: _a.manualpick.PICK_MODE = "particles",
-        particle_spacing: _a.manualpick.PARTICLE_SPACING = -1,
+        particle_spacing: _a.manualpick.PARTICLE_SPACING = None,
         # Running
         do_queue: _a.running.DO_QUEUE = False,
         min_dedicated: _a.running.MIN_DEDICATED = 1,
@@ -620,11 +636,19 @@ class ExtractParticlesTomoJob(_Relion5TomoJob):
 
     @classmethod
     def normalize_kwargs(cls, **kwargs):
-        return norm_optim(**super().normalize_kwargs(**kwargs))
+        kwargs = norm_optim(**super().normalize_kwargs(**kwargs))
+        for name in ["crop_size", "max_dose"]:
+            if kwargs.get(name) is None:
+                kwargs[name] = -1
+        return kwargs
 
     @classmethod
     def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
-        return norm_optim_inv(**super().normalize_kwargs_inv(**kwargs))
+        kwargs = norm_optim_inv(**super().normalize_kwargs_inv(**kwargs))
+        for name in ["crop_size", "max_dose"]:
+            if name in kwargs and float(kwargs[name]) < 0:
+                kwargs[name] = None
+        return kwargs
 
     def run(
         self,
@@ -632,8 +656,8 @@ class ExtractParticlesTomoJob(_Relion5TomoJob):
         # Reconstruct
         binning: _a.extract.BINNING = 1,
         box_size: _a.extract.BOX_SIZE = 128,
-        crop_size: _a.extract.CROP_SIZE = -1,
-        max_dose: _a.extract.MAX_DOSE = -1,
+        crop_size: _a.extract.CROP_SIZE = None,
+        max_dose: _a.extract.MAX_DOSE = None,
         min_frames: _a.extract.MIN_FRAMES = 1,
         do_stack2d: _a.extract.DO_STACK2D = True,
         do_float16: _a.io.DO_F16 = True,
@@ -801,7 +825,7 @@ class InitialModelTomoJob(_Relion5TomoJob, InitialModelJob):
         do_solvent: _a.inimodel.DO_SOLVENT = True,
         sym_name: _a.inimodel.SYM_NAME = "C1",
         do_run_C1: _a.inimodel.DO_RUN_C1 = True,
-        sigma_tilt: _a.sampling.SIGMA_TILT = -1,
+        sigma_tilt: _a.sampling.SIGMA_TILT = None,
         # Compute
         do_parallel_discio: _a.compute.USE_PARALLEL_DISC_IO = True,
         nr_pool: _a.compute.NUM_POOL = 3,
@@ -933,7 +957,7 @@ class Class3DTomoJob(_Relion5TomoJob, Class3DJob):
         do_local_ang_searches: _a.sampling.LOCAL_ANG_SEARCH = False,
         sigma_angles: _a.sampling.SIGMA_ANGLES = 5,
         relax_sym: _a.sampling.RELAX_SYMMETRY = "",
-        sigma_tilt: _a.sampling.SIGMA_TILT = -1,
+        sigma_tilt: _a.sampling.SIGMA_TILT = None,
         # Helix
         do_helix: _a.helix.DO_HELIX = False,
         helical_tube_diameter_range: _a.helix.HELICAL_TUBE_DIAMETER_RANGE = (-1, -1),
@@ -1003,7 +1027,7 @@ class Refine3DTomoJob(_Relion5TomoJob, Refine3DJob):
         auto_local_sampling: _a.sampling.LOC_ANG_SAMPLING = "1.8 degrees",
         relax_sym: _a.sampling.RELAX_SYMMETRY = "",
         auto_faster: _a.sampling.AUTO_FASTER = False,
-        sigma_tilt: _a.sampling.SIGMA_TILT = -1,
+        sigma_tilt: _a.sampling.SIGMA_TILT = None,
         # Helix
         do_helix: _a.helix.DO_HELIX = False,
         helical_tube_diameter_range: _a.helix.HELICAL_TUBE_DIAMETER_RANGE = (-1, -1),
@@ -1042,11 +1066,17 @@ class ReconstructParticlesJob(_Relion5TomoJob):
 
     @classmethod
     def normalize_kwargs(cls, **kwargs):
-        return norm_optim(**super().normalize_kwargs(**kwargs))
+        kwargs = norm_optim(**super().normalize_kwargs(**kwargs))
+        if kwargs.get("crop_size") is None:
+            kwargs["crop_size"] = -1
+        return kwargs
 
     @classmethod
     def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
-        return norm_optim_inv(**super().normalize_kwargs_inv(**kwargs))
+        kwargs = norm_optim_inv(**super().normalize_kwargs_inv(**kwargs))
+        if "crop_size" in kwargs and float(kwargs["crop_size"]) < 0:
+            kwargs["crop_size"] = None
+        return kwargs
 
     def run(
         self,
@@ -1054,7 +1084,7 @@ class ReconstructParticlesJob(_Relion5TomoJob):
         # Average
         binning: _a.tomo.BINNING = 1,
         box_size: _a.tomo.BOX_SIZE = 128,
-        crop_size: _a.tomo.CROP_SIZE = -1,
+        crop_size: _a.tomo.CROP_SIZE = None,
         snr: _a.tomo.SNR = 0,
         sym_name: _a.tomo.SYM_NAME = "C1",
         # Helix

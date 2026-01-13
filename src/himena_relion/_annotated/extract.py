@@ -199,7 +199,7 @@ BOX_SIZE = Annotated[
     },
 ]
 CROP_SIZE = Annotated[
-    int,
+    int | None,
     {
         "label": "Crop size (binned pix)",
         "tooltip": (
@@ -212,7 +212,7 @@ CROP_SIZE = Annotated[
     },
 ]
 MAX_DOSE = Annotated[
-    float,
+    float | None,
     {
         "label": "Maximum dose (e/A^2)",
         "tooltip": (

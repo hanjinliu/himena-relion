@@ -352,7 +352,7 @@ BOX_SIZE = Annotated[
     },
 ]
 CROP_SIZE = Annotated[
-    int,
+    int | None,
     {
         "label": "Crop size (binned pix)",
         "tooltip": (
@@ -361,6 +361,7 @@ CROP_SIZE = Annotated[
             "desired that is smaller than the box size required to retrieve the "
             "CTF-delocalised signal."
         ),
+        "min": 1,
         "group": "Average",
     },
 ]

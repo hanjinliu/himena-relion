@@ -14,14 +14,14 @@ DONT_SKIP_ALIGN = Annotated[
     },
 ]
 SIGMA_TILT = Annotated[
-    float,
+    float | None,
     {
         "label": "Prior width on tilt angle",
         "tooltip": (
             "The width of the prior on the tilt angle: angular searches will be +/-3 "
             "times this value. Tilt priors will be defined when particles have been "
-            "picked as filaments, on spheres or on manifolds. Setting this width to "
-            "a negative value will lead to no prior being used on the tilt angle."
+            "picked as filaments, on spheres or on manifolds. If not given, no prior "
+            "will be used on the tilt angle."
         ),
         "group": "Sampling",
     },

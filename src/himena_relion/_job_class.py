@@ -275,11 +275,15 @@ class _Relion5BuiltinJob(RelionJob):
 
     @classmethod
     def prep_job_star(cls, **kwargs) -> JobStarModel:
-        _var = []
-        _val = []
-        for k, v in cls.normalize_kwargs(**kwargs).items():
+        _var: list[str] = []
+        _val: list[str] = []
+
+        # RELION job.star is sorted by the variable names
+        varval = cls.normalize_kwargs(**kwargs).items()
+        for k, v in sorted(varval, key=lambda x: x[0]):
             _var.append(k)
             _val.append(to_string(v))
+
         return JobStarModel(
             job=JobStarModel.Job(
                 job_type_label=cls.type_label(),

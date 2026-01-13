@@ -254,11 +254,12 @@ LOWPASS = Annotated[
             "you may find Einstein from noise.... Give a negative value to skip the "
             "lowpass filter."
         ),
+        "min": 0.0,
         "group": "References",
     },
 ]
 HIGHPASS = Annotated[
-    float,
+    float | None,
     {
         "label": "Highpass filter micrographs",
         "tooltip": (
@@ -267,11 +268,12 @@ HIGHPASS = Annotated[
             "Give a negative value to skip the highpass filter. Useful values are "
             "often in the range of 200-400 Angstroms."
         ),
+        "min": 0.0,
         "group": "References",
     },
 ]
 ANGPIX_REF = Annotated[
-    float,
+    float | None,
     {
         "label": "Reference pixel size",
         "tooltip": (
@@ -281,6 +283,7 @@ ANGPIX_REF = Annotated[
             "assumed to be the same as the one in the micrographs, i.e. the particles "
             "that were used to make the references were not rescaled upon extraction."
         ),
+        "min": 0.01,
         "group": "References",
     },
 ]

@@ -77,8 +77,7 @@ CTF_WIN = Annotated[
             "of the micrograph will be used to estimate the CTF. This may be useful to "
             "exclude parts of the micrograph that are unsuitable for CTF estimation, "
             "e.g. the labels at the edge of phtographic film.\n\nThe original "
-            "micrograph will be used (i.e. this option will be ignored) if a negative "
-            "value is given."
+            "micrograph will be used (i.e. this option will be ignored) otherwise."
         ),
         "group": "CTFFIND",
     },

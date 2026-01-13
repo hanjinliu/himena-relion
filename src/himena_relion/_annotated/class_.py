@@ -28,13 +28,13 @@ NUM_CLASS = Annotated[
 ]
 
 HIGH_RES_LIMIT = Annotated[
-    float,
+    float | None,
     {
         "label": "High-resolution limit (A)",
         "tooltip": (
-            "If set to a positive number, then the expectation step (i.e. the "
-            "alignment) will be done only including the Fourier components up to this "
-            "resolution (in Angstroms). This is useful to prevent overfitting, as the "
+            "If set, then the expectation step (i.e. the alignment) will be done only "
+            "including the Fourier components up to this resolution (in Angstroms). "
+            "This is useful to prevent overfitting, as the "
             "classification runs in RELION are not to be guaranteed to be 100% "
             "overfitting-free (unlike the 3D auto-refine with its gold-standard FSC). "
             "In particular for very difficult data sets, e.g. of very small or "
@@ -42,6 +42,7 @@ HIGH_RES_LIMIT = Annotated[
             "averages. In such cases, values in the range of 7-12 Angstroms have "
             "proven useful."
         ),
+        "min": 0.0,
         "group": "Optimisation",
     },
 ]

@@ -1,6 +1,19 @@
 from typing import Annotated
 
-ANGPIX = Annotated[float, {"label": "Pixel size (A)", "tooltip": (), "group": "I/O"}]
+ANGPIX = Annotated[
+    float | None,
+    {
+        "label": "Pixel size (A)",
+        "tooltip": (
+            "Provide the final, calibrated pixel size in Angstroms. This value may be "
+            "different from the pixel-size used thus far, e.g. when you have "
+            "recalibrated the pixel size using the fit to a PDB model. The X-axis of "
+            "the output FSC plot will use this calibrated value."
+        ),
+        "min": 0.01,
+        "group": "I/O",
+    },
+]
 PVAL = Annotated[
     float,
     {

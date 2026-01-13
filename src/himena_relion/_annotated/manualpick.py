@@ -84,16 +84,16 @@ BLACK_VAL = Annotated[
     },
 ]
 ANGPIX = Annotated[
-    float,
+    float | None,
     {
         "label": "Pixel size (A)",
         "tooltip": (
             "Pixel size in Angstroms. This will be used to calculate the filters and "
             "the particle diameter in pixels. If a CTF-containing STAR file is input, "
             "then the value given here will be ignored, and the pixel size will be "
-            "calculated from the values in the STAR file. A negative value can then be "
-            "given here."
+            "calculated from the values in the STAR file."
         ),
+        "min": 0.01,
         "group": "Display",
     },
 ]
@@ -122,7 +122,7 @@ LOWPASS = Annotated[
     },
 ]
 HIGHPASS = Annotated[
-    float,
+    float | None,
     {
         "label": "Highpass filter (A)",
         "tooltip": (
@@ -131,6 +131,7 @@ HIGHPASS = Annotated[
             "Give a negative value to skip the highpass filter. Useful values are "
             "often in the range of 200-400 Angstroms."
         ),
+        "min": 0.0,
         "group": "Display",
     },
 ]
@@ -214,7 +215,7 @@ PICK_MODE = Annotated[
     },
 ]
 PARTICLE_SPACING = Annotated[
-    float,
+    float | None,
     {
         "label": "Particle spacing (A)",
         "tooltip": (

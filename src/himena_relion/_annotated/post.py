@@ -14,7 +14,7 @@ LOWPASS_FILTER = Annotated[
     },
 ]
 ANGPIX_MASK = Annotated[
-    float,
+    float | None,
     {
         "label": "Pixel size (A)",
         "tooltip": (
@@ -47,6 +47,7 @@ EXTEND_INIMASK = Annotated[
             "directions."
         ),
         "group": "Mask",
+        "min": 0,
     },
 ]
 WIDTH_MASK_EDGE = Annotated[
@@ -58,13 +59,14 @@ WIDTH_MASK_EDGE = Annotated[
             "edge of the specified width."
         ),
         "group": "Mask",
+        "min": 0,
     },
 ]
 
 # post process
 
 ANGPIX_POST = Annotated[
-    float,
+    float | None,
     {
         "label": "Calibrated pixel size (A)",
         "tooltip": (
