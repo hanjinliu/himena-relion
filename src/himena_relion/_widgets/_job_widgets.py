@@ -185,8 +185,17 @@ class QRunOutErrLog(QtW.QSplitter, JobWidgetBase):
     def tab_title(self) -> str:
         return "Logs"
 
+    def last_lines(self) -> str:
+        """Return the last two lines of run.out log."""
+        return f"{self._out_log._second_last_line}\n{self._out_log._last_line}"
+
 
 class QRunOutLog(QTextEditBase):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._last_line = ""
+        self._second_last_line = ""
+
     def initialize(self, job_dir: _job_dir.JobDirectory):
         lines: list[str] = []
         with suppress(Exception):
@@ -194,6 +203,15 @@ class QRunOutLog(QTextEditBase):
                 for line in f:
                     # run.out use "\r" to overwrite lines. Keep only the last part.
                     lines.append(line.split("\r")[-1])
+            self._last_line = self._second_last_line = ""
+            for line in reversed(lines):
+                line = line.strip()
+                if line != "":
+                    if self._last_line == "":
+                        self._last_line = line
+                    else:
+                        self._second_last_line = line
+                        break
             self.setText("".join(lines))
 
 

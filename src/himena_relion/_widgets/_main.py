@@ -4,7 +4,7 @@ from typing import Callable, Iterator, TypeVar
 import logging
 import weakref
 
-from qtpy import QtWidgets as QtW, QtCore
+from qtpy import QtWidgets as QtW, QtCore, QtGui
 from superqt.utils import thread_worker, GeneratorWorker
 from watchfiles import watch
 from timeit import default_timer
@@ -20,8 +20,9 @@ from himena_relion._widgets._job_widgets import (
     QJobPipelineViewer,
     QJobParameterView,
 )
-from himena_relion._widgets._misc import spacer_widget
 from himena_relion._impl_objects import RelionJobIsTesting
+from himena_relion._utils import monospace_font_family
+from himena_relion.consts import RelionJobState
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -153,8 +154,13 @@ class QRelionJobWidget(QtW.QWidget):
                 "Job directory has been deleted externally. This widget will no longer "
                 "respond to changes. Please close this job widget."
             )
+        msg = ""
         for wdt in self._iter_job_widgets():
             wdt.on_job_updated(self._job_dir, Path(path))
+            if isinstance(wdt, QRunOutErrLog):
+                msg = wdt.last_lines()
+        if self._job_dir.state() is RelionJobState.RUNNING:
+            self._control_widget.set_msg(msg)
 
     def _iter_job_widgets(self) -> Iterator[JobWidgetBase]:
         """Iterate over all job widgets in the tab widget."""
@@ -225,15 +231,28 @@ class QRelionJobWidgetControl(QtW.QWidget):
     def __init__(self, parent: QRelionJobWidget):
         super().__init__()
         self.widget = parent
+        self._oneline_msg = QtW.QLabel("")
+        self._oneline_msg.setSizePolicy(
+            QtW.QSizePolicy.Policy.Expanding, QtW.QSizePolicy.Policy.Preferred
+        )
+        self._oneline_msg.setTextInteractionFlags(
+            QtCore.Qt.TextInteractionFlag.TextSelectableByMouse
+        )
+        self._oneline_msg.setFont(QtGui.QFont(monospace_font_family(), 8))
+        self._oneline_msg.setToolTip("The last line of run.out")
         self._tool_buttons = [
             QColoredToolButton(self.refresh_widget, _utils.path_icon_svg("refresh")),
         ]
         layout = QtW.QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(spacer_widget())
+        layout.addWidget(self._oneline_msg)
         for btn in self._tool_buttons:
             layout.addWidget(btn)
 
     def refresh_widget(self):
         """Reopen this RELION job."""
         self.widget.update_model(self.widget.to_model())
+
+    def set_msg(self, msg: str):
+        """Set the one-line message in the control widget."""
+        self._oneline_msg.setText(msg)
