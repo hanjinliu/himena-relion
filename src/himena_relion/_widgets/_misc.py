@@ -69,7 +69,7 @@ class QMicrographListWidget(QtW.QTableView):
     def current_tuple(self) -> tuple[str, ...] | None:
         sel = self.selectionModel().selectedRows()
         if sel:
-            return self._model._data[sel[0].row()]
+            return tuple(self._model._data[sel[0].row()])
 
     def current_text(self, ncol: int = 0) -> str:
         if tup := self.current_tuple():
@@ -99,6 +99,11 @@ class QMicrographListWidget(QtW.QTableView):
 
     def minimumSizeHint(self) -> QtCore.QSize:
         return QtCore.QSize(120, 120)
+
+    def set_current_row(self, index: int):
+        """Set the current selected index."""
+        if 0 <= index < self.rowCount():
+            self.selectRow(index)
 
 
 class QImageViewTextEdit(QtW.QTextEdit):

@@ -44,9 +44,9 @@ def test_import_spa_widget(
     )
     tester.write_text("movies.star", model.to_string())
     assert tester.widget._mic_list.rowCount() == 3
-    tester.widget._mic_list.setCurrentCell(1, 0)
-    tester.widget._mic_list.setCurrentCell(2, 0)
-    tester.widget._mic_list.setCurrentCell(0, 0)
+    tester.widget._mic_list.set_current_row(1)
+    tester.widget._mic_list.set_current_row(2)
+    tester.widget._mic_list.set_current_row(0)
 
 def test_import_mic_spa_widget(
     qtbot,
@@ -87,9 +87,9 @@ def test_import_mic_spa_widget(
     )
     tester.write_text("micrographs.star", model.to_string())
     assert tester.widget._mic_list.rowCount() == 3
-    tester.widget._mic_list.setCurrentCell(1, 0)
-    tester.widget._mic_list.setCurrentCell(2, 0)
-    tester.widget._mic_list.setCurrentCell(0, 0)
+    tester.widget._mic_list.set_current_row(1)
+    tester.widget._mic_list.set_current_row(2)
+    tester.widget._mic_list.set_current_row(0)
 
 def test_import_tomo_widget(
     qtbot,
@@ -143,9 +143,9 @@ def test_import_tomo_widget(
     tester.write_exit_with_success()
     assert tester.widget._ts_list.rowCount() == 3
 
-    tester.widget._ts_list.setCurrentCell(1, 0)
-    tester.widget._ts_list.setCurrentCell(2, 0)
-    tester.widget._ts_list.setCurrentCell(0, 0)
+    tester.widget._ts_list.set_current_row(1)
+    tester.widget._ts_list.set_current_row(2)
+    tester.widget._ts_list.set_current_row(0)
 
     tester.initialize()
 

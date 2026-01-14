@@ -161,7 +161,7 @@ class QRelionPipelineFlowChartView(QFlowChartView):
         action = menu.addAction(
             "Trash", _ignore_cancel(_impl.trash_job, self._ui, job_dir)
         )
-        action.setEnabled(status not in [NodeStatus.RUNNING, NodeStatus.SCHEDULED])
+        action.setEnabled(status is not NodeStatus.RUNNING)
         return menu
 
 

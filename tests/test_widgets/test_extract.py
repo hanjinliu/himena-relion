@@ -33,9 +33,9 @@ def test_extract_spa(
     QApplication.processEvents()
     tester.widget._slider.setValue(0)
     QApplication.processEvents()
-    tester.widget._mic_list.setCurrentCell(1, 0)
+    tester.widget._mic_list.set_current_row(1)
     QApplication.processEvents()
-    tester.widget._mic_list.setCurrentCell(2, 0)
+    tester.widget._mic_list.set_current_row(2)
     QApplication.processEvents()
 
 def test_extract_tomo_2d(

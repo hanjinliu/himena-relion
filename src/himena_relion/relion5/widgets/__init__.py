@@ -11,6 +11,7 @@ from himena_relion.relion5.widgets import (
     _refine,
     _class3d,
     _localres,
+    _polish,
 )
 
 del (
@@ -26,4 +27,5 @@ del (
     _refine,
     _class3d,
     _localres,
+    _polish,
 )

@@ -1,6 +1,5 @@
 from pathlib import Path
 from typing import Any, Literal
-import warnings
 
 from magicgui.widgets.bases import ValueWidget
 from himena_relion._job_class import _Relion5BuiltinJob, parse_string
@@ -1131,14 +1130,14 @@ class Class2DJob(_Relion5SpaJob):
             kwargs["do_grad"] = True
             kwargs["nr_iter_grad"] = algo["niter"]
             kwargs.setdefault("nr_iter_em", 25)
-            if int(kwargs.get("nr_mpi", 1)) > 1:
-                # VDAM with MPI is not supported.
-                warnings.warn(
-                    "MPI parallelisation is not supported with VDAM. Setting number of "
-                    "MPI processes to 1.",
-                    UserWarning,
-                )
-                kwargs["nr_mpi"] = 1
+            # if int(kwargs.get("nr_mpi", 1)) > 1:
+            #     # VDAM with MPI is not supported.
+            #     warnings.warn(
+            #         "MPI parallelisation is not supported with VDAM. Setting number of "
+            #         "MPI processes to 1.",
+            #         UserWarning,
+            #     )
+            #     kwargs["nr_mpi"] = 1
         if kwargs.get("highres_limit", None) is None:
             kwargs["highres_limit"] = -1
         return kwargs
@@ -1276,7 +1275,7 @@ class InitialModelJob(_Relion5SpaJob):
             widgets["ctf_intact_first_peak"].enabled = value
 
         widgets["ctf_intact_first_peak"].enabled = widgets["do_ctf_correction"].value
-        widgets["nr_mpi"].enabled = False  # VDAM does not support MPI
+        # widgets["nr_mpi"].enabled = False  # VDAM does not support MPI
 
 
 class _Class3DJobBase(_Relion5SpaJob):
@@ -1353,7 +1352,7 @@ class _Class3DJobBase(_Relion5SpaJob):
 
         _on_do_ctf_correction_changed(widgets["do_ctf_correction"].value)
         _setup_helix_params(widgets)
-        widgets["nr_mpi"].enabled = False  # VDAM does not support MPI
+        # widgets["nr_mpi"].enabled = False  # VDAM does not support MPI
 
 
 class Class3DNoAlignmentJob(_Class3DJobBase):

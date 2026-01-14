@@ -31,7 +31,7 @@ def test_reconstruct_tomo_widget(
     assert tester.widget._tomo_list.rowCount() == 2
     assert tester.widget._tomo_list.current_text() == "TS_01"
 
-    tester.widget._tomo_list.setCurrentCell(1, 0)
+    tester.widget._tomo_list.set_current_row(1)
 
 def test_reconstruct_tomo_widget_halfsets(
     qtbot,
@@ -63,7 +63,7 @@ def test_reconstruct_tomo_widget_halfsets(
     assert tester.widget._tomo_list.rowCount() == 2
     assert tester.widget._tomo_list.current_text() == "TS_01"
 
-    tester.widget._tomo_list.setCurrentCell(1, 0)
+    tester.widget._tomo_list.set_current_row(1)
 
 def test_denoise_widget(
     qtbot,
@@ -91,7 +91,7 @@ def test_denoise_widget(
     assert tester.widget._tomo_list.current_text() == "TS_01"
     assert tester.widget._viewer.has_image
 
-    tester.widget._tomo_list.setCurrentCell(1, 0)
+    tester.widget._tomo_list.set_current_row(1)
 
 def _replace_is_halfset(star_text: str, is_halfset: bool) -> str:
     lines = []

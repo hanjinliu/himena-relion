@@ -109,10 +109,10 @@ def test_motioncor_tomo_widget(
             tester.write_random_mrc(f"frames/{basename}_PS.mrc", (10, 10), dtype=np.float16)
         assert tester.widget._ts_list.rowCount() == i + 1
     assert tester.widget._ts_list.rowCount() == 3
-    tester.widget._ts_list.setCurrentCell(0, 0)
+    tester.widget._ts_list.set_current_row(0)
     QApplication.processEvents()
-    tester.widget._ts_list.setCurrentCell(1, 0)
+    tester.widget._ts_list.set_current_row(1)
     QApplication.processEvents()
-    tester.widget._ts_list.setCurrentCell(2, 0)
+    tester.widget._ts_list.set_current_row(2)
     QApplication.processEvents()
     tester.widget._filter_widget.set_params(4, 20)

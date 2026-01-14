@@ -39,7 +39,7 @@ def test_manual_pick_widget(
     assert tester.widget._mic_list.item(1, 1).text() == "0"
     assert tester.widget._mic_list.item(2, 1).text() == "0"
 
-    tester.widget._mic_list.setCurrentCell(1, 0)
+    tester.widget._mic_list.set_current_row(1)
 
     m = CoordsModel(x=[12, 15, 14, 30], y=[3, 21, 3, 18])
     tester.write_text("Movies/Frame_02_manualpick.star", m.to_string())
@@ -93,7 +93,7 @@ def test_log_pick_widget(
     assert tester.widget._mic_list.item(1, 1).text() == "0"
     assert tester.widget._mic_list.item(2, 1).text() == "0"
 
-    tester.widget._mic_list.setCurrentCell(1, 0)
+    tester.widget._mic_list.set_current_row(1)
 
     m = CoordsModel(x=[12, 15, 14, 30], y=[3, 21, 3, 18])
     tester.write_text("Movies/Frame_02_autopick.star", m.to_string())
