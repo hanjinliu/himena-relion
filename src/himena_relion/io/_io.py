@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+import mrcfile
 import numpy as np
 from himena import StandardType, WidgetDataModel, create_image_model
 from himena.standards.model_meta import DimAxis
@@ -11,9 +12,7 @@ from himena_relion.consts import Type
 
 @register_reader_plugin(priority=0, module="himena_relion.io")
 def read_density_map(path: Path) -> WidgetDataModel:
-    import mrcfile
-
-    with mrcfile.open(path, permissive=True) as mrc:
+    with mrcfile.open(path) as mrc:
         arr = np.asarray(mrc.data)
         voxel_size = mrc.voxel_size
     axes = [
@@ -30,6 +29,28 @@ def read_density_map(path: Path) -> WidgetDataModel:
 
 
 @read_density_map.define_matcher
+def _(path: Path):
+    return StandardType.IMAGE
+
+
+@register_reader_plugin(priority=10, module="himena_relion.io")
+def read_mrcs(path: Path) -> WidgetDataModel:
+    with mrcfile.open(path) as mrc:
+        arr = np.asarray(mrc.data)
+        voxel_size = mrc.voxel_size
+    axes = [
+        DimAxis(name="index", size=arr.shape[0]),
+        DimAxis(name="y", scale=voxel_size.y, unit="Å"),
+        DimAxis(name="x", scale=voxel_size.x, unit="Å"),
+    ]
+    return create_image_model(
+        arr,
+        axes=axes,
+        extension_default=".mrcs",
+    )
+
+
+@read_mrcs.define_matcher
 def _(path: Path):
     return StandardType.IMAGE
 

@@ -463,10 +463,9 @@ class _AutoPickJob(_Relion5SpaJob):
         kwargs["continue_manual"] = False
         if kwargs.get("topaz_model", None) is None:
             kwargs["topaz_model"] = ""
-        if kwargs.get("topaz_particle_diameter", None) is None:
-            kwargs["topaz_particle_diameter"] = -1
-        if kwargs.get("topaz_nr_particles", None) is None:
-            kwargs["topaz_nr_particles"] = -1
+        for name in ["topaz_particle_diameter", "topaz_nr_particles"]:
+            if kwargs.get(name, None) is None:
+                kwargs[name] = -1
         # template pick
         for key, value in [
             ("do_refs", False),
@@ -498,9 +497,7 @@ class _AutoPickJob(_Relion5SpaJob):
             ("topaz_filament_threshold", -5),
             ("topaz_hough_length", -1),
             ("topaz_model", ""),
-            ("topaz_nr_particles", -1),
             ("topaz_other_args", ""),
-            ("topaz_particle_diameter", -1),
             ("topaz_train_parts", ""),
             ("topaz_train_picks", ""),
         ]:
@@ -955,8 +952,11 @@ class ExtractJobBase(_Relion5SpaJob):
 
         # normalize
         kwargs["do_fom_threshold"] = kwargs.get("minimum_pick_fom", None) is not None
-        if kwargs["minimum_pick_fom"] is None:
+        if kwargs.get("minimum_pick_fom", None) is None:
             kwargs["minimum_pick_fom"] = 0.0
+        for name in ["bg_diameter", "white_dust", "black_dust"]:
+            if kwargs.get(name, None) is None:
+                kwargs[name] = -1
         if (_rescale := kwargs.get("rescale", None)) is None:
             kwargs["rescale"] = kwargs["extract_size"]
         else:
@@ -2451,6 +2451,7 @@ class BayesianPolishTrainJob(_Relion5SpaJob):
     def normalize_kwargs(cls, **kwargs):
         kwargs = super().normalize_kwargs(**kwargs)
         kwargs["do_polish"] = False
+        kwargs["do_float16"] = True
         kwargs["do_param_optim"] = True
         kwargs["do_own_params"] = True
         kwargs["opt_params"] = ""
@@ -2469,7 +2470,7 @@ class BayesianPolishTrainJob(_Relion5SpaJob):
         kwargs = super().normalize_kwargs_inv(**kwargs)
         for name in [
             "do_own_params", "opt_params", "sigma_vel", "sigma_div", "sigma_acc",
-            "minres", "maxres", "do_polish", "do_param_optim",
+            "minres", "maxres", "do_polish", "do_param_optim", "do_float16",
         ]:  # fmt: skip
             kwargs.pop(name, None)
         for name in ["extract_size", "rescale"]:
@@ -2488,7 +2489,6 @@ class BayesianPolishTrainJob(_Relion5SpaJob):
         last_frame: _a.polish.LAST_FRAME = -1,
         extract_size: _a.polish.EXTRACT_SIZE = None,
         rescale: _a.polish.RESCALE = None,
-        do_float16: _a.io.DO_F16 = True,
         # Train
         eval_frac: _a.polish.EVAL_FRAC = 0.5,
         optim_min_part: _a.polish.OPTIM_MIN_PART = 10000,

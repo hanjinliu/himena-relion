@@ -191,6 +191,7 @@ def _get_angpix_from_template_pick(path: Path) -> float | None:
 
 
 def _make_get_template_angpix(filename: str):
+    # `filename` must exist when this function is called!
     def _func(path: Path) -> float | None:
         with mrcfile.open(path / filename, header_only=True) as mrc:
             return round(float(mrc.voxel_size.x), 3)
@@ -234,6 +235,11 @@ for sel_class_job in [_spa.SelectClassesInteractiveJob, _spa.SelectClassesAutoJo
         _spa.Refine3DJob,
         node_mapping={"particles.star": "fn_img"},
     )
+connect_jobs(
+    _spa.InitialModelJob,
+    _spa.SelectClassesInteractiveJob,
+    value_mapping={_optimiser_last_iter, "fn_model"},
+)
 
 for class3d_job in [_spa.Class3DJob, _spa.Class3DNoAlignmentJob]:
     connect_jobs(
@@ -266,20 +272,24 @@ for class3d_job in [_spa.Class3DJob, _spa.Class3DNoAlignmentJob]:
         class3d_job,
         _spa.AutoPickTemplate3DJob,
         node_mapping={run_class001_last_iter: "fn_ref3d_autopick"},
-        value_mapping={_make_get_template_angpix("run_class001.mrc"): "angpix_ref"},
+        value_mapping={
+            _make_get_template_angpix("run_it000_half1_class001.mrc"): "angpix_ref"
+        },
     )
 
 connect_jobs(
     _spa.InitialModelJob,
     _spa.AutoPickTemplate3DJob,
     node_mapping={"initial_model.mrc": "fn_ref3d_autopick"},
-    value_mapping={_make_get_template_angpix("initial_model.mrc"): "angpix_ref"},
+    value_mapping={_make_get_template_angpix("run_it000_class001.mrc"): "angpix_ref"},
 )
 connect_jobs(
     _spa.Refine3DJob,
     _spa.AutoPickTemplate3DJob,
     node_mapping={"run_class001.mrc": "fn_ref3d_autopick"},
-    value_mapping={_make_get_template_angpix("run_class001.mrc"): "angpix_ref"},
+    value_mapping={
+        _make_get_template_angpix("run_it000_half1_class001.mrc"): "angpix_ref"
+    },
 )
 connect_jobs(
     _spa.InitialModelJob,
@@ -344,6 +354,11 @@ connect_jobs(
     _spa.CtfRefineJob,
     _spa.BayesianPolishJob,
     node_mapping={"particles_ctf_refine.star": "fn_data"},
+)
+connect_jobs(
+    _spa.BayesianPolishTrainJob,
+    _spa.BayesianPolishJob,
+    node_mapping={"opt_params_all_groups.txt", "opt_params"},
 )
 
 
