@@ -6,8 +6,10 @@ import mrcfile
 import numpy as np
 import pandas as pd
 from starfile_rs import read_star
+from superqt import QToggleSwitch
 from superqt.utils import thread_worker
 from qtpy import QtWidgets as QtW, QtCore
+from himena_builtins.qt.widgets._image_components import QHistogramView
 from himena_relion._image_readers._array import ArrayFilteredView
 from himena_relion._widgets import (
     QJobScrollArea,
@@ -24,6 +26,42 @@ from himena_relion.schemas import CoordsModel, MicrographsStarModel
 
 _LOGGER = logging.getLogger(__name__)
 _DIAMETER_DEFAULT = 100.0
+
+
+class QMarkerFilterWidget(QtW.QWidget):
+    value_changed = QtCore.Signal()
+
+    def __init__(self):
+        super().__init__()
+        layout = QtW.QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        self._show_marker_switch = QToggleSwitch("Show particles")
+        self._show_marker_switch.setChecked(True)
+        self._show_marker_switch.setToolTip("Toggle visibility of the picked particles")
+        self._show_marker_switch.toggled.connect(self._on_show_marker_toggled)
+        self._hist_view = QHistogramView()
+        self._hist_view.setFixedHeight(32)
+        self._hist_view.clim_changed.connect(lambda: self.value_changed.emit())
+        self._hist_view.setValueFormat(".3f", always_show=True)
+        self._hist_view.setToolTip(
+            "Distribution of figure of merit (FOM) values in this micrograph"
+        )
+        layout.addWidget(self._show_marker_switch)
+        layout.addWidget(QtW.QLabel("FOM:"))
+        layout.addWidget(self._hist_view)
+
+    def _on_show_marker_toggled(self, checked: bool):
+        self.value_changed.emit()
+
+    def filter_by_fom(self, coords: CoordsModel) -> np.ndarray:
+        """Return filtered coordinates based on FOM."""
+        if not self._show_marker_switch.isChecked():
+            return np.zeros((0, 3), dtype=np.float32)
+        min_val, max_val = self._hist_view.clim()
+        fom = coords.fom.to_numpy()
+        sl = (fom >= min_val) & (fom <= max_val)
+        arr = np.column_stack([np.zeros(len(coords.x)), coords.y, coords.x])
+        return arr[sl]
 
 
 @register_job("relion.manualpick")
@@ -46,7 +84,10 @@ class QManualPickViewer(QJobScrollArea):
         self._num_picked_label = QtW.QLabel("")
         self._num_picked_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
         self._filter_widget = Q2DFilterWidget(bin_default=8, lowpass_default=20)
+        self._marker_widget = QMarkerFilterWidget()
+        self._marker_widget.value_changed.connect(self._update_points)
         layout.addWidget(QtW.QLabel("<b>Micrographs with picked particles</b>"))
+        layout.addWidget(self._marker_widget)
         layout.addWidget(self._filter_widget)
         layout.addWidget(self._viewer)
         layout.addWidget(self._num_picked_label)
@@ -92,6 +133,11 @@ class QManualPickViewer(QJobScrollArea):
         if (coords_path := self._job_dir.resolve_path(path)).exists():
             if coords_path.suffix == ".star":
                 self._coords = CoordsModel.validate_file(coords_path)
+        if self._coords is not None:
+            fom = self._coords.fom.to_numpy()
+            self._marker_widget._hist_view.set_hist_for_array(
+                fom, clim=self._marker_widget._hist_view.clim()
+            )
 
     def _clear_points(self, *_):
         """Clear all the points before reloading."""
@@ -102,9 +148,7 @@ class QManualPickViewer(QJobScrollArea):
         if self._coords is None:
             self._clear_points()
         else:
-            arr = np.column_stack(
-                [np.zeros(len(self._coords.x)), self._coords.y, self._coords.x]
-            )
+            arr = self._marker_widget.filter_by_fom(self._coords)
             image_scale = self._filter_widget._image_scale
             bins = self._filter_widget.bin_factor()
             try:

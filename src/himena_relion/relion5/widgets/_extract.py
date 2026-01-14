@@ -13,7 +13,6 @@ from himena_relion._widgets import (
     register_job,
     QMicrographListWidget,
     QImageViewTextEdit,
-    QNumParticlesLabel,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -30,7 +29,7 @@ class QExtractViewer(QJobScrollArea):
         self._current_extract_path = None
         self._current_num_extracts = 0
         self._num_page = 50
-        self._num_particles_label = QNumParticlesLabel()
+        self._num_mic_part_label = QtW.QLabel()
         self._text_edit = QImageViewTextEdit(font_size=11)
         self._text_edit.setMinimumHeight(350)
         self._slider = QtW.QSlider(QtCore.Qt.Orientation.Horizontal)
@@ -47,7 +46,7 @@ class QExtractViewer(QJobScrollArea):
 
         layout.addLayout(hlayout)
         layout.addWidget(self._text_edit)
-        layout.addWidget(self._num_particles_label)
+        layout.addWidget(self._num_mic_part_label)
         layout.addWidget(self._mic_list)
         self._slider.valueChanged.connect(self._slider_value_changed)
         self._plot_session_id = self._text_edit.prep_uuid()
@@ -67,6 +66,8 @@ class QExtractViewer(QJobScrollArea):
     def _process_update(self, force: bool = False):
         choices = []
         num_total = 0
+        # TODO: when finished job is opened, mrcfile.open happens for all the mrcs files
+        # which may be slow for large datasets.
         for mrcs_path in sorted(self._job_dir.glob_in_subdirs("*.mrcs")):
             fp = self._job_dir.make_relative_path(mrcs_path)
             rel_path = fp.as_posix()
@@ -79,7 +80,10 @@ class QExtractViewer(QJobScrollArea):
             num_total += nparticles
 
         self._mic_list.set_choices(choices)
-        self._num_particles_label.set_number(num_total)
+        num_mic = len(choices)
+        self._num_mic_part_label.setText(
+            f"Total: <b>{num_mic}</b> micrographs, <b>{num_total}</b> particles"
+        )
 
     def _mic_changed(self, row: tuple[str, str, str]):
         """Handle changes to selected micrograph."""
