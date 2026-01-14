@@ -13,7 +13,7 @@ from himena_relion._widgets import (
     QImageViewTextEdit,
     QMicrographListWidget,
 )
-from himena_relion import _job_dir, _utils
+from himena_relion import _job_dir
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -133,7 +133,7 @@ class QExtractJobViewer(QJobScrollArea):
                 img_str = self._text_edit.image_to_base64(
                     np.zeros((2, 2), dtype=np.float32), f"{ith}"
                 )
-                yield img_str, session
+                yield self._on_string_ready, (img_str, session)
                 continue
             with mrcfile.mmap(mrc_path) as mrc:
                 img_data = np.asarray(mrc.data, dtype=np.float32)
@@ -142,15 +142,20 @@ class QExtractJobViewer(QJobScrollArea):
                     img_str = self._text_edit.image_to_base64(
                         np.zeros((2, 2), dtype=np.float32), f"{ith}"
                     )
-                    yield img_str, session
+                    yield self._on_string_ready, (img_str, session)
                     continue
+                if ith == start_index + 1:  # first
+                    angst = mrc.voxel_size.x
+                    size = mrc.header.nx
+                    msg = f"Image size: {size} pix ({size * angst:.1f} A)"
+                    yield self._on_text_ready, (msg + "\n\n", session)
+
                 if self._subtomo_pattern.endswith("_stack2d.mrcs"):
                     img_2d = img_data[(img_data.shape[0] - 1) // 2, :, :]
                 else:
                     img_2d = np.max(img_data, axis=0)
-                img_2d = _utils.lowpass_filter(img_2d, 0.2)
-                img_str = self._text_edit.image_to_base64(img_2d, f"{ith}")
-                yield img_str, session
+                img_str = self._text_edit.image_to_base64(img_2d, f"{ith}", 0.2)
+                yield self._on_string_ready, (img_str, session)
         self._worker = None
 
     def _on_yielded(self, value: tuple[str, uuid.UUID]):
@@ -158,6 +163,18 @@ class QExtractJobViewer(QJobScrollArea):
             return
         img_str, my_uuid = value
         if my_uuid != self._plot_session_id:
+            return
+        self._text_edit.insert_base64_image(img_str)
+
+    def _on_text_ready(self, value: tuple[str, uuid.UUID]):
+        text, my_uuid = value
+        if my_uuid != self._plot_session_id or self._worker is None:
+            return
+        self._text_edit.insertPlainText(text)
+
+    def _on_string_ready(self, value: tuple[str, uuid.UUID]):
+        img_str, my_uuid = value
+        if my_uuid != self._plot_session_id or self._worker is None:
             return
         self._text_edit.insert_base64_image(img_str)
 

@@ -43,7 +43,7 @@ def bin_image(img: np.ndarray, nbin: int) -> np.ndarray:
 
 def lowpass_filter(img: np.ndarray, cutoff: float) -> np.ndarray:
     """Apply a low-pass filter to a 2D image in Fourier space."""
-    if cutoff <= 0 or cutoff >= 1:
+    if cutoff <= 0 or cutoff >= 0.9:
         return img
     fr = frequency_mesh(img.shape)
     filter_mask = fr <= cutoff

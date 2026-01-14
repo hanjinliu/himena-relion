@@ -209,21 +209,19 @@ _T = TypeVar("_T", bound=JobWidgetBase)
 
 
 def register_job(
-    job_type: type[_job_dir.JobDirectory] | str,
+    job_type: str,
     is_tomo: bool = False,
 ) -> Callable[[_T], _T]:
     """Decorator to register a widget class for a specific job type."""
-    if isinstance(job_type, type):
-        job_type_label = str(job_type._job_type)
-    else:
-        job_type_label = job_type
+    if not isinstance(job_type, str):
+        raise TypeError(f"Expected str for job_type, got {type(job_type)}")
 
     def inner(widget_cls: _T) -> _T:
         ins = RelionJobViewRegistry.instance()
         if is_tomo:
-            ins._registered_tomo[job_type_label] = widget_cls
+            ins._registered_tomo[job_type] = widget_cls
         else:
-            ins._registered_spa[job_type_label] = widget_cls
+            ins._registered_spa[job_type] = widget_cls
         return widget_cls
 
     return inner
@@ -233,6 +231,10 @@ class QRelionJobWidgetControl(QtW.QWidget):
     def __init__(self, parent: QRelionJobWidget):
         super().__init__()
         self.widget = parent
+        # The last lines show the progress of the job, which is useful for users during
+        # running jobs.
+        # TODO: should we use QElidingLabel here? Sometimes warning messages can be put
+        # in the log and they can be long.
         self._oneline_msg = QtW.QLabel("")
         self._oneline_msg.setSizePolicy(
             QtW.QSizePolicy.Policy.Expanding, QtW.QSizePolicy.Policy.Preferred

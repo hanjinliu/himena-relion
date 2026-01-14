@@ -8,82 +8,94 @@ from PIL import Image, ImageDraw, ImageFont
 from scipy import ndimage as ndi
 from io import BytesIO
 
+from himena_relion._utils import lowpass_filter
 
-class QMicrographListWidget(QtW.QTableWidget):
+
+class QTableModel(QtCore.QAbstractTableModel):
+    def __init__(self, data: list[tuple[str, ...]], columns: list[str]):
+        super().__init__()
+        self._data = data
+        self._columns = columns
+
+    def rowCount(self, parent: QtCore.QModelIndex = QtCore.QModelIndex()) -> int:
+        return len(self._data)
+
+    def columnCount(self, parent: QtCore.QModelIndex = QtCore.QModelIndex()) -> int:
+        return len(self._columns)
+
+    def headerData(self, section, orientation, role):
+        if role == QtCore.Qt.ItemDataRole.DisplayRole:
+            if orientation == QtCore.Qt.Orientation.Horizontal:
+                return self._columns[section]
+            else:
+                return str(section + 1)
+
+    def data(
+        self,
+        index: QtCore.QModelIndex,
+        role: int = QtCore.Qt.ItemDataRole.DisplayRole,
+    ) -> QtCore.QVariant:
+        if role == QtCore.Qt.ItemDataRole.DisplayRole:
+            return str(self._data[index.row()][index.column()])
+        return QtCore.QVariant()
+
+
+class QMicrographListWidget(QtW.QTableView):
     current_changed = QtCore.Signal(tuple)
 
     def __init__(self, columns: list[str] = ("Micrograph",)):
         super().__init__()
         self.setSelectionMode(QtW.QAbstractItemView.SelectionMode.SingleSelection)
         self.setSelectionBehavior(QtW.QAbstractItemView.SelectionBehavior.SelectRows)
-        self.setColumnCount(len(columns))
-        self.setHorizontalHeaderLabels(list(columns))
+        self._model = QTableModel([], list(columns))
+        self.setModel(self._model)
         self.horizontalHeader().setVisible(len(columns) > 1)
         self.horizontalHeader().setFixedHeight(15)
         self.horizontalHeader().setStretchLastSection(True)
         self.setFixedHeight(100)
         self.setEditTriggers(QtW.QAbstractItemView.EditTrigger.NoEditTriggers)
-        self.itemSelectionChanged.connect(self._on_selection_changed)
         self.setHorizontalScrollMode(QtW.QAbstractItemView.ScrollMode.ScrollPerPixel)
         self.verticalHeader().setDefaultAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
         self.setSizePolicy(
             QtW.QSizePolicy.Policy.Expanding, QtW.QSizePolicy.Policy.Minimum
         )
         self.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
+        self.selectionModel().selectionChanged.connect(self._on_selection_changed)
+        self.verticalHeader().setDefaultSectionSize(20)
+
+    def rowCount(self) -> int:
+        return self.model().rowCount()
+
+    def current_tuple(self) -> tuple[str, ...] | None:
+        sel = self.selectionModel().selectedRows()
+        if sel:
+            return self._model._data[sel[0].row()]
 
     def current_text(self, ncol: int = 0) -> str:
-        if self.rowCount() > 0 and self.currentItem():
-            current_text = self.item(self.currentRow(), ncol).text()
-        else:
-            current_text = ""
-        return current_text
+        if tup := self.current_tuple():
+            return tup[ncol]
+        return ""
 
     def current_row_texts(self) -> tuple[str, ...] | None:
-        if self.rowCount() > 0 and self.currentItem():
-            texts = tuple(
-                self.item(self.currentRow(), col).text()
-                for col in range(self.columnCount())
-            )
-        else:
-            texts = None
-        return texts
+        return self.current_tuple()
 
     def set_choices(self, choices: list[tuple[str, ...]]):
         """Set the micrograph choices in the list widget."""
         was_empty = self.rowCount() == 0
-        current_text = self.current_text(0)
-        self.setRowCount(0)
-        self.setRowCount(len(choices))
-        vbar_pos = self.verticalScrollBar().value()
-        hbar_pos = self.horizontalScrollBar().value()
-        choices_0: list[str] = []
-        for i, entry in enumerate(choices):
-            self.setRowHeight(i, 16)
-            for j, name in enumerate(entry):
-                self.setItem(i, j, QtW.QTableWidgetItem(str(name)))
-            choices_0.append(entry[0])
-        if current_text and current_text in choices_0:
-            ith = choices_0.index(current_text)
-            self.blockSignals(True)
-            try:
-                self.setCurrentCell(ith, 0)
-            finally:
-                self.blockSignals(False)
-        elif choices:
-            self.setCurrentCell(0, 0)
-        if self.columnCount() > 1 and was_empty:
+        self._model._data = choices
+        self._model.layoutChanged.emit()
+        self.setModel(self._model)
+        if self._model.columnCount() > 1 and was_empty:
             self.resizeColumnsToContents()
-        self.verticalScrollBar().setValue(vbar_pos)
-        self.horizontalScrollBar().setValue(hbar_pos)
+        if was_empty:
+            self.selectRow(0)
 
     def _on_selection_changed(self):
         selected_rows = self.selectionModel().selectedRows()
         if selected_rows:
-            to_emit = tuple(
-                self.item(selected_rows[0].row(), col).text()
-                for col in range(self.columnCount())
-            )
-            self.current_changed.emit(to_emit)
+            to_emit = self.current_row_texts()
+            if to_emit is not None:
+                self.current_changed.emit(to_emit)
 
     def minimumSizeHint(self) -> QtCore.QSize:
         return QtCore.QSize(120, 120)
@@ -99,16 +111,22 @@ class QImageViewTextEdit(QtW.QTextEdit):
         self._image_size_pixel = image_size_pixel
         self._font_size = font_size
 
-    def image_to_base64(self, img_slice: np.ndarray, text: str = "") -> str:
-        img_slice_256 = ndi.zoom(
+    def image_to_base64(
+        self,
+        img_slice: np.ndarray,
+        text: str = "",
+        lowpass_cutoff: float = 1.0,
+    ) -> str:
+        img_slice_small = ndi.zoom(
             img_slice,
             self._image_size_pixel / img_slice.shape[0],
             order=1,
             prefilter=False,
         )
+        img_slice_filt = lowpass_filter(img_slice_small, lowpass_cutoff)
         img_slice_normed = (
-            (img_slice_256 - img_slice_256.min())
-            / (img_slice_256.max() - img_slice_256.min())
+            (img_slice_filt - img_slice_filt.min())
+            / (img_slice_filt.max() - img_slice_filt.min())
             * 255
         )
         img_slice = img_slice_normed.astype(np.uint8)

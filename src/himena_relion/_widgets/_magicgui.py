@@ -57,7 +57,7 @@ class OptimisationSetEdit(ValuedContainerWidget):
         )
         self._in_particles = PathDrop(
             "",
-            type_label="ParticleGroupMetadata",
+            type_label=["ParticlesData", "ParticleGroupMetadata"],
             tooltip=(
                 "Path to the particle star file (usually named particles.star or "
                 "*_data.star)"
@@ -65,7 +65,7 @@ class OptimisationSetEdit(ValuedContainerWidget):
         )
         self._in_tomograms = PathDrop(
             "",
-            type_label="TomogramGroupMetadata",
+            type_label=["TomogramGroupMetadata"],
             tooltip="Path to the tomogram.star file.",
         )
         self._in_trajectories = PathDrop(
@@ -92,12 +92,23 @@ class OptimisationSetEdit(ValuedContainerWidget):
         self._in_trajectories.visible = use_direct
 
     def get_value(self):
+        in_optimisation = self._in_opt.value
+        in_particles = self._in_particles.value
+        in_tomograms = self._in_tomograms.value
+        in_trajectories = self._in_trajectories.value
+        use_direct_entries = self._toggle_switch.value
+        if use_direct_entries:
+            in_optimisation = ""
+        else:
+            in_particles = ""
+            in_tomograms = ""
+            in_trajectories = ""
         return {
-            "in_optimisation": self._in_opt.value,
-            "use_direct_entries": self._toggle_switch.value,
-            "in_particles": self._in_particles.value,
-            "in_tomograms": self._in_tomograms.value,
-            "in_trajectories": self._in_trajectories.value,
+            "in_optimisation": in_optimisation,
+            "use_direct_entries": use_direct_entries,
+            "in_particles": in_particles,
+            "in_tomograms": in_tomograms,
+            "in_trajectories": in_trajectories,
         }
 
     def set_value(self, value):

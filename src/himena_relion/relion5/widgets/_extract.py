@@ -7,7 +7,7 @@ import numpy as np
 from qtpy import QtWidgets as QtW, QtCore
 import logging
 from superqt.utils import thread_worker
-from himena_relion import _job_dir, _utils
+from himena_relion import _job_dir
 from himena_relion._widgets import (
     QJobScrollArea,
     register_job,
@@ -67,7 +67,7 @@ class QExtractViewer(QJobScrollArea):
     def _process_update(self, force: bool = False):
         choices = []
         num_total = 0
-        for mrcs_path in self._job_dir.glob_in_subdirs("*.mrcs"):
+        for mrcs_path in sorted(self._job_dir.glob_in_subdirs("*.mrcs")):
             fp = self._job_dir.make_relative_path(mrcs_path)
             rel_path = fp.as_posix()
             nparticles = self._nparticles_cache.get(rel_path)
@@ -77,6 +77,7 @@ class QExtractViewer(QJobScrollArea):
                 self._nparticles_cache[rel_path] = nparticles
             choices.append((fp.name, str(nparticles), rel_path))
             num_total += nparticles
+
         self._mic_list.set_choices(choices)
         self._num_particles_label.set_number(num_total)
 
@@ -121,8 +122,7 @@ class QExtractViewer(QJobScrollArea):
                     yield self._on_text_ready, (msg + "\n\n", session)
 
                 img_data = np.asarray(mrc_data[ith - 1], dtype=np.float32)
-                img_data = _utils.lowpass_filter(img_data, 0.2)
-                img_str = self._text_edit.image_to_base64(img_data, f"{ith}")
+                img_str = self._text_edit.image_to_base64(img_data, f"{ith}", 0.2)
                 yield self._on_string_ready, (img_str, session)
 
     def _on_text_ready(self, value: tuple[str, uuid.UUID]):
