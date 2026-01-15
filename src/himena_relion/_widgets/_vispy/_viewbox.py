@@ -51,7 +51,7 @@ from vispy.app import MouseEvent
 from vispy.util import keys as VispyKeys
 from vispy.util.quaternion import Quaternion
 from psygnal import Signal
-
+from scipy.spatial.transform import Rotation
 from himena.qt import QViewBox
 
 
@@ -325,8 +325,24 @@ class ArcballCamera(scene.ArcballCamera):
         self.changed.emit()
 
     @property
-    def quaternion(self) -> Quaternion:
-        return self._quaternion
+    def rotation(self) -> Rotation:
+        return Rotation.from_quat(
+            [
+                self._quaternion.x,
+                self._quaternion.y,
+                self._quaternion.z,
+                self._quaternion.w,
+            ]
+        )
+
+    @rotation.setter
+    def rotation(self, rot: Rotation):
+        x, y, z, w = rot.as_quat()
+        self._quaternion = Quaternion(w, x, y, z)
+        self.view_changed()
+
+    def view_direction(self):
+        return -self.rotation.as_matrix()[0]
 
 
 BUTTONMAP = {

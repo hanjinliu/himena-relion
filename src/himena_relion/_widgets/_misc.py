@@ -71,6 +71,11 @@ class QMicrographListWidget(QtW.QTableView):
         if sel:
             return tuple(self._model._data[sel[0].row()])
 
+    def text(self, row: int, ncol: int = 0) -> str:
+        if 0 <= row < self.rowCount():
+            return self._model._data[row][ncol]
+        return ""
+
     def current_text(self, ncol: int = 0) -> str:
         if tup := self.current_tuple():
             return tup[ncol]

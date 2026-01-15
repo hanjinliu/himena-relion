@@ -7,7 +7,6 @@ from numpy.typing import NDArray
 from qtpy import QtWidgets as QtW, QtCore
 from superqt import ensure_main_thread
 from vispy.color import ColorArray
-from scipy.spatial.transform import Rotation
 from himena.qt._qlineedit import QIntLineEdit, QDoubleLineEdit
 from himena.plugins import validate_protocol
 from himena_builtins.qt.widgets._shared import labeled
@@ -18,7 +17,12 @@ from himena_builtins.qt.widgets._image_components import (
 
 from himena_relion._image_readers import ArrayFilteredView
 from himena_relion._widgets._spinbox import QIntWidget
-from himena_relion._widgets._vispy import Vispy2DViewer, Vispy3DViewer, IsoSurface
+from himena_relion._widgets._vispy import (
+    Vispy2DViewer,
+    Vispy3DViewer,
+    Vispy3DTomogramViewer,
+    IsoSurface,
+)
 from himena_relion import _utils
 
 
@@ -33,6 +37,9 @@ class SliceResult(NamedTuple):
 
 class QViewer(QtW.QWidget):
     _always_force_sync: bool = False
+
+    def set_background_color(self, color):
+        self._canvas._scene.bgcolor = color
 
 
 class Q2DViewer(QViewer):
@@ -410,6 +417,111 @@ class Q3DViewer(Q3DViewerBase):
         return 330, 350
 
 
+class Q3DTomogramViewer(QViewer):
+    """A 3D viewer for displaying tomogram with other components."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._canvas = Vispy3DTomogramViewer(self)
+        self._canvas._scene.bgcolor = "#242424"
+        self._canvas._viewbox.border_color = "#4A4A4A"
+        self.setSizePolicy(
+            QtW.QSizePolicy.Policy.Expanding,
+            QtW.QSizePolicy.Policy.Expanding,
+        )
+
+        self._clim_widget = QHistogramView(mode="clim")
+        self._clim_widget.setFixedHeight(32)
+        self._clim_widget.setValueFormat(".2f", always_show=True)
+        self._clim_widget.clim_changed.connect(self._on_clim_changed)
+
+        layout = QtW.QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(self._canvas.native)
+        layout.addWidget(self._clim_widget)
+        self._last_clim: tuple[float, float] | None = None
+
+        self._canvas.plane_position_changed.connect(self._on_plane_position_changed)
+
+    def set_array_view(
+        self,
+        array_view: ArrayFilteredView,
+        clim=None,
+        update_now: bool = True,
+    ):
+        """Set the 3D tomogram to be displayed."""
+        self._canvas.set_array_view(array_view, clim)
+        c0, c1 = self._canvas.contrast_limits
+        arr_2d = self._canvas._current_image_slice
+        assert arr_2d is not None
+        self._clim_widget.set_hist_for_array(arr_2d, (c0, c1))
+        crange = c1 - c0
+        margin = crange * 0.1
+        self._clim_widget.set_view_range(c0 - margin, c1 + margin)
+        ndigits = max(1, -int(np.floor(np.log10(crange))) + 1)
+        self._clim_widget.setValueFormat(f".{ndigits}f", always_show=True)
+        if update_now:
+            self._canvas.update_canvas()
+
+    def auto_fit(self, update_now: bool = True):
+        """Automatically fit the camera to the image."""
+        self._canvas.auto_fit()
+        if update_now:
+            self._canvas.update_canvas()
+
+    def set_points(self, points, size=8.0, face_color="lime", edge_color="black"):
+        """Set the 3D points to be displayed."""
+        points = np.asarray(points)
+        face_colors = _norm_color(face_color, len(points))
+        edge_colors = _norm_color(edge_color, len(points))
+        if points.shape[0] > 0:
+            self._canvas.markers_visual.set_data(
+                points[:, ::-1],
+                face_color=face_colors,
+                edge_color=edge_colors,
+                edge_width_rel=0.1 * self.devicePixelRatioF(),
+                size=size / self.devicePixelRatioF(),
+            )
+            self._canvas.markers_visual.visible = True
+        else:
+            self._canvas.markers_visual.set_data(
+                np.ones((1, 3), dtype=np.float32),
+                face_color=np.zeros(4),
+                edge_color=np.zeros(4),
+                size=0.01,
+            )
+            self._canvas.markers_visual.visible = False
+        self._canvas.update_canvas()
+
+    def set_motion_paths(self, motion, color=None):
+        self._canvas.motion_visual.set_data(motion)
+        self._canvas.motion_visual.visible = True
+
+    def clear(self):
+        self._canvas.image = np.zeros((2, 2, 2), dtype=np.float32)
+        self._canvas.image_visual.visible = False
+        self._canvas.markers_visual.set_data(
+            np.ones((1, 3), dtype=np.float32),
+            size=0.01,
+            face_color=np.zeros(4),
+            edge_color=np.zeros(4),
+        )
+        self._canvas.markers_visual.visible = False
+        self._canvas.update_canvas()
+        self._last_clim = None
+
+    def _on_clim_changed(self, clim: tuple[float, float]):
+        """Update the contrast limits based on the histogram view."""
+        self._canvas.contrast_limits = clim
+        self._canvas.update_canvas()
+
+    def _on_plane_position_changed(self, zpos: int):
+        """Update the histogram when the plane position changes."""
+        slice_image = self._canvas._current_image_slice
+        c0, c1 = self._canvas.contrast_limits
+        self._clim_widget.set_hist_for_array(slice_image, (c0, c1))
+
+
 class Q3DLocalResViewer(Q3DViewerBase):
     """A 3D viewer for displaying local resolution maps with iso-surface."""
 
@@ -459,13 +571,10 @@ class Q3DLocalResViewer(Q3DViewerBase):
         self._canvas.camera.changed.connect(self._on_camera_change)
 
     def _on_camera_change(self):
-        quat = self._canvas._camera.quaternion
-        x, y, z, w = quat.x, quat.y, quat.z, quat.w
-        # Calculate forward vector from quaternion
-        rot = Rotation.from_quat([x, y, z, w])
-        vec = rot.apply([1, 0, 0])
         if self._surface.shading_filter is not None:
-            self._surface.shading_filter.light_dir = vec
+            # Set light direction parallel to camera view direction
+            view_direction = self._canvas.camera.view_direction()
+            self._surface.shading_filter.light_dir = -view_direction
 
     def auto_threshold(self, thresh: float | None = None, update_now: bool = True):
         """Automatically set the threshold based on the image data."""

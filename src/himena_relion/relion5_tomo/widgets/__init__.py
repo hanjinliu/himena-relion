@@ -7,6 +7,7 @@ from himena_relion.relion5_tomo.widgets import (
     _tilt_series,
     _tomogram,
     _reconstruct,
+    _polish,
 )
 
 del (
@@ -18,4 +19,5 @@ del (
     _extract,
     _reconstruct,
     _tilt_series,
+    _polish,
 )

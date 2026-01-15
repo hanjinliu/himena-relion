@@ -8,7 +8,8 @@ import pandas as pd
 import numpy as np
 from starfile_rs import read_star
 from superqt.utils import thread_worker, GeneratorWorker
-from himena_relion._widgets import Q2DViewer, Q2DFilterWidget
+from himena_relion._image_readers import ArrayFilteredView
+from himena_relion._widgets import Q3DTomogramViewer, Q2DFilterWidget
 from himena_relion import _job_dir
 from himena_relion.schemas import OptimisationSetModel, ParticleMetaModel
 
@@ -21,7 +22,7 @@ class QInspectViewer(QtW.QWidget):
         self._job_dir = job_dir
         layout = QtW.QVBoxLayout(self)
 
-        self._viewer = Q2DViewer()
+        self._viewer = Q3DTomogramViewer()
         self._worker: GeneratorWorker | None = None
         self._current_info: _job_dir.TomogramInfo | None = None
         self._filter_widget = Q2DFilterWidget()
@@ -32,7 +33,7 @@ class QInspectViewer(QtW.QWidget):
         layout.addWidget(self._filter_widget)
         layout.addWidget(self._tomo_choice)
         layout.addWidget(self._viewer)
-        self._filter_widget.value_changed.connect(self._viewer.redraw)
+        # self._filter_widget.value_changed.connect(self._viewer.redraw)
         self.initialize(job_dir)
 
     def on_job_updated(self, job_dir: _job_dir.ExternalJobDirectory, path: str):
@@ -84,16 +85,16 @@ class QInspectViewer(QtW.QWidget):
             center = (sizes - 1) / 2
             bin_factor = int(self._filter_widget._bin_factor.text() or "1")
             points_processed = (points + center[np.newaxis]) / bin_factor
-            yield self._set_points_and_redraw, points_processed
+            yield self._viewer.set_points, points_processed
         self._worker = None
 
-    def _set_tomo_view(self, tomo_view):
-        self._viewer.set_array_view(tomo_view, self._viewer._last_clim)
-        self._viewer.redraw()
-
-    def _set_points_and_redraw(self, points: np.ndarray):
-        self._viewer.set_points(points)
-        self._viewer.redraw()
+    def _set_tomo_view(self, tomo_view: ArrayFilteredView):
+        self._viewer.set_array_view(
+            tomo_view,
+            self._viewer._last_clim,
+            update_now=False,
+        )
+        self._viewer.auto_fit()
 
     def _on_yielded(self, yielded):
         fn, args = yielded

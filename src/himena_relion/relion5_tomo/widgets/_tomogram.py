@@ -8,6 +8,7 @@ from superqt.utils import thread_worker
 from himena_relion._widgets import (
     QJobScrollArea,
     Q2DViewer,
+    Q3DTomogramViewer,
     Q2DFilterWidget,
     register_job,
     QMicrographListWidget,
@@ -150,7 +151,7 @@ class QPickViewer(QJobScrollArea):
         self._job_dir = job_dir
         layout = self._layout
 
-        self._viewer = Q2DViewer()
+        self._viewer = Q3DTomogramViewer()
         self._viewer.setMinimumHeight(TOMO_VIEW_MIN_HEIGHT)
         self._worker = None
         self._current_info: _job_dir.TomogramInfo | None = None
@@ -158,18 +159,11 @@ class QPickViewer(QJobScrollArea):
         self._filter_widget._bin_factor.setText("1")
         self._tomo_list = QMicrographListWidget(["Tomogram", "Annotations"])
         self._tomo_list.current_changed.connect(self._on_tomo_changed)
-        layout.addWidget(QtW.QLabel("<b>Picked tomogram Z slice</b>"))
+        layout.addWidget(QtW.QLabel("<b>Picked particles with XY slice</b>"))
         layout.addWidget(self._filter_widget)
         layout.addWidget(self._tomo_list)
         layout.addWidget(self._viewer)
-        self._filter_widget.value_changed.connect(self._viewer.redraw)
-
-        # Add resize grip in the corner
-        self._size_grip = QtW.QSizeGrip(self)
-        grip_layout = QtW.QHBoxLayout()
-        grip_layout.addStretch()
-        grip_layout.addWidget(self._size_grip)
-        layout.addLayout(grip_layout)
+        # self._filter_widget.value_changed.connect(self._viewer.redraw)
 
     def on_job_updated(self, job_dir: _job_dir.PickJobDirectory, path: str):
         """Handle changes to the job directory."""
@@ -192,7 +186,7 @@ class QPickViewer(QJobScrollArea):
                 loop = read_star(annot_path).first().trust_loop()
                 if units == "filaments":
                     # filament vertices are labeled with rlnTomoManifoldIndex
-                    n_annot = loop.to_pandas()["rlnTomoManifoldIndex"].nunique()
+                    n_annot = loop.to_polars()["rlnTomoManifoldIndex"].n_unique()
                 else:
                     n_annot = len(loop)
                 items.append((info.tomo_name, f"{n_annot} {units}"))
@@ -228,13 +222,13 @@ class QPickViewer(QJobScrollArea):
             center = (sizes - 1) / 2
             bin_factor = int(self._filter_widget._bin_factor.text() or "1")
             points_processed = (points + center[np.newaxis]) / bin_factor
-            yield self._set_points_and_redraw, points_processed
+            yield self._viewer.set_points, points_processed
         self._worker = None
 
     def _set_tomo_view(self, tomo_view: ArrayFilteredView):
-        self._viewer.set_array_view(tomo_view, self._viewer._last_clim)
-        self._viewer.redraw()
-
-    def _set_points_and_redraw(self, points: np.ndarray):
-        self._viewer.set_points(points)
-        self._viewer.redraw()
+        self._viewer.set_array_view(
+            tomo_view,
+            self._viewer._last_clim,
+            update_now=False,
+        )
+        self._viewer.auto_fit()

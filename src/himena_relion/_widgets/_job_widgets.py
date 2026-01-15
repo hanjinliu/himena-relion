@@ -91,6 +91,7 @@ class QJobScrollArea(QtW.QScrollArea, JobWidgetBase):
 
     def _start_worker(self):
         self._worker.yielded.connect(self._on_yielded)
+        self._worker.finished.connect(self.window_closed_callback)
         start_worker(self._worker)
 
 

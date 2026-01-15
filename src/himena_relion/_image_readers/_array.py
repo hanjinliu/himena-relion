@@ -31,6 +31,7 @@ class ArrayFilteredView:
             self._post_filter = _no_filter
         else:
             self._post_filter = post_filter
+        self._shape = None
 
     def get_slice(self, index: int) -> Arr:
         """Get a slice of the filtered array."""
@@ -40,6 +41,13 @@ class ArrayFilteredView:
     def get_scale(self) -> float:
         """Get the scale of the array."""
         return self._view.get_scale()
+
+    def get_shape(self) -> tuple[int, int]:
+        """Get the (Y, X) shape of each slice in the array."""
+        if self._shape is None:
+            first_slice = self.get_slice(0)
+            self._shape = first_slice.shape
+        return self._shape
 
     def num_slices(self) -> int:
         """Get the number of slices in the array."""
