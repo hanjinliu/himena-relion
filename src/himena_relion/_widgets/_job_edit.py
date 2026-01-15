@@ -90,7 +90,12 @@ class QJobScheduler(QtW.QWidget):
         self._job_param_widget.set_parameters(params)
 
     def get_parameters(self) -> dict[str, Any]:
-        """Get the parameters from the widgets."""
+        """Get the parameters from the widgets.
+
+        Parameters are NOT normalized yet. `normalize_kwargs` should be called before
+        creating a job.star file. For builtins jobs, this is done automatically when
+        `prep_job_star` is called.
+        """
         if self._current_job_cls is None:
             raise RuntimeError("No job class selected.")
         return self._job_param_widget.get_parameters()
@@ -109,6 +114,7 @@ class QJobScheduler(QtW.QWidget):
         if self._current_job_cls is None:
             raise RuntimeError("No job class selected.")
         params = self.get_parameters()
+        # FIXME: continue job uses self.make_job_star to generate job.star
         job_star_df = self._current_job_cls.prep_job_star(**params)
         self._ui.add_object(
             job_star_df.to_string(), type="text", title="Preview of job.star"

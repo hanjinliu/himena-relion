@@ -41,6 +41,7 @@ class QRelionJobWidget(QtW.QWidget):
         self._state_widget = QJobStateLabel(self)
         layout.addWidget(self._state_widget)
         self._tab_widget = QtW.QTabWidget(self)
+        self._tab_widget.tabBar().setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
         layout.addWidget(self._tab_widget)
         self._watcher: GeneratorWorker | None = None
         self.job_updated.connect(self._on_job_updated)
@@ -65,10 +66,14 @@ class QRelionJobWidget(QtW.QWidget):
             wdt = wcls(job_dir)
             self.add_job_widget(wdt)
 
-        self.add_job_widget(QJobPipelineViewer())
+        self.add_job_widget(QJobPipelineViewer(show_tree_view=True))
         self.add_job_widget(QJobParameterView())
         self.add_job_widget(QRunOutErrLog())
         self.add_job_widget(QNoteEdit())
+        self.initialize_widgets(job_dir)
+
+    def initialize_widgets(self, job_dir: _job_dir.JobDirectory):
+        """Initialize all job widgets with the given job directory."""
         for wdt in self._iter_job_widgets():
             try:
                 t0 = default_timer()
@@ -137,11 +142,16 @@ class QRelionJobWidget(QtW.QWidget):
     @thread_worker(start_thread=True)
     def _watch_job_directory(self, path: Path):
         """Watch the job directory for changes."""
-        for changes in watch(path, rust_timeout=400, yield_on_timeout=True):
+        for changes in watch(path, step=160, rust_timeout=400, yield_on_timeout=True):
             if self._watcher is None:
                 return  # stopped
+            updated_files: list[Path] = []
             for change, fp in changes:
-                self.job_updated.emit(Path(fp))
+                path = Path(fp)
+                if path not in updated_files:
+                    updated_files.append(path)
+            for updated_file in updated_files:
+                self.job_updated.emit(updated_file)
             yield
 
     def _on_job_updated(self, path: Path):
@@ -253,6 +263,13 @@ class QRelionJobWidgetControl(QtW.QWidget):
         layout.addWidget(self._oneline_msg)
         for btn in self._tool_buttons:
             layout.addWidget(btn)
+
+        # initialize the message
+        if parent._job_dir.state() is RelionJobState.RUNNING:
+            for wdt in parent._iter_job_widgets():
+                if isinstance(wdt, QRunOutErrLog):
+                    msg = wdt.last_lines()
+                    self.set_msg(msg)
 
     def refresh_widget(self):
         """Reopen this RELION job."""

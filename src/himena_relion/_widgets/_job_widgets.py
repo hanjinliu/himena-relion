@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 import logging
 from contextlib import suppress
 from pathlib import Path
@@ -264,16 +265,24 @@ class QNoteEdit(QTextEditBase):
 class QJobPipelineViewer(QtW.QWidget, JobWidgetBase):
     """Widget to view the input and output nodes of a RELION job."""
 
-    def __init__(self):
+    def __init__(self, show_tree_view: bool = False):
         super().__init__()
         layout = QtW.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         self._list_widget_in = QRelionNodeList()
         self._list_widget_out = QRelionNodeList()
-        layout.addWidget(QtW.QLabel("<b>Inputs</b>"))
+        layout.addWidget(QtW.QLabel("<b>&mdash; Inputs &mdash;</b>"))
         layout.addWidget(self._list_widget_in)
-        layout.addWidget(QtW.QLabel("<b>Outputs</b>"))
-        layout.addWidget(self._list_widget_out)
+        layout.addWidget(QtW.QLabel("<b>&mdash; Outputs &mdash;</b>"))
+        if show_tree_view:
+            hor = QtW.QSplitter(QtCore.Qt.Orientation.Horizontal)
+            hor.addWidget(self._list_widget_out)
+            self._tree_view = QDirectoryTreeView(self)
+            hor.addWidget(self._tree_view)
+            layout.addWidget(hor)
+        else:
+            self._tree_view = None
+            layout.addWidget(self._list_widget_out)
 
     def dragEnterEvent(self, a0):
         a0.ignore()
@@ -330,6 +339,9 @@ class QJobPipelineViewer(QtW.QWidget, JobWidgetBase):
             list_item.setSizeHint(item.sizeHint())
             self._list_widget_out.addItem(list_item)
             self._list_widget_out.setItemWidget(list_item, item)
+
+        if tree := self._tree_view:
+            tree.set_job_directory(job_dir)
 
     def update_item_colors(self, job_dir: _job_dir.JobDirectory):
         """Update the colors based on whether the files exist."""
@@ -485,7 +497,7 @@ class QRelionNodeItem(QtW.QWidget):
             self._filepath,
             desc=self._filepath_rel.as_posix(),
             source=self,
-            plugin=self._plugin_for_filetype(),
+            plugin=plugin_for_filetype(self._filetype),
         )
 
     def _open_file_event(self):
@@ -493,15 +505,16 @@ class QRelionNodeItem(QtW.QWidget):
             raise FileNotFoundError(f"File {path} does not exist.")
         current_instance().read_file(
             path,
-            plugin=self._plugin_for_filetype(),
+            plugin=plugin_for_filetype(self._filetype),
         )
 
-    def _plugin_for_filetype(self) -> str | None:
-        match self.file_type_category():
-            case "DensityMap" | "Mask3D":
-                return "himena_relion.io.read_density_map"
-            case _:
-                return None
+
+def plugin_for_filetype(file_type_category: str | None) -> str | None:
+    match file_type_category:
+        case "DensityMap" | "Mask3D":
+            return "himena_relion.io.read_density_map"
+        case _:
+            return None
 
 
 class QJobStateLabel(QtW.QWidget, JobWidgetBase):
@@ -692,3 +705,123 @@ class QFileLabel(QtW.QWidget):
     def _copy_rel_path_to_clipboard(self):
         if clipboard := QtW.QApplication.clipboard():
             clipboard.setText(str(self._path_rel))
+
+
+class QFileSystemModel(QtW.QFileSystemModel):
+    def columnCount(self, parent) -> int:
+        return 1
+
+    def data(self, index: QtCore.QModelIndex, role: int):
+        if role == QtCore.Qt.ItemDataRole.SizeHintRole:
+            return QtCore.QSize(18, 16)
+        if role == QtCore.Qt.ItemDataRole.ToolTipRole:
+            return self._tooltip_for_index(index)
+        return super().data(index, role)
+
+    def _tooltip_for_index(self, index: QtCore.QModelIndex) -> str:
+        if not index.isValid():
+            return ""
+        path = Path(self.filePath(index))
+        if path.exists():
+            stat = path.stat()
+            size_human_readable = QtCore.QLocale().formattedDataSize(stat.st_size, 2)
+            time_last_modified = datetime.fromtimestamp(stat.st_mtime)
+            return (
+                f"{path.as_posix()}\n"
+                f"Size: {size_human_readable}\n"
+                f"Last modified: {time_last_modified:%Y-%m-%d %H:%M:%S}"
+            )
+        else:
+            return "<Deleted>"
+
+
+class QDirectoryTreeView(QtW.QTreeView):
+    """A tree view to show directory structure."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setDragEnabled(True)
+        self.setAcceptDrops(False)
+        self.setTextElideMode(QtCore.Qt.TextElideMode.ElideNone)
+        self.setSelectionMode(QtW.QAbstractItemView.SelectionMode.SingleSelection)
+        self.setEditTriggers(QtW.QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.setHeaderHidden(True)
+        self.setSelectionMode(QtW.QAbstractItemView.SelectionMode.ExtendedSelection)
+        self.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
+        self.customContextMenuRequested.connect(self._show_context_menu)
+        self.doubleClicked.connect(self._double_clicked)
+        self._job_dir: _job_dir.JobDirectory | None = None
+
+    def set_job_directory(self, job_dir: _job_dir.JobDirectory):
+        """Set the root directory to the given job directory."""
+        model = QFileSystemModel(self)
+        model.setRootPath(str(job_dir.path))
+        self.setModel(model)
+        self.setRootIndex(model.index(str(job_dir.path)))
+
+    def _make_context_menu(self, index: QtCore.QModelIndex):
+        menu = QtW.QMenu(self)
+        path = Path(self.model().filePath(index))
+        menu.addAction(
+            "Open", lambda: current_instance().read_file(path, append_history=False)
+        )
+        menu.addSeparator()
+        menu.addAction("Copy", lambda: current_instance().set_clipboard(files=[path]))
+        menu.addAction(
+            "Copy Path", lambda: current_instance().set_clipboard(text=str(path))
+        )
+        return menu
+
+    def _show_context_menu(self, pos: QtCore.QPoint):
+        index = self.indexAt(pos)
+        if not index.isValid():
+            return
+        menu = self._make_context_menu(index)
+        menu.exec(self.viewport().mapToGlobal(pos))
+
+    def _double_clicked(self, index: QtCore.QModelIndex):
+        idx = self.model().index(index.row(), 0, index.parent())
+        path = Path(self.model().filePath(idx))
+        if path.is_dir():
+            return
+        current_instance().read_file(path, append_history=False)
+
+    def mouseMoveEvent(self, e: QtGui.QMouseEvent):
+        if e.buttons() & QtCore.Qt.MouseButton.LeftButton:
+            self._start_drag()
+            return None
+        return super().mouseMoveEvent(e)
+
+    def _start_drag(self):
+        indexes = self.selectedIndexes()
+        if indexes:
+            index = indexes[0]
+            if drag := self._make_drag(index):
+                drag.exec()
+
+    def _make_drag(self, index: QtCore.QModelIndex) -> QtGui.QDrag | None:
+        if (job_dir := self._job_dir) is None:
+            return
+        model = self.model()
+        if model is None:
+            return
+        filepath = job_dir.resolve_path(Path(model.filePath(index)))
+        filepath_rel = job_dir.make_relative_path(filepath)
+        # try to get the file type category
+        pipeline = job_dir.parse_job_pipeline()
+        file_type_category = None
+        for output_node in pipeline.outputs:
+            if job_dir.resolve_path(output_node.path) == filepath:
+                file_type_category = output_node.type_label.split(".")[0]
+                break
+        return drag_files(
+            filepath,
+            desc=filepath_rel.as_posix(),
+            source=self,
+            plugin=plugin_for_filetype(file_type_category),
+            exec=False,
+        )
+
+    if TYPE_CHECKING:
+
+        def model(self) -> QFileSystemModel | None: ...
