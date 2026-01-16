@@ -123,7 +123,7 @@ class QFrameAlignTomoViewer(QJobScrollArea):
             if key.split("/")[0] != tomo_name:
                 continue
             if loop := block.try_loop():
-                xyz = loop.to_numpy()  # xyz in A
+                xyz = loop.to_polars().to_numpy()  # xyz in A
                 motions.append(xyz / scale * zoom)
         return motions
 

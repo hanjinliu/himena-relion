@@ -110,6 +110,12 @@ class QRemoveDuplicatesViewer(QSelectJobBase):
 @register_job("relion.select.interactive")
 @register_job("relion.select.class2dauto")
 class QSelectInteractiveViewer(QSelectJobBase):
+    def on_job_updated(self, job_dir: _job_dir.JobDirectory, path: str):
+        """Handle changes to the job directory."""
+        if Path(path).name == "particles.star":
+            self.initialize(job_dir)
+            _LOGGER.debug("%s Updated", job_dir.job_number)
+
     def insert_html(self, job_dir: _job_dir.SelectInteractiveJobDirectory):
         is_2d = job_dir.path.joinpath("class_averages.star").exists()
         if is_2d:

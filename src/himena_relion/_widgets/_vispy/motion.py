@@ -4,8 +4,8 @@ from vispy.visuals import LineVisual
 from vispy.scene.visuals import create_visual_node
 
 
-class MotionPathVisual(LineVisual):
-    """Visual for rendering motion paths as lines."""
+class PathsVisual(LineVisual):
+    """Visual for rendering paths as lines."""
 
     def __init__(
         self,
@@ -52,4 +52,4 @@ class MotionPathVisual(LineVisual):
         super().set_data(pos=data, connect=connect, color=color, width=width)
 
 
-MotionPath = create_visual_node(MotionPathVisual)
+MotionPath = create_visual_node(PathsVisual)

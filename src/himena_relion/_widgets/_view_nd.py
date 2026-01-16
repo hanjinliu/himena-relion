@@ -134,7 +134,21 @@ class Q2DViewer(QViewer):
         face_color: NDArray[np.float32] = [0, 0, 0, 0],
         edge_color: NDArray[np.float32] = "lime",
     ):
-        """Set the 3D points to be displayed."""
+        """Set the 3D points to be displayed.
+
+        Parameters
+        ----------
+        points : (N, 3) array
+            The 3D points (ZYX order) to be displayed.
+        out_of_slice : bool
+            Whether to show points that are out of the current slice as smaller symbols.
+        size : float | None
+            The size of the points. If None, the previous size is used.
+        face_color : (4,) or (N, 4) array-like
+            The face color of the points.
+        edge_color : (4,) or (N, 4) array-like
+            The edge color of the points.
+        """
         self._points = points
         self._out_of_slice = out_of_slice
         self._face_colors = _norm_color(face_color, len(points))
@@ -211,8 +225,14 @@ class Q2DViewer(QViewer):
         self._canvas.contrast_limits = result.clim
         self._last_clim = result.clim
         if result.points.shape[0] > 0:
+            if result.points.shape[1] == 3:
+                pos = result.points[:, [2, 1]]
+            elif result.points.shape[1] == 2:
+                pos = result.points[:, ::-1]
+            else:
+                raise ValueError("Points array must have shape (N, 2) or (N, 3).")
             self._canvas.markers_visual.set_data(
-                result.points[:, [2, 1]],
+                pos,
                 face_color=result.face_colors,
                 edge_color=result.edge_colors,
                 edge_width_rel=0.1 * self.devicePixelRatioF(),
