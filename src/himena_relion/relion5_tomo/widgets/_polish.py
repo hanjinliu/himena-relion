@@ -34,7 +34,7 @@ class QFrameAlignTomoViewer(QJobScrollArea):
         self._current_info: _job_dir.TomogramInfo | None = None
         self._tomo_list = QMicrographListWidget(["Tomogram"])
         self._tomo_list.current_changed.connect(self._on_tomo_changed)
-        layout.addWidget(QtW.QLabel("<b>Picked tomogram Z slice</b>"))
+        layout.addWidget(QtW.QLabel("<b>Bayesian Polish Tracks (scaled by 8)</b>"))
         layout.addWidget(self._tomo_list)
         layout.addWidget(self._viewer)
 
@@ -60,10 +60,10 @@ class QFrameAlignTomoViewer(QJobScrollArea):
     @thread_worker
     def _read_items(self, text: str):
         # first clear points
-        yield self._viewer.set_points, np.empty((0, 3), dtype=np.float32)
+        yield self._clear_viewer, None
         tomo_view = self._get_tomo_view_for_tomo(text)
         if tomo_view is None:
-            return self._viewer.clear()
+            return
         yield self._set_tomo_view, tomo_view
         ny, nx = tomo_view.get_shape()
         nz = tomo_view.num_slices()
@@ -74,9 +74,17 @@ class QFrameAlignTomoViewer(QJobScrollArea):
         yield self._set_points, points
         zoom = 8
         motion = self._get_motions_for_tomo(text, scale, zoom=zoom)
+        if len(motion) != len(points):
+            _LOGGER.warning(
+                "Number of motion tracks does not match number of particles"
+            )
+            return
         motion_shifted = [(motion[i] + points[i])[:, ::-1] for i in range(len(motion))]
         yield self._viewer.set_motion_paths, motion_shifted
         self._worker = None
+
+    def _clear_viewer(self, *_):
+        self._viewer.clear()
 
     def _set_tomo_view(self, tomo_view: ArrayFilteredView):
         self._viewer.set_array_view(

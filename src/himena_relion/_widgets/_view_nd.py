@@ -527,6 +527,7 @@ class Q3DTomogramViewer(QViewer):
             edge_color=np.zeros(4),
         )
         self._canvas.markers_visual.visible = False
+        self._canvas.motion_visual.set_data([])
         self._canvas.update_canvas()
         self._last_clim = None
 

@@ -34,21 +34,25 @@ class PathsVisual(LineVisual):
         points : list of (N, 3)
             The 3D points representing the motion paths.
         """
-        data = np.concatenate(points, axis=0)
-        to_connect_list = []
-        offset = 0
-        for arr in points:
-            length = arr.shape[0]
-            to_connect = np.stack(
-                [
-                    np.arange(offset, offset + length - 1, dtype=np.uint32),
-                    np.arange(offset + 1, offset + length, dtype=np.uint32),
-                ],
-                axis=1,
-            )
-            to_connect_list.append(to_connect)
-            offset += length
-        connect = np.concatenate(to_connect_list, axis=0)
+        if points:
+            data = np.concatenate(points, axis=0)
+            to_connect_list = []
+            offset = 0
+            for arr in points:
+                length = arr.shape[0]
+                to_connect = np.stack(
+                    [
+                        np.arange(offset, offset + length - 1, dtype=np.uint32),
+                        np.arange(offset + 1, offset + length, dtype=np.uint32),
+                    ],
+                    axis=1,
+                )
+                to_connect_list.append(to_connect)
+                offset += length
+            connect = np.concatenate(to_connect_list, axis=0)
+        else:
+            data = np.empty((0, 3), dtype=np.float32)
+            connect = "segments"
         super().set_data(pos=data, connect=connect, color=color, width=width)
 
 
