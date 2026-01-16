@@ -58,8 +58,11 @@ class QMarkerFilterWidget(QtW.QWidget):
         if not self._show_marker_switch.isChecked():
             return np.zeros((0, 3), dtype=np.float32)
         min_val, max_val = self._hist_view.clim()
-        fom = coords.fom.to_numpy()
-        sl = (fom >= min_val) & (fom <= max_val)
+        if coords.fom is None:
+            sl = slice(None)
+        else:
+            fom = coords.fom.to_numpy()
+            sl = (fom >= min_val) & (fom <= max_val)
         arr = np.column_stack([np.zeros(len(coords.x)), coords.y, coords.x])
         return arr[sl]
 
@@ -133,11 +136,15 @@ class QManualPickViewer(QJobScrollArea):
         if (coords_path := self._job_dir.resolve_path(path)).exists():
             if coords_path.suffix == ".star":
                 self._coords = CoordsModel.validate_file(coords_path)
+        fom_found = False
         if self._coords is not None:
-            fom = self._coords.fom.to_numpy()
-            self._marker_widget._hist_view.set_hist_for_array(
-                fom, clim=self._marker_widget._hist_view.clim()
-            )
+            if (fom := self._coords.fom) is not None:
+                fom_arr = fom.to_numpy()
+                self._marker_widget._hist_view.set_hist_for_array(
+                    fom_arr, clim=self._marker_widget._hist_view.clim()
+                )
+                fom_found = True
+        self._marker_widget.setVisible(fom_found)
 
     def _clear_points(self, *_):
         """Clear all the points before reloading."""

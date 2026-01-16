@@ -49,7 +49,7 @@ def test_manual_pick_widget(
     assert tester.widget._mic_list.text(1, 1) == "4"
     assert tester.widget._mic_list.text(2, 1) == "0"
 
-    assert tester.widget._mic_list.currentRow() == 1
+    assert tester.widget._mic_list.selectionModel().currentIndex().row() == 1
 
     m = CoordsModel(x=[5], y=[12])
     tester.write_text("Movies/Frame_03_manualpick.star", m.to_string())
@@ -81,17 +81,17 @@ def test_log_pick_widget(
     tester.mkdir("Movies")
 
     assert tester.widget._mic_list.rowCount() == 3
-    assert tester.widget._mic_list.item(0, 1).text() == "0"
-    assert tester.widget._mic_list.item(1, 1).text() == "0"
-    assert tester.widget._mic_list.item(2, 1).text() == "0"
+    assert tester.widget._mic_list.text(0, 1) == "0"
+    assert tester.widget._mic_list.text(1, 1) == "0"
+    assert tester.widget._mic_list.text(2, 1) == "0"
 
     m = CoordsModel(x=[12, 15, 14], y=[3, 21, 3])
     tester.write_text("Movies/Frame_01_autopick.star", m.to_string())
 
     assert tester.widget._mic_list.rowCount() == 3
-    assert tester.widget._mic_list.item(0, 1).text() == "3"
-    assert tester.widget._mic_list.item(1, 1).text() == "0"
-    assert tester.widget._mic_list.item(2, 1).text() == "0"
+    assert tester.widget._mic_list.text(0, 1) == "3"
+    assert tester.widget._mic_list.text(1, 1) == "0"
+    assert tester.widget._mic_list.text(2, 1) == "0"
 
     tester.widget._mic_list.set_current_row(1)
 
@@ -99,19 +99,19 @@ def test_log_pick_widget(
     tester.write_text("Movies/Frame_02_autopick.star", m.to_string())
 
     assert tester.widget._mic_list.rowCount() == 3
-    assert tester.widget._mic_list.item(0, 1).text() == "3"
-    assert tester.widget._mic_list.item(1, 1).text() == "4"
-    assert tester.widget._mic_list.item(2, 1).text() == "0"
+    assert tester.widget._mic_list.text(0, 1) == "3"
+    assert tester.widget._mic_list.text(1, 1) == "4"
+    assert tester.widget._mic_list.text(2, 1) == "0"
 
-    assert tester.widget._mic_list.currentRow() == 1
+    assert tester.widget._mic_list.selectionModel().currentIndex().row() == 1
 
     m = CoordsModel(x=[5], y=[12])
     tester.write_text("Movies/Frame_03_autopick.star", m.to_string())
 
     assert tester.widget._mic_list.rowCount() == 3
-    assert tester.widget._mic_list.item(0, 1).text() == "3"
-    assert tester.widget._mic_list.item(1, 1).text() == "4"
-    assert tester.widget._mic_list.item(2, 1).text() == "1"
+    assert tester.widget._mic_list.text(0, 1) == "3"
+    assert tester.widget._mic_list.text(1, 1) == "4"
+    assert tester.widget._mic_list.text(2, 1) == "1"
 
 def _prep_mcor_jobdir(
     jobs_dir_spa: Path,
