@@ -115,3 +115,4 @@ exclude_lines = [
 "RELION 5 Tomo" = "himena_relion.relion5_tomo"
 "RELION Job IO" = "himena_relion.io"
 "RELION pipeline" = "himena_relion.pipeline"
+"RELION startup" = "himena_relion.startup"

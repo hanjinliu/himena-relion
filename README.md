@@ -46,7 +46,7 @@ By subclassing `RelionExternalJob`, you can safely create external jobs with use
 
 ```bash
 pip install himena[recommended] himena-relion  # install packages
-himena --new em  # create a new profile named "em"
-himena em --install himena-relion  # install the plugin into "em" profile
-himena em  # launch the GUI with "em" profile
+himena --new relion  # create a new profile named "relion"
+himena relion --install himena-relion  # install the plugin into "relion" profile
+himena relion  # launch the GUI with "relion" profile
 ```

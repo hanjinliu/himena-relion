@@ -310,7 +310,7 @@ class Q3DViewer(Q3DViewerBase):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._rendering = QtW.QComboBox()
-        self._rendering.addItems(["Surface", "Maximum"])
+        self._rendering.addItems(["Surface", "Maximum", "Average"])
         self._rendering.setCurrentIndex(0)
         self._rendering.currentTextChanged.connect(self.set_rendering_mode)
         self._hist_view = QHistogramView(mode="thresh")
@@ -376,9 +376,9 @@ class Q3DViewer(Q3DViewerBase):
         if update_now:
             self._canvas.update_canvas()
 
-    def set_rendering_mode(self, mode: Literal["Surface", "Maximum"]):
+    def set_rendering_mode(self, mode: Literal["Surface", "Maximum", "Average"]):
         """Set the rendering mode of the 3D viewer."""
-        if mode not in ["Surface", "Maximum"]:
+        if mode not in ["Surface", "Maximum", "Average"]:
             raise ValueError("mode must be 'Surface' or 'Maximum'.")
         if self._rendering.currentText() != mode:
             self._rendering.setCurrentText(mode)

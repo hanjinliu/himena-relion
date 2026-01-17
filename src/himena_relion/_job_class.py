@@ -189,7 +189,7 @@ class RelionJob(ABC):
 
     @classmethod
     def _show_scheduler_widget(cls, ui: MainWindow, context: AnyContext, cwd=None):
-        scheduler = _get_scheduler_widget(ui)
+        scheduler = scheduler_widget(ui)
         try:
             scheduler.update_by_job(cls, cwd=cwd)
             if context:
@@ -370,7 +370,7 @@ class _Relion5BuiltinContinue(_Relion5BuiltinJob):
         model: WidgetDataModel,
         context: AnyContext,
     ):
-        scheduler = _get_scheduler_widget(ui)
+        scheduler = scheduler_widget(ui)
         try:
             job_dir = model.value
             if not isinstance(job_dir, _job_dir.JobDirectory):
@@ -560,7 +560,12 @@ def execute_job(
     return RelionJobExecution(proc, job_dir)
 
 
-def _get_scheduler_widget(ui: MainWindow) -> QJobScheduler:
+def scheduler_widget(ui: MainWindow) -> QJobScheduler:
+    """Return the unique RELION job scheduler widget in the main window.
+
+    This function will create and add the scheduler widget as a dock widget if not
+    already present.
+    """
     from himena_relion._widgets._job_edit import QJobScheduler
 
     for dock in ui.dock_widgets:

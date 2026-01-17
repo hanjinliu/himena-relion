@@ -201,6 +201,8 @@ class _Vispy3DDensityBase(_Vispy3DBase):
             self._volume_visual.method = "iso"
         elif mode == "Maximum":
             self._volume_visual.method = "mip"
+        elif mode == "Average":
+            self._volume_visual.method = "average"
         else:
             raise ValueError("mode must be 'Surface' or 'Maximum'.")
 
