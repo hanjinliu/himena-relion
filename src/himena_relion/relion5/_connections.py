@@ -238,7 +238,7 @@ for sel_class_job in [_spa.SelectClassesInteractiveJob, _spa.SelectClassesAutoJo
 connect_jobs(
     _spa.InitialModelJob,
     _spa.SelectClassesInteractiveJob,
-    value_mapping={_optimiser_last_iter, "fn_model"},
+    value_mapping={_optimiser_last_iter: "fn_model"},
 )
 
 for class3d_job in [_spa.Class3DJob, _spa.Class3DNoAlignmentJob]:
@@ -358,7 +358,7 @@ connect_jobs(
 connect_jobs(
     _spa.BayesianPolishTrainJob,
     _spa.BayesianPolishJob,
-    node_mapping={"opt_params_all_groups.txt", "opt_params"},
+    node_mapping={"opt_params_all_groups.txt": "opt_params"},
 )
 
 
@@ -374,7 +374,6 @@ def mask_create_search_halfmap(path: Path) -> str | None:
         elif type_label == "relion.reconstructparticletomo":
             half_map_path = p.path / "half1.mrc"
             return str(half_map_path)
-    return None
 
 
 def postprocess_search_particles(path: Path) -> str | None:

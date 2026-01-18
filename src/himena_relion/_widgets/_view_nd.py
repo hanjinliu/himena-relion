@@ -71,11 +71,11 @@ class Q2DViewer(QViewer):
         self._histogram_view.setValueFormat(".2f", always_show=True)
         self._auto_contrast_btn = QAutoContrastButton(self._auto_contrast)
         self._auto_contrast_btn.qminmax = (0.0001, 0.9999)
+        self._auto_contrast_btn.update_color("gray")
         self._zpos_box = QIntWidget("", label_width=0)
         self._zpos_box.valueChanged.connect(self._on_zpos_box_changed)
         self._zpos_box.setFixedWidth(90)
         self._zpos_box.setMaximum(0)
-        self._auto_contrast_btn.update_color("gray")
         self._dims_slider_widget = labeled(zlabel, self._dims_slider, self._zpos_box)
         layout.addWidget(self._dims_slider_widget)
         hlayout = QtW.QHBoxLayout()
@@ -255,27 +255,11 @@ class Q2DViewer(QViewer):
 
     def _auto_contrast(self, *, force_update_view_range: bool = False):
         """Automatically adjust the contrast based on the histogram."""
-        range_min, range_max = self._histogram_view._view_range
-        minmax = self._histogram_view.calc_contrast_limits(
-            *self._auto_contrast_btn.qminmax
+        auto_contrast_by_hist(
+            self._histogram_view,
+            self._auto_contrast_btn.qminmax,
+            force_update_view_range=force_update_view_range,
         )
-        if minmax is None:
-            return
-        min_new, max_new = minmax
-
-        min_old, max_old = self._histogram_view.clim()
-        self._histogram_view.set_clim((min_new, max_new))
-
-        # ensure both end is visible
-        changed = False
-        if min_new < min_old:
-            range_min = min_new
-            changed = True
-        if max_new > max_old:
-            range_max = max_new
-            changed = True
-        if changed or force_update_view_range:
-            self._histogram_view.set_view_range(range_min, range_max)
 
     def _on_clim_changed(self, clim: tuple[float, float]):
         """Update the contrast limits based on the histogram view."""
@@ -454,11 +438,17 @@ class Q3DTomogramViewer(QViewer):
         self._clim_widget.setFixedHeight(32)
         self._clim_widget.setValueFormat(".2f", always_show=True)
         self._clim_widget.clim_changed.connect(self._on_clim_changed)
-
+        self._auto_contrast_btn = QAutoContrastButton(self._auto_contrast)
+        self._auto_contrast_btn.qminmax = (0.0001, 0.9999)
+        self._auto_contrast_btn.update_color("gray")
         layout = QtW.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self._canvas.native)
-        layout.addWidget(self._clim_widget)
+        hlayout = QtW.QHBoxLayout()
+        hlayout.addWidget(self._auto_contrast_btn)
+        hlayout.addWidget(self._clim_widget)
+        hlayout.setContentsMargins(8, 0, 8, 0)
+        layout.addLayout(hlayout)
         self._last_clim: tuple[float, float] | None = None
 
         self._canvas.plane_position_changed.connect(self._on_plane_position_changed)
@@ -530,6 +520,14 @@ class Q3DTomogramViewer(QViewer):
         self._canvas.motion_visual.set_data([])
         self._canvas.update_canvas()
         self._last_clim = None
+
+    def _auto_contrast(self, *, force_update_view_range: bool = False):
+        """Automatically adjust the contrast based on the histogram."""
+        auto_contrast_by_hist(
+            self._clim_widget,
+            self._auto_contrast_btn.qminmax,
+            force_update_view_range=force_update_view_range,
+        )
 
     def _on_clim_changed(self, clim: tuple[float, float]):
         """Update the contrast limits based on the histogram view."""
@@ -748,3 +746,30 @@ def _format_for_minmax(m0, m1):
     prec = np.log10(m1 - m0 + 1e-8)
     n_decimals = max(0, -int(np.floor(prec)) + 3)
     return f".{n_decimals}f"
+
+
+def auto_contrast_by_hist(
+    hist_view: QHistogramView,
+    qminmax: tuple[float, float],
+    *,
+    force_update_view_range: bool = False,
+):
+    range_min, range_max = hist_view._view_range
+    minmax = hist_view.calc_contrast_limits(*qminmax)
+    if minmax is None:
+        return
+    min_new, max_new = minmax
+
+    min_old, max_old = hist_view.clim()
+    hist_view.set_clim((min_new, max_new))
+
+    # ensure both end is visible
+    changed = False
+    if min_new < min_old:
+        range_min = min_new
+        changed = True
+    if max_new > max_old:
+        range_max = max_new
+        changed = True
+    if changed or force_update_view_range:
+        hist_view.set_view_range(range_min, range_max)

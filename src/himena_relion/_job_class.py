@@ -523,6 +523,8 @@ def connect_jobs(
     value_mapping: dict[str | Callable[[Path], Any], Any] | None = None,
 ):
     """Connect two jobs so that `post` will be suggested from the `pre` window."""
+    _check_is_mapping(node_mapping)
+    _check_is_mapping(value_mapping)
     CONNECTED_JOBS.append((pre, post))
     type_pre = Type.RELION_JOB + "." + pre.himena_model_type()
     when = when_reader_used(type_pre, "himena_relion.io.read_relion_job")
@@ -531,6 +533,18 @@ def connect_jobs(
         post.command_id(),
         user_context=user_context,
     )
+
+
+def _check_is_mapping(mapping: Any) -> None:
+    if mapping is None:
+        return
+    if not isinstance(mapping, dict):
+        raise TypeError(f"Expected dict for mapping, got {type(mapping)}")
+    for key in mapping.keys():
+        if not isinstance(key, (str, Callable)):
+            raise TypeError(
+                f"Expected str or Callable for mapping key, got {type(key)}"
+            )
 
 
 def execute_job(

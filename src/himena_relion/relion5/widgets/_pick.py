@@ -140,8 +140,12 @@ class QManualPickViewer(QJobScrollArea):
         if self._coords is not None:
             if (fom := self._coords.fom) is not None:
                 fom_arr = fom.to_numpy()
+                min_old, max_old = self._marker_widget._hist_view._minmax
+                min_new, max_new = fom_arr.min(), fom_arr.max()
                 self._marker_widget._hist_view.set_hist_for_array(
-                    fom_arr, clim=self._marker_widget._hist_view.clim()
+                    fom_arr,
+                    clim=self._marker_widget._hist_view.clim(),
+                    minmax=(min(min_old, min_new), max(max_old, max_new)),
                 )
                 fom_found = True
         self._marker_widget.setVisible(fom_found)

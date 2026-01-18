@@ -757,6 +757,7 @@ class QDirectoryTreeView(QtW.QTreeView):
         """Set the root directory to the given job directory."""
         model = QFileSystemModel(self)
         model.setRootPath(str(job_dir.path))
+        self._job_dir = job_dir
         self.setModel(model)
         self.setRootIndex(model.index(str(job_dir.path)))
 
