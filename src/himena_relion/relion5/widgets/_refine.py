@@ -5,6 +5,7 @@ import pandas as pd
 from qtpy import QtWidgets as QtW, QtCore
 from superqt import QToggleSwitch
 from starfile_rs import read_star
+import mrcfile
 from superqt.utils import thread_worker
 from himena_relion.schemas import ModelGroups
 from himena_relion._utils import wait_for_file
@@ -72,7 +73,7 @@ class QRefine3DViewer(QJobScrollArea):
     def on_job_updated(self, job_dir: _job_dir.JobDirectory, path: str):
         """Handle changes to the job directory."""
         fp = Path(path)
-        if fp.name.startswith("RELION_JOB_") or fp.suffix == ".mrc":
+        if fp.name.startswith("RELION_JOB_") or fp.name.endswith("_data.star"):
             self.initialize(job_dir)
             _LOGGER.debug("%s Updated", job_dir.job_number)
 
@@ -85,33 +86,39 @@ class QRefine3DViewer(QJobScrollArea):
         sym_name = self._job_dir.get_job_param("sym_name")
         self._symmetry_label.set_symmetry(sym_name)
 
-    def _update_for_value(self, niter: int, *, class_id: int = 1):
+    def _update_for_value(self, niter: int):
         self.window_closed_callback()
-        self._worker = self._read_items(niter, class_id)
+        self._worker = self._read_items(niter)
         self._start_worker()
 
     @thread_worker
-    def _read_items(self, niter, class_id: int = 1):
+    def _read_items(self, niter):
         res = self._job_dir.get_result(niter)
 
-        map0, map1, scale = res.halfmaps(class_id - self._index_start)
-        if map0 is not None and map1 is not None:
-            map_out = map0 + map1
-        else:
-            map_out = None
-        yield self._viewer.set_image, map_out
+        mrc1_path = self._job_dir.path / f"run{res.it_str}_half1_class001.mrc"
+        mrc2_path = self._job_dir.path / f"run{res.it_str}_half2_class001.mrc"
+        scale = None
+        if wait_for_file(mrc1_path) and wait_for_file(mrc2_path):
+            with mrcfile.open(mrc1_path, mode="r") as mrc1:
+                img1 = mrc1.data
+                scale = mrc1.voxel_size.x
+            with mrcfile.open(mrc2_path, mode="r") as mrc2:
+                img2 = mrc2.data
+                scale = mrc2.voxel_size.x
+            map_out = (img1 + img2) / 2
+            yield self._viewer.set_image, map_out
         model_star = self._job_dir.path / f"run{res.it_str}_half1_model.star"
-        if wait_for_file(model_star, num_retry=100, delay=0.3):
+        if wait_for_file(model_star):
             star = read_star(model_star)
-            df_fsc = star[f"model_class_{class_id}"].to_polars()
+            df_fsc = star["model_class_1"].to_polars()
             groups = ModelGroups.validate_block(star["model_groups"])
             yield self._set_fsc, df_fsc
-            yield self._num_particles_label.set_number, groups.num_particles.sum()
-
+            # NOTE: multiply by 2 to account for half-sets
+            yield self._num_particles_label.set_number, groups.num_particles.sum() * 2
         if scale is not None and wait_for_file(
-            f"run{res.it_str}_half1_class{class_id:03d}_angdist.bild"
+            f"run{res.it_str}_half1_class001_angdist.bild",
         ):
-            tubes = res.angdist(class_id, scale)
+            tubes = res.angdist(1, scale)
             yield self._viewer._canvas.set_arrows, tubes
         self._worker = None
 
