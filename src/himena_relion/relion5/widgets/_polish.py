@@ -175,8 +175,8 @@ class QPolishViewer(QJobScrollArea):
 
     def _filter_param_changed(self):
         """Handle changes to filter parameters."""
-        self._viewer.redraw()
         new_binsize = self._filter_widget.bin_factor()
+        self._mic_changed(self._mic_list.current_tuple())
         if self._binsize_old != new_binsize:
             self._binsize_old = new_binsize
             self._viewer.auto_fit()

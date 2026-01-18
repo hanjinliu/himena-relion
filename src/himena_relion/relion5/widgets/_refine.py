@@ -4,7 +4,10 @@ import logging
 import pandas as pd
 from qtpy import QtWidgets as QtW, QtCore
 from superqt import QToggleSwitch
+from starfile_rs import read_star
 from superqt.utils import thread_worker
+from himena_relion.schemas import ModelGroups
+from himena_relion._utils import wait_for_file
 from himena_relion._widgets import (
     QJobScrollArea,
     Q3DViewer,
@@ -97,12 +100,17 @@ class QRefine3DViewer(QJobScrollArea):
         else:
             map_out = None
         yield self._viewer.set_image, map_out
-        df_fsc, groups = res.model_dataframe(class_id)
-        yield self._set_fsc, df_fsc
-        if groups is not None:
+        model_star = self._job_dir.path / f"run{res.it_str}_half1_model.star"
+        if wait_for_file(model_star, num_retry=100, delay=0.3):
+            star = read_star(model_star)
+            df_fsc = star[f"model_class_{class_id}"].to_polars()
+            groups = ModelGroups.validate_block(star["model_groups"])
+            yield self._set_fsc, df_fsc
             yield self._num_particles_label.set_number, groups.num_particles.sum()
 
-        if scale is not None:
+        if scale is not None and wait_for_file(
+            f"run{res.it_str}_half1_class{class_id:03d}_angdist.bild"
+        ):
             tubes = res.angdist(class_id, scale)
             yield self._viewer._canvas.set_arrows, tubes
         self._worker = None

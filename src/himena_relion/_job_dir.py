@@ -28,7 +28,6 @@ from himena_relion.schemas import (
     TSModel,
     ParticleMetaModel,
     ModelStarModel,
-    ModelGroups,
 )
 
 if TYPE_CHECKING:
@@ -653,17 +652,6 @@ class Refine3DResults(_3DResultsBase):
         except Exception:
             img2 = None
         return img1, img2, scale
-
-    def model_dataframe(
-        self, class_id: int = 1
-    ) -> tuple[pd.DataFrame | None, ModelGroups | None]:
-        starpath = self.path / f"run{self.it_str}_half1_model.star"
-        if not starpath.exists():
-            return None, None
-        star = read_star(starpath)
-        df_fsc = star[f"model_class_{class_id}"].to_pandas()
-        model = ModelGroups.validate_block(star["model_groups"])
-        return df_fsc, model
 
     def angdist(self, class_id: int, map_scale: float) -> list[TubeObject]:
         """Return the angular distribution for a given class ID."""
