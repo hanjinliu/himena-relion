@@ -4,7 +4,7 @@ import logging
 import time
 import numpy as np
 from numpy.typing import NDArray
-import pandas as pd
+import polars as pl
 from qtpy import QtWidgets as QtW
 from superqt.utils import thread_worker
 from starfile_rs import read_star
@@ -103,7 +103,7 @@ class QCtfFindViewer(QJobScrollArea):
     @thread_worker
     def _prep_data_to_plot(self, job_dir: _job_dir.JobDirectory):
         if (final_path := job_dir.path.joinpath("micrographs_ctf.star")).exists():
-            df = read_star(final_path).get("micrographs").trust_loop().to_pandas()
+            df = read_star(final_path).get("micrographs").trust_loop().to_polars()
         else:
             it = self._job_dir.glob_in_subdirs("*_PS.txt")
             arrs = []
@@ -114,7 +114,7 @@ class QCtfFindViewer(QJobScrollArea):
                 yield self._clear_everything, None
                 return
             arr = np.stack(arrs, axis=0)
-            df = pd.DataFrame(
+            df = pl.DataFrame(
                 arr,
                 columns=[
                     "micrograph_number",

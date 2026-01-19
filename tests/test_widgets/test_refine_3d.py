@@ -38,6 +38,7 @@ def test_refine3d_widget(
     QApplication.processEvents()
 
     tester.write_random_mrc("run_it000_half2_class001.mrc", (6, 6, 6))
+    tester.write_text("run_it000_data.star", "")  # trigger update
     assert tester.widget._viewer.has_image
     assert tester.widget._iter_choice.maximum() == 0
 

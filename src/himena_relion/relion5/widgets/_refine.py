@@ -1,7 +1,7 @@
 from __future__ import annotations
 from pathlib import Path
 import logging
-import pandas as pd
+import polars as pl
 from qtpy import QtWidgets as QtW, QtCore
 from superqt import QToggleSwitch
 from starfile_rs import read_star
@@ -112,12 +112,17 @@ class QRefine3DViewer(QJobScrollArea):
             star = read_star(model_star)
             df_fsc = star["model_class_1"].to_polars()
             groups = ModelGroups.validate_block(star["model_groups"])
-            yield self._set_fsc, df_fsc
+            reso = (
+                star["model_general"].trust_single().to_dict()["rlnCurrentResolution"]
+            )
+            yield self._set_fsc, (df_fsc, reso)
             # NOTE: multiply by 2 to account for half-sets
             yield self._num_particles_label.set_number, groups.num_particles.sum() * 2
-        if scale is not None and wait_for_file(
-            f"run{res.it_str}_half1_class001_angdist.bild",
-        ):
+        else:
+            yield self._set_fsc, None
+            yield self._num_particles_label.set_number, -1
+        bild_path = self._job_dir.path / f"run{res.it_str}_half1_class001_angdist.bild"
+        if scale is not None and wait_for_file(bild_path):
             tubes = res.angdist(1, scale)
             yield self._viewer._canvas.set_arrows, tubes
         self._worker = None
@@ -126,9 +131,9 @@ class QRefine3DViewer(QJobScrollArea):
         self._viewer._canvas.arrow_visual.visible = checked
         self._viewer._canvas.update_canvas()
 
-    def _set_fsc(self, df_fsc: pd.DataFrame | None):
-        if df_fsc is not None:
-            self._fsc_plot.plot_fsc_refine(df_fsc)
+    def _set_fsc(self, val: tuple[pl.DataFrame, float] | None):
+        if val is not None:
+            self._fsc_plot.plot_fsc_refine(*val)
         else:
             self._fsc_plot.clear()
 

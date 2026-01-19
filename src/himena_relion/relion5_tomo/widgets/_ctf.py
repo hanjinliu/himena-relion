@@ -96,13 +96,13 @@ class QCtfFindViewer(QJobScrollArea):
         path: Path,
     ):
         ts = TSModel.validate_file(path)
-        df = ts.block.to_pandas()
+        df = ts.block.to_polars()
         rln_dir = job_dir.relion_project_dir
         tilt_angles = ts.nominal_stage_tilt_angle
-        order = tilt_angles.argsort()
+        order = list(tilt_angles.argsort())
         paths = [rln_dir / p for p in ts.ctf_image]
         paths = [paths[i] for i in order]
-        df = df.iloc[order].reset_index(drop=True)
+        df = df[order]
         ts_view = ArrayFilteredView.from_mrcs(paths)
 
         yield self._defocus_canvas.plot_defocus, df
@@ -162,7 +162,7 @@ class QCtfRefineTomoViewer(QJobScrollArea):
         text = texts[0]
         for ts_path in iter_tilt_series_path(job_dir):
             if ts_path.stem == text:
-                df = read_star(ts_path).first().trust_loop().to_pandas()
+                df = read_star(ts_path).first().trust_loop().to_polars()
                 self._defocus_canvas.plot_defocus(df)
                 self._ctf_scale_canvas.plot_ctf_scale(df)
                 break

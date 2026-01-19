@@ -584,20 +584,6 @@ class InitialModelResults(_3DResultsBase):
 
 
 class InitialModel3DJobDirectory(JobDirectory):
-    def initial_model_map(self) -> NDArray[np.floating]:
-        """Return the image of the initial model."""
-        path = self.path / "initial_model.mrc"
-        with mrcfile.open(path, mode="r") as mrc:
-            return mrc.data
-
-    def get_class_mrc(self, niter: int) -> list[Path]:
-        name = f"run_it{niter:03d}_class"
-        return list(self.path.glob(f"{name}*.mrc"))
-
-    def get_optimisation_set_star(self, niter: int) -> Path:
-        """Return the path to the optimisation set star file for a given iteration."""
-        return self.path / f"run_it{niter:03d}_optimisation_set.star"
-
     def get_result(self, niter: int) -> InitialModelResults:
         return InitialModelResults.from_niter(self.path, niter)
 
@@ -612,16 +598,6 @@ class InitialModel3DJobDirectory(JobDirectory):
             value = int(path.stem[6:-5])
             nums.append(value)
         return sorted(nums)
-
-
-class InitialModel3DSPAJobDirectory(JobDirectory):
-    _job_type = "relion.initialmodel"
-
-
-class InitialModel3DTomoJobDirectory(JobDirectory):
-    """Class for handling initial model 3D job directories in RELION."""
-
-    _job_type = "relion.initialmodel.tomo"
 
 
 @dataclass

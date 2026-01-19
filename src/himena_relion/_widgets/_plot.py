@@ -1,10 +1,11 @@
 from __future__ import annotations
 from contextlib import contextmanager
-
+import numpy as np
+import pandas as pd
+import polars as pl
 from himena import StandardType, WidgetDataModel
 from himena.standards import plotting as hplt
 from himena_builtins.qt.plot._canvas import QModelMatplotlibCanvas
-import pandas as pd
 
 
 class QPlotCanvas(QModelMatplotlibCanvas):
@@ -24,7 +25,7 @@ class QPlotCanvas(QModelMatplotlibCanvas):
             fig = hplt.figure()
             self.update_model(WidgetDataModel(value=fig, type=StandardType.PLOT))
 
-    def plot_defocus(self, df: pd.DataFrame):
+    def plot_defocus(self, df: pl.DataFrame):
         with self._plot_style():
             fig = hplt.figure()
 
@@ -34,7 +35,7 @@ class QPlotCanvas(QModelMatplotlibCanvas):
                 xlabel = "Nominal stage tilt angle (°)"
             else:
                 # just micrographs
-                x = df.index
+                x = np.arange(len(df))
                 xlabel = "Micrograph"
             defocus_u_um = df["rlnDefocusU"] / 10000
             defocus_v_um = df["rlnDefocusV"] / 10000
@@ -103,20 +104,23 @@ class QPlotCanvas(QModelMatplotlibCanvas):
             self.update_model(WidgetDataModel(value=fig, type=StandardType.PLOT))
             self.tight_layout()
 
-    def plot_fsc_refine(self, df: pd.DataFrame):
+    def plot_fsc_refine(self, df: pl.DataFrame, resolution: float | None = None):
         x = df["rlnResolution"]
         xticklabels = df["rlnAngstromResolution"]
         fsc = df["rlnGoldStandardFsc"]
         with self._plot_style():
             fig = hplt.figure()
-            fig.plot(x, fsc, name="FSC")
+            fig.plot(x, fsc, color="#161692", name="FSC", width=1.5)
             fig.x.set_ticks(
                 x[:: len(x) // 5],
                 labels=[_res_to_str(r) for r in xticklabels[:: len(x) // 5]],
             )
+            if resolution is not None:
+                text = format(resolution, ".2f") + " Å"
+                fig.text([0.0], [0.0], [text], anchor="bottom_left", size=10)
             self._fsc_finalize(fig)
 
-    def plot_fsc_postprocess(self, df: pd.DataFrame):
+    def plot_fsc_postprocess(self, df: pl.DataFrame):
         x = df["rlnResolution"]
         xticklabels = df["rlnAngstromResolution"]
         fsc_corrected = df["rlnFourierShellCorrelationCorrected"]

@@ -4,7 +4,7 @@ import logging
 import mrcfile
 import numpy as np
 from numpy.typing import NDArray
-import pandas as pd
+import polars as pl
 from superqt import QToggleSwitch
 from starfile_rs import read_star_block
 from himena_relion._widgets import (
@@ -72,8 +72,8 @@ def map_mrc(
             return mrc.data
 
 
-def fsc_dataframe(self: _job_dir.JobDirectory) -> pd.DataFrame | None:
+def fsc_dataframe(self: _job_dir.JobDirectory) -> pl.DataFrame | None:
     """Return the FSC DataFrame."""
     star_path = self.path / "postprocess.star"
     if star_path.exists():
-        return read_star_block(star_path, "fsc").trust_loop().to_pandas()
+        return read_star_block(star_path, "fsc").trust_loop().to_polars()
