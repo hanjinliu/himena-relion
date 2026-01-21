@@ -458,8 +458,9 @@ connect_jobs(
     node_mapping={"join_movies.star": "input_star_mics"},
 )
 
-connect_jobs(
-    _tomo.PostProcessJob,
-    _spa.ModelAngeloJob,
-    node_mapping={"postprocess_masked.mrc": "fn_map"},
-)
+# this causes duplicated menus in action hint?
+# connect_jobs(
+#     _tomo.PostProcessJob,
+#     _spa.ModelAngeloJob,
+#     node_mapping={"postprocess_masked.mrc": "fn_map"},
+# )

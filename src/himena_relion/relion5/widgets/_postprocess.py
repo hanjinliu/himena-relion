@@ -2,11 +2,9 @@ from __future__ import annotations
 from pathlib import Path
 import logging
 import mrcfile
-import numpy as np
-from numpy.typing import NDArray
-import polars as pl
 from superqt import QToggleSwitch
-from starfile_rs import read_star_block
+from starfile_rs import read_star
+from himena_relion._utils import wait_for_file
 from himena_relion._widgets import (
     QJobScrollArea,
     QPlotCanvas,
@@ -42,16 +40,25 @@ class QPostProcessViewer(QJobScrollArea):
 
     def initialize(self, job_dir: _job_dir.JobDirectory):
         """Initialize the viewer with the job directory."""
-        self._job_dir = job_dir
-        img = map_mrc(job_dir, masked=self._use_mask.isChecked())
-        if img is not None:
+        # show map
+        if self._use_mask.isChecked():
+            mrc_path = job_dir.path / "postprocess_masked.mrc"
+        else:
+            mrc_path = job_dir.path / "postprocess.mrc"
+        if wait_for_file(mrc_path):
+            with mrcfile.open(mrc_path, mode="r") as mrc:
+                img = mrc.data
             self._viewer.set_image(img, update_now=False)
             self._viewer.auto_threshold(update_now=False)
             self._viewer.auto_fit()
 
-        df_fsc = fsc_dataframe(job_dir)
-        if df_fsc is not None:
-            self._canvas.plot_fsc_postprocess(df_fsc)
+        # show FSC
+        if wait_for_file(starpath := job_dir.path / "postprocess.star", delay=0.02):
+            star_postprocess = read_star(starpath)
+            self._canvas.plot_fsc_postprocess(
+                star_postprocess["fsc"].trust_loop().to_polars(),
+                star_postprocess["general"].trust_single().to_dict(),
+            )
 
     def _on_use_mask_toggled(self, *_):
         """Handle toggling between masked and unmasked maps."""
@@ -59,21 +66,3 @@ class QPostProcessViewer(QJobScrollArea):
 
     def widget_added_callback(self):
         self._canvas.widget_added_callback()
-
-
-def map_mrc(
-    self: _job_dir.JobDirectory, masked: bool = False
-) -> NDArray[np.floating] | None:
-    """Return the post-processed map MRC file."""
-    name = "postprocess_masked.mrc" if masked else "postprocess.mrc"
-    mrc_path = self.path / name
-    if mrc_path.exists():
-        with mrcfile.open(mrc_path, mode="r") as mrc:
-            return mrc.data
-
-
-def fsc_dataframe(self: _job_dir.JobDirectory) -> pl.DataFrame | None:
-    """Return the FSC DataFrame."""
-    star_path = self.path / "postprocess.star"
-    if star_path.exists():
-        return read_star_block(star_path, "fsc").trust_loop().to_polars()

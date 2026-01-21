@@ -60,7 +60,7 @@ JOB_ID_MAP = {
     "modelangelo": "ModelAngelo",
     "relion.multibody": "Multi-body Refinement",
     "relion.ctfrefine": "CTF Refine",
-    "relion.ctfrefine.anisomag": "CTF Refine",
+    "relion.ctfrefine.anisomag": "CTF Refine (Aniso. Mag.)",
     "relion.polish.train": "Bayesian Polish (Train)",
     "relion.polish": "Bayesian Polish",
     "relion.localres.own": "Local Res (RELION)",

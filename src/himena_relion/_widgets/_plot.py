@@ -1,5 +1,6 @@
 from __future__ import annotations
 from contextlib import contextmanager
+from typing import Any
 import numpy as np
 import pandas as pd
 import polars as pl
@@ -115,19 +116,18 @@ class QPlotCanvas(QModelMatplotlibCanvas):
                 x[:: len(x) // 5],
                 labels=[_res_to_str(r) for r in xticklabels[:: len(x) // 5]],
             )
-            if resolution is not None:
+            if resolution is not None and np.isfinite(resolution):
                 text = format(resolution, ".2f") + " Å"
                 fig.text([0.0], [0.0], [text], anchor="bottom_left", size=10)
             self._fsc_finalize(fig)
 
-    def plot_fsc_postprocess(self, df: pl.DataFrame):
+    def plot_fsc_postprocess(self, df: pl.DataFrame, general: dict[str, Any]):
         x = df["rlnResolution"]
         xticklabels = df["rlnAngstromResolution"]
         fsc_corrected = df["rlnFourierShellCorrelationCorrected"]
-        # df["rlnFourierShellCorrelationParticleMaskFraction"]
         fsc_unmask = df["rlnFourierShellCorrelationUnmaskedMaps"]
         fsc_mask = df["rlnFourierShellCorrelationMaskedMaps"]
-        # df["rlnCorrectedFourierShellCorrelationPhaseRandomizedMaskedMaps"]
+        res = float(general["rlnFinalResolution"])
         with self._plot_style():
             fig = hplt.figure()
             fig.plot(x, fsc_unmask, name="Unmasked")
@@ -137,6 +137,8 @@ class QPlotCanvas(QModelMatplotlibCanvas):
                 x[:: len(x) // 5],
                 labels=[_res_to_str(r) for r in xticklabels[:: len(x) // 5]],
             )
+            text = format(res, ".2f") + " Å"
+            fig.text([0.0], [0.0], [text], anchor="bottom_left", size=10)
             fig.set_legend(font_size=9.0)
             self._fsc_finalize(fig)
 
