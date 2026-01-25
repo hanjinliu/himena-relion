@@ -204,12 +204,6 @@ class JobDirectory:
         job_star = JobStarModel.validate_file(self.job_star())
         return job_star.joboptions_values.to_dict()
 
-    def iter_tilt_series(self) -> Iterator[TiltSeriesInfo]:
-        """Iterate over all tilt series info."""
-        raise NotImplementedError(
-            f"iter_tilt_series not implemented for {self.__class__.__name__}"
-        )
-
     def clear_job(self):
         for item in self.path.iterdir():
             if item.is_file():

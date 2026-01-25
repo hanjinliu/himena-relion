@@ -9,6 +9,7 @@ from himena_relion._widgets._job_widgets import (
     QRelionNodeItem,
 )
 from himena_relion._widgets._view_nd import (
+    Q2DSimpleViewer,
     Q2DViewer,
     Q3DViewer,
     Q3DTomogramViewer,
@@ -32,6 +33,7 @@ __all__ = [
     "QJobScrollArea",
     "QPlotCanvas",
     "Q2DViewer",
+    "Q2DSimpleViewer",
     "Q3DViewer",
     "Q3DTomogramViewer",
     "Q3DLocalResViewer",

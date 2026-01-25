@@ -7,6 +7,7 @@ from numpy.typing import NDArray
 from qtpy import QtWidgets as QtW, QtCore
 from superqt import ensure_main_thread
 from vispy.color import ColorArray
+from vispy.scene.visuals import Rectangle
 from himena.qt._qlineedit import QIntLineEdit, QDoubleLineEdit
 from himena.plugins import validate_protocol
 from himena_builtins.qt.widgets._shared import labeled
@@ -42,17 +43,96 @@ class QViewer(QtW.QWidget):
         self._canvas._scene.bgcolor = color
 
 
-class Q2DViewer(QViewer):
+class Q2DViewerBase(QViewer):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._canvas = Vispy2DViewer(self)
+        self._canvas._scene.bgcolor = "#242424"
+        self._canvas._viewbox.border_color = "#4A4A4A"
+
+    def auto_fit(self):
+        """Automatically fit the camera to the image."""
+        self._canvas.auto_fit()
+        self._canvas.update_canvas()
+
+
+class Q2DSimpleViewer(Q2DViewerBase):
+    """A 2D viewer for displaying a static 2D image."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._border_rect = None
+        layout = QtW.QVBoxLayout(self)
+        layout.addWidget(self._canvas.native)
+        self._canvas.markers_visual.scaling = False
+
+    def set_image(self, image: np.ndarray, cmap: str = "gray", clim=None):
+        self._canvas.image = image
+        self._canvas._image.cmap = cmap
+        if clim is not None:
+            self._canvas.contrast_limits = clim
+
+    def set_points(
+        self,
+        points_xy: np.ndarray,
+        size: float = 12.0,
+        face_color="lime",
+        edge_color="black",
+    ):
+        face_colors = _norm_color(face_color, len(points_xy))
+        edge_colors = _norm_color(edge_color, len(points_xy))
+        if points_xy.shape[0] > 0:
+            self._canvas.markers_visual.set_data(
+                points_xy,
+                face_color=face_colors,
+                edge_color=edge_colors,
+                edge_width_rel=0.1 * self.devicePixelRatioF(),
+                size=size / self.devicePixelRatioF(),
+            )
+            self._canvas.markers_visual.visible = True
+        else:
+            self._canvas.markers_visual.set_data(
+                np.ones((1, 2), dtype=np.float32),
+                face_color=np.zeros(4),
+                edge_color=np.zeros(4),
+                size=0.01,
+            )
+            self._canvas.markers_visual.visible = False
+        self._canvas.update_canvas()
+
+    def set_border(self, shape: tuple[int, int]):
+        if self._border_rect is not None:
+            self._border_rect.parent = None
+        self._border_rect = Rectangle(
+            center=(shape[1] / 2 - 0.5, shape[0] / 2 - 0.5),
+            color="#00000000",
+            border_color="gray",
+            height=shape[0],
+            width=shape[1],
+            parent=self._canvas._viewbox.scene,
+        )
+        self._border_rect.set_gl_state("additive")
+
+    def auto_fit(self):
+        """Automatically fit the camera to the image."""
+        if self._border_rect:
+            self._canvas._viewbox.camera.set_range(
+                x=(-0.5, self._border_rect.width - 0.5),
+                y=(-0.5, self._border_rect.height - 0.5),
+            )
+        else:
+            self._canvas.auto_fit()
+        self._canvas.update_canvas()
+
+
+class Q2DViewer(Q2DViewerBase):
     _executor = ThreadPoolExecutor(max_workers=2)
 
     def __init__(self, zlabel: str = "z", parent=None):
         super().__init__(parent)
         self._last_future: Future[SliceResult] | None = None
         self._last_clim: tuple[float, float] | None = None
-        self._canvas = Vispy2DViewer(self)
         self._canvas.native.setMinimumSize(200, 200)
-        self._canvas._scene.bgcolor = "#242424"
-        self._canvas._viewbox.border_color = "#4A4A4A"
         layout = QtW.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self._canvas.native)
@@ -265,11 +345,6 @@ class Q2DViewer(QViewer):
         """Update the contrast limits based on the histogram view."""
         self._canvas.contrast_limits = clim
         self._last_clim = clim
-        self._canvas.update_canvas()
-
-    def auto_fit(self):
-        """Automatically fit the camera to the image."""
-        self._canvas.auto_fit()
         self._canvas.update_canvas()
 
 

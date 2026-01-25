@@ -118,6 +118,7 @@ class QRefine3DViewer(QJobScrollArea):
             # NOTE: multiply by 2 to account for half-sets
             yield self._num_particles_label.set_number, groups.num_particles.sum() * 2
         else:
+            _LOGGER.debug("Model STAR file was not found after waiting.")
             yield self._set_fsc, None
             yield self._num_particles_label.set_number, -1
         bild_path = self._job_dir.path / f"run{res.it_str}_half1_class001_angdist.bild"

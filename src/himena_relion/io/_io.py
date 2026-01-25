@@ -30,7 +30,8 @@ def read_density_map(path: Path) -> WidgetDataModel:
 
 @read_density_map.define_matcher
 def _(path: Path):
-    return StandardType.IMAGE
+    if path.suffix.rstrip("~") in (".mrc", ".map", ".ctf"):
+        return StandardType.IMAGE
 
 
 @register_reader_plugin(priority=10, module="himena_relion.io")
@@ -52,7 +53,8 @@ def read_mrcs(path: Path) -> WidgetDataModel:
 
 @read_mrcs.define_matcher
 def _(path: Path):
-    return StandardType.IMAGE
+    if path.suffix.rstrip("~") == ".mrcs":
+        return StandardType.IMAGE
 
 
 @register_reader_plugin(priority=500, module="himena_relion.io")

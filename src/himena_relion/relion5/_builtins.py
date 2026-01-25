@@ -2591,12 +2591,16 @@ class DynaMightJob(_Relion5SpaJob):
         kwargs["do_store_deform"] = False
         kwargs["backproject_batchsize"] = 10
         kwargs["nr_epochs"] = 200
+        if kwargs.get("initial_threshold", None) is None:
+            kwargs["initial_threshold"] = ""
         return kwargs
 
     @classmethod
     def normalize_kwargs_inv(cls, **kwargs):
         kwargs = super().normalize_kwargs_inv(**kwargs)
         kwargs.pop("fn_dynamight_exe", None)
+        if kwargs.get("initial_threshold", "") == "":
+            kwargs["initial_threshold"] = None
         for name in [
             "do_visualize", "do_inverse", "do_reconstruct", "fn_checkpoint", "halfset",
             "do_store_deform", "backproject_batchsize", "nr_epochs",

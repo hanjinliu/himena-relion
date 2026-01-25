@@ -18,6 +18,7 @@ from himena_relion.schemas._movie_tilts import (
     TSAlignModel,
     TSGroupModel,
     TomogramsGroupModel,
+    OpticsModel,
 )
 
 __all__ = [
@@ -39,4 +40,5 @@ __all__ = [
     "MicCoordSetModel",
     "CoordsModel",
     "ModelGroups",
+    "OpticsModel",
 ]

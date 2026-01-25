@@ -142,6 +142,21 @@ class QPlotCanvas(QModelMatplotlibCanvas):
             fig.set_legend(font_size=9.0)
             self._fsc_finalize(fig)
 
+    def plot_hist(
+        self,
+        arr,
+        xlabel: str,
+        bins: int = 50,
+        range: tuple[float, float] | None = None,
+    ):
+        with self._plot_style():
+            fig = hplt.figure()
+            fig.hist(arr, bins=bins, color="#1f77b4", edge_color="#000000", range=range)
+            fig.x.label = xlabel
+            fig.y.label = "Count"
+            self.update_model(WidgetDataModel(value=fig, type=StandardType.PLOT))
+            self.tight_layout()
+
     def tight_layout(self):
         """Tighten the layout of the plot."""
         self.figure.tight_layout(pad=1.05)

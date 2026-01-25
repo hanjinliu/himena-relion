@@ -74,8 +74,8 @@ class _Vispy2DBase:
         return self._image._data
 
     @image.setter
-    def image(self, img: NDArray[np.float32]):
-        if img.size == 0:
+    def image(self, img: NDArray[np.float32] | None):
+        if img is None or img.size == 0:
             img = np.zeros((1, 1), dtype=np.float32)
             self._image.visible = False
         else:

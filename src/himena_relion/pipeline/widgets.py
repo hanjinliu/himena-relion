@@ -78,8 +78,9 @@ class QRelionPipelineFlowChart(QtW.QWidget):
 
     def _on_item_left_clicked(self, item: RelionJobNodeItem):
         job_dir = item.job_dir(self._flow_chart._relion_project_dir)
-        self._footer.initialize(job_dir)
-        self._footer.update_item_colors(job_dir)
+        if job_dir.path.exists():
+            self._footer.initialize(job_dir)
+            self._footer.update_item_colors(job_dir)
 
     def _on_background_left_clicked(self):
         self._footer.clear_in_out()

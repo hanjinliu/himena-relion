@@ -1,5 +1,6 @@
 from himena_relion.relion5.widgets import (
     _frames,
+    _import_others,
     _mask_create,
     _pick,
     _postprocess,
@@ -15,6 +16,7 @@ from himena_relion.relion5.widgets import (
 )
 
 del (
+    _import_others,
     _mask_create,
     _postprocess,
     _select,

@@ -12,6 +12,7 @@ from himena import MainWindow, WidgetDataModel
 from himena.plugins import validate_protocol
 from himena.qt import QColoredToolButton
 from himena_relion import _job_dir, _utils
+from himena_relion._widgets._misc import spacer_widget
 from himena_relion._widgets._job_widgets import (
     JobWidgetBase,
     QJobStateLabel,
@@ -260,7 +261,7 @@ class QRelionJobWidgetControl(QtW.QWidget):
         ]
         layout = QtW.QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.addSpacing(26)
+        layout.addWidget(spacer_widget())
         layout.addWidget(self._oneline_msg)
         for btn in self._tool_buttons:
             layout.addWidget(btn)
