@@ -125,6 +125,8 @@ def set_job_alias(ui: MainWindow, job_dir: JobDirectory):
     matched = pipeline.processes.alias[_matched]
     if len(matched) == 1:
         current_alias = matched.iloc[0]
+        if current_alias == "None":
+            current_alias = ""
     else:
         current_alias = ""
     res = ui.exec_user_input_dialog(

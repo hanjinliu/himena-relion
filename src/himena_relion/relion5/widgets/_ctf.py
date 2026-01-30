@@ -224,6 +224,7 @@ class QCtfRefineAnisoMagViewer(QJobScrollArea):
 @register_job("relion.ctfrefine")
 class QCtfRefineViewer(QJobScrollArea):
     def __init__(self, job_dir: _job_dir.JobDirectory):
+        # TODO: beamtilt, trefoil, etc. not supported yet
         super().__init__()
         self._job_dir = job_dir
         layout = self._layout

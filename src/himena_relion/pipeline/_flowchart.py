@@ -222,6 +222,8 @@ class RelionJobNodeItem(BaseNodeItem):
         """Return the content of the node, default is the text"""
         return self.text()
 
-    def job_dir(self, relion_dir: Path) -> JobDirectory:
+    def job_dir(self, relion_dir: Path) -> JobDirectory | None:
         """Return the job directory"""
-        return JobDirectory(relion_dir / self._job.path)
+        path = relion_dir / self._job.path
+        if path.exists():
+            return JobDirectory(relion_dir / self._job.path)

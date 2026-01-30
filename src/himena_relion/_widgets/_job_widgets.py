@@ -324,7 +324,10 @@ class QJobPipelineViewer(QtW.QWidget, JobWidgetBase):
             outputs = []
             this_job_id = job_dir.job_normal_id()
             for each in default.outputs:
-                if normalize_job_id(each.path_job) == this_job_id:
+                if (
+                    each.path_job is not None
+                    and normalize_job_id(each.path_job) == this_job_id
+                ):
                     outputs.append(each)
         else:
             outputs = job_pipeline.outputs
