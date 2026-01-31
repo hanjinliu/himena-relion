@@ -159,7 +159,7 @@ class QExcludeTiltViewer(QJobScrollArea):
 
         self._viewer = Q2DViewer(zlabel="Tilt index")
         self._viewer.setMinimumHeight(TILT_VIEW_MIN_HEIGHT)
-        self._filter_widget = Q2DFilterWidget()
+        self._filter_widget = Q2DFilterWidget(bin_default=8, lowpass_default=30)
         self._ts_choice = QMicrographListWidget(["Tilt Series", "Number of Tilts"])
         self._ts_choice.current_changed.connect(self._ts_choice_changed)
         layout.addWidget(QtW.QLabel("<b>Selected tilt series</b>"))

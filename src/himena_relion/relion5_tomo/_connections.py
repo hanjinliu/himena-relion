@@ -110,6 +110,11 @@ connect_jobs(
     _tomo.ReconstructTomogramJob,
     node_mapping={"aligned_tilt_series.star": "in_tiltseries"},
 )
+connect_jobs(
+    _tomo.AlignTiltSeriesImodFiducial,
+    _tomo.ReconstructHalfTomogramJob,
+    node_mapping={"aligned_tilt_series.star": "in_tiltseries"},
+)
 # connect_jobs(
 #     AlignTiltSeriesImodPatch,
 #     ReconstructTomogramJob,
@@ -121,7 +126,7 @@ connect_jobs(
 #     node_mapping={"aligned_tilt_series.star": "in_tiltseries"},
 # )
 connect_jobs(
-    _tomo.ReconstructTomogramJob,
+    _tomo.ReconstructHalfTomogramJob,
     _tomo.DenoiseTrain,
     node_mapping={"tomograms.star": "in_tomoset"},
 )

@@ -515,9 +515,7 @@ class AlignTiltSeriesAreTomo2(_AlignTiltSeriesJobBase):
         _on_do_aretomo_ctf_changed(widgets["do_aretomo_ctf"].value)
 
 
-class ReconstructTomogramJob(_Relion5TomoJob):
-    """Reconstruct tomograms from aligned tilt series by back projection."""
-
+class _ReconstructTomogramBaseJob(_Relion5TomoJob):
     @classmethod
     def type_label(cls) -> str:
         return "relion.reconstructtomograms"
@@ -528,7 +526,6 @@ class ReconstructTomogramJob(_Relion5TomoJob):
 
     @classmethod
     def normalize_kwargs(cls, **kwargs):
-        # kwargs["tomo_name"] = " ".join(kwargs["tomo_name"]) ???
         if "dims" in kwargs:
             xdim, ydim, zdim = kwargs.pop("dims")
             kwargs["xdim"] = xdim
@@ -546,11 +543,59 @@ class ReconstructTomogramJob(_Relion5TomoJob):
         )
         return kwargs
 
+    @classmethod
+    def setup_widgets(cls, widgets):
+        @widgets["do_proj"].changed.connect
+        def _on_do_proj_changed(value: bool):
+            widgets["centre_proj"].enabled = value
+            widgets["thickness_proj"].enabled = value
+
+        _on_do_proj_changed(widgets["do_proj"].value)
+
+        # TODO: the input path is relative, so it is not simple to get choices
+        # @widgets["in_tiltseries"].changed.connect
+        # def _on_in_tiltseries_changed(value: str):
+        #     choices = []
+        #     if Path(value).exists() and Path(value).is_file():
+        #         if star := read_star(value).try_first():
+        #             if loop := star.try_loop():
+        #                 choices = loop.to_polars()["rlnTomoName"].to_list()
+
+        #     widgets["tomo_name"].choices = [""] + choices
+
+        # _on_in_tiltseries_changed(widgets["in_tiltseries"].value)
+
+
+class ReconstructTomogramJob(_ReconstructTomogramBaseJob):
+    """Reconstruct tomograms from aligned tilt series by back projection."""
+
+    @classmethod
+    def normalize_kwargs(cls, **kwargs):
+        kwargs["generate_split_tomograms"] = False
+        return super().normalize_kwargs(**kwargs)
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
+        kwargs = super().normalize_kwargs_inv(**kwargs)
+        kwargs.pop("generate_split_tomograms", None)
+        return kwargs
+
+    @classmethod
+    def command_id(cls):
+        return super().command_id() + ".full"
+
+    @classmethod
+    def param_matches(cls, job_params):
+        return job_params.get("generate_split_tomograms", "No") == "No"
+
+    @classmethod
+    def job_title(cls) -> str:
+        return "Reconstruct Tomos"
+
     def run(
         self,
         # I/O
         in_tiltseries: _a.io.IN_TILT = "",
-        generate_split_tomograms: _a.tomo.GENERATE_SPLIT_TOMOGRAMS = False,
         do_proj: _a.tomo.DO_PROJ = False,
         centre_proj: _a.tomo.CENTRE_PROJ = 0,
         thickness_proj: _a.tomo.THICKNESS_PROJ = 10,
@@ -572,19 +617,64 @@ class ReconstructTomogramJob(_Relion5TomoJob):
 
     @classmethod
     def setup_widgets(cls, widgets):
-        @widgets["do_proj"].changed.connect
-        def _on_do_proj_changed(value: bool):
-            widgets["centre_proj"].enabled = value
-            widgets["thickness_proj"].enabled = value
-
-        widgets["centre_proj"].enabled = widgets["do_proj"].value
-        widgets["thickness_proj"].enabled = widgets["do_proj"].value
+        super().setup_widgets(widgets)
 
         @widgets["do_fourier"].changed.connect
         def _on_do_fourier_changed(value: bool):
             widgets["ctf_intact_first_peak"].enabled = value
 
-        widgets["ctf_intact_first_peak"].enabled = widgets["do_fourier"].value
+        _on_do_fourier_changed(widgets["do_fourier"].value)
+
+
+class ReconstructHalfTomogramJob(_ReconstructTomogramBaseJob):
+    """Reconstruct half tomograms from aligned tilt series."""
+
+    @classmethod
+    def normalize_kwargs(cls, **kwargs):
+        kwargs["do_fourier"] = False
+        kwargs["ctf_intact_first_peak"] = True
+        kwargs["generate_split_tomograms"] = True
+        return super().normalize_kwargs(**kwargs)
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
+        kwargs = super().normalize_kwargs_inv(**kwargs)
+        kwargs.pop("do_fourier", None)
+        kwargs.pop("ctf_intact_first_peak", None)
+        kwargs.pop("generate_split_tomograms", None)
+        return kwargs
+
+    @classmethod
+    def command_id(cls):
+        return super().command_id() + ".halves"
+
+    @classmethod
+    def job_title(cls) -> str:
+        return "Reconstruct Tomos For Denoise"
+
+    @classmethod
+    def param_matches(cls, job_params):
+        return job_params.get("generate_split_tomograms", "No") == "Yes"
+
+    def run(
+        self,
+        # I/O
+        in_tiltseries: _a.io.IN_TILT = "",
+        do_proj: _a.tomo.DO_PROJ = False,
+        centre_proj: _a.tomo.CENTRE_PROJ = 0,
+        thickness_proj: _a.tomo.THICKNESS_PROJ = 10,
+        # Reconstruct
+        dims: _a.tomo.DIMS = (4000, 4000, 2000),
+        binned_angpix: _a.tomo.BINNED_ANGPIX = 10.0,
+        tiltangle_offset: _a.tomo.TILTANGLE_OFFSET = 0.0,
+        tomo_name: _a.tomo.TOMO_NAME = "",
+        # Running
+        nr_mpi: _a.running.NR_MPI = 1,
+        nr_threads: _a.running.NR_THREADS = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")
 
 
 class PickJob(_Relion5TomoJob):

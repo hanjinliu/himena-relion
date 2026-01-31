@@ -247,7 +247,7 @@ class QRelionJobWidgetControl(QtW.QWidget):
         # TODO: should we use QElidingLabel here? Sometimes warning messages can be put
         # in the log and they can be long.
         self._oneline_msg = QtW.QLabel("")
-        self._oneline_msg.setMaximumWidth(700)
+        self._oneline_msg.setFixedWidth(700)
         self._oneline_msg.setSizePolicy(
             QtW.QSizePolicy.Policy.Expanding, QtW.QSizePolicy.Policy.Preferred
         )

@@ -91,6 +91,7 @@ class QPathDropWidget(QtW.QWidget):
 
     def setValue(self, value: str) -> None:
         self._path_line_edit.setText(value)
+        self.valueChanged.emit(self._path_line_edit.text())
 
     def _on_browse_clicked(self):
         if len(self._type_labels) == 0:
@@ -126,8 +127,7 @@ class QPathDropWidget(QtW.QWidget):
                 path_rel = path_abs.relative_to(rln_dir)
             else:
                 path_rel = path_abs
-            self._path_line_edit.setText(path_rel.as_posix())
-            self.valueChanged.emit(self._path_line_edit.text())
+            self.setValue(path_rel.as_posix())
 
 
 class QPathDropWidgetBackend(QBaseValueWidget):
