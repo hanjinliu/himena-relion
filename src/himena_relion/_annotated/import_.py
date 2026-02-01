@@ -192,6 +192,8 @@ MOVIE_FILES = Annotated[
     str,
     {
         "label": "Tilt image files",
+        "widget_type": PathDrop,
+        "allowed_extensions": [".mrc", ".mrcs", ".tif", ".tiff", ".eer"],
         "tooltip": (
             "File pattern matching all tilt image files. These can be multi-frame "
             "micrographs or single 2D images."
