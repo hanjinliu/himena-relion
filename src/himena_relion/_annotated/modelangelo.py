@@ -1,4 +1,3 @@
-from pathlib import Path
 from typing import Annotated
 
 from himena_relion._widgets._path_input import PathDrop
@@ -18,10 +17,11 @@ FN_MAP = Annotated[
     },
 ]
 P_SEQ = Annotated[
-    Path,
+    str,
     {
         "label": "FASTA sequence for proteins",
-        "filter": "FASTA sequence files (*.fasta *.txt)",
+        "widget_type": PathDrop,
+        "allowed_extensions": [".fasta", ".txt"],
         "tooltip": (
             "Provide a FASTA file with sequences for all protein chains to be built in "
             "the map. You can leave this empty if you don't know the proteins that are "
@@ -33,10 +33,11 @@ P_SEQ = Annotated[
     },
 ]
 D_SEQ = Annotated[
-    Path,
+    str,
     {
         "label": "FASTA sequence for DNA",
-        "filter": "FASTA sequence files (*.fasta *.txt)",
+        "widget_type": PathDrop,
+        "allowed_extensions": [".fasta", ".txt"],
         "tooltip": (
             "Provide a FASTA file with sequences for all DNA chains to be built in "
             "the map."
@@ -45,10 +46,11 @@ D_SEQ = Annotated[
     },
 ]
 R_SEQ = Annotated[
-    Path,
+    str,
     {
         "label": "FASTA sequence for RNA",
-        "filter": "FASTA sequence files (*.fasta *.txt)",
+        "widget_type": PathDrop,
+        "allowed_extensions": [".fasta", ".txt"],
         "tooltip": (
             "Provide a FASTA file with sequences for all RNA chains to be built in "
             "the map."
@@ -82,10 +84,11 @@ DO_HHMER = Annotated[
     },
 ]
 FN_LIB = Annotated[
-    Path,
+    str,
     {
         "label": "Library with sequences for HMMer search",
-        "filter": "FASTA sequence files (*.fasta *.txt)",
+        "widget_type": PathDrop,
+        "allowed_extensions": [".fasta", ".txt"],
         "tooltip": (
             "FASTA file with library with all sequences for HMMer search. This is "
             "often an entire proteome."

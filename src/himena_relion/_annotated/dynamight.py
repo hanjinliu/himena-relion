@@ -1,4 +1,3 @@
-from pathlib import Path
 from typing import Annotated
 
 from himena_relion._widgets._path_input import PathDrop
@@ -95,9 +94,11 @@ DO_PRELOAD = Annotated[
     },
 ]
 IN_CHECKPOINT = Annotated[
-    Path,
+    str,
     {
         "label": "Checkpoint file",
+        "widget_type": PathDrop,
+        "allowed_extensions": [".pth"],
         "tooltip": (
             "Select the checkpoint file to use for visualization, inverse deformation "
             "estimation or deformed backprojection. If left empty, the last available "

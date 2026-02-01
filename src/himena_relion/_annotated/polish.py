@@ -1,4 +1,3 @@
-from pathlib import Path
 from typing import Annotated
 
 from himena_relion._widgets._path_input import PathDrop
@@ -124,10 +123,11 @@ DO_OWN_PARAMS = Annotated[
     },
 ]
 OPT_PARAMS = Annotated[
-    Path,
+    str,
     {
         "label": "Optimised parameter file",
-        "filter": "Polish parameter file (*.txt)",
+        "widget_type": PathDrop,
+        "allowed_extensions": [".txt"],
         "tooltip": (
             "The output TXT file from a previous Bayesian polishing job in which the "
             "optimal parameters were determined."

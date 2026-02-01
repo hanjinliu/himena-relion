@@ -1,4 +1,3 @@
-from pathlib import Path
 from typing import Annotated
 
 from himena_relion._widgets._path_input import PathDrop
@@ -447,14 +446,15 @@ TOPAZ_TRAIN_PARTS = Annotated[
     },
 ]
 TOPAZ_MODEL = Annotated[
-    Path,
+    str,
     {
         "label": "Trained Topaz model",
+        "widget_type": PathDrop,
         "tooltip": (
             "Trained topaz model for topaz-based picking. Use on job for training and "
             "a next job for picking. Leave this empty to use the default (general) model."
         ),
-        "filter": "SAV Files (*.sav)",
+        "allowed_extensions": [".sav"],
         "group": "Topaz",
     },
 ]
