@@ -320,6 +320,7 @@ IN_TOMOSET = Annotated[
         ),
         "widget_type": PathDrop,
         "type_label": "TomogramGroupMetadata",
+        "allowed_extensions": [".star"],
         "group": "I/O",
     },
 ]

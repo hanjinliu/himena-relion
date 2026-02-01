@@ -163,8 +163,8 @@ class QExcludeTiltViewer(QJobScrollArea):
         self._ts_choice = QMicrographListWidget(["Tilt Series", "Number of Tilts"])
         self._ts_choice.current_changed.connect(self._ts_choice_changed)
         layout.addWidget(QtW.QLabel("<b>Selected tilt series</b>"))
-        layout.addWidget(self._filter_widget)
         layout.addWidget(self._ts_choice)
+        layout.addWidget(self._filter_widget)
         layout.addWidget(self._viewer)
         self._filter_widget.value_changed.connect(self._viewer.redraw)
         self._binsize_old = -1

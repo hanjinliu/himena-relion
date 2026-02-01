@@ -53,6 +53,7 @@ class OptimisationSetEdit(ValuedContainerWidget):
         self._in_opt = PathDrop(
             "",
             type_label="TomoOptimisationSet",
+            allowed_extensions=[".star"],
             tooltip="Path to the optimisation_set.star file.",
         )
         self._in_particles = PathDrop(
@@ -66,11 +67,13 @@ class OptimisationSetEdit(ValuedContainerWidget):
         self._in_tomograms = PathDrop(
             "",
             type_label=["TomogramGroupMetadata"],
+            allowed_extensions=[".star"],
             tooltip="Path to the tomogram.star file.",
         )
         self._in_trajectories = PathDrop(
             "",
             type_label="TomoTrajectoryData",
+            allowed_extensions=[".star"],
             tooltip="Path to the trajectory star file.",
         )
         widgets = [

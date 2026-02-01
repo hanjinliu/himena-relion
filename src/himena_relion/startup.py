@@ -17,3 +17,5 @@ def on_himena_startup(ui: "MainWindow"):
         scheduler = scheduler_widget(ui)
         scheduler.clear_content()
         ui.size = max(ui.size.width, 1260), ui.size.height
+    # else:
+    #     ui.exec_action("himena-relion:start-new-project")

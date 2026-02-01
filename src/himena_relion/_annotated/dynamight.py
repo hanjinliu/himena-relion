@@ -9,6 +9,7 @@ FN_STAR = Annotated[
         "label": "Input images STAR file",
         "widget_type": PathDrop,
         "type_label": ["ParticlesData", "ParticleGroupMetadata"],
+        "allowed_extensions": [".star"],
         "tooltip": (
             "A STAR file with all images (and their metadata).\n"
             "You can use spi or mrcs image stacks (not recommended, read help!)"
@@ -22,6 +23,7 @@ FN_MAP = Annotated[
         "label": "Consensus map",
         "widget_type": PathDrop,
         "type_label": "DensityMap",
+        "allowed_extensions": [".mrc", ".map", ".spi"],
         "tooltip": (
             "A 3D map in MRC/Spider format. Make sure this map has the same dimensions "
             "and the same pixel size as your input images."

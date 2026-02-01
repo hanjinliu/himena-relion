@@ -1,5 +1,6 @@
 from __future__ import annotations
 from pathlib import Path
+from typing import cast
 
 from qtpy import QtWidgets as QtW, QtCore
 from magicgui.widgets.bases import ValueWidget
@@ -17,6 +18,7 @@ class QPathDropWidget(QtW.QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._type_labels: list[str] = []
+        self._allowed_extensions: list[str] | None = None
         self._icon_label = QtW.QLabel()
         self._path_line_edit = QtW.QLineEdit()
         self._path_line_edit.setMinimumWidth(200)
@@ -52,6 +54,9 @@ class QPathDropWidget(QtW.QWidget):
         svg = read_icon_svg_for_type(self._type_labels[0])
         icon = QColoredSVGIcon(svg, color="gray")
         self._icon_label.setPixmap(icon.pixmap(20, 20))
+
+    def set_allowed_extensions(self, extensions: list[str] | None) -> None:
+        self._allowed_extensions = extensions
 
     def dragEnterEvent(self, a0):
         if isinstance(src := a0.source(), QRelionNodeItem):
@@ -108,7 +113,9 @@ class QPathDropWidget(QtW.QWidget):
                 start_dir = candidate_dir
                 break
         path = current_instance().exec_file_dialog(
-            caption=caption, start_path=start_dir
+            caption=caption,
+            start_path=start_dir,
+            allowed_extensions=self._allowed_extensions,
         )
         if path:
             path_abs = Path(path).resolve()
@@ -142,6 +149,7 @@ class PathDrop(ValueWidget):
         self,
         value=Undefined,
         type_label: str | list[str] = "",
+        allowed_extensions: list[str] | None = None,
         **kwargs,
     ):
         super().__init__(
@@ -149,4 +157,6 @@ class PathDrop(ValueWidget):
             value=value,
             **kwargs,
         )
-        self._widget._qwidget.set_type_label(type_label)
+        qpathdrop = cast(QPathDropWidget, self._widget._qwidget)
+        qpathdrop.set_type_label(type_label)
+        qpathdrop.set_allowed_extensions(allowed_extensions)

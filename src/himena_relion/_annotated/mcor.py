@@ -1,5 +1,7 @@
 from typing import Annotated
 
+from himena_relion._widgets._path_input import PathDrop
+
 FIRST_FRAME_SUM = Annotated[
     int,
     {
@@ -147,6 +149,7 @@ DEFECT_FILE = Annotated[
     str,
     {
         "label": "Defect file",
+        "widget_type": PathDrop,
         "tooltip": (
             "Location of a UCSF MotionCor2-style defect text file or a defect map that "
             "describe the defect pixels on the detector. Each line of a defect text "
@@ -168,6 +171,8 @@ GAIN_REF = Annotated[
     str,
     {
         "label": "Gain reference image",
+        "widget_type": PathDrop,
+        "allowed_extensions": [".mrc", ".gain"],
         "tooltip": (
             "Location of the gain-reference file to be applied to the input "
             "micrographs. Leave this empty if the movies are already gain-corrected."
@@ -267,7 +272,7 @@ OTHER_MOTIONCOR2_ARGS = Annotated[
     str,
     {
         "label": "Other MotionCor2 arguments",
-        "tooltip": ("Additional arguments that need to be passed to MOTIONCOR2."),
+        "tooltip": "Additional arguments that need to be passed to MOTIONCOR2.",
         "group": "Motion Correction",
     },
 ]

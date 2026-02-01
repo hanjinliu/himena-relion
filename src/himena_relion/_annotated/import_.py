@@ -1,20 +1,20 @@
-from pathlib import Path
 from typing import Annotated
-from himena_relion._widgets._magicgui import DoseRateEdit
-
-DO_RAW = Annotated[
-    bool,
-    {
-        "label": "Import raw movies/micrographs?",
-        "tooltip": ("Set this to Yes if you plan to import raw movies or micrographs"),
-        "group": "I/O",
-    },
-]
+from himena_relion._widgets._magicgui import DoseRateEdit, PathDrop
 
 FN_IN_RAW = Annotated[
     str,
     {
         "label": "Raw input files",
+        "widget_type": PathDrop,
+        "allowed_extensions": [
+            ".mrc",
+            ".mrcs",
+            ".tif",
+            ".tiff",
+            ".eer",
+            ".bz2.zst",
+            ".xz",
+        ],
         "tooltip": (
             "Provide a Linux wildcard that selects all raw movies or micrographs to be "
             "imported. The path must be a relative path from the project directory. To "
@@ -44,6 +44,8 @@ FN_MTF = Annotated[
     str,
     {
         "label": "MTF of the detector",
+        "widget_type": PathDrop,
+        "allowed_extensions": [".star"],
         "tooltip": (
             "If you know the MTF of your detector, provide it here. Curves for some "
             "well-known detectors may be downloaded from the RELION Wiki. Also see "
@@ -51,7 +53,7 @@ FN_MTF = Annotated[
             "and do not want to measure it, then by leaving this entry empty, you "
             "include the MTF of your detector in your overall estimated B-factor upon "
             "sharpening the map. Although that is probably slightly less accurate, the "
-            "overall quality of your map will probably not suffer very much. \n\n Note "
+            "overall quality of your map will probably not suffer very much. \n\nNote "
             "that when combining data from different detectors, the differences "
             "between their MTFs can no longer be absorbed in a single B-factor, and "
             "providing the MTF here is important!"
@@ -130,6 +132,7 @@ FN_IN_OTHER = Annotated[
     str,
     {
         "label": "Input file(s) to import",
+        "widget_type": PathDrop,
         "tooltip": (
             "Select any file(s) to import.\n\n Note that for importing coordinate "
             "files, one has to give a Linux wildcard, where the *-symbol is before the "
@@ -196,23 +199,12 @@ MOVIE_FILES = Annotated[
         "group": "General",
     },
 ]
-IMAGES_ARE_MOTION_CORRECTED = Annotated[
-    bool,
-    {
-        "label": "Movies already motion corrected",
-        "tooltip": (
-            "Select Yes if your input images in 'Tilt image movie files' have already "
-            "been motion corrected and/or are summed single frame images. Make sure "
-            "the image file names match the corresponding image file names under "
-            "SubFramePath in the mdoc files"
-        ),
-        "group": "General",
-    },
-]
 MDOC_FILES = Annotated[
     str,
     {
         "label": "mod files",
+        "widget_type": PathDrop,
+        "allowed_extensions": [".mdoc"],
         "tooltip": "File pattern pointing to the mdoc files.",
         "group": "General",
     },
@@ -265,10 +257,11 @@ FLIP_TILTSERIES_HAND = Annotated[
 ]
 
 IN_COORDS = Annotated[
-    Path,
+    str,
     {
         "label": "Input coordinates",
-        "filter": "STAR files (*.star);;All files (*)",
+        "widget_type": PathDrop,
+        "allowed_extensions": [".star"],
         "tooltip": (
             "You can provide a 2-column STAR file (with columns rlnTomoName and "
             "rlnTomoImportParticleFile for the tomogram names and their corrsesponding "

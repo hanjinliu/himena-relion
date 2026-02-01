@@ -7,6 +7,7 @@ IN_MOVIES = Annotated[
         "label": "Input movies",
         "widget_type": PathDrop,
         "type_label": ["MicrographMoviesData", "MicrographMovieGroupMetadata"],
+        "allowed_extensions": [".mrc", ".mrcs", ".tif", ".tiff"],
         "group": "I/O",
     },
 ]
@@ -16,6 +17,7 @@ IN_MICROGRAPHS = Annotated[
         "label": "Input micrographs",
         "widget_type": PathDrop,
         "type_label": ["MicrographsData", "MicrographGroupMetadata"],
+        "allowed_extensions": [".mrc", ".mrcs", ".tif", ".tiff"],
         "group": "I/O",
     },
 ]
@@ -25,6 +27,7 @@ IN_COORDINATES = Annotated[
         "label": "Input coordinates",
         "widget_type": PathDrop,
         "type_label": ["MicrographsCoords", "MicrographCoordsGroup"],
+        "allowed_extensions": [".star"],
         "group": "I/O",
     },
 ]
@@ -34,6 +37,7 @@ IN_PARTICLES = Annotated[
         "label": "Input particles",
         "widget_type": PathDrop,
         "type_label": ["ParticlesData", "ParticleGroupMetadata"],
+        "allowed_extensions": [".star"],
         "group": "I/O",
     },
 ]
@@ -43,6 +47,7 @@ IN_PARTICELS_SUBTRACT = Annotated[
         "label": "Use these particles instead",
         "widget_type": PathDrop,
         "type_label": ["ParticlesData", "ParticleGroupMetadata"],
+        "allowed_extensions": [".star"],
         "group": "I/O",
     },
 ]
@@ -52,6 +57,7 @@ IMG_TYPE = Annotated[
         "label": "Input images",
         "widget_type": PathDrop,
         "type_label": "ParticlesData",
+        "allowed_extensions": [".star"],
         "group": "I/O",
     },
 ]
@@ -61,6 +67,7 @@ REF_TYPE = Annotated[
         "label": "Reference map",
         "widget_type": PathDrop,
         "type_label": "DensityMap",
+        "allowed_extensions": [".mrc", ".map"],
         "group": "I/O",
     },
 ]
@@ -70,6 +77,7 @@ MAP_TYPE = Annotated[
         "label": "Input 3D map",
         "widget_type": PathDrop,
         "type_label": "DensityMap",
+        "allowed_extensions": [".mrc", ".map"],
         "group": "I/O",
     },
 ]
@@ -79,6 +87,7 @@ HALFMAP_TYPE = Annotated[
         "label": "One of the half-maps",
         "widget_type": PathDrop,
         "type_label": "DensityMap",
+        "allowed_extensions": [".mrc", ".map"],
         "group": "I/O",
     },
 ]
@@ -88,6 +97,7 @@ IN_MASK = Annotated[
         "label": "Reference mask (optional)",
         "widget_type": PathDrop,
         "type_label": "Mask3D",
+        "allowed_extensions": [".mrc", ".map"],
         "group": "I/O",
     },
 ]
@@ -97,6 +107,7 @@ IN_MASK_SUBTRACT = Annotated[
         "label": "Mask of the signal to keep",
         "widget_type": PathDrop,
         "type_label": "Mask3D",
+        "allowed_extensions": [".mrc", ".map"],
         "tooltip": (
             "Provide a soft mask where the protein density you wish to subtract from "
             "the experimental particles is black (0) and the density you wish to keep "
@@ -111,6 +122,7 @@ PROCESS_TYPE = Annotated[
         "label": "Input postprocess STAR",
         "widget_type": PathDrop,
         "type_label": "ProcessData",
+        "allowed_extensions": [".star"],
         "group": "I/O",
     },
 ]
@@ -120,6 +132,7 @@ IN_OPTIMISER = Annotated[
         "label": "Input optimiser STAR",
         "widget_type": PathDrop,
         "type_label": "OptimiserData",
+        "allowed_extensions": [".star"],
         "group": "I/O",
     },
 ]
@@ -129,6 +142,7 @@ IN_TILT = Annotated[
         "label": "Input tilt series",
         "widget_type": PathDrop,
         "type_label": "TomogramGroupMetadata",
+        "allowed_extensions": [".star"],
         "group": "I/O",
     },
 ]
@@ -149,6 +163,7 @@ CONTINUE = Annotated[
         "label": "Continue from here",
         "widget_type": PathDrop,
         "type_label": "ProcessData",
+        "allowed_extensions": [".star"],
         "group": "I/O",
     },
 ]

@@ -25,6 +25,18 @@ def test_postprocess_widget(
 POSTPROCESS_STAR = """
 # version 50001
 
+data_general
+
+_rlnFinalResolution                               9.99
+_rlnBfactorUsedForSharpening                      0.000000
+_rlnUnfilteredMapHalf1                        Reconstruct/job032/half1.mrc
+_rlnUnfilteredMapHalf2                        Reconstruct/job032/half2.mrc
+_rlnPostprocessedMap                          PostProcess/job001/postprocess.mrc
+_rlnParticleBoxFractionSolventMask               10.682012
+_rlnMaskName                                  mask.mrc
+_rlnRandomiseFrom                                 7.200000
+_rlnPostprocessedMapMasked                    PostProcess/job001/postprocess_masked.mrc
+
 data_fsc
 
 loop_

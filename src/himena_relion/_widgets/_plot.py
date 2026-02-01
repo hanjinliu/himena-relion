@@ -51,19 +51,19 @@ class QPlotCanvas(QModelMatplotlibCanvas):
             self.update_model(WidgetDataModel(value=fig, type=StandardType.PLOT))
             self.tight_layout()
 
-    def plot_ctf_scale(self, df: pd.DataFrame):
+    def plot_ctf_scale(self, df: pl.DataFrame):
         return self._plot_single(df, "rlnCtfScalefactor", "Scale")
 
-    def plot_ctf_astigmatism(self, df: pd.DataFrame):
+    def plot_ctf_astigmatism(self, df: pl.DataFrame):
         return self._plot_single(df, "rlnCtfAstigmatism", "Ast. (A)")
 
-    def plot_ctf_defocus_angle(self, df: pd.DataFrame):
+    def plot_ctf_defocus_angle(self, df: pl.DataFrame):
         return self._plot_single(df, "rlnDefocusAngle", "Angle (°)")
 
-    def plot_ctf_max_resolution(self, df: pd.DataFrame):
+    def plot_ctf_max_resolution(self, df: pl.DataFrame):
         return self._plot_single(df, "rlnCtfMaxResolution", "Res. (Å)")
 
-    def _plot_single(self, df: pd.DataFrame, ycol: str, ylabel: str):
+    def _plot_single(self, df: pl.DataFrame, ycol: str, ylabel: str):
         with self._plot_style():
             fig = hplt.figure()
 
@@ -73,7 +73,7 @@ class QPlotCanvas(QModelMatplotlibCanvas):
                 xlabel = "Nominal stage tilt angle (°)"
             else:
                 # just micrographs
-                xvals = df.index
+                xvals = np.arange(len(df))
                 xlabel = "Micrograph"
             if ycol in df.columns:
                 yvals = df[ycol]

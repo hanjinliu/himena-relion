@@ -10,6 +10,7 @@ FN_MAP = Annotated[
         "label": "B-factor sharpened map",
         "widget_type": PathDrop,
         "type_label": "DensityMap",
+        "allowed_extensions": [".mrc", ".map"],
         "tooltip": (
             "Provide a (RELION-postprocessed) B-factor sharpened map for model building"
         ),
