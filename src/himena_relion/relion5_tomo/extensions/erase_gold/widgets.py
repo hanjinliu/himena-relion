@@ -42,7 +42,7 @@ class QFindBeads3DViewer(QtW.QWidget):
         self._viewer.auto_fit()
 
     def _process_update(self):
-        choices = [info.tomo_name for info in self._iter_tomogram_info()]
+        choices = [(info.tomo_name,) for info in self._iter_tomogram_info()]
         choices.sort()
         self._tomo_choice.set_choices(choices)
         if len(choices) == 0:
@@ -125,7 +125,7 @@ class QEraseGoldViewer(QtW.QWidget):
 
     def _process_update(self):
         ts_dir = self._job_dir.path.joinpath("tilt_series")
-        choices = [p.stem for p in ts_dir.glob("*.star")]
+        choices = [(p.stem,) for p in ts_dir.glob("*.star")]
         choices.sort()
         self._ts_choice.set_choices(choices)
         if len(choices) == 0:
