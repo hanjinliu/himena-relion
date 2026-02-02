@@ -134,7 +134,7 @@ class EraseGold(RelionExternalJob):
                 tilt_shape = (mrc.header.ny, mrc.header.nx)
             tilt_center = (np.array(tilt_shape, dtype=np.float32) - 1) / 2
             fid = imodmodel.read(model_path)[["z", "y", "x"]].to_numpy(np.float32)
-            fid *= info.tomogram_binning
+            fid = fid * info.tomogram_binning
             deg = tilt_star_df[TILT_ANGLE].to_numpy(dtype=np.float32)
             xf = _impl.xf_to_array(edf_path.with_suffix(".xf"))
             self.console.log(
