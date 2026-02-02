@@ -192,12 +192,12 @@ connect_jobs(
 connect_jobs(
     _spa.SelectRemoveDuplicatesJob,
     _tomo.ReconstructParticlesJob,
-    node_mapping={"particles.star": "in_optim.in_optimisation"},
+    node_mapping={"particles.star": "in_optim.in_particles"},
 )
 connect_jobs(
     _spa.SelectRemoveDuplicatesJob,
     _tomo.ExtractParticlesTomoJob,
-    node_mapping={"particles.star": "in_optim.in_optimisation"},
+    node_mapping={"particles.star": "in_optim.in_particles"},
 )
 connect_jobs(
     _tomo.PickJob,

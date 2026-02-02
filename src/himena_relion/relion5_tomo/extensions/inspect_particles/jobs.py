@@ -121,8 +121,8 @@ connect_jobs(
     ExtractParticlesTomoJob,
     InspectParticles,
     node_mapping={
-        "particles.star": "in_optim.in_particles",
-        _get_tomo_star_from_inspect: "in_optim.in_tomograms",
+        "particles.star": "in_parts",
+        _get_tomo_star_from_inspect: "in_mics",
     },
 )
 connect_jobs(

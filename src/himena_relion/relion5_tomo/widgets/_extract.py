@@ -136,8 +136,7 @@ class QExtractJobViewer(QJobScrollArea):
                 yield self._on_string_ready, (img_str, session)
                 continue
             with mrcfile.mmap(mrc_path) as mrc:
-                img_data = np.asarray(mrc.data, dtype=np.float32)
-                if img_data.ndim != 3:
+                if mrc.data.ndim != 3:
                     # this may happen if the subtomogram is being written right now
                     img_str = self._text_edit.image_to_base64(
                         np.zeros((2, 2), dtype=np.float32), f"{ith}"
@@ -151,9 +150,10 @@ class QExtractJobViewer(QJobScrollArea):
                     yield self._on_text_ready, (msg + "\n\n", session)
 
                 if self._subtomo_pattern.endswith("_stack2d.mrcs"):
-                    img_2d = img_data[(img_data.shape[0] - 1) // 2, :, :]
+                    img_2d = mrc.data[(mrc.data.shape[0] - 1) // 2, :, :]
                 else:
-                    img_2d = np.max(img_data, axis=0)
+                    img_2d = np.max(np.asarray(mrc.data), axis=0)
+                img_2d = np.asarray(img_2d, dtype=np.float32)
                 img_str = self._text_edit.image_to_base64(img_2d, f"{ith}", 0.2)
                 yield self._on_string_ready, (img_str, session)
         self._worker = None

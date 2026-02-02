@@ -4,6 +4,7 @@ import logging
 from typing import Iterator
 import imodmodel
 import mrcfile
+import pandas as pd
 from qtpy import QtWidgets as QtW, QtCore
 from starfile_rs import read_star
 from himena_relion._image_readers import ArrayFilteredView
@@ -23,7 +24,7 @@ class QFindBeads3DViewer(QtW.QWidget):
 
         self._viewer = Q2DViewer()
         self._viewer.setMaximumHeight(480)
-        self._tomo_choice = QMicrographListWidget(["Tomogram"])
+        self._tomo_choice = QMicrographListWidget(["Tomogram", "Fiducials"])
         self._tomo_choice.current_changed.connect(self._on_tomo_changed)
         layout.addWidget(QtW.QLabel("<b>Tomogram Z slice with fiducials</b>"))
         layout.addWidget(self._tomo_choice)
@@ -42,8 +43,16 @@ class QFindBeads3DViewer(QtW.QWidget):
         self._viewer.auto_fit()
 
     def _process_update(self):
-        choices = [(info.tomo_name,) for info in self._iter_tomogram_info()]
-        choices.sort()
+        choices = []
+        for info in self._iter_tomogram_info():
+            tomo_name = info.tomo_name
+            df_mod = self._read_mod(tomo_name)
+            if df_mod is None:
+                num_fid = "?"
+            else:
+                num_fid = str(len(df_mod))
+            choices.append((tomo_name, num_fid))
+        choices.sort(key=lambda x: x[0])
         self._tomo_choice.set_choices(choices)
         if len(choices) == 0:
             self._viewer.clear()
@@ -56,22 +65,15 @@ class QFindBeads3DViewer(QtW.QWidget):
                 break
         else:
             return
-        mod_path = self._job_dir.path / "models" / f"{text}.mod"
-        if not mod_path.exists():
+        df_mod = self._read_mod(text)
+        if df_mod is None:
             self._viewer.clear()
             return
         tomo_view = info.read_tomogram(self._job_dir.relion_project_dir)
-        self._viewer.set_array_view(
-            tomo_view,
-            self._viewer._last_clim,
-        )
-        mod_data = imodmodel.read(mod_path)
+        self._viewer.set_array_view(tomo_view, self._viewer._last_clim)
         bead_size = float(self._job_dir.get_job_param("gold_nm"))
         point_size = bead_size / info.tomo_pixel_size * 10 + 0.5
-        self._viewer.set_points(
-            mod_data[["z", "y", "x"]].to_numpy(),
-            size=point_size,
-        )
+        self._viewer.set_points(df_mod[["z", "y", "x"]].to_numpy(), size=point_size)
 
     def _iter_tomogram_info(self) -> Iterator[_job_dir.TomogramInfo]:
         pipe = self._job_dir.parse_job_pipeline()
@@ -85,6 +87,11 @@ class QFindBeads3DViewer(QtW.QWidget):
         df_tomo = read_star(input0.path).first().trust_loop().to_pandas()
         for _, row in df_tomo.iterrows():
             yield _job_dir.TomogramInfo.from_series(row)
+
+    def _read_mod(self, tomo_name: str) -> pd.DataFrame | None:
+        mod_path = self._job_dir.path / "models" / f"{tomo_name}.mod"
+        if mod_path.exists():
+            return imodmodel.read(mod_path)
 
 
 class QEraseGoldViewer(QtW.QWidget):

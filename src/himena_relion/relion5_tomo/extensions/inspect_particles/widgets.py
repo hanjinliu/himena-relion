@@ -9,7 +9,11 @@ import numpy as np
 from starfile_rs import read_star
 from superqt.utils import thread_worker, GeneratorWorker
 from himena_relion._image_readers import ArrayFilteredView
-from himena_relion._widgets import Q3DTomogramViewer, Q2DFilterWidget
+from himena_relion._widgets import (
+    Q3DTomogramViewer,
+    Q2DFilterWidget,
+    QMicrographListWidget,
+)
 from himena_relion import _job_dir
 from himena_relion.schemas import OptimisationSetModel, ParticleMetaModel
 
@@ -27,8 +31,8 @@ class QInspectViewer(QtW.QWidget):
         self._current_info: _job_dir.TomogramInfo | None = None
         self._filter_widget = Q2DFilterWidget()
         self._filter_widget._bin_factor.setText("1")
-        self._tomo_choice = QtW.QComboBox()
-        self._tomo_choice.currentTextChanged.connect(self._on_tomo_changed)
+        self._tomo_choice = QMicrographListWidget(["Tomogram"])
+        self._tomo_choice.current_changed.connect(self._on_tomo_changed)
         layout.addWidget(QtW.QLabel("<b>Picked tomogram Z slice</b>"))
         layout.addWidget(self._filter_widget)
         layout.addWidget(self._tomo_choice)
@@ -46,16 +50,13 @@ class QInspectViewer(QtW.QWidget):
     def initialize(self, job_dir: _job_dir.ExternalJobDirectory):
         """Initialize the viewer with the job directory."""
         self._job_dir = job_dir
-        current_text = self._tomo_choice.currentText()
-        items = [info.tomo_name for info in _iter_tomograms(job_dir)]
-        self._tomo_choice.clear()
-        self._tomo_choice.addItems(items)
-        if len(items) == 0:
+        choices = [(info.tomo_name,) for info in _iter_tomograms(job_dir)]
+        choices.sort(key=lambda x: x[0])
+        self._tomo_choice.set_choices(choices)
+        if len(choices) == 0:
             self._viewer.clear()
-        if current_text in items:
-            self._tomo_choice.setCurrentText(current_text)
-        self._on_tomo_changed(self._tomo_choice.currentText())
-        self._viewer.auto_fit()
+        else:
+            self._viewer.auto_fit()
 
     def _on_tomo_changed(self, texts: tuple[str, ...]):
         """Update the viewer when the selected tomogram changes."""

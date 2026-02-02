@@ -321,6 +321,8 @@ class _Vispy3DTomogramBase(_Vispy3DBase):
                 self.set_plane_position(zpos)
 
     def auto_fit(self):
+        if self._array_view is None:
+            return
         nz = self._array_view_nz
         ny, nx = self._array_view.get_shape()
         img_shape = (nx, ny, nz)
