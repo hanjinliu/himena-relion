@@ -12,7 +12,6 @@ from himena import MainWindow, WidgetDataModel
 from himena.plugins import validate_protocol
 from himena.qt import QColoredToolButton
 from himena_relion import _job_dir, _utils
-from himena_relion._widgets._misc import spacer_widget
 from himena_relion._widgets._job_widgets import (
     JobWidgetBase,
     QJobStateLabel,
@@ -153,7 +152,7 @@ class QRelionJobWidget(QtW.QWidget):
                     updated_files.append(path)
             for updated_file in updated_files:
                 self.job_updated.emit(updated_file)
-            yield
+                yield
 
     def _on_job_updated(self, path: Path):
         """Handle changes to the job directory."""
@@ -261,10 +260,9 @@ class QRelionJobWidgetControl(QtW.QWidget):
         ]
         layout = QtW.QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(spacer_widget())
-        layout.addWidget(self._oneline_msg)
+        layout.addWidget(self._oneline_msg, alignment=QtCore.Qt.AlignmentFlag.AlignLeft)
         for btn in self._tool_buttons:
-            layout.addWidget(btn)
+            layout.addWidget(btn, alignment=QtCore.Qt.AlignmentFlag.AlignRight)
 
         # initialize the message
         if parent._job_dir.state() is RelionJobState.RUNNING:

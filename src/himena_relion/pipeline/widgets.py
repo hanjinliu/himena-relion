@@ -89,10 +89,11 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         if not isinstance(src := model.source, Path):
             raise TypeError("RELION default_pipeline.star source file not found.")
         assert isinstance(model.value, RelionDefaultPipeline)
+        _LOGGER.info("Started watching RELION pipeline at %s.", src.parent.as_posix())
         self._finder.clear()
+        self._flow_chart._relion_project_dir = src.parent
         self.widget_closed_callback()
         self._on_pipeline_updated(model.value)
-        self._flow_chart._relion_project_dir = src.parent
         parts = src.parts
         if len(parts) >= 3:
             self._directory_label.setText(f"{parts[-3]}/{parts[-2]}/")
@@ -100,26 +101,19 @@ class QRelionPipelineFlowChart(QtW.QWidget):
             self._directory_label.setText(f"{parts[-2]}/")
         self._watcher = self._watch_default_pipeline_star(src)
         self._state_to_job_map.clear()
-        num_nodes = 0
         for job in model.value.iter_nodes():
             _dict = self._state_to_job_map[job.status]
             _dict[job.path.as_posix()] = job
-            num_nodes += 1
-        _LOGGER.info(
-            "Started watching RELION pipeline at %s (%d jobs).",
-            src.parent.as_posix(),
-            num_nodes,
-        )
-        if num_nodes == 0:
+
+    def _on_pipeline_updated(self, pipeline: RelionDefaultPipeline) -> None:
+        self._flow_chart.set_pipeline(pipeline)
+        self._update_finder()
+        if len(pipeline) == 0:
             self._stacked_widget.setCurrentWidget(self._start_screen)
             self._finder.hide()
         else:
             self._stacked_widget.setCurrentWidget(self._flow_chart)
             self._finder.show()
-
-    def _on_pipeline_updated(self, pipeline: RelionDefaultPipeline) -> None:
-        self._flow_chart.set_pipeline(pipeline)
-        self._update_finder()
 
     @validate_protocol
     def model_type(self) -> str:

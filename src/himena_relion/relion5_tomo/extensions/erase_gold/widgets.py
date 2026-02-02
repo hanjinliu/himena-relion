@@ -7,7 +7,7 @@ import mrcfile
 from qtpy import QtWidgets as QtW, QtCore
 from starfile_rs import read_star
 from himena_relion._image_readers import ArrayFilteredView
-from himena_relion._widgets import Q2DViewer, Q2DFilterWidget
+from himena_relion._widgets import Q2DViewer, Q2DFilterWidget, QMicrographListWidget
 from himena_relion import _job_dir
 from himena_relion.schemas import TSModel
 
@@ -23,8 +23,8 @@ class QFindBeads3DViewer(QtW.QWidget):
 
         self._viewer = Q2DViewer()
         self._viewer.setMaximumHeight(480)
-        self._tomo_choice = QtW.QComboBox()
-        self._tomo_choice.currentTextChanged.connect(self._on_tomo_changed)
+        self._tomo_choice = QMicrographListWidget(["Tomogram"])
+        self._tomo_choice.current_changed.connect(self._on_tomo_changed)
         layout.addWidget(QtW.QLabel("<b>Tomogram Z slice with fiducials</b>"))
         layout.addWidget(self._tomo_choice)
         layout.addWidget(self._viewer)
@@ -33,23 +33,20 @@ class QFindBeads3DViewer(QtW.QWidget):
     def on_job_updated(self, job_dir: _job_dir.ExternalJobDirectory, path: str):
         """Handle changes to the job directory."""
         if Path(path).suffix == ".mod":
-            self.initialize(job_dir)
+            self._process_update()
             _LOGGER.debug("%s Updated", job_dir.job_number)
 
     def initialize(self, job_dir: _job_dir.ExternalJobDirectory):
         """Initialize the viewer with the job directory."""
-        current_text = self._tomo_choice.currentText()
-        items: list[str] = []
-        for info in self._iter_tomogram_info():
-            items.append(info.tomo_name)
-        self._tomo_choice.clear()
-        self._tomo_choice.addItems(items)
-        if len(items) == 0:
-            self._viewer.clear()
-        if current_text in items:
-            self._tomo_choice.setCurrentText(current_text)
-        self._on_tomo_changed(self._tomo_choice.currentText())
+        self._process_update()
         self._viewer.auto_fit()
+
+    def _process_update(self):
+        choices = [info.tomo_name for info in self._iter_tomogram_info()]
+        choices.sort()
+        self._tomo_choice.set_choices(choices)
+        if len(choices) == 0:
+            self._viewer.clear()
 
     def _on_tomo_changed(self, text: str):
         """Update the viewer when the selected tomogram changes."""
@@ -96,12 +93,12 @@ class QEraseGoldViewer(QtW.QWidget):
         layout = QtW.QVBoxLayout(self)
 
         self._viewer = Q2DViewer(zlabel="Tilt index")
-        self._filter_widget = Q2DFilterWidget()
-        self._ts_choice = QtW.QComboBox()
-        self._ts_choice.currentTextChanged.connect(self._ts_choice_changed)
+        self._filter_widget = Q2DFilterWidget(bin_default=8, lowpass_default=30)
+        self._ts_choice = QMicrographListWidget(["Tilt Series"])
+        self._ts_choice.current_changed.connect(self._ts_choice_changed)
         layout.addWidget(QtW.QLabel("<b>Gold-erased tilt series</b>"))
-        layout.addWidget(self._filter_widget)
         layout.addWidget(self._ts_choice)
+        layout.addWidget(self._filter_widget)
         layout.addWidget(self._viewer)
         self._filter_widget.value_changed.connect(self._viewer.redraw)
         self._binsize_old = -1
@@ -127,22 +124,16 @@ class QEraseGoldViewer(QtW.QWidget):
         self._viewer.auto_fit()
 
     def _process_update(self):
-        choices = [
-            p.stem for p in self._job_dir.path.joinpath("tilt_series").glob("*.star")
-        ]
-        index = self._ts_choice.currentIndex()
-        was_empty = self._ts_choice.count() == 0
-        self._ts_choice.clear()
-        self._ts_choice.addItems(choices)
-        if choices:
-            self._ts_choice.setCurrentIndex(
-                min(index if index >= 0 else 0, len(choices) - 1)
-            )
-            if was_empty:
-                self._viewer.auto_fit()
+        ts_dir = self._job_dir.path.joinpath("tilt_series")
+        choices = [p.stem for p in ts_dir.glob("*.star")]
+        choices.sort()
+        self._ts_choice.set_choices(choices)
+        if len(choices) == 0:
+            self._viewer.clear()
 
-    def _ts_choice_changed(self, text: str):
+    def _ts_choice_changed(self, texts: tuple[str, ...]):
         """Update the viewer when the selected tomogram changes."""
+        text = texts[0]  # tomo name
         star_path = self._job_dir.path / "tilt_series" / f"{text}.star"
         if not star_path.exists():
             self._viewer.clear()

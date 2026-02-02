@@ -1,6 +1,7 @@
 from __future__ import annotations
 from pathlib import Path
 import logging
+import subprocess
 import numpy as np
 
 import pandas as pd
@@ -31,9 +32,18 @@ class QAlignTiltSeriesViewer(QJobScrollArea):
         self._viewer.setMinimumHeight(420)
         self._ts_list = QMicrographListWidget(["Tilt Series"])
         self._ts_list.current_changed.connect(self._ts_choice_changed)
+        self._etomo_btn = QtW.QPushButton("Open in Etomo")
+        self._etomo_btn.setToolTip("Open the etomo project for this tilt series")
+        self._etomo_btn.setFixedWidth(104)
+        self._etomo_btn.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
+        self._etomo_btn.clicked.connect(self._open_in_etomo)
         self._batchruntomo_log = QBatchruntomoLog()
         layout.addWidget(self._ts_list)
-        layout.addWidget(QtW.QLabel("<b>Aligned tilt series</b>"))
+        hlayout = QtW.QHBoxLayout()
+        hlayout.setContentsMargins(0, 0, 0, 0)
+        hlayout.addWidget(QtW.QLabel("<b>Aligned tilt series</b>"))
+        hlayout.addWidget(self._etomo_btn, alignment=QtCore.Qt.AlignmentFlag.AlignRight)
+        layout.addLayout(hlayout)
         layout.addWidget(self._viewer)
         layout.addWidget(QtW.QLabel("<b>Batchruntomo Log</b>"))
         layout.addWidget(self._batchruntomo_log)
@@ -116,6 +126,10 @@ class QAlignTiltSeriesViewer(QJobScrollArea):
         else:
             _LOGGER.debug("Fiducial file %s not found.", fid_path)
 
+    def _open_in_etomo(self):
+        edf = edf_file(self._job_dir, self._ts_list.current_text())
+        subprocess.Popen(["etomo", edf.as_posix()], start_new_session=True)
+
 
 class ImodImageAligner:
     def __init__(self, components, nbin: int = 4):
@@ -193,13 +207,23 @@ class QBatchruntomoLog(QtW.QPlainTextEdit):
 
 def xf_file(jobdir: _job_dir.JobDirectory, tomoname: str) -> Path:
     """Return the path to the .xf file for a given tomogram name."""
-    return jobdir.path / "external" / tomoname / f"{tomoname}.xf"
+    return etomo_project_dir(jobdir, tomoname) / f"{tomoname}.xf"
 
 
 def fid_file(jobdir: _job_dir.JobDirectory, tomoname: str) -> Path:
     """Return the path to the .fid file for a given tomogram name."""
     # this is the mod file of tracked fiducials
-    return jobdir.path / "external" / tomoname / f"{tomoname}fid.xyz"
+    return etomo_project_dir(jobdir, tomoname) / f"{tomoname}fid.xyz"
+
+
+def edf_file(jobdir: _job_dir.JobDirectory, tomoname: str) -> Path:
+    """Return the path to the .edf file for a given tomogram name."""
+    return etomo_project_dir(jobdir, tomoname) / f"{tomoname}.edf"
+
+
+def etomo_project_dir(jobdir: _job_dir.JobDirectory, tomoname: str) -> Path:
+    """Return the path to the etomo project directory for a given tomogram name."""
+    return jobdir.path / "external" / tomoname
 
 
 def image_shape_params(
@@ -207,7 +231,7 @@ def image_shape_params(
     tomoname: str,
 ) -> tuple[int, int] | None:
     """Try to get image shape from tilt.com and prenewst.com files."""
-    path_tilt = jobdir.path / "external" / tomoname / "tilt.com"
+    path_tilt = etomo_project_dir(jobdir, tomoname) / "tilt.com"
     with path_tilt.open("r") as f:
         # FULLIMAGE 3838 3710
         for line in f:
