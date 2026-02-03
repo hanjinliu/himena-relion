@@ -204,7 +204,7 @@ class _Vispy3DDensityBase(_Vispy3DBase):
         elif mode == "Average":
             self._volume_visual.method = "average"
         else:
-            raise ValueError("mode must be 'Surface' or 'Maximum'.")
+            raise ValueError(f"Unknown rendering mode: {mode}")
 
     def set_iso_threshold(self, value):
         _min, _max = self._lims
@@ -217,10 +217,10 @@ class _Vispy3DDensityBase(_Vispy3DBase):
         arrows = []
         pos = []
         for tube in tubes:
-            arrows.append(np.concatenate([tube.start, tube.end]))
+            arrows.append(np.concatenate([tube.start[::-1], tube.end[::-1]]))
             arrow_colors.append(tube.color)
-            pos.append(tube.start)
-            pos.append(tube.end)
+            pos.append(tube.start[::-1])
+            pos.append(tube.end[::-1])
             colors.append(tube.color)
             colors.append(tube.color)
         if colors:
@@ -266,6 +266,7 @@ class _Vispy3DTomogramBase(_Vispy3DBase):
         )  # fmt: skip
         self._motion_visual = MotionPath(parent=self._viewbox.scene)
         self._markers.visible = False
+        self._markers.set_gl_state("opaque")
         self._volume_visual.raycasting_mode = raycasting_mode
         self._volume_visual.relative_step_size = 0.8
         self._plane_position: int = 0

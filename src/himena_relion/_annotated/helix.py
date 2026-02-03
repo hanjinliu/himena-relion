@@ -97,6 +97,17 @@ HELICAL_RANGE_DIST = Annotated[
         "group": "Helix",
     },
 ]
+HELICAL_TWIST = Annotated[
+    float,
+    {
+        "label": "Helical twist (deg)",
+        "tooltip": (
+            "Set helical twist (in degrees) to positive value if it is a right-handed "
+            "helix. Helical rise is a positive value in Angstroms."
+        ),
+        "group": "Helix",
+    },
+]
 HELICAL_TWIST_INITIAL = Annotated[
     float,
     {

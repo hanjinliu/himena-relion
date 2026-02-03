@@ -36,8 +36,8 @@ class QTomogramViewer(QJobScrollArea):
         self._tomo_list = QMicrographListWidget(["Tomogram", "Type"])
         self._tomo_list.current_changed.connect(self._on_tomo_changed)
         layout.addWidget(QtW.QLabel("<b>Tomogram Z slice</b>"))
-        layout.addWidget(self._filter_widget)
         layout.addWidget(self._tomo_list)
+        layout.addWidget(self._filter_widget)
         layout.addWidget(self._viewer)
         self._filter_widget.value_changed.connect(self._viewer.redraw)
         self._is_split = False

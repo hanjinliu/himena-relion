@@ -158,14 +158,6 @@ class QExtractJobViewer(QJobScrollArea):
                 yield self._on_string_ready, (img_str, session)
         self._worker = None
 
-    def _on_yielded(self, value: tuple[str, uuid.UUID]):
-        if self._worker is None:
-            return
-        img_str, my_uuid = value
-        if my_uuid != self._plot_session_id:
-            return
-        self._text_edit.insert_base64_image(img_str)
-
     def _on_text_ready(self, value: tuple[str, uuid.UUID]):
         text, my_uuid = value
         if my_uuid != self._plot_session_id or self._worker is None:

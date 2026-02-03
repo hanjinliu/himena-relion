@@ -80,6 +80,7 @@ def _(path: Path):
 
 @register_reader_plugin(priority=500, module="himena_relion.io")
 def read_relion_pipeline(path: Path) -> WidgetDataModel:
+    """Read a RELION default_pipeline.star file."""
     if pipeline_star := _get_default_pipeline_star(path):
         from himena_relion.pipeline import RelionDefaultPipeline
 

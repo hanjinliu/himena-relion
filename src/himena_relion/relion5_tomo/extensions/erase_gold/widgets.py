@@ -56,6 +56,8 @@ class QFindBeads3DViewer(QtW.QWidget):
         self._tomo_choice.set_choices(choices)
         if len(choices) == 0:
             self._viewer.clear()
+        else:
+            self._viewer.redraw()
 
     def _on_tomo_changed(self, texts: tuple[str, ...]):
         """Update the viewer when the selected tomogram changes."""

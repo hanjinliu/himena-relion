@@ -1180,7 +1180,7 @@ class ReconstructParticlesJob(_Relion5TomoJob):
         # Helix
         do_helix: _a.helix.DO_HELIX = False,
         helical_nr_asu: _a.helix.HELICAL_NR_ASU = 1,
-        helical_twist: _a.tomo.HELICAL_TWIST = -1,
+        helical_twist: _a.helix.HELICAL_TWIST = -1,
         helical_rise: _a.helix.HELICAL_RISE = 4.75,
         helical_tube_outer_diameter: _a.helix.HELICAL_TUBE_DIAMETER = 200,
         helical_z_percentage: _a.helix.HELICAL_Z_PERCENTAGE = 20,

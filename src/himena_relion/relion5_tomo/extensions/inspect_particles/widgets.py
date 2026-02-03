@@ -34,8 +34,8 @@ class QInspectViewer(QtW.QWidget):
         self._tomo_choice = QMicrographListWidget(["Tomogram"])
         self._tomo_choice.current_changed.connect(self._on_tomo_changed)
         layout.addWidget(QtW.QLabel("<b>Picked tomogram Z slice</b>"))
-        layout.addWidget(self._filter_widget)
         layout.addWidget(self._tomo_choice)
+        layout.addWidget(self._filter_widget)
         layout.addWidget(self._viewer)
         # self._filter_widget.value_changed.connect(self._viewer.redraw)
         self.initialize(job_dir)
@@ -64,6 +64,7 @@ class QInspectViewer(QtW.QWidget):
             self._worker.quit()
             self._worker = None
         self._worker = self._read_items(texts[0])
+        self._worker.yielded.connect(self._on_yielded)
         self._worker.start()
 
     @thread_worker

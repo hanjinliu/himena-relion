@@ -58,7 +58,7 @@ class InspectParticles(RelionExternalJob):
         )
         out_path = self.output_job_dir.path / "optimisation_set.star"
         star.write(out_path)
-        self.console.log(f"Wrote output file to {out_path!r}")
+        self.console.log(f"Wrote output file to {out_path}")
 
     def _check_and_normalize_path(self, path: str) -> str:
         in_path = Path(path)
