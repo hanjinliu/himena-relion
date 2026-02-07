@@ -21,6 +21,7 @@ class QShiftMapViewer(QtW.QWidget):
         self._viewer = Q3DViewer()
         layout.addWidget(self._viewer)
         layout.addWidget(spacer_widget())
+        self.initialize(job_dir)
 
     def on_job_updated(self, job_dir: _job_dir.JobDirectory, path: str):
         """Handle changes to the job directory."""
@@ -31,6 +32,7 @@ class QShiftMapViewer(QtW.QWidget):
     def initialize(self, job_dir: _job_dir.JobDirectory):
         """Initialize the viewer with the job directory."""
         map_path = job_dir.path / _c.OUTPUT_MAP
+        print(map_path)
         if map_path.exists():
             with mrcfile.open(map_path) as mrc:
                 img = np.asarray(mrc.data, dtype=np.float32)

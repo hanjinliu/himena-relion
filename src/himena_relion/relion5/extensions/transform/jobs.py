@@ -3,9 +3,11 @@ from typing import Annotated
 import mrcfile
 import numpy as np
 
+from himena_relion._job_class import connect_jobs
 from himena_relion.external import RelionExternalJob
 from himena_relion._annotated.io import IN_PARTICLES, MAP_TYPE, IN_MASK
 from himena_relion.relion5.extensions.transform import widgets as _wdg
+from himena_relion.relion5._builtins import Refine3DJob
 from . import _const as _c
 
 SHIFT_BY = Annotated[
@@ -157,3 +159,13 @@ def _shift_by_com(path):
     com = _img_center_of_mass(img)
     center = tuple((s - 1) / 2 for s in img.shape)
     return tuple(float(c - cm) for c, cm in zip(center, com))
+
+
+connect_jobs(
+    Refine3DJob,
+    ShiftMapJob,
+    node_mapping={
+        "run_class001.mrc": "in_3dref",
+        "run_data.star": "in_parts",
+    },
+)
