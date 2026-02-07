@@ -14,7 +14,12 @@ from scipy import ndimage as ndi
 SHIFT_BY = Annotated[
     str,
     {
-        "choices": ["Pixel", "Angstrom", "Map center of mass", "Mask center of mass"],
+        "choices": [
+            ("Pixel", "pixel"),
+            ("Angstrom", "angstrom"),
+            ("Map center of mass", "map-com"),
+            ("Mask center of mass", "mask-com"),
+        ],
         "label": "Shift by",
         "tooltip": (
             "Unit of the shift value.\n"
@@ -58,18 +63,18 @@ class ShiftMapJob(RelionExternalJob):
         in_3dref: MAP_TYPE = "",  # path
         in_parts: IN_PARTICLES = "",  # path
         in_mask: IN_MASK = "",
-        shift_by: SHIFT_BY = "Pixel",
+        shift_by: SHIFT_BY = "pixel",
         shift: SHIFT = (0.0, 0.0, 0.0),
     ):
         out_job_dir = self.output_job_dir
-        if shift_by == "Pixel":
+        if shift_by == "pixel":
             shift_pix = shift
-        elif shift_by == "Angstrom":
+        elif shift_by == "angstrom":
             _, scale = _read_image(in_3dref)
             shift_pix = tuple(s / scale for s in shift)
-        elif shift_by == "Map center of mass":
+        elif shift_by == "map-com":
             shift_pix = self._shift_by_com(in_3dref)
-        elif shift_by == "Mask center of mass":
+        elif shift_by == "mask-com":
             shift_pix = self._shift_by_com(in_mask)
         else:
             raise ValueError(f"Invalid value for shift_by: {shift_by}")
@@ -93,7 +98,7 @@ class ShiftMapJob(RelionExternalJob):
     def setup_widgets(cls, widgets):
         @widgets["shift_by"].changed.connect
         def _on_shift_by_changed(val):
-            enabled = val not in ["Map center of mass", "Mask center of mass"]
+            enabled = val not in ["map-com", "mask-com"]
             widgets["shift"].enabled = enabled
 
         _on_shift_by_changed(widgets["shift_by"].value)
