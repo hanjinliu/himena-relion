@@ -11,7 +11,7 @@ from himena_relion.relion5._builtins import Refine3DJob
 from . import _const as _c
 from scipy import ndimage as ndi
 
-SHIFT_BY = Annotated[
+CENTER_BY = Annotated[
     str,
     {
         "choices": [
@@ -20,7 +20,7 @@ SHIFT_BY = Annotated[
             ("Map center of mass", "map-com"),
             ("Mask center of mass", "mask-com"),
         ],
-        "label": "Shift by",
+        "label": "Center by",
         "tooltip": (
             "Unit of the shift value.\n"
             "<ul>"
@@ -32,11 +32,11 @@ SHIFT_BY = Annotated[
         ),
     },
 ]
-SHIFT = Annotated[
+NEW_CENTER = Annotated[
     tuple[float, float, float],
     {
-        "label": "Shift (X, Y, Z)",
-        "tooltip": "Shift values in the unit specified by the 'Shift by' option.",
+        "label": "New center (X, Y, Z)",
+        "tooltip": "New center of the map in the unit specified by the option above.",
     },
 ]
 
@@ -63,30 +63,32 @@ class ShiftMapJob(RelionExternalJob):
         in_3dref: MAP_TYPE = "",  # path
         in_parts: IN_PARTICLES = "",  # path
         in_mask: IN_MASK = "",
-        shift_by: SHIFT_BY = "pixel",
-        shift: SHIFT = (0.0, 0.0, 0.0),
+        center_by: CENTER_BY = "pixel",
+        new_center: NEW_CENTER = (0.0, 0.0, 0.0),
     ):
         out_job_dir = self.output_job_dir
-        if shift_by == "pixel":
-            shift_pix = shift
-        elif shift_by == "angstrom":
+        if center_by == "pixel":
+            new_center_pix = new_center
+        elif center_by == "angstrom":
             _, scale = _read_image(in_3dref)
-            shift_pix = tuple(s / scale for s in shift)
-        elif shift_by == "map-com":
-            shift_pix = self._shift_by_com(in_3dref)
-        elif shift_by == "mask-com":
-            shift_pix = self._shift_by_com(in_mask)
+            new_center_pix = tuple(s / scale for s in new_center)
+        elif center_by == "map-com":
+            new_center_pix = self._center_by_com(in_3dref)
+        elif center_by == "mask-com":
+            new_center_pix = self._center_by_com(in_mask)
         else:
-            raise ValueError(f"Invalid value for shift_by: {shift_by}")
-        _shift_image(in_3dref, out_job_dir.path / _c.OUTPUT_MAP, shift_pix)
+            raise ValueError(f"Invalid value for center_by: {center_by}")
+        _shift_image(in_3dref, out_job_dir.path / _c.OUTPUT_MAP, new_center_pix)
         self.console.log(f"Write shifted map to {out_job_dir.path / _c.OUTPUT_MAP}")
         if in_mask:
-            _shift_image(in_mask, out_job_dir.path / _c.OUTPUT_MASK, shift_pix)
+            _shift_image(in_mask, out_job_dir.path / _c.OUTPUT_MASK, new_center_pix)
             self.console.log(
                 f"Write shifted mask to {out_job_dir.path / _c.OUTPUT_MASK}"
             )
         if in_parts:
-            _shift_star(in_parts, out_job_dir.path / _c.OUTPUT_PARTICLES, shift_pix)
+            _shift_star(
+                in_parts, out_job_dir.path / _c.OUTPUT_PARTICLES, new_center_pix
+            )
             self.console.log(
                 f"Write shifted partiles to {out_job_dir.path / _c.OUTPUT_PARTICLES}"
             )
@@ -96,19 +98,19 @@ class ShiftMapJob(RelionExternalJob):
 
     @classmethod
     def setup_widgets(cls, widgets):
-        @widgets["shift_by"].changed.connect
-        def _on_shift_by_changed(val):
+        @widgets["center_by"].changed.connect
+        def _on_center_by_changed(val):
             enabled = val not in ["map-com", "mask-com"]
-            widgets["shift"].enabled = enabled
+            widgets["new_center"].enabled = enabled
 
-        _on_shift_by_changed(widgets["shift_by"].value)
+        _on_center_by_changed(widgets["center_by"].value)
 
-    def _shift_by_com(self, path):
+    def _center_by_com(self, path):
         img, _ = _read_image(path)
         com = _img_center_of_mass(img)
         self.console.log(f"Center of mass of image {path}: {com}")
         center = tuple((s - 1) / 2 for s in img.shape)
-        return tuple(float(c - cm) for c, cm in zip(center, com))
+        return tuple(float(cm - c) for c, cm in zip(center, com))
 
 
 def _shift_image(path_in, path_out, shift):
@@ -150,7 +152,7 @@ def _img_center_of_mass(img: np.ndarray) -> tuple[float, float, float]:
     com_z = (z * img).sum() / total
     com_y = (y * img).sum() / total
     com_x = (x * img).sum() / total
-    return (com_x, com_y, com_z)
+    return (float(com_x), float(com_y), float(com_z))
 
 
 def _read_image(path) -> tuple[np.ndarray, float]:
