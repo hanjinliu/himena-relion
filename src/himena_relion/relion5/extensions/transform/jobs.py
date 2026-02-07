@@ -9,6 +9,7 @@ from himena_relion._annotated.io import IN_PARTICLES, MAP_TYPE, IN_MASK
 from himena_relion.relion5.extensions.transform import widgets as _wdg
 from himena_relion.relion5._builtins import Refine3DJob
 from . import _const as _c
+from scipy import ndimage as ndi
 
 SHIFT_BY = Annotated[
     str,
@@ -67,9 +68,9 @@ class ShiftMapJob(RelionExternalJob):
             _, scale = _read_image(in_3dref)
             shift_pix = tuple(s / scale for s in shift)
         elif shift_by == "Map center of mass":
-            shift_pix = _shift_by_com(in_3dref)
+            shift_pix = self._shift_by_com(in_3dref)
         elif shift_by == "Mask center of mass":
-            shift_pix = _shift_by_com(in_mask)
+            shift_pix = self._shift_by_com(in_mask)
         else:
             raise ValueError(f"Invalid value for shift_by: {shift_by}")
         _shift_image(in_3dref, out_job_dir.path / _c.OUTPUT_MAP, shift_pix)
@@ -97,23 +98,24 @@ class ShiftMapJob(RelionExternalJob):
 
         _on_shift_by_changed(widgets["shift_by"].value)
 
+    def _shift_by_com(self, path):
+        img, _ = _read_image(path)
+        com = _img_center_of_mass(img)
+        self.console.log(f"Center of mass of image {path}: {com}")
+        center = tuple((s - 1) / 2 for s in img.shape)
+        return tuple(float(c - cm) for c, cm in zip(center, com))
+
 
 def _shift_image(path_in, path_out, shift):
     """Shift image using `relion_image_handler`"""
-    args = [
-        _c.RELION_IMAGE_HANDLER,
-        "--i",
-        str(path_in),
-        "--o",
-        str(path_out),
-        "--shift_x",
-        str(shift[0]),
-        "--shift_y",
-        str(shift[1]),
-        "--shift_z",
-        str(shift[2]),
-    ]
-    subprocess.run(args, check=True)
+    img, pixel_size = _read_image(path_in)
+    shift_zyx = (shift[2], shift[1], shift[0])
+    img = img.astype(np.float32)
+    cval = np.min(img)
+    shifted = ndi.shift(img, shift=shift_zyx, order=3, mode="constant", cval=cval)
+    with mrcfile.new(path_out, overwrite=True) as mrc:
+        mrc.set_data(shifted)
+        mrc.voxel_size = pixel_size
 
 
 def _shift_star(path_in, path_out, shift):
@@ -125,11 +127,11 @@ def _shift_star(path_in, path_out, shift):
         str(path_out),
         "--center",
         "--center_X",
-        str(shift[0]),
+        str(-shift[0]),
         "--center_Y",
-        str(shift[1]),
+        str(-shift[1]),
         "--center_Z",
-        str(shift[2]),
+        str(-shift[2]),
     ]
     subprocess.run(args_star, check=True)
 
@@ -152,13 +154,6 @@ def _read_image(path) -> tuple[np.ndarray, float]:
         img = mrc.data
         pixel_size = mrc.voxel_size.x  # assuming isotropic voxels
     return img, pixel_size
-
-
-def _shift_by_com(path):
-    img, _ = _read_image(path)
-    com = _img_center_of_mass(img)
-    center = tuple((s - 1) / 2 for s in img.shape)
-    return tuple(float(c - cm) for c, cm in zip(center, com))
 
 
 connect_jobs(

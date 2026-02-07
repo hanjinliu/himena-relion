@@ -164,12 +164,12 @@ class QRelionJobWidget(QtW.QWidget):
                 "Job directory has been deleted externally. This widget will no longer "
                 "respond to changes. Please close this job widget."
             )
+        msg = ""
+        for wdt in self._iter_job_widgets():
+            wdt.on_job_updated(self._job_dir, Path(path))
+            if isinstance(wdt, QRunOutErrLog):
+                msg = wdt.last_lines()
         if self._job_dir.state() is RelionJobState.RUNNING:
-            msg = ""
-            for wdt in self._iter_job_widgets():
-                wdt.on_job_updated(self._job_dir, Path(path))
-                if isinstance(wdt, QRunOutErrLog):
-                    msg = wdt.last_lines()
             self._control_widget.set_msg(msg)
         else:
             self._control_widget.set_msg("")

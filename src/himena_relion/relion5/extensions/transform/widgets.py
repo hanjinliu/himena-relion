@@ -32,7 +32,6 @@ class QShiftMapViewer(QtW.QWidget):
     def initialize(self, job_dir: _job_dir.JobDirectory):
         """Initialize the viewer with the job directory."""
         map_path = job_dir.path / _c.OUTPUT_MAP
-        print(map_path)
         if map_path.exists():
             with mrcfile.open(map_path) as mrc:
                 img = np.asarray(mrc.data, dtype=np.float32)
