@@ -5,12 +5,6 @@ from himena_relion.external import RelionExternalJob
 from himena_relion._annotated.io import IN_PARTICLES
 from himena_relion import _annotated as _a
 
-TILT_ANGLE = "rlnTomoNominalStageTiltAngle"
-TILT_STAR = "rlnTomoTiltSeriesStarFile"
-ETOMO_FILE = "rlnEtomoDirectiveFile"
-MIC_NAME = "rlnMicrographName"
-MIC_ODD = "rlnMicrographNameOdd"
-MIC_EVEN = "rlnMicrographNameEven"
 
 _COMMAND = "relion_particle_symmetry_expand"
 _OUTPUT_PARTICLES = "particles_expanded.star"

@@ -105,6 +105,7 @@ class RelionJob(ABC):
     def _parse_args(cls, args: dict[str, Any]) -> dict[str, Any]:
         sig = cls._signature()
         func_args = {}
+        args_orig = args.copy()
         for param in sig.parameters.values():
             if param.name in args:
                 arg = args.pop(param.name)
@@ -112,7 +113,10 @@ class RelionJob(ABC):
                 arg_parsed = parse_string(arg, annot)
                 func_args[param.name] = arg_parsed
             elif param.default is param.empty:
-                raise ValueError(f"Missing required argument: {param.name}")
+                raise ValueError(
+                    f"Missing required argument: {param.name}."
+                    f"\nProvided args: {args_orig}\nExpected signature: {sig}"
+                )
             else:
                 func_args[param.name] = param.default
         return func_args
@@ -509,7 +513,9 @@ def to_string(value) -> str:
         value = str(value)
     elif isinstance(value, bool):
         value = "Yes" if value else "No"
-    return value
+    elif isinstance(value, (list, tuple)):
+        value = ",".join(to_string(v) for v in value)
+    return str(value)
 
 
 # For debugging purposes, such as drawing connection maps

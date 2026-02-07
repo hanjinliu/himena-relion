@@ -108,6 +108,7 @@ class QRefine3DViewer(QJobScrollArea):
             yield self._viewer.set_image, map_out
         model_star = self._job_dir.path / f"run{res.it_str}_half1_model.star"
         if wait_for_file(model_star):
+            _LOGGER.debug("%s found, read FSC data.", model_star)
             star = read_star(model_star)
             df_fsc = star["model_class_1"].to_polars()
             groups = ModelGroups.validate_block(star["model_groups"])

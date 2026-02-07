@@ -12,7 +12,6 @@ if TYPE_CHECKING:
 def on_himena_startup(ui: "MainWindow"):
     """This function is called on himena startup."""
     if (starpath := Path.cwd().joinpath("default_pipeline.star")).exists():
-        print("RELION pipeline found, loading pipeline into application")
         ui.read_file(starpath, plugin="himena_relion.io.read_relion_pipeline")
         scheduler = scheduler_widget(ui)
         scheduler.clear_content()

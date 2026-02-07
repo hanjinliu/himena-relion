@@ -554,7 +554,7 @@ class Q3DTomogramViewer(QViewer):
         if update_now:
             self._canvas.update_canvas()
 
-    def set_points(self, points, size=8.0, face_color="lime", edge_color="black"):
+    def set_points(self, points, size=5.0, face_color="lime", edge_color="black"):
         """Set the 3D points to be displayed."""
         points = np.asarray(points)
         face_colors = _norm_color(face_color, len(points))

@@ -74,7 +74,7 @@ def parse_argv(argv: list[str] | None = None) -> dict[str, Any]:
 def run_function(argv: list[str] | None = None) -> None:
     """Run the selected function with parsed arguments."""
     args = parse_argv(argv)
-    class_id = str(args.pop("class_id"))
+    class_id = str(args.pop("class_id"))  # ID to determine job class
     job_cls = pick_job_class(class_id)
 
     if args.get("o", None) is None:
