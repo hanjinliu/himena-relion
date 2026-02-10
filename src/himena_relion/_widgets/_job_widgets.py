@@ -501,7 +501,7 @@ class QRelionNodeItem(QtW.QWidget):
             self._filepath,
             desc=self._filepath_rel.as_posix(),
             source=self,
-            plugin=plugin_for_filetype(self._filetype),
+            plugin=plugin_for_filetype(self.file_type_category()),
         )
 
     def _open_file_event(self):
@@ -509,7 +509,7 @@ class QRelionNodeItem(QtW.QWidget):
             raise FileNotFoundError(f"File {path} does not exist.")
         current_instance().read_file(
             path,
-            plugin=plugin_for_filetype(self._filetype),
+            plugin=plugin_for_filetype(self.file_type_category()),
         )
 
 
