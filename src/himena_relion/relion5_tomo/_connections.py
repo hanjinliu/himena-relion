@@ -214,6 +214,16 @@ connect_jobs(
         _subtomo_diameter_a: "particle_diameter",
     },
 )
+connect_jobs(
+    _tomo.ExtractParticlesTomoJob,
+    _tomo.Refine3DTomoJob,
+    node_mapping={
+        "optimisation_set.star": "in_optim.in_optimisation",
+    },
+    value_mapping={
+        _subtomo_diameter_a: "particle_diameter",
+    },
+)
 
 
 def _subtomo_binning(path: Path) -> int:

@@ -1,6 +1,6 @@
 from __future__ import annotations
 from pathlib import Path
-from typing import Callable, Iterator, TypeVar
+from typing import Callable, Iterator, TypeVar, TYPE_CHECKING
 import logging
 import weakref
 
@@ -20,11 +20,16 @@ from himena_relion._widgets._job_widgets import (
     QJobPipelineViewer,
     QJobParameterView,
 )
+from himena_relion._widgets._misc import spacer_widget
 from himena_relion._impl_objects import RelionJobIsTesting
 from himena_relion._utils import monospace_font_family
 from himena_relion.consts import RelionJobState
 
+if TYPE_CHECKING:
+    from himena_relion.pipeline.widgets import QRelionPipelineFlowChart
+
 _LOGGER = logging.getLogger(__name__)
+_C = TypeVar("_C", bound=JobWidgetBase)
 
 
 class QRelionJobWidget(QtW.QWidget):
@@ -256,25 +261,57 @@ class QRelionJobWidgetControl(QtW.QWidget):
         self._oneline_msg.setFont(QtGui.QFont(monospace_font_family(), 7))
         self._oneline_msg.setToolTip("The last two lines of run.out")
         self._tool_buttons = [
+            QColoredToolButton(
+                self.find_me_in_flowchart, _utils.path_icon_svg("findme")
+            ),
             QColoredToolButton(self.refresh_widget, _utils.path_icon_svg("refresh")),
         ]
         layout = QtW.QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(1)
         layout.addWidget(self._oneline_msg, alignment=QtCore.Qt.AlignmentFlag.AlignLeft)
+        layout.addWidget(spacer_widget())
         for btn in self._tool_buttons:
             layout.addWidget(btn, alignment=QtCore.Qt.AlignmentFlag.AlignRight)
 
         # initialize the message
         if parent._job_dir.state() is RelionJobState.RUNNING:
-            for wdt in parent._iter_job_widgets():
-                if isinstance(wdt, QRunOutErrLog):
-                    msg = wdt.last_lines()
-                    self.set_msg(msg)
+            if wdt := self.find_child_widget(QRunOutErrLog):
+                msg = wdt.last_lines()
+                self.set_msg(msg)
+
+    def find_child_widget(self, widget_type: type[_C]) -> _C | None:
+        for wdt in self.widget._iter_job_widgets():
+            if isinstance(wdt, widget_type):
+                return wdt
 
     def refresh_widget(self):
-        """Reopen this RELION job."""
+        """Reload this RELION job."""
         self.widget.update_model(self.widget.to_model())
+
+    def find_me_in_flowchart(self):
+        """Focus on the node item corresponding to this job in the flowchart."""
+        if ui := self.widget._ui_ref():
+            job_dir = self.widget._job_dir
+            flowchart = get_pipeline_widgets(ui, job_dir.relion_project_dir)
+            if flowchart is None:
+                return
+            job_item_id = job_dir.path.relative_to(job_dir.relion_project_dir)
+            if node := flowchart._flow_chart._node_map.get(job_item_id):
+                flowchart._flow_chart.center_on_item(node.item())
 
     def set_msg(self, msg: str):
         """Set the one-line message in the control widget."""
         self._oneline_msg.setText(msg)
+
+
+def get_pipeline_widgets(
+    ui: MainWindow,
+    relion_job_dir: Path,
+) -> QRelionPipelineFlowChart | None:
+    from himena_relion.pipeline.widgets import QRelionPipelineFlowChart
+
+    for dock in ui.dock_widgets:
+        if isinstance(flowchart := dock.widget, QRelionPipelineFlowChart):
+            if flowchart._flow_chart._relion_project_dir == relion_job_dir:
+                return dock.widget

@@ -369,13 +369,42 @@ class QJobPipelineViewer(QtW.QWidget, JobWidgetBase):
         return "In/Out"
 
 
-class QJobParameterView(QJobParameter, JobWidgetBase):
+class QJobParameterView(QtW.QWidget, JobWidgetBase):
     """Parameter view in the Parameters tab."""
 
+    def __init__(self):
+        super().__init__()
+        layout = QtW.QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        self._header = QtW.QHBoxLayout()
+        self._header.setContentsMargins(4, 1, 4, 0)
+        self._copy_btn = QtW.QPushButton("Copy")
+        self._header.addWidget(QtW.QLabel("<b>Job Parameters</b>"))
+        self._header.addWidget(
+            self._copy_btn, alignment=QtCore.Qt.AlignmentFlag.AlignRight
+        )
+        self._copy_btn.clicked.connect(self.copy_params)
+        self._param_widget = QJobParameter()
+        layout.addLayout(self._header)
+        layout.addWidget(self._param_widget)
+        self._job_dir = None
+
+    def copy_params(self):
+        """Copy the job parameters to clipboard in job.star format."""
+        clipboard = QtW.QApplication.clipboard()
+        if clipboard is None:
+            return
+        params = self._param_widget.get_parameters()
+        if job_dir := self._job_dir:
+            if job_cls := job_dir._to_job_class():
+                model = job_cls.prep_job_star(**params)
+                clipboard.setText(model.to_string())
+
     def initialize(self, job_dir: _job_dir.JobDirectory):
-        self.clear_content()
+        self._param_widget.clear_content()
+        self._job_dir = job_dir
         if job_cls := job_dir._to_job_class():
-            self.update_by_job(job_cls)
+            self._param_widget.update_by_job(job_cls)
             self._update_params(job_dir, job_cls)
         else:
             _LOGGER.warning(
@@ -393,7 +422,7 @@ class QJobParameterView(QJobParameter, JobWidgetBase):
         job_dir: _job_dir.JobDirectory,
         job_cls: type[_job_class.RelionJob],
     ):
-        self.set_parameters(
+        self._param_widget.set_parameters(
             job_cls.normalize_kwargs_inv(**job_dir.get_job_params_as_dict()),
             enabled=False,
         )
