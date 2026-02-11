@@ -159,7 +159,7 @@ class QRelionPipelineFlowChart(QtW.QWidget):
             for node in self._flow_chart._node_map.values():
                 item = node.item()
                 assert isinstance(item, RelionJobNodeItem)
-                if item._job == info:
+                if item._job.path == info.path:
                     self._flow_chart.center_on_item(item)
                     return
 
