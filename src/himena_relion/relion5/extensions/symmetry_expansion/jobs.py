@@ -1,6 +1,7 @@
 import subprocess
 from typing import Annotated
 
+from himena_relion.consts import MenuId
 from himena_relion.external import RelionExternalJob
 from himena_relion._annotated.io import IN_PARTICLES
 from himena_relion import _annotated as _a
@@ -23,6 +24,10 @@ class SymmetryExpansionJob(RelionExternalJob):
     @classmethod
     def job_title(cls):
         return "Symmetry Expansion"
+
+    @classmethod
+    def menu_id(cls):
+        return MenuId.RELION_UTILS_JOB
 
     def run(
         self,
@@ -55,6 +60,10 @@ class HelicalSymmetryExpansionJob(RelionExternalJob):
     @classmethod
     def job_title(cls):
         return "Helical Symmetry Expansion"
+
+    @classmethod
+    def menu_id(cls):
+        return MenuId.RELION_UTILS_JOB
 
     def run(
         self,

@@ -6,6 +6,7 @@ from himena_relion._job_class import _Relion5BuiltinJob, parse_string
 from himena_relion._job_dir import JobDirectory
 from himena_relion import _configs, _annotated as _a
 from himena_relion.schemas import OptimisationSetModel
+from himena_relion.consts import MenuId
 
 
 class _Relion5Job(_Relion5BuiltinJob):
@@ -26,6 +27,10 @@ class _ImportMoviesJobBase(_Relion5SpaJob):
     @classmethod
     def type_label(cls) -> str:
         return "relion.import.movies"
+
+    @classmethod
+    def menu_id(cls) -> str:
+        return MenuId.RELION_IMPORT_JOB
 
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
@@ -128,6 +133,10 @@ class ImportOthersJob(_Relion5Job):
         return "relion.import.other"
 
     @classmethod
+    def menu_id(cls) -> str:
+        return MenuId.RELION_IMPORT_JOB
+
+    @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
         kwargs = super().normalize_kwargs(**kwargs)
         kwargs["do_other"] = True
@@ -177,6 +186,10 @@ class ImportOthersJob(_Relion5Job):
 
 
 class _MotionCorrJobBase(_Relion5SpaJob):
+    @classmethod
+    def menu_id(cls) -> str:
+        return MenuId.RELION_PREPROCESS_JOB
+
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
         kwargs["fn_motioncor2_exe"] = _configs.get_motioncor2_exe()
@@ -325,6 +338,10 @@ class CtfEstimationJob(_Relion5SpaJob):
         return "relion.ctffind.ctffind4"
 
     @classmethod
+    def menu_id(cls) -> str:
+        return MenuId.RELION_PREPROCESS_JOB
+
+    @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
         kwargs["fn_ctffind_exe"] = _configs.get_ctffind4_exe()
         if "phase_range" in kwargs:
@@ -388,6 +405,10 @@ class ManualPickJob(_Relion5SpaJob):
     @classmethod
     def type_label(cls) -> str:
         return "relion.manualpick"
+
+    @classmethod
+    def menu_id(cls) -> str:
+        return MenuId.RELION_PICK_JOB
 
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
@@ -456,6 +477,10 @@ class ManualPickJob(_Relion5SpaJob):
 
 
 class _AutoPickJob(_Relion5SpaJob):
+    @classmethod
+    def menu_id(cls) -> str:
+        return MenuId.RELION_PICK_JOB
+
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
         kwargs = super().normalize_kwargs(**kwargs)
@@ -933,6 +958,10 @@ class AutoPickTopazPick(_AutoPickJob):
 
 class ExtractJobBase(_Relion5SpaJob):
     @classmethod
+    def menu_id(cls) -> str:
+        return MenuId.RELION_EXTRACT_JOB
+
+    @classmethod
     def normalize_kwargs(cls, **kwargs):
         kwargs = super().normalize_kwargs(**kwargs)
 
@@ -1111,6 +1140,10 @@ class Class2DJob(_Relion5SpaJob):
         return "relion.class2d"
 
     @classmethod
+    def menu_id(cls):
+        return MenuId.RELION_FILTER_PARTICLES_JOB
+
+    @classmethod
     def normalize_kwargs(cls, **kwargs):
         kwargs = super().normalize_kwargs(**kwargs)
         kwargs["fn_cont"] = ""
@@ -1230,6 +1263,10 @@ class InitialModelJob(_Relion5SpaJob):
         return "relion.initialmodel"
 
     @classmethod
+    def menu_id(cls):
+        return MenuId.RELION_RECONSTRUCTION_JOB
+
+    @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
         kwargs["fn_cont"] = ""
         return super().normalize_kwargs(**kwargs)
@@ -1284,6 +1321,10 @@ class _Class3DJobBase(_Relion5SpaJob):
     @classmethod
     def type_label(cls) -> str:
         return "relion.class3d"
+
+    @classmethod
+    def menu_id(cls):
+        return MenuId.RELION_RECONSTRUCTION_JOB
 
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
@@ -1551,6 +1592,10 @@ class Refine3DJob(_Relion5SpaJob):
         return "relion.refine3d"
 
     @classmethod
+    def menu_id(cls):
+        return MenuId.RELION_RECONSTRUCTION_JOB
+
+    @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
         if "helical_twist_range" in kwargs:
             (
@@ -1783,6 +1828,10 @@ class SelectClassesInteractiveJob(_SelectJob):
     def type_label(cls):
         return "relion.select.interactive"
 
+    @classmethod
+    def menu_id(cls):
+        return MenuId.RELION_FILTER_PARTICLES_JOB
+
     def run(self, fn_model: _a.io.IN_OPTIMISER = ""):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -1813,6 +1862,10 @@ class SelectClassesAutoJob(_SelectJob):
     @classmethod
     def type_label(cls):
         return "relion.select.class2dauto"
+
+    @classmethod
+    def menu_id(cls):
+        return MenuId.RELION_FILTER_PARTICLES_JOB
 
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
@@ -1851,6 +1904,10 @@ class SelectParticlesJob(_SelectValuesJob):
         return job_params["fn_data"] != ""
 
     @classmethod
+    def menu_id(cls):
+        return MenuId.RELION_FILTER_PARTICLES_JOB
+
+    @classmethod
     def command_id(cls):
         return super().command_id() + "-particles"
 
@@ -1869,6 +1926,10 @@ class SelectParticlesJob(_SelectValuesJob):
 
 
 class SelectMicrographsJob(_SelectValuesJob):
+    @classmethod
+    def menu_id(cls):
+        return MenuId.RELION_PREPROCESS_JOB
+
     @classmethod
     def param_matches(cls, job_params):
         return job_params["fn_data"] == "" and job_params["fn_mic"]
@@ -1899,6 +1960,10 @@ class SelectRemoveDuplicatesJob(_SelectJob):
         return "relion.select.removeduplicates"
 
     @classmethod
+    def menu_id(cls):
+        return MenuId.RELION_FILTER_PARTICLES_JOB
+
+    @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
         kwargs = super().normalize_kwargs(**kwargs)
         kwargs["do_remove_duplicates"] = True
@@ -1919,6 +1984,10 @@ class SelectSplitJob(_SelectJob):
     @classmethod
     def type_label(cls):
         return "relion.select.split"
+
+    @classmethod
+    def menu_id(cls):
+        return MenuId.RELION_FILTER_PARTICLES_JOB
 
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
@@ -1944,6 +2013,10 @@ class SelectFilamentsJob(_SelectJob):
         return "relion.select.filamentsdendrogram"
 
     @classmethod
+    def menu_id(cls):
+        return MenuId.RELION_FILTER_PARTICLES_JOB
+
+    @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
         kwargs = super().normalize_kwargs(**kwargs)
         kwargs["do_filaments"] = True
@@ -1964,6 +2037,10 @@ class MaskCreationJob(_Relion5Job):
     @classmethod
     def type_label(cls) -> str:
         return "relion.maskcreate"
+
+    @classmethod
+    def menu_id(cls):
+        return MenuId.RELION_UTILS_JOB
 
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
@@ -2009,6 +2086,10 @@ class PostProcessJob(_Relion5SpaJob):
     @classmethod
     def type_label(cls) -> str:
         return "relion.postprocess"
+
+    @classmethod
+    def menu_id(cls):
+        return MenuId.RELION_POSTPROCESS_JOB
 
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
@@ -2068,6 +2149,10 @@ class _CtfRefineJobBase(_Relion5SpaJob):
     @classmethod
     def type_label(cls) -> str:
         return "relion.ctfrefine"
+
+    @classmethod
+    def menu_id(cls):
+        return MenuId.RELION_REFINE_JOB
 
     @classmethod
     def normalize_kwargs(cls, **kwargs):
@@ -2162,6 +2247,10 @@ class CtfRefineAnisoMagJob(_CtfRefineJobBase):
 
 
 class _JoinStarBase(_Relion5Job):
+    @classmethod
+    def menu_id(cls):
+        return MenuId.RELION_UTILS_JOB
+
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
         kwargs = super().normalize_kwargs(**kwargs)
@@ -2263,6 +2352,10 @@ class JoinMoviesJob(_JoinStarBase):
 
 
 class _LocalResolutionJobBase(_Relion5Job):
+    @classmethod
+    def menu_id(cls):
+        return MenuId.RELION_POSTPROCESS_JOB
+
     @classmethod
     def normalize_kwargs(cls, **kwargs):
         kwargs = super().normalize_kwargs(**kwargs)
@@ -2372,6 +2465,10 @@ class ParticleSubtractionJob(_Relion5SpaJob):
         return "relion.subtract"
 
     @classmethod
+    def menu_id(cls):
+        return MenuId.RELION_UTILS_JOB
+
+    @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
         kwargs = super().normalize_kwargs(**kwargs)
         kwargs["center_x"], kwargs["center_y"], kwargs["center_z"] = kwargs.pop(
@@ -2443,6 +2540,10 @@ class BayesianPolishTrainJob(_Relion5SpaJob):
         return "relion.polish.train"
 
     @classmethod
+    def menu_id(cls):
+        return MenuId.RELION_REFINE_JOB
+
+    @classmethod
     def job_title(cls) -> str:
         return "Bayesian Polish (Train)"
 
@@ -2506,6 +2607,10 @@ class BayesianPolishJob(_Relion5SpaJob):
     @classmethod
     def type_label(cls) -> str:
         return "relion.polish"
+
+    @classmethod
+    def menu_id(cls):
+        return MenuId.RELION_REFINE_JOB
 
     @classmethod
     def job_title(cls) -> str:
@@ -2580,6 +2685,10 @@ class DynaMightJob(_Relion5SpaJob):
         return "dynamight"
 
     @classmethod
+    def menu_id(cls):
+        return MenuId.RELION_POSTPROCESS_JOB
+
+    @classmethod
     def normalize_kwargs(cls, **kwargs):
         kwargs = super().normalize_kwargs(**kwargs)
         kwargs["fn_dynamight_exe"] = _configs.get_dynamight_exe()
@@ -2632,6 +2741,10 @@ class ModelAngeloJob(_Relion5SpaJob):
     @classmethod
     def type_label(cls) -> str:
         return "modelangelo"
+
+    @classmethod
+    def menu_id(cls):
+        return MenuId.RELION_POSTPROCESS_JOB
 
     @classmethod
     def normalize_kwargs(cls, **kwargs):

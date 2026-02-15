@@ -9,8 +9,22 @@ class Type:
 
 class MenuId:
     RELION = "tools/relion"
-    RELION_NEW_JOB = "tools/relion/new"
-    RELION_UTILS = "tools/relion/utils"
+    RELION_UTILS = "tools/relion/990_utils"
+
+    RELION_IMPORT_JOB = "tools/relion/000_import"
+    RELION_PREPROCESS_JOB = "tools/relion/003_preprocess"
+    RELION_PICK_JOB = "tools/relion/100_pick"
+    RELION_EXTRACT_JOB = "tools/relion/102_extract"
+    RELION_FILTER_PARTICLES_JOB = "tools/relion/110_filter_particles"
+    RELION_RECONSTRUCTION_JOB = "tools/relion/400_reconstruction"
+    RELION_REFINE_JOB = "tools/relion/500_refine"
+    RELION_POSTPROCESS_JOB = "tools/relion/600_postprocess"
+    RELION_UTILS_JOB = "tools/relion/990_utils"
+
+    RELION_TILT_ALIGN_JOB = "tools/relion/030_tilt_align"
+    RELION_TOMO_RECON_JOB = "tools/relion/036_tomo_reconstruction"
+
+    RELION_OTHER_JOB = "tools/relion/999_others"
 
 
 class RelionJobState(Enum):
@@ -102,4 +116,16 @@ ARG_NAME_REMAP = [
 ]
 
 configure_submenu(MenuId.RELION, "RELION")
-configure_submenu(MenuId.RELION_NEW_JOB, "New Job")
+configure_submenu(MenuId.RELION_UTILS, "Job Actions")
+configure_submenu(MenuId.RELION_IMPORT_JOB, "Job: Import")
+configure_submenu(MenuId.RELION_PREPROCESS_JOB, "Job: Preprocess")
+configure_submenu(MenuId.RELION_PICK_JOB, "Job: Pick")
+configure_submenu(MenuId.RELION_EXTRACT_JOB, "Job: Extract")
+configure_submenu(MenuId.RELION_FILTER_PARTICLES_JOB, "Job: Filter Particles")
+configure_submenu(MenuId.RELION_RECONSTRUCTION_JOB, "Job: Reconstruction")
+configure_submenu(MenuId.RELION_UTILS_JOB, "Job: Utilities")
+configure_submenu(MenuId.RELION_TILT_ALIGN_JOB, "Job: Tilt Align")
+configure_submenu(MenuId.RELION_TOMO_RECON_JOB, "Job: Tomo Reconstruction")
+configure_submenu(MenuId.RELION_REFINE_JOB, "Job: Refine")
+configure_submenu(MenuId.RELION_POSTPROCESS_JOB, "Job: Postprocess")
+configure_submenu(MenuId.RELION_OTHER_JOB, "Job: Other Jobs")

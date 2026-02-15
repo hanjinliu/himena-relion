@@ -2,6 +2,7 @@ from pathlib import Path
 
 from starfile_rs import empty_star
 from himena_relion._job_class import connect_jobs
+from himena_relion.consts import MenuId
 from himena_relion.external import RelionExternalJob
 from himena_relion.relion5._builtins import (
     SelectSplitJob,
@@ -38,6 +39,10 @@ class InspectParticles(RelionExternalJob):
     @classmethod
     def job_title(cls):
         return "Inspect Particles"
+
+    @classmethod
+    def menu_id(cls):
+        return MenuId.RELION_PICK_JOB
 
     def provide_widget(self, job_dir) -> QInspectViewer:
         return QInspectViewer(job_dir)

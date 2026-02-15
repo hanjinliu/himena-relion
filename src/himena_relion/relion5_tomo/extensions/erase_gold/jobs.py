@@ -17,6 +17,7 @@ from himena_relion.relion5_tomo.extensions.erase_gold.widgets import (
 )
 from himena_relion.relion5_tomo.extensions.erase_gold import _impl
 from himena_relion.relion5_tomo._tomo_utils import project_fiducials
+from himena_relion.consts import MenuId
 
 TILT_ANGLE = "rlnTomoNominalStageTiltAngle"
 TILT_STAR = "rlnTomoTiltSeriesStarFile"
@@ -39,6 +40,10 @@ class FindBeads3D(RelionExternalJob):
     @classmethod
     def job_title(cls):
         return "Find Beads 3D"
+
+    @classmethod
+    def menu_id(cls):
+        return MenuId.RELION_TILT_ALIGN_JOB
 
     def run(
         self,
@@ -94,6 +99,10 @@ class EraseGold(RelionExternalJob):
     @classmethod
     def job_title(cls):
         return "Erase Gold"
+
+    @classmethod
+    def menu_id(cls):
+        return MenuId.RELION_TILT_ALIGN_JOB
 
     def run(
         self,

@@ -5,6 +5,7 @@ import logging
 import weakref
 
 from qtpy import QtWidgets as QtW, QtCore, QtGui
+from superqt import QElidingLabel
 from superqt.utils import thread_worker, GeneratorWorker
 from watchfiles import watch
 from timeit import default_timer
@@ -245,12 +246,10 @@ def register_job(
 class QRelionJobWidgetControl(QtW.QWidget):
     def __init__(self, parent: QRelionJobWidget):
         super().__init__()
-        self.widget = parent
+        self._parent = parent
         # The last lines show the progress of the job, which is useful for users during
         # running jobs.
-        # TODO: should we use QElidingLabel here? Sometimes warning messages can be put
-        # in the log and they can be long.
-        self._oneline_msg = QtW.QLabel("")
+        self._oneline_msg = QElidingLabel("")
         self._oneline_msg.setFixedWidth(700)
         self._oneline_msg.setSizePolicy(
             QtW.QSizePolicy.Policy.Expanding, QtW.QSizePolicy.Policy.Preferred
@@ -259,7 +258,6 @@ class QRelionJobWidgetControl(QtW.QWidget):
             QtCore.Qt.TextInteractionFlag.TextSelectableByMouse
         )
         self._oneline_msg.setFont(QtGui.QFont(monospace_font_family(), 7))
-        self._oneline_msg.setToolTip("The last two lines of run.out")
         self._tool_buttons = [
             QColoredToolButton(
                 self.find_me_in_flowchart, _utils.path_icon_svg("findme")
@@ -279,6 +277,10 @@ class QRelionJobWidgetControl(QtW.QWidget):
             if wdt := self.find_child_widget(QRunOutErrLog):
                 msg = wdt.last_lines()
                 self.set_msg(msg)
+
+    @property
+    def widget(self) -> QRelionJobWidget:
+        return self._parent
 
     def find_child_widget(self, widget_type: type[_C]) -> _C | None:
         for wdt in self.widget._iter_job_widgets():
@@ -303,6 +305,10 @@ class QRelionJobWidgetControl(QtW.QWidget):
     def set_msg(self, msg: str):
         """Set the one-line message in the control widget."""
         self._oneline_msg.setText(msg)
+        if msg:
+            self._oneline_msg.setToolTip("The last two lines of run.out")
+        else:
+            self._oneline_msg.setToolTip("")
 
 
 def get_pipeline_widgets(

@@ -4,6 +4,7 @@ import mrcfile
 import numpy as np
 
 from himena_relion._job_class import connect_jobs
+from himena_relion.consts import MenuId
 from himena_relion.external import RelionExternalJob
 from himena_relion._annotated.io import IN_PARTICLES, MAP_TYPE, IN_MASK
 from himena_relion.relion5.extensions.transform import widgets as _wdg
@@ -57,6 +58,10 @@ class ShiftMapJob(RelionExternalJob):
     @classmethod
     def job_title(cls):
         return "Shift Map"
+
+    @classmethod
+    def menu_id(cls):
+        return MenuId.RELION_UTILS_JOB
 
     def run(
         self,

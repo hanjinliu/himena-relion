@@ -140,11 +140,16 @@ class RelionJob(ABC):
         )
         register_function(
             cls._show_scheduler_widget,
-            menus=[MenuId.RELION_NEW_JOB],
+            menus=[cls.menu_id()],
             title=f"{cls.command_palette_title_prefix()} {cls.job_title()}",
             command_id=command_id,
             tooltip=getattr(cls, "__doc__", None),
         )
+
+    @classmethod
+    def menu_id(cls) -> str:
+        """Get the menu ID for this job."""
+        return MenuId.RELION_OTHER_JOB
 
     @classmethod
     def create_and_run_job(cls, _cwd, **kwargs) -> RelionJobExecution | None:

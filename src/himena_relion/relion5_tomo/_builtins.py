@@ -15,6 +15,7 @@ from himena_relion.relion5._builtins import (
     InitialModelJob,
     Refine3DJob,
 )
+from himena_relion.consts import MenuId
 
 
 def norm_optim(**kwargs):
@@ -63,6 +64,10 @@ class _ImportTomoOrCoordsJob(_Relion5TomoJob):
     @classmethod
     def type_label(cls) -> str:
         return "relion.importtomo"
+
+    @classmethod
+    def menu_id(cls) -> str:
+        return MenuId.RELION_IMPORT_JOB
 
     @classmethod
     def job_is_tomo(cls):
@@ -299,6 +304,10 @@ class ExcludeTiltJob(_Relion5TomoJob):
         return "relion.excludetilts"
 
     @classmethod
+    def menu_id(cls):
+        return MenuId.RELION_TILT_ALIGN_JOB
+
+    @classmethod
     def job_is_tomo(cls):
         return False
 
@@ -317,6 +326,10 @@ class _AlignTiltSeriesJobBase(_Relion5TomoJob):
     @classmethod
     def type_label(cls) -> str:
         return "relion.aligntiltseries"
+
+    @classmethod
+    def menu_id(cls):
+        return MenuId.RELION_TILT_ALIGN_JOB
 
     @classmethod
     def job_is_tomo(cls):
@@ -521,6 +534,10 @@ class _ReconstructTomogramBaseJob(_Relion5TomoJob):
         return "relion.reconstructtomograms"
 
     @classmethod
+    def menu_id(cls):
+        return MenuId.RELION_TOMO_RECON_JOB
+
+    @classmethod
     def job_is_tomo(cls):
         return False
 
@@ -685,6 +702,10 @@ class PickJob(_Relion5TomoJob):
         return "relion.picktomo"
 
     @classmethod
+    def menu_id(cls):
+        return MenuId.RELION_PICK_JOB
+
+    @classmethod
     def normalize_kwargs(cls, **kwargs):
         if kwargs.get("particle_spacing") is None:
             kwargs["particle_spacing"] = -1
@@ -719,6 +740,10 @@ class ExtractParticlesTomoJob(_Relion5TomoJob):
     @classmethod
     def type_label(cls) -> str:
         return "relion.pseudosubtomo"
+
+    @classmethod
+    def menu_id(cls):
+        return MenuId.RELION_EXTRACT_JOB
 
     @classmethod
     def job_is_tomo(cls):
@@ -764,6 +789,10 @@ class _DenoiseJobBase(_Relion5TomoJob):
     @classmethod
     def type_label(cls) -> str:
         return "relion.denoisetomo"
+
+    @classmethod
+    def menu_id(cls):
+        return MenuId.RELION_TOMO_RECON_JOB
 
     @classmethod
     def job_is_tomo(cls):
@@ -1155,6 +1184,10 @@ class ReconstructParticlesJob(_Relion5TomoJob):
         return "relion.reconstructparticletomo"
 
     @classmethod
+    def menu_id(cls):
+        return MenuId.RELION_RECONSTRUCTION_JOB
+
+    @classmethod
     def normalize_kwargs(cls, **kwargs):
         kwargs = norm_optim(**super().normalize_kwargs(**kwargs))
         if kwargs.get("crop_size") is None:
@@ -1218,6 +1251,10 @@ class CtfRefineTomoJob(_Relion5TomoJob):
     @classmethod
     def type_label(cls) -> str:
         return "relion.ctfrefinetomo"
+
+    @classmethod
+    def menu_id(cls):
+        return MenuId.RELION_REFINE_JOB
 
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
@@ -1291,6 +1328,10 @@ class FrameAlignTomoJob(_Relion5TomoJob):
     @classmethod
     def type_label(cls) -> str:
         return "relion.framealigntomo"
+
+    @classmethod
+    def menu_id(cls):
+        return MenuId.RELION_REFINE_JOB
 
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
