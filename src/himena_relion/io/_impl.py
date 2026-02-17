@@ -298,13 +298,15 @@ def restore_trashed_jobs(relion_project_dir: Path, job_ids: list[str]):
             job_pipeline = RelionPipelineModel.validate_file(job_pipeline_star)
             df_proc = job_pipeline.processes.dataframe
             # job_pipeline.star is still in "Running" state, so we have to update it.
-            sl = df_proc["rlnPipeLineProcessStatusLabel"] == "Running"
+            status_label = df_proc["rlnPipeLineProcessStatusLabel"]
+            sl = status_label == "Running"
             if path_to_undo.joinpath(FileNames.EXIT_SUCCESS).exists():
-                df_proc[sl] = ["Succeeded"] * sl.sum()
+                status_label[sl] = ["Succeeded"] * sl.sum()
             elif path_to_undo.joinpath(FileNames.EXIT_FAILURE).exists():
-                df_proc[sl] = ["Failed"] * sl.sum()
+                status_label[sl] = ["Failed"] * sl.sum()
             elif path_to_undo.joinpath(FileNames.EXIT_ABORTED).exists():
-                df_proc[sl] = ["Aborted"] * sl.sum()
+                status_label[sl] = ["Aborted"] * sl.sum()
+            df_proc["rlnPipeLineProcessStatusLabel"] = status_label
             all_processes.append(job_pipeline.processes.dataframe)
             all_nodes.append(job_pipeline.nodes.dataframe)
             all_input_edges.append(job_pipeline.input_edges.dataframe)
