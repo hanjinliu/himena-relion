@@ -301,11 +301,11 @@ def restore_trashed_jobs(relion_project_dir: Path, job_ids: list[str]):
             status_label = df_proc["rlnPipeLineProcessStatusLabel"]
             sl = status_label == "Running"
             if path_to_undo.joinpath(FileNames.EXIT_SUCCESS).exists():
-                status_label[sl] = ["Succeeded"] * sl.sum()
+                status_label[sl] = "Succeeded"
             elif path_to_undo.joinpath(FileNames.EXIT_FAILURE).exists():
-                status_label[sl] = ["Failed"] * sl.sum()
+                status_label[sl] = "Failed"
             elif path_to_undo.joinpath(FileNames.EXIT_ABORTED).exists():
-                status_label[sl] = ["Aborted"] * sl.sum()
+                status_label[sl] = "Aborted"
             df_proc["rlnPipeLineProcessStatusLabel"] = status_label
             all_processes.append(job_pipeline.processes.dataframe)
             all_nodes.append(job_pipeline.nodes.dataframe)
