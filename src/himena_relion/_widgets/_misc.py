@@ -208,3 +208,22 @@ def spacer_widget():
         QtW.QSizePolicy.Policy.Expanding, QtW.QSizePolicy.Policy.Expanding
     )
     return spacer
+
+
+class QMoreActionButton(QtW.QPushButton):
+    """A QPushButton with a dropdown menu for more actions."""
+
+    def __init__(self, parent=None):
+        super().__init__("...", parent)
+        self.setFixedWidth(24)
+        menu = QtW.QMenu(self)
+        menu.setToolTipsVisible(True)
+        self.setMenu(menu)
+        self.setStyleSheet(
+            "QMoreActionButton::menu-indicator { image: none; width: 0px; }"
+        )
+        self.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
+
+    def add_action(self, text: str, cb):
+        action = self.menu().addAction(text, cb)
+        action.setToolTip(cb.__doc__ or "")

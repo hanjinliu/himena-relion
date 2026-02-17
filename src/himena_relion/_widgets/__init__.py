@@ -20,6 +20,7 @@ from himena_relion._widgets._spinbox import QIntWidget, QIntChoiceWidget
 from himena_relion._widgets._plot import QPlotCanvas
 from himena_relion._widgets._misc import (
     spacer_widget,
+    QMoreActionButton,
     QMicrographListWidget,
     QImageViewTextEdit,
     QNumParticlesLabel,
@@ -46,6 +47,7 @@ __all__ = [
     "QMicrographListWidget",
     "QImageViewTextEdit",
     "QNumParticlesLabel",
+    "QMoreActionButton",
     "QSymmetryLabel",
     "spacer_widget",
 ]

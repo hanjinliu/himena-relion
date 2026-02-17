@@ -14,6 +14,7 @@ from himena.plugins import validate_protocol
 from himena.style import Theme
 from himena_relion._job_class import execute_job
 from himena_relion._widgets._job_widgets import QJobPipelineViewer
+from himena_relion._widgets._misc import QMoreActionButton
 from himena_relion.consts import Type, JOB_ID_MAP
 from himena_relion._pipeline import (
     NodeStatus,
@@ -39,7 +40,20 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         super().__init__()
         self._directory_label = QElidingLabel("???", self)
         self._directory_label.setElideMode(QtCore.Qt.TextElideMode.ElideLeft)
+        self._directory_label.setTextInteractionFlags(
+            QtCore.Qt.TextInteractionFlag.TextSelectableByMouse
+        )
         self._scene = QtW.QGraphicsScene()
+
+        # Create the "more" button with a menu for additional actions
+        btn = QMoreActionButton()
+
+        btn.add_action("Open default_pipeline.star", self._open_as_raw_text)
+        btn.add_action("Open Project Note", self._open_project_note)
+        # btn.add_action("Open Trash Directory", self._open_trash_dir)
+        # btn.add_action("Gentle clean all", self._gentle_clean_all)
+        # btn.add_action("Harsh clean all", self._harsh_clean_all)
+        btn.add_action("Refresh", self._refresh)
 
         self._stacked_widget = QtW.QStackedWidget()
         self._flow_chart = QRelionPipelineFlowChartView(ui, self._scene)
@@ -56,7 +70,12 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         splitter.addWidget(self._footer)
         splitter.setSizes([800, 420])
 
-        layout.addWidget(self._directory_label)
+        _header_layout = QtW.QHBoxLayout()
+        _header_layout.setContentsMargins(0, 0, 0, 0)
+        _header_layout.setSpacing(1)
+        _header_layout.addWidget(self._directory_label)
+        _header_layout.addWidget(btn, alignment=QtCore.Qt.AlignmentFlag.AlignRight)
+        layout.addLayout(_header_layout)
         layout.addWidget(self._finder)
         layout.addWidget(splitter)
 
@@ -83,6 +102,29 @@ class QRelionPipelineFlowChart(QtW.QWidget):
 
     def _on_background_left_clicked(self):
         self._footer.clear_in_out()
+
+    def _open_as_raw_text(self):
+        """Open the default_pipeline.star file as a raw text file."""
+        path = self._flow_chart._relion_project_dir / "default_pipeline.star"
+        if not path.exists():
+            _LOGGER.warning("default_pipeline.star not found at %s.", path.as_posix())
+            return
+        self._flow_chart._ui.read_file(
+            path,
+            plugin="himena_builtins.io.read_as_text_anyway",
+            append_history=False,
+        )
+
+    def _open_project_note(self):
+        """Open and edit the project note file."""
+        path = self._flow_chart._relion_project_dir / "project_note.txt"
+        if not path.exists():
+            path.touch()  # create an empty project_note.txt if it doesn't exist
+        self._flow_chart._ui.read_file(path, append_history=False)
+
+    def _refresh(self):
+        """Manually trigger a refresh of the pipeline data."""
+        self._on_pipeline_updated(self._flow_chart._pipeline)
 
     @validate_protocol
     def update_model(self, model: WidgetDataModel) -> None:

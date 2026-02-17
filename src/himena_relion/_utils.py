@@ -18,6 +18,7 @@ from himena_relion.schemas import RelionPipelineModel, ParticleMetaModel
 if TYPE_CHECKING:
     from numpy.typing import NDArray
     from himena import MainWindow
+    from himena_relion.pipeline.widgets import QRelionPipelineFlowChart
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -278,3 +279,16 @@ def _monospace_font_for_linux() -> str:
         if fam in families:
             return fam
     return MonospaceFontFamily
+
+
+def get_pipeline_widgets(
+    ui: MainWindow,
+    relion_project_dir: Path | None = None,
+) -> QRelionPipelineFlowChart | None:
+    from himena_relion.pipeline.widgets import QRelionPipelineFlowChart
+
+    for dock in ui.dock_widgets:
+        if isinstance(flowchart := dock.widget, QRelionPipelineFlowChart):
+            dir_for_this = flowchart._flow_chart._relion_project_dir
+            if dir_for_this == relion_project_dir or relion_project_dir is None:
+                return dock.widget

@@ -1,17 +1,15 @@
 from __future__ import annotations
 
-import logging
 from typing import TYPE_CHECKING
 from himena import MainWindow, WidgetDataModel
 from himena.exceptions import Cancelled
 from himena.plugins import register_function
 from himena_relion.consts import Type, MenuId, FileNames
 from himena_relion.io import _impl
+from himena_relion._utils import get_pipeline_widgets
 
 if TYPE_CHECKING:
     from himena_relion._job_dir import JobDirectory
-
-_LOGGER = logging.getLogger(__name__)
 
 
 @register_function(
@@ -148,7 +146,7 @@ def set_job_alias(ui: MainWindow, model: WidgetDataModel):
 @register_function(
     menus=[MenuId.RELION_UTILS],
     types=[Type.RELION_JOB],
-    title="Trash",
+    title="Trash RELION job",
     command_id="himena-relion:trash-job",
     group="07-job-operation",
 )
@@ -156,6 +154,31 @@ def trash_job(ui: MainWindow, model: WidgetDataModel):
     """Move this RELION job to trash."""
     job_dir = assert_job(model)
     return _impl.trash_job(ui, job_dir)
+
+
+@register_function(
+    menus=[MenuId.RELION_UTILS],
+    title="Restore Trashed RELION jobs",
+    command_id="himena-relion:restore-trashed-jobs",
+)
+def restore_trashed_jobs(ui: MainWindow):
+    if cur_widget := get_pipeline_widgets(ui):
+        start_path = cur_widget._flow_chart._relion_project_dir
+    else:
+        start_path = None
+    if res := ui.exec_file_dialog(
+        "d",
+        caption="Select RELION job directory to restore",
+        start_path=start_path,
+    ):
+        parts = res.parts
+        if len(parts) < 3 or parts[-3] != "Trash":
+            raise ValueError("Selected directory is not a trashed job directory.")
+        cur_relion_project_dir = res.parent.parent.parent
+        job_id = f"{parts[-2]}/{parts[-1]}/"
+        _impl.restore_trashed_jobs(cur_relion_project_dir, [job_id])
+    else:
+        raise Cancelled
 
 
 @register_function(
@@ -175,17 +198,8 @@ def start_new_project(ui: MainWindow):
         else:
             path.write_text(text)
         ui.read_file(path)
-        return
-    raise Cancelled
-
-
-@register_function(
-    menus=[MenuId.RELION_UTILS],
-    title="Undo Trash RELION jobs",
-    command_id="himena-relion:undo-trash-jobs",
-)
-def undo_trash_jobs(ui: MainWindow):
-    raise NotImplementedError
+    else:
+        raise Cancelled
 
 
 def assert_job(model: WidgetDataModel) -> JobDirectory:

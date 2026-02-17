@@ -252,6 +252,15 @@ class JobDirectory:
                 yield from d.glob(pattern)
 
 
+class TrashedJobDirectory(JobDirectory):
+    """Class for handling trashed job directories in RELION."""
+
+    @property
+    def relion_project_dir(self) -> Path:
+        """Return the path to the RELION project directory."""
+        return self.path.parent.parent.parent
+
+
 class HasTiltSeriesJobDirectory(JobDirectory):
     def iter_tilt_series_path(self) -> Iterator[Path]:
         """Iterate over all motion correction info as DataFrames."""

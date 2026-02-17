@@ -27,7 +27,7 @@ from himena_relion._utils import monospace_font_family
 from himena_relion.consts import RelionJobState
 
 if TYPE_CHECKING:
-    from himena_relion.pipeline.widgets import QRelionPipelineFlowChart
+    pass
 
 _LOGGER = logging.getLogger(__name__)
 _C = TypeVar("_C", bound=JobWidgetBase)
@@ -295,7 +295,7 @@ class QRelionJobWidgetControl(QtW.QWidget):
         """Focus on the node item corresponding to this job in the flowchart."""
         if ui := self.widget._ui_ref():
             job_dir = self.widget._job_dir
-            flowchart = get_pipeline_widgets(ui, job_dir.relion_project_dir)
+            flowchart = _utils.get_pipeline_widgets(ui, job_dir.relion_project_dir)
             if flowchart is None:
                 return
             job_item_id = job_dir.path.relative_to(job_dir.relion_project_dir)
@@ -309,15 +309,3 @@ class QRelionJobWidgetControl(QtW.QWidget):
             self._oneline_msg.setToolTip("The last two lines of run.out")
         else:
             self._oneline_msg.setToolTip("")
-
-
-def get_pipeline_widgets(
-    ui: MainWindow,
-    relion_job_dir: Path,
-) -> QRelionPipelineFlowChart | None:
-    from himena_relion.pipeline.widgets import QRelionPipelineFlowChart
-
-    for dock in ui.dock_widgets:
-        if isinstance(flowchart := dock.widget, QRelionPipelineFlowChart):
-            if flowchart._flow_chart._relion_project_dir == relion_job_dir:
-                return dock.widget

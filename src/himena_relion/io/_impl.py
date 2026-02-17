@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 import subprocess
+import shutil
 from typing import TYPE_CHECKING, Annotated
 from himena import MainWindow
 from himena.exceptions import Cancelled
@@ -12,6 +13,7 @@ from himena_relion.schemas._pipeline import RelionPipelineModel
 
 if TYPE_CHECKING:
     from himena_relion._job_dir import JobDirectory
+    import pandas as pd
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -175,7 +177,8 @@ def trash_job(ui: MainWindow, job_dir: JobDirectory):
     from himena_relion._job_dir import JobDirectory
 
     rln_dir = job_dir.relion_project_dir
-    trash_dir = rln_dir.joinpath("Trash")
+    trash_dir = _trash_dir(rln_dir)
+    # open the file to lock it.
     with rln_dir.joinpath("default_pipeline.star").open("r+") as f:
         pipeline = RelionPipelineModel.validate_text(f.read())
         input_indices_to_remove: list[int] = []
@@ -205,19 +208,14 @@ def trash_job(ui: MainWindow, job_dir: JobDirectory):
                 message_lines.append("<li>...</li>")  # truncate long list
                 break
         message_lines.append("</ul>")
-        message_lines.append(
-            "<br>You cannot untrash jobs from himena-relion yet!<br>This "
-            "operation may be inconsistent with the operation from RELION GUI."
+        _yes = "Yes, move to trash"
+        resp = ui.exec_choose_one_dialog(
+            title="Trash job?",
+            message="".join(message_lines),
+            choices=[_yes, "Cancel"],
         )
         # ask user
-        if (
-            ui.exec_choose_one_dialog(
-                title="Trash job?",
-                message="".join(message_lines),
-                choices=["Yes, move to trash", "Cancel"],
-            )
-            != "Yes, move to trash"
-        ):
+        if resp != _yes:
             raise Cancelled
 
         # determine other fields to remove
@@ -264,8 +262,93 @@ def trash_job(ui: MainWindow, job_dir: JobDirectory):
             src = rln_dir / p
             dest = trash_dir / p
             dest.parent.mkdir(parents=True, exist_ok=True)
+            if dest.exists():
+                _LOGGER.warning(f"Destination {dest} already exists. Overwriting.")
+                _remove_dir_or_file(dest)
             src.rename(dest)
+    rln_dir.joinpath("default_pipeline.star").touch()
 
 
-def undo_trash_jobs(ui: MainWindow):
-    raise NotImplementedError
+def restore_trashed_jobs(relion_project_dir: Path, job_ids: list[str]):
+    trash_dir = _trash_dir(relion_project_dir)
+    all_jobs_to_undo: list[Path] = []
+    for job_id in job_ids:
+        job_path_in_trash = trash_dir / job_id
+        if not job_path_in_trash.exists():
+            _LOGGER.warning(f"Job {job_id} not found in trash.")
+            continue
+        all_jobs_to_undo.append(job_path_in_trash)
+
+    # open the file to lock it.
+    with relion_project_dir.joinpath("default_pipeline.star").open("r+") as f:
+        pipeline = RelionPipelineModel.validate_text(f.read())
+        all_processes = [pipeline.processes.dataframe]
+        all_nodes = [pipeline.nodes.dataframe]
+        all_input_edges = [pipeline.input_edges.dataframe]
+        all_output_edges = [pipeline.output_edges.dataframe]
+        for path_to_undo in all_jobs_to_undo:
+            job_pipeline_star = path_to_undo / "job_pipeline.star"
+            path_dest = relion_project_dir / path_to_undo.relative_to(trash_dir)
+            if not job_pipeline_star.exists():
+                _LOGGER.warning(f"{job_pipeline_star} not found. Skipping.")
+                continue
+            if path_dest.exists():
+                _LOGGER.warning(f"Destination {path_dest} already exists. Skipping.")
+                continue
+            job_pipeline = RelionPipelineModel.validate_file(job_pipeline_star)
+            df_proc = job_pipeline.processes.dataframe
+            # job_pipeline.star is still in "Running" state, so we have to update it.
+            sl = df_proc["rlnPipeLineProcessStatusLabel"] == "Running"
+            if path_to_undo.joinpath(FileNames.EXIT_SUCCESS).exists():
+                df_proc[sl] = ["Succeeded"] * sl.sum()
+            elif path_to_undo.joinpath(FileNames.EXIT_FAILURE).exists():
+                df_proc[sl] = ["Failed"] * sl.sum()
+            elif path_to_undo.joinpath(FileNames.EXIT_ABORTED).exists():
+                df_proc[sl] = ["Aborted"] * sl.sum()
+            all_processes.append(job_pipeline.processes.dataframe)
+            all_nodes.append(job_pipeline.nodes.dataframe)
+            all_input_edges.append(job_pipeline.input_edges.dataframe)
+            all_output_edges.append(job_pipeline.output_edges.dataframe)
+            path_dest.parent.mkdir(parents=True, exist_ok=True)
+            if path_dest.exists():
+                _LOGGER.warning(f"Destination {path_dest} already exists. Overwriting.")
+                _remove_dir_or_file(path_dest)
+            path_to_undo.rename(path_dest)
+        df_processes = _concat_and_reorder(all_processes, "rlnPipeLineProcessName")
+        df_nodes = _concat_and_reorder(all_nodes, "rlnPipeLineNodeName")
+        df_input_edges = _concat_and_reorder(all_input_edges, "rlnPipeLineEdgeFromNode")
+        df_output_edges = _concat_and_reorder(
+            all_output_edges, "rlnPipeLineEdgeProcess"
+        )
+        pipeline.processes = df_processes
+        pipeline.nodes = df_nodes
+        pipeline.input_edges = df_input_edges
+        pipeline.output_edges = df_output_edges
+        f.seek(0)
+        f.write(pipeline.to_string())
+    relion_project_dir.joinpath("default_pipeline.star").touch()
+
+
+def _trash_dir(relion_job_dir: Path) -> Path:
+    return relion_job_dir / "Trash"
+
+
+def _remove_dir_or_file(dest: Path):
+    if dest.is_dir():
+        shutil.rmtree(dest)
+    else:
+        dest.unlink()
+
+
+def _concat_and_reorder(dfs: list[pd.DataFrame], column_name: str):
+    import pandas as pd
+
+    df_processes = pd.concat(dfs, ignore_index=True)
+    order = df_processes[column_name].apply(_try_get_job_name).argsort()
+    return df_processes.iloc[order].reset_index(drop=True)
+
+
+def _try_get_job_name(x: str) -> str:
+    if "/" in x:
+        return x.split("/")[1]
+    return x

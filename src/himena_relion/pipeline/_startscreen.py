@@ -55,7 +55,13 @@ class QRelionPipelineStartScreen(QtW.QWidget):
     def _make_btn(self, job_cls: type[RelionJob]):
         button = QtW.QPushButton(job_cls.job_title())
         button.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
-        button.clicked.connect(lambda: self._ui.exec_action(job_cls.command_id()))
+        button.clicked.connect(self._prep_clicked_callback(job_cls))
         if tooltip := getattr(job_cls, "__doc__", None):
             button.setToolTip(tooltip)
         return button
+
+    def _prep_clicked_callback(self, job_cls: type[RelionJob]):
+        def _cb():
+            self._ui.exec_action(job_cls.command_id())
+
+        return _cb
