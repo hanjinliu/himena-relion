@@ -4,12 +4,14 @@ from typing import Literal, NamedTuple
 from himena import StandardType, WidgetDataModel
 import numpy as np
 from numpy.typing import NDArray
-from qtpy import QtWidgets as QtW, QtCore
+from qtpy import QtWidgets as QtW, QtCore, QtGui
 from superqt import ensure_main_thread
 from vispy.color import ColorArray
 from vispy.scene.visuals import Rectangle
+from himena.widgets import current_instance
 from himena.qt._qlineedit import QIntLineEdit, QDoubleLineEdit
 from himena.plugins import validate_protocol
+from himena._utils import doc_to_whats_this
 from himena_builtins.qt.widgets._shared import labeled
 from himena_builtins.qt.widgets._image_components import (
     QHistogramView,
@@ -42,6 +44,24 @@ class QViewer(QtW.QWidget):
     def set_background_color(self, color):
         self._canvas._scene.bgcolor = color
 
+    def _show_usage(self):
+        current_instance()._backend_main_window._add_whats_this(
+            doc_to_whats_this(self.__doc__), style="markdown"
+        )
+
+    def _make_context_menu(self):
+        menu = QtW.QMenu(self)
+        menu.addAction("Usage", self._show_usage)
+        menu.addAction("Auto Fit", lambda: self.auto_fit())
+        menu.addAction("Copy Screenshot", self._canvas.copy_screenshot)
+        menu.addAction("Save Screenshot", self._canvas.save_screenshot)
+        return menu
+
+    def _show_context_menu(self):
+        menu = self._make_context_menu()
+        pos = menu.mapFromGlobal(QtGui.QCursor.pos())
+        menu.exec(pos)
+
 
 class Q2DViewerBase(QViewer):
     def __init__(self, parent=None):
@@ -49,11 +69,17 @@ class Q2DViewerBase(QViewer):
         self._canvas = Vispy2DViewer(self)
         self._canvas._scene.bgcolor = "#242424"
         self._canvas._viewbox.border_color = "#4A4A4A"
+        self._canvas.right_clicked.connect(self._show_context_menu)
 
     def auto_fit(self):
         """Automatically fit the camera to the image."""
         self._canvas.auto_fit()
         self._canvas.update_canvas()
+
+    def _show_context_menu(self):
+        menu = self._make_context_menu()
+        pos = menu.mapFromGlobal(QtGui.QCursor.pos())
+        menu.exec(pos)
 
 
 class Q2DSimpleViewer(Q2DViewerBase):
@@ -126,6 +152,15 @@ class Q2DSimpleViewer(Q2DViewerBase):
 
 
 class Q2DViewer(Q2DViewerBase):
+    """2D Viewer.
+
+    ## Mouse interactions:
+
+    - Left drag ... pan
+    - Right drag ... zoom
+    - Wheel ... zoom
+    """
+
     _executor = ThreadPoolExecutor(max_workers=2)
 
     def __init__(self, zlabel: str = "z", parent=None):
@@ -360,9 +395,22 @@ class Q3DViewerBase(QViewer):
             QtW.QSizePolicy.Policy.Expanding,
             QtW.QSizePolicy.Policy.Expanding,
         )
+        self._canvas.right_clicked.connect(self._show_context_menu)
 
 
 class Q3DViewer(Q3DViewerBase):
+    """3D Viewer.
+
+    ## Mouse interactions:
+
+    - Left drag ... rotate view
+    - Right drag ... zoom
+    - Middle drag ... pan
+    - Wheel ... zoom
+    - Shift + Left drag ... pan
+    - Shift + Right drag ... change camera perspective
+    """
+
     __himena_widget_id__ = "himena-relion:Q3DViewer"
     __himena_display_name__ = "3D volume viewer"
 
@@ -497,7 +545,18 @@ class Q3DViewer(Q3DViewerBase):
 
 
 class Q3DTomogramViewer(QViewer):
-    """A 3D viewer for displaying tomogram with other components."""
+    """3D viewer for displaying tomogram with components.
+
+    ## Mouse interactions:
+
+    - Left drag ... rotate view
+    - Right drag ... zoom
+    - Middle drag ... pan
+    - Wheel ... zoom
+    - Shift + Left drag ... pan
+    - Shift + Right drag ... change camera perspective
+    - Ctrl + Left drag ... move z slice
+    """
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -527,6 +586,7 @@ class Q3DTomogramViewer(QViewer):
         self._last_clim: tuple[float, float] | None = None
 
         self._canvas.plane_position_changed.connect(self._on_plane_position_changed)
+        self._canvas.right_clicked.connect(self._show_context_menu)
 
     def set_array_view(
         self,
@@ -615,9 +675,24 @@ class Q3DTomogramViewer(QViewer):
         c0, c1 = self._canvas.contrast_limits
         self._clim_widget.set_hist_for_array(slice_image, (c0, c1))
 
+    def _show_context_menu(self):
+        menu = self._make_context_menu()
+        pos = menu.mapFromGlobal(QtGui.QCursor.pos())
+        menu.exec(pos)
+
 
 class Q3DLocalResViewer(Q3DViewerBase):
-    """A 3D viewer for displaying local resolution maps with iso-surface."""
+    """A 3D viewer for displaying local resolution maps with iso-surface.
+
+    ## Mouse interactions:
+
+    - Left drag ... rotate view
+    - Right drag ... zoom
+    - Middle drag ... pan
+    - Wheel ... zoom
+    - Shift + Left drag ... pan
+    - Shift + Right drag ... change camera perspective
+    """
 
     def __init__(self, parent=None):
         super().__init__(parent)

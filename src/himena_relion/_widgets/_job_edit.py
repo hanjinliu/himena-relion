@@ -37,6 +37,7 @@ class QJobScheduler(QtW.QWidget):
         self._title_label.setFont(font)
         self._job_param_widget = QJobParameter()
         self._exec_btn = QtW.QPushButton("Run Job")
+        self._exec_btn.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
         self._exec_btn.clicked.connect(self._exec_action)
         self._mode: Mode = ScheduleMode()
 

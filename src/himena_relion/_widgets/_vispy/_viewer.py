@@ -1,9 +1,10 @@
 from __future__ import annotations
 from functools import lru_cache
-from typing import Literal, TYPE_CHECKING
+from typing import Literal
 import numpy as np
 from numpy.typing import NDArray
 from psygnal import Signal
+from PIL import Image
 
 from vispy import scene, use
 from vispy.scene import ViewBox
@@ -13,7 +14,9 @@ from vispy.scene.visuals import (
     Volume as VispyVolume,
     Arrow as VispyArrow,
 )
+from vispy.app import MouseEvent
 from vispy.visuals.transforms import STTransform
+from himena.widgets import set_clipboard, current_instance
 from himena_relion._image_readers import ArrayFilteredView
 from himena_relion._widgets._vispy._viewbox import (
     QOffScreenViewBox,
@@ -22,9 +25,6 @@ from himena_relion._widgets._vispy._viewbox import (
 )
 from himena_relion._widgets._vispy.motion import MotionPath
 from himena_relion._impl_objects import TubeObject
-
-if TYPE_CHECKING:
-    from vispy.app import MouseEvent
 
 
 @lru_cache(maxsize=1)
@@ -36,11 +36,45 @@ def is_egl_available() -> bool:
         return False
 
 
-class _Vispy2DBase:
+class _VispyBase:
+    right_clicked = Signal()
+
     def __init__(self):
-        _scene = self.make_scene()
-        self._scene = _scene
-        self._native_qt_widget = _scene.native
+        self._scene = self.make_scene()
+        self._scene.events.mouse_press.connect(self._on_mouse_press)
+        self._scene.events.mouse_release.connect(self._on_mouse_release)
+
+    def make_scene(self) -> scene.SceneCanvas:
+        raise NotImplementedError
+
+    def copy_screenshot(self):
+        img = self._scene.render()
+        _img_copy = np.array(img)
+        set_clipboard(image=_img_copy)
+        self._img_copy = _img_copy  # Keep a reference to prevent garbage collection
+
+    def save_screenshot(self):
+        img = self._scene.render()
+        path = current_instance().exec_file_dialog("w", extension_default=".png")
+        if path is not None:
+            Image.fromarray(img).save(path)
+
+    def _on_mouse_press(self, event: MouseEvent):
+        pass
+
+    def _on_mouse_release(self, event: MouseEvent):
+        if (
+            isinstance(last := event.last_event, MouseEvent)
+            and last.type == "mouse_press"
+            and last.button == 2
+            and np.sum(np.abs(last.pos - event.pos)) < 5
+        ):
+            self.right_clicked.emit()
+
+
+class _Vispy2DBase(_VispyBase):
+    def __init__(self):
+        super().__init__()
         viewbox = self._scene.central_widget.add_view(camera="panzoom")
         assert isinstance(viewbox, ViewBox)
         self._viewbox = viewbox
@@ -61,9 +95,6 @@ class _Vispy2DBase:
         self._markers.update_gl_state(depth_test=False)
         self._markers.visible = False
         self._scene.events.mouse_double_click.connect(lambda event: self.auto_fit())
-
-    def make_scene(self) -> scene.SceneCanvas:
-        raise NotImplementedError
 
     @property
     def camera(self) -> scene.PanZoomCamera:
@@ -106,11 +137,11 @@ class _Vispy2DBase:
         self._viewbox.camera.set_range(x=xrange, y=yrange)
 
 
-class _Vispy3DBase:
+class _Vispy3DBase(_VispyBase):
     _volume_visual: VispyVolume
 
     def __init__(self):
-        self._scene = self.make_scene()
+        super().__init__()
         self._camera = ArcballCamera(fov=0)
         viewbox = self._scene.central_widget.add_view()
         assert isinstance(viewbox, ViewBox)
