@@ -7,6 +7,18 @@ copyright: Copyright (c) 2025 - 2026 Hanjin Liu
 
 theme:
   name: material
+  palette:
+    - scheme: slate
+      primary: lime
+      accent: light-green
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+    - scheme: default
+      primary: lime
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
   features:
     - content.code.annotate
     - navigation.sections
@@ -62,3 +74,6 @@ markdown_extensions:
   - pymdownx.emoji:
       emoji_index: !!python/name:material.extensions.emoji.twemoji
       emoji_generator: !!python/name:material.extensions.emoji.to_svg
+
+extra_css:
+  - extra_style.css

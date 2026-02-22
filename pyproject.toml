@@ -58,6 +58,7 @@ pyqt6 = [
   "himena[pyqt6]>=0.1.6",
 ]
 docs = [
+  "himena[recommended]",
   "mkdocs",
   "mkdocs-material",
 ]

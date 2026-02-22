@@ -4,6 +4,8 @@ RELION has a built-in job called "External" that can run any command as a RELION
 This means that if you define the proper wrapper for the command you want to use, you
 can easily extend RELION.
 
+Simple examples are available [in the GitHub repository](https://github.com/hanjinliu/himena-relion/tree/main/examples).
+
 ## Class Structure
 
 All the subclasses of `RelionExternalJob` will be registered as external jobs. The
@@ -62,9 +64,39 @@ class MyJob(RelionExternalJob):
 To provide the user interface for the job parameters, `himena-relion` uses the type-to-widget mapping functionality built by [`magicgui`](https://pyapp-kit.github.io/magicgui/), with restrictions on the types so that the job parameters can be safely
 serialized to and deserialized from a job.star file.
 
+In short, following parameter types can be immediately used as the type annotations:
+
+- `int`
+- `float`
+- `str`
+- `bool`
+- `Path` (from `pathlib`)
+- `T | None` (where `T` is one of the above.)
+- `list[T]` (where `T` is one of the above.)
+- `tuple[T1, T2, ...]` (where `T1`, `T2`, ... are one of the above.)
+- `Literal["option1", "option2", ...]` (from `typing`)
+
+To improve the user interface, you will usually need to use `Annotated` type from
+`typing` to provide extra information for the widgets.
+
+```python
+Annotated[
+    int,
+    {
+        "min": 0,  # specific to int and float types
+        "max": 100,  # specific to int and float types
+        "step": 1,  # specific to int and float types
+        "label": "Parameter X",
+        "tooltip": "This is an integer parameter.",
+        "group": "Advanced Parameters",
+    }
+]
+```
+
 ### The reserved parameter names
 
 Following parameter names are reserved for RELION and can be used in the `run()` method.
+These parameters do not need type annotations.
 
 - `in_3dref` ... Reference map
 - `in_coords` ... Picked particle coordinates
@@ -76,23 +108,70 @@ Following parameter names are reserved for RELION and can be used in the `run()`
 
 ## Widget For Your Job
 
-```python
+If defined, `provide_widget()` will be called when the job window is opened. This method
+must return a Qt widget
+
+```python title="myjob.py"
 class MyJob(RelionExternalJob):
     ...
 
     def provide_widget(self, job_dir):
         return QMyJobWidget(job_dir)
+
 ```
 
-## Test Your Job
+`job_dir` is a `JobDirectory` object. This object is implemented with properties and
+methods that are useful for the manipulation of the job content.
+
+- `job_dir.path` ... absolute path to the job directory.
+- `job_dir.relion_project_dir` ... absolute path to the RELION project directory.
+- `job_dir.make_relative_path(path)` ... convert to the path relative to the RELION project (like `"Class2D/job020/job.star"`).
+- `job_dir.resolve_path(path)` ... convert to the absolute path.
+
+The Qt widget class to be returned can be any class that inherits from `QWidget`. To
+listen to the updates of the job content, you can implement the
+`on_job_updated(job_dir, path)` method in the widget class. This method will be called
+when the `path` file under the `job_dir` is updated.
+
+```python
+from qtpy import QtWidgets as QtW
+
+class QMyJobWidget(QtW.QWidget):
+    def __init__(self, job_dir):
+        super().__init__()
+        # build your custom widget here
+
+    def on_job_updated(self, job_dir, path):
+        # this method will be called when the `path` file under the `job_dir` is
+        # updated.
+        ...
+```
+
+## Run Your Job
+
+`himena` can also install a .py file as a plugin. You can run the following command for
+testing and actually running your jobs.
 
 ```bash
 himena relion --install myjob.py
 ```
 
-## Distribute as a plugin
+If the installation succeeds, you should see the file is listed under the "Plugins"
+panel of the setting dialog (++ctrl+comma++)
+
+![](../images/01_install_py.png){ width=400px loading=lazy }
+
+and your job is discoverable in the command palette (++ctrl+shift+p++).
+
+## Distribute As A Plugin
+
+Since your RELION plugin is just a Python module, you can distribute it as a
+`pip`-installable package. You need to specify the entry point in your `pyproject.toml`
+file as follows.
 
 ```toml title="pyproject.toml"
 [project.entry-points."himena.plugin"]
 "My RELION Plugin" = mymodule.mysubmodule.myjob
 ```
+
+Please refer to the [`himena` plugin system](https://hanjinliu.github.io/himena/dev/plugin_system/) for more details.

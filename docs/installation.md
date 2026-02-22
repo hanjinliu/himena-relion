@@ -2,12 +2,13 @@
 
 ## 1. Install RELION
 
-Currently `himena-relion` only supports RELION 5.0. Please follow the instructions in
+Currently `himena-relion` only supports RELION 5.0.x. Please follow the instructions in
 the [RELION documentation](https://relion.readthedocs.io/en/latest/Installation.html).
 
 ## 2. Create a Python environment
 
-Installation in a Python virtual environment is recommended to avoid conflicts with other packages. For example, you can use [miniforge](https://github.com/conda-forge/miniforge) to create a minimum conda environment in your user directory.
+Installation in a Python virtual environment is recommended to avoid conflicts with
+other packages. For example, you can use [miniforge](https://github.com/conda-forge/miniforge) to create a minimum conda environment in your user directory.
 
 ## 3. Install `himena-relion`
 
