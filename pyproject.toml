@@ -61,6 +61,7 @@ docs = [
   "himena[recommended]",
   "mkdocs",
   "mkdocs-material==9.7.1",
+  "mkdocs-autorefs>=1.4.2",
   "click<8.3",
 ]
 recommended = [
