@@ -60,7 +60,7 @@ pyqt6 = [
 docs = [
   "himena[recommended]",
   "mkdocs",
-  "mkdocs-material=9.7.1",
+  "mkdocs-material==9.7.1",
   "click<8.3",
 ]
 recommended = [
