@@ -14,6 +14,8 @@
 
 :warning: `himena-relion` is actively under development. Please be cautious when using it for your real data processing.
 
+#### [&rarr; Documentation](https://hanjinliu.github.io/himena-relion/)
+
 ## Highlights
 
 #### View, queue and run RELION single-particle and tomography jobs
