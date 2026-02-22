@@ -18,6 +18,8 @@ def pick_job_class(class_id: str) -> "type[RelionExternalJob]":
 
     if class_id.count(":") != 1:
         raise ValueError(f"Invalid class_id: {class_id}")
+    if job_cls := _SINGLE_FILE_JOB_CLASSES.get(class_id):
+        return job_cls
     class_file_path, class_name = class_id.split(":", 1)
     if class_file_path.endswith(".py"):
         ns = run_path(class_file_path)
@@ -30,7 +32,17 @@ def pick_job_class(class_id: str) -> "type[RelionExternalJob]":
     return job_cls
 
 
+# _SINGLE_FILE_JOB_CLASSES is needed for the case when the job class is defined in a
+# single .py file, which cannot be imported as a module.
+_SINGLE_FILE_JOB_CLASSES: "dict[str, type[RelionExternalJob]]" = {}
+
+
 class RelionExternalJob(RelionJob):
+    """Abstract class for RELION external jobs.
+
+    Must define `output_nodes` and `run` methods.
+    """
+
     def __init__(self, output_job_dir: _job_dir.ExternalJobDirectory):
         super().__init__(output_job_dir)
         self._console = Console(record=True)
@@ -40,6 +52,10 @@ class RelionExternalJob(RelionJob):
                 "The return value of `import_path` cannot be used to pick "
                 f"{cls!r} defined in {cls.__module__}:{cls.__name__}."
             )
+
+    def __init_subclass__(cls):
+        super().__init_subclass__()
+        _SINGLE_FILE_JOB_CLASSES[cls.import_path()] = cls
 
     @property
     def output_job_dir(self) -> _job_dir.ExternalJobDirectory:
@@ -63,7 +79,12 @@ class RelionExternalJob(RelionJob):
     def import_path(cls) -> str:
         """Get the import path of the job class."""
         if cls.__module__ == "__main__":
-            py_file_path = Path(inspect.getfile(cls)).as_posix()
+            raise ValueError(
+                f"Job class {cls.__name__} is defined in __main__, which is not "
+                "importable. Please define it in a separate .py file."
+            )
+        elif cls.__module__ == "<run_path>":
+            py_file_path = Path(inspect.getfile(cls.run)).as_posix()
             return f"{py_file_path}:{cls.__name__}"
         else:
             return f"{cls.__module__}:{cls.__name__}"
@@ -117,7 +138,46 @@ class RelionExternalJob(RelionJob):
 
     @classmethod
     def _signature(cls) -> inspect.Signature:
-        return inspect.signature(cls.run.__get__(object()))
+        from himena_relion import _annotated as _a
+
+        sig = inspect.signature(cls.run.__get__(object()))
+        param_normed = {}
+        for param in sig.parameters.values():
+            if param.annotation is param.empty:
+                match param.name:
+                    case "in_3dref":
+                        annot = _a.io.MAP_TYPE
+                    case "in_coords":
+                        annot = _a.io.IN_COORDINATES
+                    case "in_mask":
+                        annot = _a.io.IN_MASK
+                    case "in_mics":
+                        annot = _a.io.IN_MICROGRAPHS
+                    case "in_movies":
+                        annot = _a.io.IN_MOVIES
+                    case "in_parts":
+                        annot = _a.io.IN_PARTICLES
+                    case "min_dedicated":
+                        annot = _a.running.MIN_DEDICATED
+                    case "j":
+                        annot = _a.running.NR_THREADS
+                    case _:
+                        raise TypeError(
+                            f"Parameter {param.name!r} of {cls.__name__}.run must have "
+                            "a type annotation."
+                        )
+                param = inspect.Parameter(
+                    name=param.name,
+                    kind=param.kind,
+                    default=param.default,
+                    annotation=annot,
+                )
+            param_normed[param.name] = param
+
+        return inspect.Signature(
+            parameters=param_normed.values(),
+            return_annotation=sig.return_annotation,
+        )
 
     @classmethod
     def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:

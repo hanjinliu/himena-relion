@@ -14,7 +14,6 @@ import mrcfile
 from himena_relion._image_readers._array import ArrayFilteredView
 from himena_relion._utils import change_name_for_tomo, normalize_job_id
 from himena_relion.consts import (
-    JOB_IMPORT_PATH_FILE,
     RelionJobState,
     JOB_ID_MAP,
     Type,
@@ -307,8 +306,6 @@ class ExternalJobDirectory(JobDirectory):
 
     def job_import_path(self) -> str | None:
         """Import path for the external job class object."""
-        if (f := self.path.joinpath(JOB_IMPORT_PATH_FILE)).exists():
-            return f.read_text(encoding="utf-8").strip()
         fn_exe = self.get_job_param("fn_exe")
         if fn_exe.startswith("himena-relion "):
             import_path = fn_exe[len("himena-relion ") :].strip()

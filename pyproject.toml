@@ -57,6 +57,15 @@ pyqt5 = [
 pyqt6 = [
   "himena[pyqt6]>=0.1.6",
 ]
+docs = [
+  "mkdocs",
+  "mkdocs-material",
+]
+recommended = [
+  "himena-relion[pyqt6]",
+  "himena[recommended]",
+  "himena-cryoem-io",
+]
 
 [project.urls]
 Documentation = "https://github.com/hanjinliu/himena-relion#readme"

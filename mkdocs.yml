@@ -1,0 +1,64 @@
+site_name: himena-relion
+site_description: A modern RELION GUI
+repo_name: himena-relion
+repo_url: https://github.com/hanjinliu/himena-relion
+
+copyright: Copyright (c) 2025 - 2026 Hanjin Liu
+
+theme:
+  name: material
+  features:
+    - content.code.annotate
+    - navigation.sections
+    - navigation.indexes
+    - navigation.footer
+    - toc.follow
+    - search.suggest
+    - search.share
+  font:
+    text: Roboto
+    code: Roboto Mono
+
+nav:
+  - Home: index.md
+  - Installation: installation.md
+  - Getting Started: getting_started.md
+  - External Jobs:
+    - Index: external_jobs/index.md
+    - Built-in External Jobs: external_jobs/builtin.md
+    - Create External Jobs: external_jobs/dev.md
+
+plugins:
+  - search
+  - autorefs
+  - mkdocstrings:
+      handlers:
+        python:
+          import:
+            - https://docs.python.org/3/objects.inv
+          options:
+            docstring_style: numpy
+            show_source: true
+            show_bases: false
+            show_signature_annotations: true
+            extensions:
+            - griffe_fieldz: {include_inherited: true}
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.keys
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.arithmatex:
+      generic: true
+  - attr_list
+  - md_in_html
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
