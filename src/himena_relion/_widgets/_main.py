@@ -156,6 +156,7 @@ class QRelionJobWidget(QtW.QWidget):
                 path = Path(fp)
                 if path not in updated_files:
                     updated_files.append(path)
+            yield
             for updated_file in updated_files:
                 self.job_updated.emit(updated_file)
                 yield

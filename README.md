@@ -8,7 +8,7 @@
 
 `himena-relion` is a modern RELION GUI implemented as a [himena](https://github.com/hanjinliu/himena) plugin.
 
-(Original dataset is from [RELION STA tutorial](https://relion.readthedocs.io/en/latest/SPA_tutorial/Introduction.html))
+(Original dataset is from [RELION SPA tutorial](https://relion.readthedocs.io/en/latest/SPA_tutorial/Introduction.html))
 
 ![](docs/images/main.png)
 
@@ -17,10 +17,10 @@
 ## Installation
 
 ```bash
-pip install himena-relion[recommended]  # install packages
+pip install himena-relion[recommended]
 ```
 
-`himena-relion` is a plugin of [himena](https://github.com/hanjinliu/himena) plugin. You will need to install both packages into the same Python environment, and mark `himena-relion` as a startup plugin of your himena profile. For more details, please refer to the [installation guide](https://hanjinliu.github.io/himena-relion/installation/).
+`himena-relion` is a plugin of [himena](https://github.com/hanjinliu/himena). You will need to install both packages into the same Python environment, and mark `himena-relion` as a startup plugin of your himena profile. For more details, please refer to the [installation guide](https://hanjinliu.github.io/himena-relion/installation/).
 
 
 ## Highlights
