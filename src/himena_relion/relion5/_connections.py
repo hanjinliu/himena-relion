@@ -28,16 +28,19 @@ connect_jobs(
     _spa.ImportMicrographsJob,
     _spa.CtfEstimationJob,
     node_mapping={"micrographs.star": "input_star_mics"},
+    value_mapping={"use_given_ps": False},
 )
 connect_jobs(
     _spa.MotionCorr2Job,
     _spa.CtfEstimationJob,
     node_mapping={"corrected_micrographs.star": "input_star_mics"},
+    value_mapping={"use_given_ps": True},
 )
 connect_jobs(
     _spa.MotionCorrOwnJob,
     _spa.CtfEstimationJob,
     node_mapping={"corrected_micrographs.star": "input_star_mics"},
+    value_mapping={"use_given_ps": True},
 )
 connect_jobs(
     _spa.MotionCorrOwnJob,
