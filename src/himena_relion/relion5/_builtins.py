@@ -60,7 +60,10 @@ class ImportMoviesJob(_ImportMoviesJobBase):
 
     @classmethod
     def param_matches(cls, job_params):
-        return job_params["do_raw"] == "Yes"
+        return (
+            job_params.get("do_raw") == "Yes"
+            and job_params.get("is_multiframe") == "Yes"
+        )
 
     @classmethod
     def normalize_kwargs(cls, **kwargs):
@@ -92,7 +95,10 @@ class ImportMicrographsJob(_ImportMoviesJobBase):
 
     @classmethod
     def param_matches(cls, job_params):
-        return job_params["do_raw"] != "Yes"
+        return (
+            job_params.get("do_raw") == "Yes"
+            and job_params.get("is_multiframe") == "No"
+        )
 
     @classmethod
     def job_title(cls):
