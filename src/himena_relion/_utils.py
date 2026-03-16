@@ -1,9 +1,7 @@
 from __future__ import annotations
 from pathlib import Path
 import logging
-import sys
 import time
-from qtpy import QtGui
 from typing import Annotated, Any, get_args, get_origin, TYPE_CHECKING
 
 import numpy as np
@@ -262,22 +260,6 @@ def wait_for_file(path, num_retry: int = 5, delay: float = 0.1) -> bool:
 
 def monospace_font_family() -> str:
     """Get the system monospace font family."""
-    if sys.platform.startswith("linux"):
-        # In linux, "Monospace" sometimes falls back to Sans Serif.
-        # Here, we try to find a better monospace font.
-        font_family = _monospace_font_for_linux()
-    else:
-        font_family = MonospaceFontFamily
-    return font_family
-
-
-@lru_cache(maxsize=1)
-def _monospace_font_for_linux() -> str:
-    candidates = ["Noto Sans Mono", "DejaVu Sans Mono", "Ubuntu Mono"]
-    families = QtGui.QFontDatabase.families()
-    for fam in candidates:
-        if fam in families:
-            return fam
     return MonospaceFontFamily
 
 
