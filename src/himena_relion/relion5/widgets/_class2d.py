@@ -127,12 +127,15 @@ class QClass2DViewer(QJobScrollArea):
 
     def _on_class_yielded(self, value: tuple[str, uuid.UUID]):
         img_str, my_uuid = value
-        if my_uuid != self._plot_session_id or self._worker is None:
+        if self._should_skip_plot(my_uuid):
             return
         self._text_edit.insert_base64_image(img_str)
 
     def _on_text_ready(self, value: tuple[str, uuid.UUID]):
         text, my_uuid = value
-        if my_uuid != self._plot_session_id or self._worker is None:
+        if self._should_skip_plot(my_uuid):
             return
         self._text_edit.insertPlainText(text)
+
+    def _should_skip_plot(self, my_uuid: uuid.UUID) -> bool:
+        return my_uuid != self._plot_session_id or self._worker is None
