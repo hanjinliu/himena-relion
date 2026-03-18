@@ -106,8 +106,7 @@ class QTextEditBase(QtW.QWidget, JobWidgetBase):
         self._wordwrap_checkbox.toggled.connect(self._on_wordwrap_changed)
         self._filename_label = QtW.QLabel("")
         self._text_edit = QtW.QPlainTextEdit()
-        font_family = monospace_font_family()
-        self._text_edit.setFont(QtGui.QFont(font_family, 8))
+        self._text_edit.setFont(QtGui.QFont(monospace_font_family(), 8))
         self._text_edit.setReadOnly(True)
         self._text_edit.setWordWrapMode(QtGui.QTextOption.WrapMode.NoWrap)
         self._text_edit.setUndoRedoEnabled(False)
@@ -728,7 +727,7 @@ class QFileLabel(QtW.QWidget):
             raise FileNotFoundError(f"File {path} does not exist.")
         current_instance().read_file(
             path,
-            plugin=self._relion_node_item._plugin_for_filetype(),
+            plugin=plugin_for_filetype(self._relion_node_item.file_type_category()),
         )
 
     def _copy_path_to_clipboard(self):
