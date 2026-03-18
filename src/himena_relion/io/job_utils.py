@@ -183,6 +183,25 @@ def restore_trashed_jobs(ui: MainWindow):
 
 @register_function(
     menus=[MenuId.RELION_UTILS],
+    title="RELION Version Info",
+    command_id="himena-relion:relion-version-info",
+)
+def relion_version_info(ui: MainWindow):
+    """Show RELION version info."""
+    from himena_relion._version import relion_version
+
+    ver = relion_version()
+    res = ui.exec_choose_one_dialog(
+        title="RELION Version",
+        message=ver,
+        choices=["Copy", "Cancel"],
+    )
+    if res == "Copy":
+        ui.set_clipboard(text=ver)
+
+
+@register_function(
+    menus=[MenuId.RELION_UTILS],
     title="Start New RELION Project",
     command_id="himena-relion:start-new-project",
 )
