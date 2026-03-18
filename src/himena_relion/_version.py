@@ -31,19 +31,16 @@ class RelionVersion:
         return f"{self.major}.{self.minor}.{self.micro}"
 
     def __lt__(self, other: Sequence[int]) -> bool:
-        return all(a < b for a, b in zip(self, other))
+        return tuple(self) < tuple(other)
 
     def __le__(self, other: Sequence[int]) -> bool:
-        return all(a <= b for a, b in zip(self, other))
+        return tuple(self) <= tuple(other)
 
     def __gt__(self, other: Sequence[int]) -> bool:
-        return all(a > b for a, b in zip(self, other))
+        return tuple(self) > tuple(other)
 
     def __ge__(self, other: Sequence[int]) -> bool:
-        return all(a >= b for a, b in zip(self, other))
-
-    def __eq__(self, other: object) -> bool:
-        return all(a == b for a, b in zip(self, other))
+        return tuple(self) >= tuple(other)
 
 
 @dataclass

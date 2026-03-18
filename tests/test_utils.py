@@ -25,19 +25,19 @@ def test_normalize_job_id(input_: str, expected: str):
 def test_relion_version():
     ver = RelionVersion(5, 0, 1)
     assert str(ver) == "5.0.1"
-    assert ver < (5,)
+    assert ver < (6,)
     assert ver < (5, 1)
     assert ver <= (5, 0, 1)
     assert ver <= (5, 1, 0)
     assert ver > (4, 9)
     assert ver >= (5, 0, 1)
-    assert ver == (5, 0)
 
-def test_get_relion_version_info(monkeypatch):
+def test_get_relion_version_info(monkeypatch: pytest.MonkeyPatch):
     from himena_relion import _version
 
     monkeypatch.setattr(
-        _version.relion_version,
+        _version,
+        "relion_version",
         lambda: "RELION version: 5.0.0-commit-85db73\nPrecision: BASE=double\n"
     )
 
