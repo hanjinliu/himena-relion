@@ -1234,7 +1234,6 @@ class ReconstructParticlesJob(_Relion5TomoJob):
             pipeline = RelionPipeline.from_star(pipeline_path)
             if node := pipeline.get_input_by_type("TomoOptimisationSet"):
                 return node.path
-        return None
 
     @classmethod
     def setup_widgets(cls, widgets):
