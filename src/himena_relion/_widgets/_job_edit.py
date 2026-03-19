@@ -74,7 +74,12 @@ class QJobScheduler(QtW.QWidget):
         self._set_content(None, "No job selected")
         self._buttons.setVisible(False)
 
-    def update_by_job(self, job_cls: type[RelionJob], cwd: Path | None = None):
+    def update_by_job(
+        self,
+        job_cls: type[RelionJob],
+        cwd: Path | None = None,
+        init_params: bool = False,
+    ):
         """Update the widget based on the job directory.
 
         This method does NOT update the parameters; call `set_parameters` after this."""
@@ -86,6 +91,8 @@ class QJobScheduler(QtW.QWidget):
         self._job_param_widget.update_by_job(job_cls)
         assert isinstance(cwd, Path) or cwd is None
         self._cwd = cwd
+        if init_params:
+            job_cls.init_widgets_for_run(self._job_param_widget._mgui_widgets)
 
     def set_parameters(self, params: dict):
         if (job_cls := self._current_job_cls) is None:

@@ -91,13 +91,6 @@ class RelionJob(ABC):
         """Run this job."""
 
     @classmethod
-    def setup_widgets(cls, widgets: dict[str, ValueWidget]):
-        """Setup the magicgui widgets for this job.
-
-        This methods is called after all the widgets are created.
-        """
-
-    @classmethod
     def _signature(cls) -> inspect.Signature:
         return inspect.signature(cls.run.__get__(object()))
 
@@ -200,7 +193,7 @@ class RelionJob(ABC):
     def _show_scheduler_widget(cls, ui: MainWindow, context: AnyContext, cwd=None):
         scheduler = scheduler_widget(ui)
         try:
-            scheduler.update_by_job(cls, cwd=cwd)
+            scheduler.update_by_job(cls, cwd=cwd, init_params=True)
             if context:
                 scheduler.set_parameters(context)
         finally:
@@ -208,21 +201,56 @@ class RelionJob(ABC):
             scheduler.set_schedule_mode()
         return scheduler
 
+    ### Following methods are used for customizing the behavior specific to each job
+    ### type, and can be optionally overridden by subclasses.
+
+    @classmethod
+    def setup_widgets(cls, widgets: dict[str, ValueWidget]):
+        """Setup the magicgui widgets for this job.
+
+        This methods is called everytime after all the widgets are created, i.e., when
+        the scheduler widget is shown, when the job parameter widget is created in each
+        job widget, and the user is trying to edit an existing job.
+        """
+
+    @classmethod
+    def init_widgets_for_run(cls, widgets: dict[str, ValueWidget]):
+        """Initialize the magicgui widgets before running the job.
+
+        This method is called in the scheduler widget right before running the job. This
+        method should be used instead of `setup_widgets` when, for example, set a random
+        number to a widget for the random seed.
+        """
+
     @classmethod
     def job_is_tomo(cls) -> bool:
-        """Return whether this job is a tomogram job."""
-        # Jobs defined in relion --tomo gui does NOT mean that they are always tomo
-        # jobs.
+        """Return whether this job is a tomogram job.
+
+        Important note: jobs defined in relion --tomo gui does **NOT** mean that they
+        are always tomo jobs.
+        """
         return False
 
     @classmethod
     def param_matches(cls, job_params: dict[str, str]) -> bool:
-        """Only used to dispatch existing jobs to the correct class."""
+        """Only used to dispatch existing jobs to the correct class.
+
+        For example, "import movies" job should override this method by checking
+        `job_params.get("is_multiframe") == "Yes"` to distinguish from "import
+        micrographs" job.
+        """
         return True
 
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
-        """This is used to convert python objects to job.star."""
+        """This is used to convert python objects to job.star.
+
+        This method is useful to use different parameters in python `run()` method while
+        still generate the correct job.star file that RELION can understand.
+        Note that, if this method is overridden, the inverse method
+        `normalize_kwargs_inv` should also be overridden to make sure the existing job
+        can be correctly parsed back to himena-relion.
+        """
         return kwargs
 
     @classmethod

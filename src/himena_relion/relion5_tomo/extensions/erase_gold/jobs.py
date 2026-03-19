@@ -107,12 +107,10 @@ class EraseGold(RelionExternalJob):
     def run(
         self,
         in_mics: IN_TILT,  # path
-        seed: Annotated[int, {"label": "Random seed"}] = 1427,
+        seed: Annotated[int, {"label": "Random seed", "max": 99999999}] = 1427,
         mask_expand_factor: Annotated[float, {"label": "Mask expansion factor"}] = 1.2,
-        process_halves: Annotated[
-            bool, {"label": "Also process odd/even micrographs"}
-        ] = False,
-    ):
+        process_halves: Annotated[bool, {"label": "Also process odd/even micrographs"}] = False,
+    ):  # fmt: skip
         """Erase gold fiducials from tilt series using the output model files."""
         df_tomo = read_star(in_mics).first().trust_loop().to_pandas()
         out_job_dir = self.output_job_dir
@@ -203,6 +201,10 @@ class EraseGold(RelionExternalJob):
 
     def provide_widget(self, job_dir):
         return QEraseGoldViewer(job_dir)
+
+    @classmethod
+    def init_widgets_for_run(cls, widgets):
+        widgets["seed"].value = int(np.random.random_integers(0, 99999999))
 
 
 connect_jobs(
