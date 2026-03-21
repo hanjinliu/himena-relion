@@ -7,9 +7,9 @@ class FlipHandedness(RelionExternalJob):
             ("map_flipped.mrc", "DensityMap.mrc"),
         ]
 
-    # @classmethod
-    # def job_title(cls):
-    #     return "Flip Handedness"
+    @classmethod
+    def job_title(cls):
+        return "Flip Handedness"
 
     def run(self, in_3dref):
         save_path = self.output_job_dir.path / "map_flipped.mrc"

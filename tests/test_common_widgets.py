@@ -1,7 +1,10 @@
 from pathlib import Path
 import shutil
+import pytest
+from qtpy import QtWidgets as QtW
 from pytestqt.qtbot import QtBot
 from himena import MainWindow
+from himena.testing import file_dialog_response
 from himena_relion._widgets._job_widgets import QNoteEdit, QRunOutLog, QRunErrLog, QJobPipelineViewer
 from himena_relion._job_dir import JobDirectory
 from ._utils import read_sample_job_pipeline_star, JOBS_DIR_SPA
@@ -77,3 +80,20 @@ def test_flowchart(himena_ui: MainWindow, qtbot: QtBot, tmpdir):
     assert len(flow_chart._flow_chart._node_map) == 1
     qitem = list(flow_chart._flow_chart._node_map.values())[0]
     flow_chart._flow_chart._prep_right_click_menu(qitem.item())
+
+def test_path_input(himena_ui: MainWindow, qtbot: QtBot, monkeypatch: pytest.MonkeyPatch):
+    from himena_relion._widgets._path_input import QPathDropWidget, PathDrop
+
+    widget = PathDrop("", type_label=["DensityMap"])
+    qwidget: QPathDropWidget = widget.native
+    rln_dir = Path(__file__).parent
+    monkeypatch.setattr(qwidget, "get_relion_directory", lambda: rln_dir)
+    qtbot.addWidget(qwidget)
+
+    assert isinstance(qwidget._make_menu(), QtW.QMenu)
+    with file_dialog_response(himena_ui, rln_dir / "__init__.py"):
+        qwidget._on_browse_clicked()
+    assert qwidget.value() == "__init__.py"
+    qwidget._open_path()
+    widget.set_value("*.py")
+    qwidget._glob_paths()
