@@ -1,7 +1,8 @@
 from __future__ import annotations
 from pathlib import Path
 from typing import cast
-
+import glob
+from himena import StandardType
 from qtpy import QtWidgets as QtW, QtCore
 from magicgui.widgets.bases import ValueWidget
 from magicgui.types import Undefined
@@ -22,17 +23,24 @@ class QPathDropWidget(QtW.QWidget):
         self._icon_label = QtW.QLabel()
         self._path_line_edit = QtW.QLineEdit()
         self._path_line_edit.setMinimumWidth(200)
-        self._btn = QtW.QPushButton("...")
-        self._btn.setToolTip("Browse in file dialog")
-        self._btn.setFixedWidth(24)
-        self._btn.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
+        self._path_line_edit.setToolTip("Enter path or drag-and-drop file here")
+        self._btn_browse = QtW.QPushButton("...")
+        self._btn_browse.setToolTip(
+            "Browse in file dialog, or right-click for more actions"
+        )
+        self._btn_browse.setFixedWidth(24)
+        self._btn_browse.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
+        self._btn_browse.setContextMenuPolicy(
+            QtCore.Qt.ContextMenuPolicy.CustomContextMenu
+        )
+        self._btn_browse.customContextMenuRequested.connect(self._on_browse_right_click)
         layout = QtW.QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self._icon_label)
         layout.addWidget(self._path_line_edit)
-        layout.addWidget(self._btn)
+        layout.addWidget(self._btn_browse)
         self.setAcceptDrops(True)
-        self._btn.clicked.connect(self._on_browse_clicked)
+        self._btn_browse.clicked.connect(self._on_browse_clicked)
 
     def get_parent_job_scheduler(self) -> QJobScheduler | None:
         parent = self.parent()
@@ -40,7 +48,6 @@ class QPathDropWidget(QtW.QWidget):
             if isinstance(parent, QJobScheduler):
                 return parent
             parent = parent.parent()
-        return None
 
     def get_relion_directory(self) -> Path:
         if job_scheduler := self.get_parent_job_scheduler():
@@ -136,6 +143,51 @@ class QPathDropWidget(QtW.QWidget):
             else:
                 path_rel = path_abs
             self.setValue(path_rel.as_posix())
+
+    def _on_browse_right_click(self, pos):
+        menu = self._make_menu()
+        menu.exec(self._btn_browse.mapToGlobal(pos))
+
+    def _make_menu(self) -> QtW.QMenu:
+        menu = QtW.QMenu()
+        path = self.value().strip()
+        is_not_empty = len(path) > 0
+        is_pattern = "*" in path or "?" in path or "[" in path
+
+        # check if exists
+        if not is_pattern:
+            if Path(path).is_absolute():
+                path_abs = Path(path)
+            else:
+                path_abs = self.get_relion_directory().joinpath(path)
+            is_exist = path_abs.exists()
+        else:
+            is_exist = False
+        action_open = menu.addAction("Open", self._open_path)
+        action_glob = menu.addAction("Show matched file names", self._glob_paths)
+        action_open.setEnabled(is_not_empty and not is_pattern and is_exist)
+        action_glob.setEnabled(is_not_empty and is_pattern)
+        return menu
+
+    def _open_path(self):
+        path = Path(self.value().strip())
+        is_map = "DensityMap" in self._type_labels or "Mask3D" in self._type_labels
+        if is_map and path.suffix.lower() in [".mrc", ".map"]:
+            plugin = "himena_relion.io.read_density_map"
+        else:
+            plugin = None
+        if not path.is_absolute():
+            path = self.get_relion_directory().joinpath(path)
+        current_instance().read_file(path, append_history=False, plugin=plugin)
+
+    def _glob_paths(self):
+        path = self.value().strip()
+        path_abs = self.get_relion_directory().joinpath(path)
+        matched_paths = list(glob.glob(path_abs.as_posix()))
+        text = f"{len(matched_paths)} files matched\n\n" + "\n".join(
+            p for p in matched_paths
+        )
+        current_instance().add_object(text, type=StandardType.TEXT)
 
 
 class QPathDropWidgetBackend(QBaseValueWidget):
