@@ -26,6 +26,8 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class QJobScheduler(QtW.QWidget):
+    """Widget for scheduling a RELION job."""
+
     def __init__(self, ui: MainWindow):
         super().__init__()
         self._ui = ui
@@ -185,6 +187,8 @@ class QJobParameter(QtW.QScrollArea):
         typemap = _mgui.get_type_map()
         groups = defaultdict[str, list[ValueWidget]](list)
         tooltip_for_widget: dict[str, str] = {}
+
+        # organize widgets into groups and map tooltips
         for param in sig.parameters.values():
             param = MagicParameter.from_parameter(param)
             group = param.options.pop("group", "Parameters")
@@ -192,6 +196,7 @@ class QJobParameter(QtW.QScrollArea):
             widget = param.to_widget(type_map=typemap)
             groups[group].append(widget)
             tooltip_for_widget[widget.name] = tooltip
+
         for group, widgets in groups.items():
             gb = QtW.QGroupBox(group)
             fontsize = gb.font().pointSize() + 3
@@ -224,7 +229,14 @@ class QJobParameter(QtW.QScrollArea):
                     annotation = Union[widget.annotation, type(None)]
                 else:
                     annotation = widget.annotation
-                widget.value = parse_string(new_value, annotation)
+                widget_value = parse_string(new_value, annotation)
+                try:
+                    widget.value = widget_value
+                except Exception as e:
+                    _LOGGER.warning(
+                        f"Failed to set parameter {widget.name!r} to value "
+                        f"{new_value!r}: {e}"
+                    )
             if not enabled:
                 widget.enabled = False
         if params:
@@ -360,12 +372,17 @@ class QParameterInfoIcon(QtW.QLabel):
     def mouseReleaseEvent(self, event: QtGui.QMouseEvent) -> None:
         if event.button() == QtCore.Qt.MouseButton.LeftButton:
             dist = (event.pos() - self._last_press_pos).manhattanLength()
-            if dist < 6:
+            max_dist_to_consider_as_click = 6  # pixels
+            if dist < max_dist_to_consider_as_click:
                 self.clicked.emit(event.globalPos())
 
 
 class QHTMLTextEdit(QtW.QTextEdit):
-    """A text edit used for displaying HTML content."""
+    """A text edit used for displaying HTML content.
+
+    This is the widget used for displaying parameter tooltips when the info icon is
+    clicked.
+    """
 
     def __init__(self, html: str = ""):
         super().__init__()
