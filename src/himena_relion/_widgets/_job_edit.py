@@ -246,10 +246,7 @@ class QJobParameter(QtW.QScrollArea):
 
     def get_parameters(self) -> dict[str, Any]:
         """Get the parameters from the widgets."""
-        params = {}
-        for name, widget in self._mgui_widgets.items():
-            params[name] = widget.value
-        return params
+        return {name: widget.value for name, widget in self._mgui_widgets.items()}
 
 
 class Mode(ABC):
@@ -290,7 +287,7 @@ class ContinueMode(Mode):
         proc = job_cls(self.job_dir).continue_job(**params)
         widget.clear_content()
         if isinstance(proc, RelionJobExecution):
-            widget._ui.show_notification(f"Job '{job_cls.job_title()}' continued.")
+            widget._ui.show_notification(f"Job {job_cls.job_title()!r} continued.")
 
     def button_text(self) -> str:
         return "Continue Job"
