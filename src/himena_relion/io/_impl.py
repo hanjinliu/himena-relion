@@ -4,7 +4,7 @@ import logging
 from pathlib import Path
 import subprocess
 import shutil
-from typing import TYPE_CHECKING, Annotated
+from typing import TYPE_CHECKING
 from himena import MainWindow
 from himena.exceptions import Cancelled
 from himena_relion.consts import RelionJobState, FileNames
@@ -131,12 +131,12 @@ def set_job_alias(ui: MainWindow, job_dir: JobDirectory):
             current_alias = ""
     else:
         current_alias = ""
-    res = ui.exec_user_input_dialog(
-        {"alias": Annotated[str, {"value": current_alias}]}, title="Set Job Alias"
+    res = ui.exec_user_string_input_dialog(
+        message="Give alias here ...", choices=["Press 'Enter' to set job alias"]
     )
-    if res is None:
+    if (val := res.get_input()) is None:
         raise Cancelled
-    alias = str(res["alias"]).strip()
+    alias = val.strip()
     if alias == "" or alias.startswith("job"):
         raise ValueError("Alias cannot be empty or start with 'job'.")
 
