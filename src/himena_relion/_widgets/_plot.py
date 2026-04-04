@@ -184,7 +184,11 @@ class QPlotCanvas(QModelMatplotlibCanvas):
         self.tight_layout()
 
     def _main_theme(self) -> Theme:
-        return current_instance().theme
+        try:
+            return current_instance().theme
+        except RuntimeError:
+            # No current instance, return a default theme
+            return Theme.from_global("light-blue")
 
 
 def _res_to_str(res: float):
