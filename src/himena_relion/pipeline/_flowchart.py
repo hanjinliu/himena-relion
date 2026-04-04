@@ -66,9 +66,8 @@ class QRelionPipelineFlowChartView(QFlowChartView):
         self._node_map.clear()
         self._id_added.clear()
         self.set_pipeline(self._pipeline)
-        if root_job_info:
-            if node := self._node_map.get(root_job_info.path):
-                self.center_on_item(node.item())
+        if root_job_info and (node := self._node_map.get(root_job_info.path)):
+            self.center_on_item(node.item())
 
     def paintEvent(self, event: QtGui.QPaintEvent) -> None:
         super().paintEvent(event)
@@ -188,8 +187,12 @@ class QRelionPipelineFlowChartView(QFlowChartView):
         action = menu.addAction(
             "Trash", lambda: _ignore_cancel(_impl.trash_job, self._ui, get_job())
         )
+        menu.addSeparator()
         action.setEnabled(status is not NodeStatus.RUNNING)
-        menu.addAction("Set as root", lambda: self.set_root_job(item._job))
+        action = menu.addAction("Set As Root Job", lambda: self.set_root_job(item._job))
+        action.setEnabled(item._job is not self._root_job_info)
+        action = menu.addAction("Unset As Root Job", lambda: self.set_root_job(None))
+        action.setEnabled(item._job is self._root_job_info)
         return menu
 
 

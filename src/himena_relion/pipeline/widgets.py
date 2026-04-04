@@ -54,7 +54,7 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         btn.add_separator()
         btn.add_action("Find Job ...", self._find_job, shortcut="Ctrl+F")
         btn.add_action("Set Root Job ...", self._set_root_job, shortcut="R")
-        btn.add_action("Clear Root Job", self._clear_root_job, shortcut="Shift+R")
+        btn.add_action("Unset Root Job", self._unset_root_job, shortcut="Shift+R")
         # TODO: add these actions
         # btn.add_action("Open Trash Directory", self._open_trash_dir)
         # btn.add_action("Gentle clean all", self._gentle_clean_all)
@@ -142,7 +142,7 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         ):
             self._flow_chart.set_root_job(resp)
 
-    def _clear_root_job(self):
+    def _unset_root_job(self):
         """Restore the full flowchart by clearing the root job."""
         self._flow_chart.set_root_job(None)
 
