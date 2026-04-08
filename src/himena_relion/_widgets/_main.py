@@ -12,6 +12,7 @@ from timeit import default_timer
 from himena import MainWindow, WidgetDataModel
 from himena.plugins import validate_protocol
 from himena.qt import QColoredToolButton
+from himena.consts import MonospaceFontFamily
 from himena_relion import _job_dir, _utils
 from himena_relion._widgets._job_widgets import (
     JobWidgetBase,
@@ -23,7 +24,6 @@ from himena_relion._widgets._job_widgets import (
 )
 from himena_relion._widgets._misc import spacer_widget
 from himena_relion._impl_objects import RelionJobIsTesting
-from himena_relion._utils import monospace_font_family
 from himena_relion.consts import RelionJobState
 
 if TYPE_CHECKING:
@@ -258,7 +258,7 @@ class QRelionJobWidgetControl(QtW.QWidget):
         self._oneline_msg.setTextInteractionFlags(
             QtCore.Qt.TextInteractionFlag.TextSelectableByMouse
         )
-        self._oneline_msg.setFont(QtGui.QFont(monospace_font_family(), 7))
+        self._oneline_msg.setFont(QtGui.QFont(MonospaceFontFamily, 7))
         self._tool_buttons = [
             QColoredToolButton(
                 self.find_me_in_flowchart, _utils.path_icon_svg("findme")

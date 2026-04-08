@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import sys
 from typing import TYPE_CHECKING
-from qtpy import QtGui, QtWidgets as QtW, QtCore
+from qtpy import QtWidgets as QtW, QtCore
 from himena import MainWindow
 
 if TYPE_CHECKING:
@@ -32,11 +32,11 @@ class QRelionPipelineStartScreen(QtW.QWidget):
                 ImportMicrographsJob,
             )
 
-            self._spa_movies_btn = self._make_btn(ImportMoviesJob)
-            self._spa_micrographs_btn = self._make_btn(ImportMicrographsJob)
+            _spa_movies_btn = self._make_btn(ImportMoviesJob)
+            _spa_micrographs_btn = self._make_btn(ImportMicrographsJob)
             layout.addWidget(label_spa)
-            layout.addWidget(self._spa_movies_btn)
-            layout.addWidget(self._spa_micrographs_btn)
+            layout.addWidget(_spa_movies_btn)
+            layout.addWidget(_spa_micrographs_btn)
 
         if "himena_relion.relion5_tomo" in sys.modules:
             # RELION Tomography plugin is imported
@@ -45,16 +45,17 @@ class QRelionPipelineStartScreen(QtW.QWidget):
                 ImportTomoMicrographsJob,
             )
 
-            self._tomo_movies_btn = self._make_btn(ImportTomoJob)
-            self._tomo_micrographs_btn = self._make_btn(ImportTomoMicrographsJob)
+            _tomo_movies_btn = self._make_btn(ImportTomoJob)
+            _tomo_micrographs_btn = self._make_btn(ImportTomoMicrographsJob)
             layout.addSpacing(20)
             layout.addWidget(label_tomo)
-            layout.addWidget(self._tomo_movies_btn)
-            layout.addWidget(self._tomo_micrographs_btn)
+            layout.addWidget(_tomo_movies_btn)
+            layout.addWidget(_tomo_micrographs_btn)
 
     def _make_btn(self, job_cls: type[RelionJob]):
+        """Make a push button for the given job class."""
         button = QtW.QPushButton(job_cls.job_title())
-        button.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
+        button.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
         button.clicked.connect(self._prep_clicked_callback(job_cls))
         if tooltip := getattr(job_cls, "__doc__", None):
             button.setToolTip(tooltip)

@@ -32,7 +32,10 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class QRelionPipelineFlowChart(QtW.QWidget):
-    """Widget to display RELION pipeline flow chart and manage scheduling."""
+    """Widget to display RELION pipeline flow chart and manage scheduling.
+
+    Right click to show more actions.
+    """
 
     update_required = QtCore.Signal(RelionDefaultPipeline)
 

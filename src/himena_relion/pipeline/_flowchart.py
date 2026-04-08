@@ -1,4 +1,5 @@
 from __future__ import annotations
+from contextlib import suppress
 from pathlib import Path
 from qtpy import QtGui, QtCore, QtWidgets as QtW
 from cmap import Color
@@ -16,16 +17,19 @@ from himena_relion.io import _impl
 class QRelionPipelineFlowChartView(QFlowChartView):
     def __init__(self, ui: MainWindow, scene):
         super().__init__(scene)
-        self.item_right_clicked.connect(self._on_right_clicked)
         self._ui = ui
         self._pipeline = RelionDefaultPipeline.empty()
         self._relion_project_dir: Path = Path.cwd()
-        self.item_left_double_clicked.connect(self._on_item_double_clicked)
-        self.item_left_clicked.connect(self._update_selection_rect)
+
         self._last_selection_highlight_rect = None
         self._dodge_distance = 64
         self._id_added = set()
         self._root_job_info: RelionJobInfo | None = None
+
+        # event connection
+        self.item_right_clicked.connect(self._on_right_clicked)
+        self.item_left_double_clicked.connect(self._on_item_double_clicked)
+        self.item_left_clicked.connect(self._update_selection_rect)
 
     def set_pipeline(self, pipeline: RelionDefaultPipeline) -> None:
         if not isinstance(pipeline, RelionDefaultPipeline):
@@ -127,6 +131,7 @@ class QRelionPipelineFlowChartView(QFlowChartView):
             raise FileNotFoundError(f"File {path} does not exist.")
 
     def center_on_item(self, item: RelionJobNodeItem):
+        """Move the view to ensure the item visible and select it."""
         if node := self._node_map.get(item.id()):
             center = node.center()
             self.centerOn(center)
@@ -150,6 +155,7 @@ class QRelionPipelineFlowChartView(QFlowChartView):
         menu = QtW.QMenu(self)
         submenu_open = menu.addMenu("Open")
         submenu_cleanup = menu.addMenu("Cleanup")
+        submenu_mark = menu.addMenu("Mark As")
         submenu_open.addAction(
             "Open job.star as text",
             lambda: _impl.open_relion_job_star(self._ui, get_job()),
@@ -166,19 +172,30 @@ class QRelionPipelineFlowChartView(QFlowChartView):
             "Harsh clean", lambda: _impl.harsh_clean_relion_job(self._ui, get_job())
         )
         action.setEnabled(status not in [NodeStatus.RUNNING, NodeStatus.SCHEDULED])
-        menu.addAction("Mark As Finished", lambda: _impl.mark_as_finished(get_job()))
+        action = submenu_mark.addAction(
+            "Mark As Finished", lambda: _impl.mark_as_finished(get_job())
+        )
         action.setEnabled(status is not NodeStatus.SUCCEEDED)
-        menu.addAction("Mark As Failed", lambda: _impl.mark_as_failed(get_job()))
+        action = submenu_mark.addAction(
+            "Mark As Failed", lambda: _impl.mark_as_failed(get_job())
+        )
         action.setEnabled(status is not NodeStatus.FAILED)
         menu.addSeparator()
         action = menu.addAction(
             "Abort", lambda: _ignore_cancel(_impl.abort_relion_job, self._ui, get_job())
         )
         action.setEnabled(status is RelionJobState.RUNNING)
-        menu.addAction(
+        action.setToolTip("Notify the job to be aborted.")
+        action = menu.addAction(
             "Overwrite ...", lambda: _impl.overwrite_relion_job(self._ui, get_job())
         )
-        menu.addAction("Clone ...", lambda: _impl.clone_relion_job(self._ui, get_job()))
+        action.setToolTip(
+            "Overwrite this job by re-running it with a new set of parameters."
+        )
+        action = menu.addAction(
+            "Clone ...", lambda: _impl.clone_relion_job(self._ui, get_job())
+        )
+        action.setToolTip("Create a same type of job with a new set of parameters.")
         menu.addAction(
             "Set Alias ...",
             lambda: _ignore_cancel(_impl.set_job_alias, self._ui, get_job()),
@@ -191,17 +208,22 @@ class QRelionPipelineFlowChartView(QFlowChartView):
         action.setEnabled(status is not NodeStatus.RUNNING)
         action = menu.addAction("Set As Root Job", lambda: self.set_root_job(item._job))
         action.setEnabled(item._job is not self._root_job_info)
+        action.setToolTip(
+            "Set a job as the root of the flowchart.\n"
+            "Only the descendants jobs of the root job will be shown in the\n"
+            "flowchart. This operation is just a filtering and does not modify the\n"
+            "underlying pipeline star file."
+        )
         action = menu.addAction("Unset As Root Job", lambda: self.set_root_job(None))
+        action.setToolTip("Unset the root job and show all jobs in the flowchart.")
         action.setEnabled(item._job is self._root_job_info)
         return menu
 
 
 def _ignore_cancel(func, *args, **kwargs):
     """Decorator to ignore Cancelled exception."""
-    try:
+    with suppress(Cancelled):
         return func(*args, **kwargs)
-    except Cancelled:
-        pass
 
 
 class RelionJobNodeItem(BaseNodeItem):
