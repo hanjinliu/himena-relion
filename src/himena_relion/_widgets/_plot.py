@@ -186,7 +186,7 @@ class QPlotCanvas(QModelMatplotlibCanvas):
     def _main_theme(self) -> Theme:
         try:
             return current_instance().theme
-        except RuntimeError:
+        except Exception:
             # No current instance, return a default theme
             return Theme.from_global("light-blue")
 

@@ -12,6 +12,7 @@ import numpy as np
 from qtpy import QtWidgets as QtW, QtGui, QtCore
 from superqt import QToggleSwitch
 from superqt.utils import qthrottled, GeneratorWorker
+from himena.consts import MonospaceFontFamily
 from himena.widgets import current_instance, set_status_tip
 from himena.qt import drag_files, QColoredSVGIcon, QColoredToolButton
 from himena.exceptions import Cancelled
@@ -23,7 +24,6 @@ from himena_relion._utils import (
     read_icon_svg_for_type,
     path_icon_svg,
     read_or_show_job,
-    monospace_font_family,
 )
 from himena_relion._pipeline import RelionPipeline
 from himena_relion._widgets._job_edit import QJobParameter
@@ -106,7 +106,7 @@ class QTextEditBase(QtW.QWidget, JobWidgetBase):
         self._wordwrap_checkbox.toggled.connect(self._on_wordwrap_changed)
         self._filename_label = QtW.QLabel("")
         self._text_edit = QtW.QPlainTextEdit()
-        self._text_edit.setFont(QtGui.QFont(monospace_font_family(), 8))
+        self._text_edit.setFont(QtGui.QFont(MonospaceFontFamily, 8))
         self._text_edit.setReadOnly(True)
         self._text_edit.setWordWrapMode(QtGui.QTextOption.WrapMode.NoWrap)
         self._text_edit.setUndoRedoEnabled(False)

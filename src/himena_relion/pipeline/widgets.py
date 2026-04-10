@@ -32,7 +32,10 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class QRelionPipelineFlowChart(QtW.QWidget):
-    """Widget to display RELION pipeline flow chart and manage scheduling."""
+    """Widget to display RELION pipeline flow chart and manage scheduling.
+
+    Right click to show more actions.
+    """
 
     update_required = QtCore.Signal(RelionDefaultPipeline)
 
@@ -47,13 +50,20 @@ class QRelionPipelineFlowChart(QtW.QWidget):
 
         # Create the "more" button with a menu for additional actions
         btn = QMoreActionButton()
+        btn.setToolTip("More actions ...")
 
         btn.add_action("Open default_pipeline.star", self._open_as_raw_text)
         btn.add_action("Open Project Note", self._open_project_note)
+        btn.add_separator()
+        btn.add_action("Find Job ...", self._find_job, shortcut="Ctrl+F")
+        btn.add_action("Set Root Job ...", self._set_root_job, shortcut="R")
+        btn.add_action("Unset Root Job", self._unset_root_job, shortcut="Shift+R")
+        # TODO: add these actions
         # btn.add_action("Open Trash Directory", self._open_trash_dir)
         # btn.add_action("Gentle clean all", self._gentle_clean_all)
         # btn.add_action("Harsh clean all", self._harsh_clean_all)
-        btn.add_action("Refresh", self._refresh)
+        btn.add_action("Refresh", self._refresh_flowchart, shortcut="F5")
+        self._more_action_btn = btn
 
         self._stacked_widget = QtW.QStackedWidget()
         self._flow_chart = QRelionPipelineFlowChartView(ui, self._scene)
@@ -61,7 +71,6 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         self._stacked_widget.addWidget(self._flow_chart)
         self._stacked_widget.addWidget(self._start_screen)
         self._stacked_widget.setCurrentWidget(self._flow_chart)
-        self._finder = QPipelineFinder(self)
         self._footer = QJobPipelineViewer()
         self._watcher: GeneratorWorker | None = None
         layout = QtW.QVBoxLayout(self)
@@ -76,16 +85,15 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         _header_layout.addWidget(self._directory_label)
         _header_layout.addWidget(btn, alignment=QtCore.Qt.AlignmentFlag.AlignRight)
         layout.addLayout(_header_layout)
-        layout.addWidget(self._finder)
         layout.addWidget(splitter)
-
-        self._finder.activated.connect(self._move_to_job)
-        self._finder.lineEdit().setPlaceholderText("Find job...")
 
         self._flow_chart.item_left_clicked.connect(self._on_item_left_clicked)
         self._flow_chart.item_right_clicked.connect(self._on_item_left_clicked)
         self._flow_chart.background_left_clicked.connect(
             self._on_background_left_clicked
+        )
+        self._flow_chart.background_right_clicked.connect(
+            self._on_background_right_clicked
         )
 
         self._state_to_job_map = defaultdict[NodeStatus, dict[str, RelionJobInfo]](dict)
@@ -122,7 +130,26 @@ class QRelionPipelineFlowChart(QtW.QWidget):
             path.touch()  # create an empty project_note.txt if it doesn't exist
         self._flow_chart._ui.read_file(path, append_history=False)
 
-    def _refresh(self):
+    def _set_root_job(self):
+        """Set a job as the root of the flowchart.
+
+        Only the descendants jobs of the root job will be shown in the flowchart. This
+        operation is just a filtering and does not modify the underlying pipeline star
+        file.
+        """
+        choices = _list_jobs_for_palette(self._flow_chart._pipeline)
+        if resp := self._flow_chart._ui.exec_choose_one_dialog(
+            message="Select the root job.",
+            choices=choices,
+            how="palette",
+        ):
+            self._flow_chart.set_root_job(resp)
+
+    def _unset_root_job(self):
+        """Restore the full flowchart by clearing the root job."""
+        self._flow_chart.set_root_job(None)
+
+    def _refresh_flowchart(self):
         """Manually trigger a refresh of the pipeline data."""
         self._on_pipeline_updated(self._flow_chart._pipeline)
 
@@ -132,7 +159,6 @@ class QRelionPipelineFlowChart(QtW.QWidget):
             raise TypeError("RELION default_pipeline.star source file not found.")
         assert isinstance(model.value, RelionDefaultPipeline)
         _LOGGER.info("Started watching RELION pipeline at %s.", src.parent.as_posix())
-        self._finder.clear()
         self._flow_chart._relion_project_dir = src.parent
         self.widget_closed_callback()
         self._on_pipeline_updated(model.value)
@@ -149,13 +175,10 @@ class QRelionPipelineFlowChart(QtW.QWidget):
 
     def _on_pipeline_updated(self, pipeline: RelionDefaultPipeline) -> None:
         self._flow_chart.set_pipeline(pipeline)
-        self._update_finder()
         if len(pipeline) == 0:
             self._stacked_widget.setCurrentWidget(self._start_screen)
-            self._finder.hide()
         else:
             self._stacked_widget.setCurrentWidget(self._flow_chart)
-            self._finder.show()
 
     @validate_protocol
     def model_type(self) -> str:
@@ -179,31 +202,6 @@ class QRelionPipelineFlowChart(QtW.QWidget):
     def closeEvent(self, a0):
         self.widget_closed_callback()
         return super().closeEvent(a0)
-
-    def _update_finder(self):
-        self._finder.clear()
-        pipeline = self._flow_chart._pipeline
-        for info in pipeline.iter_nodes():
-            jobxxx = info.path.stem
-            if jobxxx.startswith("job"):
-                jobxxx = jobxxx[3:]
-            state = info.status.value.title()
-            title = JOB_ID_MAP.get(info.type_label, info.type_label)
-            if info.alias:
-                title = f"{info.alias} ({title})"
-            display_text = f"{jobxxx}: {title} [{state}]"
-            self._finder.addItem(display_text, info)  # text, userData
-        self._finder.setCurrentText("")
-        self._finder_initialized = True
-
-    def _move_to_job(self, index: int):
-        if isinstance(info := self._finder.itemData(index), RelionJobInfo):
-            for node in self._flow_chart._node_map.values():
-                item = node.item()
-                assert isinstance(item, RelionJobNodeItem)
-                if item._job.path == info.path:
-                    self._flow_chart.center_on_item(item)
-                    return
 
     @thread_worker(start_thread=True)
     def _watch_default_pipeline_star(self, path: Path):
@@ -256,11 +254,6 @@ class QRelionPipelineFlowChart(QtW.QWidget):
             ui.show_notification("\n".join(f"Job {job}/ failed." for job in failed))
 
     def keyPressEvent(self, a0):
-        _Ctrl = QtCore.Qt.KeyboardModifier.ControlModifier
-        if a0.key() == QtCore.Qt.Key.Key_F and a0.modifiers() & _Ctrl:
-            self._finder.setFocus()
-            self._finder.set_selected()
-            return
         if a0.key() == QtCore.Qt.Key.Key_Return:
             for item in self._flow_chart.scene().selectedItems():
                 if isinstance(item, RelionJobNodeItem):
@@ -268,7 +261,39 @@ class QRelionPipelineFlowChart(QtW.QWidget):
                     return
         return super().keyPressEvent(a0)
 
+    def _find_job(self):
+        """Find a job in the flowchart and center on it."""
+        choices = _list_jobs_for_palette(self._flow_chart._pipeline)
+        if resp := self._flow_chart._ui.exec_choose_one_dialog(
+            message="Select the root job.",
+            choices=choices,
+            how="palette",
+        ):
+            if node := self._flow_chart._node_map.get(resp.path):
+                self._flow_chart.center_on_item(node.item())
+
+    def _on_background_right_clicked(self):
+        btn = self._more_action_btn
+        btn.menu().exec(QtGui.QCursor.pos())
+
 
 class QPipelineFinder(QSearchableComboBox):
     def set_selected(self):
         return self.lineEdit().selectAll()
+
+
+def _list_jobs_for_palette(
+    pipeline: RelionDefaultPipeline,
+) -> list[tuple[str, RelionJobInfo]]:
+    out = []
+    for info in pipeline.iter_nodes():
+        jobxxx = info.path.stem
+        if jobxxx.startswith("job"):
+            jobxxx = jobxxx[3:]
+        state = info.status.value.title()
+        title = JOB_ID_MAP.get(info.type_label, info.type_label)
+        if info.alias:
+            title = f"{info.alias} ({title})"
+        display_text = f"{jobxxx}: {title} [{state}]"
+        out.append((display_text, info))
+    return out

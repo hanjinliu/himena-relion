@@ -216,6 +216,7 @@ class QMoreActionButton(QtW.QPushButton):
     def __init__(self, parent=None):
         super().__init__("...", parent)
         self.setFixedWidth(24)
+        self.setFixedHeight(18)
         menu = QtW.QMenu(self)
         menu.setToolTipsVisible(True)
         self.setMenu(menu)
@@ -224,6 +225,13 @@ class QMoreActionButton(QtW.QPushButton):
         )
         self.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
 
-    def add_action(self, text: str, cb):
+    def add_action(self, text: str, cb, shortcut: str | None = None):
         action = self.menu().addAction(text, cb)
-        action.setToolTip(cb.__doc__ or "")
+        if isinstance(doc := cb.__doc__, str):
+            lines = [line.strip() for line in doc.splitlines()]
+            action.setToolTip("\n".join(lines))
+        if shortcut:
+            action.setShortcut(shortcut)
+
+    def add_separator(self):
+        self.menu().addSeparator()
