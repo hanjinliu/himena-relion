@@ -64,7 +64,6 @@ class RelionDefaultPipeline(Sequence["RelionJobInfo"]):
                 path=Path(path),
                 type_label=type_label,
                 alias=_alias,
-                parents=[],
                 status=NodeStatus(status.lower()),
             )
             nodes[Path(path)] = node
@@ -75,11 +74,16 @@ class RelionDefaultPipeline(Sequence["RelionJobInfo"]):
                 mappers.process,
                 strict=True,
             ):
+                # e.g.
+                # from_path = Import/job001/movies.star
+                # to_path = MotionCorr/job002/
                 from_path = Path(from_node)
                 to_path = Path(to_node)
                 if to_path in nodes and from_path.parent in nodes:
-                    job = RelionOutputFile(nodes[from_path.parent], from_path.name)
-                    nodes[to_path].parents.append(job)
+                    job_from = RelionOutputFile(nodes[from_path.parent], from_path.name)
+                    job_to = RelionOutputFile(nodes[to_path], to_path.name)
+                    nodes[to_path].parents.append(job_from)
+                    nodes[from_path.parent].children.append(job_to)
 
         return cls(list(nodes.values()), project_dir=star_path.parent)
 
@@ -97,7 +101,8 @@ class RelionJobInfo:
     path: Path  # The relative path
     type_label: str
     alias: str | None
-    parents: list[RelionOutputFile]
+    parents: list[RelionOutputFile] = field(default_factory=list)
+    children: list[RelionOutputFile] = field(default_factory=list)
     status: NodeStatus = NodeStatus.SUCCEEDED
 
     def job_repr(self) -> str:

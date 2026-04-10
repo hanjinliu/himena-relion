@@ -61,7 +61,7 @@ class JobDirectory:
     def from_job_star(path: str | Path) -> JobDirectory:
         fp = Path(path)
         if fp.name != "job.star" or not fp.exists():
-            raise ValueError(f"Expected an existing job.star file, got {fp}")
+            raise FileNotFoundError(f"File not found: {fp}")
         job_star = JobStarModel.validate_file(fp)
         cls = JobDirectory._type_map.get(job_star.job.job_type_label, JobDirectory)
         return cls(fp.parent)

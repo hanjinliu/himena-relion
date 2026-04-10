@@ -1,4 +1,5 @@
 from __future__ import annotations
+from contextlib import suppress
 from pathlib import Path
 from qtpy import QtGui, QtCore, QtWidgets as QtW
 from cmap import Color
@@ -16,15 +17,19 @@ from himena_relion.io import _impl
 class QRelionPipelineFlowChartView(QFlowChartView):
     def __init__(self, ui: MainWindow, scene):
         super().__init__(scene)
-        self.item_right_clicked.connect(self._on_right_clicked)
         self._ui = ui
         self._pipeline = RelionDefaultPipeline.empty()
         self._relion_project_dir: Path = Path.cwd()
-        self.item_left_double_clicked.connect(self._on_item_double_clicked)
-        self.item_left_clicked.connect(self._update_selection_rect)
+
         self._last_selection_highlight_rect = None
         self._dodge_distance = 64
         self._id_added = set()
+        self._root_job_info: RelionJobInfo | None = None
+
+        # event connection
+        self.item_right_clicked.connect(self._on_right_clicked)
+        self.item_left_double_clicked.connect(self._on_item_double_clicked)
+        self.item_left_clicked.connect(self._update_selection_rect)
 
     def set_pipeline(self, pipeline: RelionDefaultPipeline) -> None:
         if not isinstance(pipeline, RelionDefaultPipeline):
@@ -38,12 +43,17 @@ class QRelionPipelineFlowChartView(QFlowChartView):
         self._node_map.clear()
         self._id_added.clear()
 
+        if self._root_job_info is None:
+            _allowed_parents = {node.path for node in pipeline._nodes}
+        else:
+            _allowed_parents = _track_children(self._root_job_info)
+
         # If the flowchart has been dragged, item positions are different from default.
         # Restore old positions
         new_infos: list[RelionJobInfo] = []
         for info in pipeline._nodes:
             if info.path in old_positions:
-                self._add_job_node_item(info)
+                self._add_job_node_item(info, _allowed_parents)
             else:
                 new_infos.append(info)
         for new_item in self._node_map.values():
@@ -52,8 +62,16 @@ class QRelionPipelineFlowChartView(QFlowChartView):
         # new items should be added last to adjust their positions properly
         default_pos = next(iter(old_positions.values()), QtCore.QPointF(0, 0))
         for new_info in new_infos:
-            new_item = self._add_job_node_item(new_info)
-            new_item.setPos(default_pos)
+            if new_item := self._add_job_node_item(new_info, _allowed_parents):
+                new_item.setPos(default_pos)
+
+    def set_root_job(self, root_job_info: RelionJobInfo | None):
+        self._root_job_info = root_job_info
+        self._node_map.clear()
+        self._id_added.clear()
+        self.set_pipeline(self._pipeline)
+        if root_job_info and (node := self._node_map.get(root_job_info.path)):
+            self.center_on_item(node.item())
 
     def paintEvent(self, event: QtGui.QPaintEvent) -> None:
         super().paintEvent(event)
@@ -67,12 +85,18 @@ class QRelionPipelineFlowChartView(QFlowChartView):
             self._last_selection_highlight_rect = rect
         painter.end()
 
-    def _add_job_node_item(self, info: RelionJobInfo):
+    def _add_job_node_item(
+        self,
+        info: RelionJobInfo,
+        allowed_parents: set[Path],
+    ):
+        if info.path not in allowed_parents:
+            return None
         parents: list[Path] = []
         for parent in info.parents:
             parent_info = parent.node
             if parent_info.path not in self._node_map:
-                self._add_job_node_item(parent_info)
+                self._add_job_node_item(parent_info, allowed_parents)
             if parent_info.path not in parents:
                 parents.append(parent_info.path)
         item = RelionJobNodeItem(info)
@@ -107,10 +131,13 @@ class QRelionPipelineFlowChartView(QFlowChartView):
             raise FileNotFoundError(f"File {path} does not exist.")
 
     def center_on_item(self, item: RelionJobNodeItem):
+        """Move the view to ensure the item visible and select it."""
         if node := self._node_map.get(item.id()):
             center = node.center()
             self.centerOn(center)
             node.setSelected(True)
+        else:
+            self._ui.show_notification("Job not found in the flowchart.")
 
     def _on_right_clicked(self, item: RelionJobNodeItem):
         menu = self._prep_right_click_menu(item)
@@ -120,61 +147,83 @@ class QRelionPipelineFlowChartView(QFlowChartView):
         if node := self._node_map.get(item.id()):
             node.setSelected(True)
         path = self._relion_project_dir / item.id() / "job.star"
-        job_dir = JobDirectory.from_job_star(path)
+
+        def get_job():
+            return JobDirectory.from_job_star(path)
+
         status = item._job.status
         menu = QtW.QMenu(self)
         submenu_open = menu.addMenu("Open")
         submenu_cleanup = menu.addMenu("Cleanup")
+        submenu_mark = menu.addMenu("Mark As")
         submenu_open.addAction(
             "Open job.star as text",
-            lambda: _impl.open_relion_job_star(self._ui, job_dir),
+            lambda: _impl.open_relion_job_star(self._ui, get_job()),
         )
         submenu_open.addAction(
             "Open job_pipeline.star as text",
-            lambda: _impl.open_relion_job_pipeline_star(self._ui, job_dir),
+            lambda: _impl.open_relion_job_pipeline_star(self._ui, get_job()),
         )
         action = submenu_cleanup.addAction(
-            "Gentle clean", lambda: _impl.gentle_clean_relion_job(self._ui, job_dir)
+            "Gentle clean", lambda: _impl.gentle_clean_relion_job(self._ui, get_job())
         )
         action.setEnabled(status not in [NodeStatus.RUNNING, NodeStatus.SCHEDULED])
         action = submenu_cleanup.addAction(
-            "Harsh clean", lambda: _impl.harsh_clean_relion_job(self._ui, job_dir)
+            "Harsh clean", lambda: _impl.harsh_clean_relion_job(self._ui, get_job())
         )
         action.setEnabled(status not in [NodeStatus.RUNNING, NodeStatus.SCHEDULED])
-        menu.addAction("Mark as finished", lambda: _impl.mark_as_finished(job_dir))
+        action = submenu_mark.addAction(
+            "Mark As Finished", lambda: _impl.mark_as_finished(get_job())
+        )
         action.setEnabled(status is not NodeStatus.SUCCEEDED)
-        menu.addAction("Mark as failed", lambda: _impl.mark_as_failed(job_dir))
+        action = submenu_mark.addAction(
+            "Mark As Failed", lambda: _impl.mark_as_failed(get_job())
+        )
         action.setEnabled(status is not NodeStatus.FAILED)
         menu.addSeparator()
         action = menu.addAction(
-            "Abort", _ignore_cancel(_impl.abort_relion_job, self._ui, job_dir)
+            "Abort", lambda: _ignore_cancel(_impl.abort_relion_job, self._ui, get_job())
         )
         action.setEnabled(status is RelionJobState.RUNNING)
-        menu.addAction(
-            "Overwrite ...", lambda: _impl.overwrite_relion_job(self._ui, job_dir)
+        action.setToolTip("Notify the job to be aborted.")
+        action = menu.addAction(
+            "Overwrite ...", lambda: _impl.overwrite_relion_job(self._ui, get_job())
         )
-        menu.addAction("Clone ...", lambda: _impl.clone_relion_job(self._ui, job_dir))
+        action.setToolTip(
+            "Overwrite this job by re-running it with a new set of parameters."
+        )
+        action = menu.addAction(
+            "Clone ...", lambda: _impl.clone_relion_job(self._ui, get_job())
+        )
+        action.setToolTip("Create a same type of job with a new set of parameters.")
         menu.addAction(
-            "Set Alias ...", _ignore_cancel(_impl.set_job_alias, self._ui, job_dir)
+            "Set Alias ...",
+            lambda: _ignore_cancel(_impl.set_job_alias, self._ui, get_job()),
         )
         menu.addSeparator()
         action = menu.addAction(
-            "Trash", _ignore_cancel(_impl.trash_job, self._ui, job_dir)
+            "Trash", lambda: _ignore_cancel(_impl.trash_job, self._ui, get_job())
         )
+        menu.addSeparator()
         action.setEnabled(status is not NodeStatus.RUNNING)
+        action = menu.addAction("Set As Root Job", lambda: self.set_root_job(item._job))
+        action.setEnabled(item._job is not self._root_job_info)
+        action.setToolTip(
+            "Set a job as the root of the flowchart.\n"
+            "Only the descendants jobs of the root job will be shown in the\n"
+            "flowchart. This operation is just a filtering and does not modify the\n"
+            "underlying pipeline star file."
+        )
+        action = menu.addAction("Unset As Root Job", lambda: self.set_root_job(None))
+        action.setToolTip("Unset the root job and show all jobs in the flowchart.")
+        action.setEnabled(item._job is self._root_job_info)
         return menu
 
 
 def _ignore_cancel(func, *args, **kwargs):
     """Decorator to ignore Cancelled exception."""
-
-    def wrapper():
-        try:
-            return func(*args, **kwargs)
-        except Cancelled:
-            pass
-
-    return wrapper
+    with suppress(Cancelled):
+        return func(*args, **kwargs)
 
 
 class RelionJobNodeItem(BaseNodeItem):
@@ -227,3 +276,11 @@ class RelionJobNodeItem(BaseNodeItem):
         path = relion_dir / self._job.path
         if path.exists():
             return JobDirectory(relion_dir / self._job.path)
+
+
+def _track_children(root: RelionJobInfo) -> set[Path]:
+    all_paths = {root.path}
+    for child in root.children:
+        all_paths.add(child.node.path)
+        all_paths.update(_track_children(child.node))
+    return all_paths

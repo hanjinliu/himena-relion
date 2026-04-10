@@ -957,7 +957,8 @@ class AutoPickTopazPick(_AutoPickJob):
         @widgets["do_topaz_filaments"].changed.connect
         def _on_do_topaz_filaments_changed(value: bool):
             for name in ["topaz_filament_threshold", "topaz_hough_length"]:
-                widgets[name].enabled = value
+                if (widget := widgets.get(name, None)) is not None:
+                    widget.enabled = value
 
         _on_do_topaz_filaments_changed(widgets["do_topaz_filaments"].value)
 
@@ -1022,7 +1023,8 @@ class ExtractJobBase(_Relion5SpaJob):
                 "helical_nr_asu",
                 "helical_rise",
             ]:
-                widgets[name].enabled = value
+                if (widget := widgets.get(name, None)) is not None:
+                    widget.enabled = value
 
         _on_do_extract_helix_changed(widgets["do_extract_helix"].value)  # initialize
 
@@ -1254,11 +1256,15 @@ class Class2DJob(_Relion5SpaJob):
     def setup_widgets(cls, widgets):
         @widgets["do_helix"].changed.connect
         def _on_do_helix_changed(value: bool):
-            widgets["helical_tube_outer_diameter"].enabled = value
-            widgets["do_bimodal_psi"].enabled = value
-            widgets["range_psi"].enabled = value
-            widgets["do_restrict_xoff"].enabled = value
-            widgets["helical_rise"].enabled = value
+            for name in [
+                "helical_tube_outer_diameter",
+                "do_bimodal_psi",
+                "range_psi",
+                "do_restrict_xoff",
+                "helical_rise",
+            ]:
+                if (widget := widgets.get(name, None)) is not None:
+                    widget.enabled = value
 
         _on_do_helix_changed(widgets["do_helix"].value)  # initialize
 
@@ -1584,8 +1590,9 @@ class Class3DJob(_Class3DJobBase):
 
         @widgets["do_local_ang_searches"].changed.connect
         def _on_do_local_ang_searches_changed(value: bool):
-            widgets["sigma_angles"].enabled = value
-            widgets["relax_sym"].enabled = value
+            for name in ["sigma_angles", "relax_sym"]:
+                if (widget := widgets.get(name, None)) is not None:
+                    widget.enabled = value
 
         _on_do_local_ang_searches_changed(widgets["do_local_ang_searches"].value)
 

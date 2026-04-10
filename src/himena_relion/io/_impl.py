@@ -129,10 +129,15 @@ def set_job_alias(ui: MainWindow, job_dir: JobDirectory):
         current_alias = matched.iloc[0]
         if current_alias == "None":
             current_alias = ""
+        elif "/" in current_alias:
+            # alias is something like "Extract/extract_bin4/"
+            current_alias = current_alias.split("/")[1]
     else:
         current_alias = ""
     res = ui.exec_user_string_input_dialog(
-        message="Give alias here ...", choices=["Press 'Enter' to set job alias"]
+        message="Give alias here ...",
+        choices=["Press 'Enter' to set job alias"],
+        default=current_alias,
     )
     if (val := res.get_input()) is None:
         raise Cancelled

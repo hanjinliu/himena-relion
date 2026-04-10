@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 from qtpy import QtWidgets as QtW, QtGui, QtCore
 import scipy.ndimage as ndi
+from himena.consts import MonospaceFontFamily
 from himena_relion._image_readers._array import ArrayFilteredView
 from himena_relion._widgets import (
     QJobScrollArea,
@@ -195,7 +196,7 @@ class QBatchruntomoLog(QtW.QPlainTextEdit):
     def __init__(self):
         super().__init__()
         self.setReadOnly(True)
-        font = QtGui.QFont(_utils.monospace_font_family(), 9)
+        font = QtGui.QFont(MonospaceFontFamily, 9)
         self.setFont(font)
         self.setSizePolicy(
             QtW.QSizePolicy.Policy.Expanding, QtW.QSizePolicy.Policy.Expanding

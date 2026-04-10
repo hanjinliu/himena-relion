@@ -2,8 +2,7 @@ from __future__ import annotations
 
 from qtpy import QtWidgets as QtW, QtCore, QtGui
 from himena.qt._qlineedit import QIntLineEdit
-
-from himena_relion._utils import monospace_font_family
+from himena.consts import MonospaceFontFamily
 
 
 class QIntWidget(QtW.QWidget):
@@ -86,7 +85,7 @@ def spin_button(char: str, callback) -> QtW.QPushButton:
     button = QtW.QToolButton()
     button.setText(char)
     button.setFixedWidth(12)
-    button.setFont(QtGui.QFont(monospace_font_family()))
+    button.setFont(QtGui.QFont(MonospaceFontFamily))
     button.setStyleSheet("color: gray;")
     button.clicked.connect(callback)
     button.setToolTip(callback.__doc__)

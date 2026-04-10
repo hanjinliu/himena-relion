@@ -19,7 +19,7 @@ class MenuId:
     RELION_RECONSTRUCTION_JOB = "tools/relion/400_reconstruction"
     RELION_REFINE_JOB = "tools/relion/500_refine"
     RELION_POSTPROCESS_JOB = "tools/relion/600_postprocess"
-    RELION_UTILS_JOB = "tools/relion/990_utils"
+    RELION_UTILS_JOB = "tools/relion/900_job_utils"
 
     RELION_TILT_ALIGN_JOB = "tools/relion/030_tilt_align"
     RELION_TOMO_RECON_JOB = "tools/relion/036_tomo_reconstruction"
@@ -114,7 +114,7 @@ ARG_NAME_REMAP = [
 ]
 
 configure_submenu(MenuId.RELION, "RELION")
-configure_submenu(MenuId.RELION_UTILS, "Job Actions")
+configure_submenu(MenuId.RELION_UTILS, "RELION Tools")
 configure_submenu(MenuId.RELION_IMPORT_JOB, "Job: Import")
 configure_submenu(MenuId.RELION_PREPROCESS_JOB, "Job: Preprocess")
 configure_submenu(MenuId.RELION_PICK_JOB, "Job: Pick")
