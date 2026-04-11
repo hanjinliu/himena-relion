@@ -65,9 +65,10 @@ You can click any of the import jobs to start processing your data.
 
 If your RELION project has jobs, the job flowchart will automatically created.
 
-![](images/01_flowchart_example.png){ width=300px loading=lazy }
+![](images/01_flowchart_example.png){ width=700px loading=lazy }
 
-In this flowchart, you can double-click nodes to open the job window.
+In this flowchart, you can double-click nodes to open the job window, ++ctrl+f++ to open
+the search palette, and many other actions in the right-click context menu.
 
 ## Job Window
 

@@ -24,6 +24,8 @@ Common usage of this job will be:
 
 ## Tomography-specific Jobs
 
+![](../images/02_external_tomo.png){ loading=lazy }
+
 #### Find Beads 3D
 
 This job uses the `findbeads3d` program from [IMOD](https://bio3d.colorado.edu/imod/) to
