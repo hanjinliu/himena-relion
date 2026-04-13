@@ -1,7 +1,8 @@
 from pathlib import Path
 from himena import MainWindow
+from himena.testing import choose_one_dialog_response
 
-from himena_relion.pipeline.widgets import QRelionPipelineFlowChart
+from himena_relion.pipeline.widgets import QRelionPipelineFlowChart, _list_jobs_for_palette
 from ._utils import DEFAULT_PIPELINES_DIR
 
 def test_reading_default_pipeline(himena_ui: MainWindow, tmpdir):
@@ -30,3 +31,16 @@ def get_pipeline_widget(himena_ui: MainWindow) -> QRelionPipelineFlowChart:
         if isinstance(dock.widget, QRelionPipelineFlowChart):
             return dock.widget
     raise RuntimeError("Pipeline widget not found")
+
+def test_reading_default_pipeline_during_filtering(himena_ui: MainWindow, tmpdir):
+    path = Path(tmpdir) / "default_pipeline.star"
+    txt = (DEFAULT_PIPELINES_DIR / "full.star").read_text()
+    path.write_text(txt)
+    himena_ui.read_file(path)
+    flowchart = get_pipeline_widget(himena_ui)
+
+    choices = _list_jobs_for_palette(flowchart._flow_chart._pipeline)
+    with choose_one_dialog_response(himena_ui, choices[1][1]):
+        flowchart._set_root_job()
+    flowchart._refresh_flowchart()
+    flowchart._unset_root_job()

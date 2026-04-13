@@ -35,6 +35,14 @@ class QRelionPipelineFlowChartView(QFlowChartView):
         if not isinstance(pipeline, RelionDefaultPipeline):
             raise TypeError("Model value must be a RelionDefaultPipeline.")
         self._pipeline = pipeline
+
+        # self._root_job_info needs update because its parents/children may have changed
+        if self._root_job_info is not None:
+            for node in pipeline._nodes:
+                if node.path == self._root_job_info.path:
+                    self._root_job_info = node
+                    break
+
         old_positions = {
             node.item().id(): node.pos() for node in self._node_map.values()
         }
@@ -43,6 +51,7 @@ class QRelionPipelineFlowChartView(QFlowChartView):
         self._node_map.clear()
         self._id_added.clear()
 
+        # Parents for filtering the flowchart
         if self._root_job_info is None:
             _allowed_parents = {node.path for node in pipeline._nodes}
         else:
@@ -92,7 +101,7 @@ class QRelionPipelineFlowChartView(QFlowChartView):
     ):
         if info.path not in allowed_parents:
             return None
-        parents: list[Path] = []
+        parents: list[Path] = []  # parent of incoming item
         for parent in info.parents:
             parent_info = parent.node
             if parent_info.path not in self._node_map:
