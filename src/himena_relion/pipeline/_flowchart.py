@@ -37,12 +37,11 @@ class QRelionPipelineFlowChartView(QFlowChartView):
         self._pipeline = pipeline
 
         # self._root_job_info needs update because its parents/children may have changed
-        if self._root_job_info is None:
-            pass
-        elif root_job := self._node_map.get(self._root_job_info.path):
-            self._root_job_info = root_job.item().id()
-        else:
-            self._root_job_info = None
+        if self._root_job_info is not None:
+            for node in pipeline._nodes:
+                if node.path == self._root_job_info.path:
+                    self._root_job_info = node
+                    break
 
         old_positions = {
             node.item().id(): node.pos() for node in self._node_map.values()
