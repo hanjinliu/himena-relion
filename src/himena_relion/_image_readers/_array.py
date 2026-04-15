@@ -141,7 +141,7 @@ class ArrayFromMrc(ArrayViewBase):
 
     @lru_cache(maxsize=1)
     def num_slices(self) -> int:
-        with mrcfile.open(self._path, mode="r") as mrc:
+        with mrcfile.open(self._path, mode="r", header_only=True) as mrc:
             return int(mrc.header.nz)
 
 

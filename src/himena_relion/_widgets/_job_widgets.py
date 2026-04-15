@@ -593,18 +593,20 @@ class QJobStateLabel(QtW.QWidget, JobWidgetBase):
 
     def initialize(self, job_dir):
         self._on_job_updated(job_dir)
-        # look for alias
-        pipeline = RelionPipelineModel.validate_file(
-            job_dir.relion_project_dir / "default_pipeline.star"
-        )
-        is_eq = pipeline.processes.process_name.eq(job_dir.job_normal_id())
-        is_eq_idx = np.where(is_eq)
+        default_pipeline_star = job_dir.relion_project_dir / "default_pipeline.star"
         title = job_dir.job_title()
-        if len(is_eq_idx[0]) > 0:
-            alias = pipeline.processes.alias[int(is_eq_idx[0][0])]
-            if alias.count("/") == 2:
-                alias_latter = alias.split("/")[1]
-                title = html.escape(f"{alias_latter} ({title})")
+        # NOTE: project default_pipeline.star may not exist if the job is copied from
+        # somewhere.
+        if default_pipeline_star.exists():
+            # look for alias
+            pipeline = RelionPipelineModel.validate_file(default_pipeline_star)
+            is_eq = pipeline.processes.process_name.eq(job_dir.job_normal_id())
+            is_eq_idx = np.where(is_eq)
+            if len(is_eq_idx[0]) > 0:
+                alias = pipeline.processes.alias[int(is_eq_idx[0][0])]
+                if alias.count("/") == 2:
+                    alias_latter = alias.split("/")[1]
+                    title = html.escape(f"{alias_latter} ({title})")
         self._job_desc.setText(
             f"<b><span style='color: gray;'>{job_dir.job_number}: </span> {title}</b>"
         )
