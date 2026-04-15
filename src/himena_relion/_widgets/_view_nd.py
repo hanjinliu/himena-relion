@@ -19,6 +19,7 @@ from himena_builtins.qt.widgets._image_components import (
 )
 
 from himena_relion._image_readers import ArrayFilteredView
+from himena_relion._widgets._misc import spacer_widget
 from himena_relion._widgets._spinbox import QIntWidget
 from himena_relion._widgets._vispy import (
     Vispy2DViewer,
@@ -845,6 +846,7 @@ class Q2DFilterWidget(QtW.QWidget):
         self._lowpass_cutoff.setFixedWidth(80)
         layout.addWidget(labeled("Binning factor:", self._bin_factor))
         layout.addWidget(labeled("Lowpass cutoff (Å):", self._lowpass_cutoff))
+        layout.addWidget(spacer_widget())
         self._image_scale = 1.0
         self._bin_factor.textChanged.connect(self.value_changed)
         self._lowpass_cutoff.textChanged.connect(self.value_changed)

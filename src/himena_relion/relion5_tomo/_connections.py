@@ -1,5 +1,6 @@
 from pathlib import Path
 import logging
+from starfile_rs import read_star
 from himena_relion.relion5 import _builtins as _spa
 from himena_relion.relion5._connections import (
     get_nr_iter,
@@ -62,6 +63,16 @@ def _recon_diameter_a(path: Path) -> float:
     return round(diameter_a, 1)
 
 
+def _should_do_fourier(path: Path) -> bool:
+    if (tilt_series_dir := path.joinpath("tilt_series")).exists():
+        for path_star in tilt_series_dir.glob("*.star"):
+            if block := read_star(path_star).try_first():
+                if "rlnMicrographNameEven" in block.columns:
+                    return True
+            return False
+    return False
+
+
 def _optimiser_last_iter(path: Path) -> str:
     niter = get_nr_iter(path)
     if niter is None:
@@ -109,6 +120,7 @@ connect_jobs(
     _tomo.AlignTiltSeriesImodFiducial,
     _tomo.ReconstructTomogramJob,
     node_mapping={"aligned_tilt_series.star": "in_tiltseries"},
+    value_mapping={_should_do_fourier: "do_fourier"},
 )
 connect_jobs(
     _tomo.AlignTiltSeriesImodFiducial,

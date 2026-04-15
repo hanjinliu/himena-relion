@@ -322,6 +322,10 @@ class QParameterNameLabel(QtW.QWidget):
         self._tooltip = tooltip
         layout = QtW.QHBoxLayout(self)
         label = QtW.QLabel(f"<b>{name}</b>")
+        label.setTextInteractionFlags(
+            QtCore.Qt.TextInteractionFlag.TextSelectableByMouse
+        )
+        label.setCursor(QtCore.Qt.CursorShape.IBeamCursor)
         layout.addWidget(label)
         self.setSizePolicy(
             QtW.QSizePolicy.Policy.Expanding, QtW.QSizePolicy.Policy.Minimum
