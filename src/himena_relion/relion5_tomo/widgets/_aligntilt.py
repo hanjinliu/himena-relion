@@ -35,13 +35,6 @@ class QAlignTiltSeriesViewer(QJobScrollArea):
         self._is_imod_patchtrack = job_params.get("do_imod_patchtrack", "No") == "Yes"
         self._is_aretomo2 = job_params.get("do_aretomo2", "No") == "Yes"
 
-        if self._is_imod_fid or self._is_imod_patchtrack:
-            self._output_align_file = _imod_output_align_file
-        elif self._is_aretomo2:
-            self._output_align_file = _aretomo2_output_align_file
-        else:
-            self._output_align_file = None
-
         self._viewer = Q2DViewer(zlabel="Tilt index")
         self._viewer.setMinimumHeight(420)
         self._ts_list = QMicrographListWidget(["Tilt Series"])
@@ -70,7 +63,13 @@ class QAlignTiltSeriesViewer(QJobScrollArea):
     def on_job_updated(self, job_dir, path: str):
         """Handle changes to the job directory."""
         fp = Path(path)
-        if fp.name.startswith("RELION_JOB_") or fp.suffix == ".xf":
+        if self._is_imod_fid or self._is_imod_patchtrack:
+            ok = fp.suffix == ".xf"
+        elif self._is_aretomo2:
+            ok = fp.name.endswith("_aligned.mrc")
+        else:
+            ok = False
+        if fp.name.startswith("RELION_JOB_") or ok:
             self.initialize(self._job_dir)
             _LOGGER.debug("%s Updated", self._job_dir.job_number)
 
@@ -78,7 +77,12 @@ class QAlignTiltSeriesViewer(QJobScrollArea):
         """Initialize the viewer with the job directory."""
         choices: list[str] = []
         for external_subdir in job_dir.path.joinpath("external").glob("*"):
-            filename = self._output_align_file(external_subdir)
+            if self._is_imod_fid or self._is_imod_patchtrack:
+                filename = _imod_output_align_file(external_subdir)
+            elif self._is_aretomo2:
+                filename = _aretomo2_output_align_file(external_subdir)
+            else:
+                continue
             if external_subdir.joinpath(filename).exists():
                 choices.append((external_subdir.name,))
         choices.sort(key=lambda x: x[0])

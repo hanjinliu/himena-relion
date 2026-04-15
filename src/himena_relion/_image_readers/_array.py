@@ -40,7 +40,10 @@ class ArrayFilteredView:
 
     def get_scale(self) -> float:
         """Get the scale of the array."""
-        return self._view.get_scale()
+        scale_a = self._view.get_scale()
+        if scale_a == 0:
+            return 1.0
+        return scale_a
 
     def get_shape(self) -> tuple[int, int]:
         """Get the (Y, X) shape of each slice in the array."""
