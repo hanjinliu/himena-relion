@@ -1,4 +1,5 @@
 from __future__ import annotations
+from functools import partial
 from pathlib import Path
 import logging
 import subprocess
@@ -29,39 +30,61 @@ class QAlignTiltSeriesViewer(QJobScrollArea):
         self._job_dir = job_dir
         layout = self._layout
 
+        job_params = job_dir.get_job_params_as_dict()
+        self._is_imod_fid = job_params.get("do_imod_fiducials", "No") == "Yes"
+        self._is_imod_patchtrack = job_params.get("do_imod_patchtrack", "No") == "Yes"
+        self._is_aretomo2 = job_params.get("do_aretomo2", "No") == "Yes"
+
         self._viewer = Q2DViewer(zlabel="Tilt index")
         self._viewer.setMinimumHeight(420)
         self._ts_list = QMicrographListWidget(["Tilt Series"])
         self._ts_list.current_changed.connect(self._ts_choice_changed)
-        self._etomo_btn = QtW.QPushButton("Open in Etomo")
-        self._etomo_btn.setToolTip("Open the etomo project for this tilt series")
-        self._etomo_btn.setFixedWidth(104)
-        self._etomo_btn.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
-        self._etomo_btn.clicked.connect(self._open_in_etomo)
-        self._batchruntomo_log = QBatchruntomoLog()
         layout.addWidget(self._ts_list)
         hlayout = QtW.QHBoxLayout()
         hlayout.setContentsMargins(0, 0, 0, 0)
         hlayout.addWidget(QtW.QLabel("<b>Aligned tilt series</b>"))
-        hlayout.addWidget(self._etomo_btn, alignment=QtCore.Qt.AlignmentFlag.AlignRight)
+        if self._is_imod_fid or self._is_imod_patchtrack:
+            etomo_btn = QtW.QPushButton("Open in Etomo")
+            etomo_btn.setToolTip("Open the etomo project for this tilt series")
+            etomo_btn.setFixedWidth(104)
+            etomo_btn.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
+            etomo_btn.clicked.connect(self._open_in_etomo)
+            hlayout.addWidget(etomo_btn, alignment=QtCore.Qt.AlignmentFlag.AlignRight)
         layout.addLayout(hlayout)
         layout.addWidget(self._viewer)
-        layout.addWidget(QtW.QLabel("<b>Batchruntomo Log</b>"))
-        layout.addWidget(self._batchruntomo_log)
+
+        self._align_log = QAlignJobLog()
+        if self._is_imod_fid or self._is_imod_patchtrack:
+            layout.addWidget(QtW.QLabel("<b>Batchruntomo Log</b>"))
+        else:
+            layout.addWidget(QtW.QLabel("<b>AreTomo2 Log</b>"))
+        layout.addWidget(self._align_log)
 
     def on_job_updated(self, job_dir, path: str):
         """Handle changes to the job directory."""
         fp = Path(path)
-        if fp.name.startswith("RELION_JOB_") or fp.suffix == ".xf":
+        if self._is_imod_fid or self._is_imod_patchtrack:
+            ok = fp.suffix == ".xf"
+        elif self._is_aretomo2:
+            ok = fp.name.endswith("_aligned.mrc")
+        else:
+            ok = False
+        if fp.name.startswith("RELION_JOB_") or ok:
             self.initialize(self._job_dir)
             _LOGGER.debug("%s Updated", self._job_dir.job_number)
 
     def initialize(self, job_dir):
         """Initialize the viewer with the job directory."""
         choices: list[str] = []
-        for imod_dir in job_dir.path.joinpath("external").glob("*"):
-            if imod_dir.joinpath(f"{imod_dir.name}.xf").exists():
-                choices.append((imod_dir.name,))
+        for external_subdir in job_dir.path.joinpath("external").glob("*"):
+            if self._is_imod_fid or self._is_imod_patchtrack:
+                filename = _imod_output_align_file(external_subdir)
+            elif self._is_aretomo2:
+                filename = _aretomo2_output_align_file(external_subdir)
+            else:
+                continue
+            if external_subdir.joinpath(filename).exists():
+                choices.append((external_subdir.name,))
         choices.sort(key=lambda x: x[0])
         self._ts_list.set_choices(choices)
         if len(choices) == 0:
@@ -71,6 +94,12 @@ class QAlignTiltSeriesViewer(QJobScrollArea):
         """Update the viewer when the selected tomogram changes."""
         job_dir = self._job_dir
         text = texts[0]  # tomo name
+        if self._is_imod_fid or self._is_imod_patchtrack:
+            self._ts_choice_changed_imod(job_dir, text)
+        elif self._is_aretomo2:
+            self._ts_choice_changed_aretomo2(job_dir, text)
+
+    def _ts_choice_changed_imod(self, job_dir: _job_dir.JobDirectory, text: str):
         xf = xf_file(job_dir, text)
         if not xf.exists():
             return
@@ -98,7 +127,24 @@ class QAlignTiltSeriesViewer(QJobScrollArea):
         # update batchruntomo log
         log_file = job_dir.path / "external" / text / "batchruntomo.log"
         if log_file.exists():
-            self._batchruntomo_log.setPlainText(log_file.read_text())
+            self._align_log.setPlainText(log_file.read_text())
+
+    def _ts_choice_changed_aretomo2(self, job_dir: _job_dir.JobDirectory, text: str):
+        aligned_file = job_dir.path / "external" / text / f"{text}_aligned.mrc"
+        if not aligned_file.exists():
+            return
+        try:
+            ts_view = ArrayFilteredView.from_mrc(aligned_file)
+            nbin = max(round(16 / ts_view.get_scale()), 1)
+            filt = partial(bin_image, nbin=nbin)
+            self._viewer.set_array_view(ts_view.with_filter(filt))
+        except Exception:
+            _LOGGER.error("Failed to load tilt series", exc_info=True)
+            self._viewer.clear()
+
+        log_file = job_dir.path / "external" / text / f"{text}.log"
+        if log_file.exists():
+            self._align_log.setPlainText(log_file.read_text())
 
     def _udpate_fiducials(self, text: str, aligner: ImodImageAligner):
         # if tracked fiducials are available, display them
@@ -192,7 +238,7 @@ class ImodImageAligner:
         return mat
 
 
-class QBatchruntomoLog(QtW.QPlainTextEdit):
+class QAlignJobLog(QtW.QPlainTextEdit):
     def __init__(self):
         super().__init__()
         self.setReadOnly(True)
@@ -227,6 +273,12 @@ def etomo_project_dir(jobdir: _job_dir.JobDirectory, tomoname: str) -> Path:
     return jobdir.path / "external" / tomoname
 
 
+def bin_image(img: np.ndarray, i: int, nbin: int) -> np.ndarray:
+    if nbin > 1:
+        img = _utils.bin_image(img, nbin)
+    return img
+
+
 def image_shape_params(
     jobdir: _job_dir.JobDirectory,
     tomoname: str,
@@ -241,3 +293,11 @@ def image_shape_params(
     if ny > 0 and nx > 0:
         return (ny, nx)
     return None
+
+
+def _imod_output_align_file(subdir: Path) -> str:
+    return f"{subdir.name}.xf"
+
+
+def _aretomo2_output_align_file(subdir: Path) -> str:
+    return f"{subdir.name}_aligned.mrc"
