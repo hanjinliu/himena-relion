@@ -146,6 +146,7 @@ class RelionJob(ABC):
 
     @classmethod
     def create_and_run_job(cls, _cwd, **kwargs) -> RelionJobExecution | None:
+        """Run or schedule job."""
         with tempfile.TemporaryDirectory() as tmpdir:
             tmpdir = Path(tmpdir)
             job_star_path = tmpdir / "job.star"

@@ -50,6 +50,7 @@ class QRelionPipelineFlowChart(QtW.QWidget):
 
         # Create the "more" button with a menu for additional actions
         btn = QMoreActionButton()
+        btn.setFixedHeight(18)
         btn.setToolTip("More actions ...")
 
         btn.add_action("Open default_pipeline.star", self._open_as_raw_text)

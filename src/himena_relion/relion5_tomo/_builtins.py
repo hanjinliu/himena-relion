@@ -1067,7 +1067,7 @@ class Class3DTomoJob(_Relion5TomoJob, Class3DJob):
         nr_iter: _a.class_.NUM_ITER = 25,
         particle_diameter: _a.misc.MASK_DIAMETER = 200,
         do_zero_mask: _a.misc.MASK_WITH_ZEROS = True,
-        highres_limit: _a.class_.HIGH_RES_LIMIT = -1,
+        highres_limit: _a.class_.HIGH_RES_LIMIT = None,
         do_blush: _a.misc.DO_BLUSH = False,
         # Sampling
         sampling: _a.sampling.ANG_SAMPLING = "7.5 degrees",

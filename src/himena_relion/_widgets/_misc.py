@@ -216,7 +216,6 @@ class QMoreActionButton(QtW.QPushButton):
     def __init__(self, parent=None):
         super().__init__("...", parent)
         self.setFixedWidth(24)
-        self.setFixedHeight(18)
         menu = QtW.QMenu(self)
         menu.setToolTipsVisible(True)
         self.setMenu(menu)

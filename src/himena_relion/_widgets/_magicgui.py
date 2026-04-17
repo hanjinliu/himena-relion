@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from magicgui.widgets import RadioButtons
 from magicgui.widgets.bases import ValuedContainerWidget
 from magicgui.types import Undefined
-from himena.qt.magicgui import ToggleSwitch, FloatEdit, IntEdit
+from himena.qt.magicgui import ToggleSwitch, FloatEdit, IntEdit, ToggleButtons
 
 from himena_relion._job_class import parse_string
 from himena_relion._widgets._path_input import PathDrop
@@ -11,7 +10,7 @@ from himena_relion._widgets._path_input import PathDrop
 
 class DoseRateEdit(ValuedContainerWidget):
     def __init__(self, **kwargs):
-        self._kind = RadioButtons(
+        self._kind = ToggleButtons(
             choices=["Per tilt", "Per movie frame"],
             value="Per tilt",
             orientation="horizontal",
@@ -223,8 +222,8 @@ class Class2DAlgorithmEdit(ValuedContainerWidget):
     """Widget for selecting 2D classification algorithm."""
 
     def __init__(self, **kwargs):
-        self._algorithm = RadioButtons(
-            label="Algorithm",
+        self._algorithm = ToggleButtons(
+            label="",
             choices=["EM", "VDAM"],
             value="VDAM",
             orientation="horizontal",

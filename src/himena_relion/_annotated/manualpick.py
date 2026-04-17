@@ -1,4 +1,5 @@
 from typing import Annotated, Union
+from himena.qt.magicgui import ToggleButtons
 
 DO_STARTEND = Annotated[
     bool,
@@ -107,6 +108,7 @@ FILTER_METHOD = Annotated[
             "will apply a simple band-pass filter, whereas 'Topaz' will use a "
             "pre-trained deep-learning model to denoise the micrographs."
         ),
+        "widget_type": ToggleButtons,
         "group": "Display",
     },
 ]
@@ -211,6 +213,8 @@ PICK_MODE = Annotated[
         "label": "Picking mode",
         "choices": ["particles", "spheres", "surfaces", "filaments"],
         "tooltip": "Type of picking mode to use",
+        "widget_type": ToggleButtons,
+        "orientation": "vertical",
         "group": "I/O",
     },
 ]

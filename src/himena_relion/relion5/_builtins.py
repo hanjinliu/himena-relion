@@ -963,7 +963,7 @@ class AutoPickTopazPick(_AutoPickJob):
         _on_do_topaz_filaments_changed(widgets["do_topaz_filaments"].value)
 
 
-class ExtractJobBase(_Relion5SpaJob):
+class _ExtractJobBase(_Relion5SpaJob):
     @classmethod
     def menu_id(cls) -> str:
         return MenuId.RELION_EXTRACT_JOB
@@ -1029,7 +1029,7 @@ class ExtractJobBase(_Relion5SpaJob):
         _on_do_extract_helix_changed(widgets["do_extract_helix"].value)  # initialize
 
 
-class ExtractJob(ExtractJobBase):
+class ExtractJob(_ExtractJobBase):
     """Particle extraction from micrographs."""
 
     @classmethod
@@ -1058,7 +1058,7 @@ class ExtractJob(ExtractJobBase):
         # I/O
         star_mics: _a.io.IN_MICROGRAPHS = "",
         coords_suffix: _a.io.IN_COORDINATES = "",
-        do_float16: _a.mcor.DO_F16 = True,
+        do_float16: _a.io.DO_F16 = True,
         # Extract
         extract_size: _a.extract.SIZE = 128,
         rescale: _a.extract.RESCALE = 128,
@@ -1084,7 +1084,7 @@ class ExtractJob(ExtractJobBase):
         raise NotImplementedError("This is a builtin job placeholder.")
 
 
-class ReExtractJob(ExtractJobBase):
+class ReExtractJob(_ExtractJobBase):
     """Particle re-extraction from micrographs."""
 
     @classmethod
@@ -1511,7 +1511,7 @@ class Class3DJob(_Class3DJobBase):
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
         kwargs = super().normalize_kwargs(**kwargs)
-        # force no alignment
+        # force alignment
         kwargs["dont_skip_align"] = True
         if kwargs.get("highres_limit", None) is None:
             kwargs["highres_limit"] = -1
