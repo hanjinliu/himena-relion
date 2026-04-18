@@ -228,17 +228,18 @@ class QRelionPipelineFlowChart(QtW.QWidget):
             yield
 
     def _on_job_state_changed(self, pipeline: RelionDefaultPipeline) -> None:
-        success_old = self._state_to_job_map[NodeStatus.SUCCEEDED]
-        failed_old = self._state_to_job_map[NodeStatus.FAILED]
+        success_old = set(self._state_to_job_map[NodeStatus.SUCCEEDED].keys())
+        failed_old = set(self._state_to_job_map[NodeStatus.FAILED].keys())
+        running_old = set(self._state_to_job_map[NodeStatus.RUNNING].keys())
         self._state_to_job_map.clear()
         for job in pipeline.iter_nodes():
             _dict = self._state_to_job_map[job.status]
             _dict[job.path.as_posix()] = job
-        success_new = self._state_to_job_map[NodeStatus.SUCCEEDED]
-        failed_new = self._state_to_job_map[NodeStatus.FAILED]
+        success_new = set(self._state_to_job_map[NodeStatus.SUCCEEDED].keys())
+        failed_new = set(self._state_to_job_map[NodeStatus.FAILED].keys())
         ui = self._flow_chart._ui
         # Notify newly succeeded jobs and run scheduled jobs
-        if succeeded := set(success_new.keys()) - set(success_old.keys()):
+        if succeeded := (success_new - success_old) & running_old:
             for job in self._state_to_job_map[NodeStatus.SCHEDULED].values():
                 # run all the scheduled jobs whose dependencies are met
                 if is_all_inputs_ready(job.path):
@@ -252,7 +253,7 @@ class QRelionPipelineFlowChart(QtW.QWidget):
             )
 
         # Notify newly failed jobs
-        if failed := set(failed_new.keys()) - set(failed_old.keys()):
+        if failed := failed_new - failed_old:
             ui.show_notification("\n".join(f"Job {job}/ failed." for job in failed))
 
     def keyPressEvent(self, a0):
