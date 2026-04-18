@@ -41,7 +41,6 @@ _rlnPipeLineEdgeFromNode #1
 _rlnPipeLineEdgeProcess #2
 Import/job001/tilt_series.star MotionCorr/job002/
 MotionCorr/job002/corrected_tilt_series.star CtfFind/job003/
-CtfFind/job003/tilt_series_ctf.star ExcludeTiltImages/job004/
 
 
 # version 50001

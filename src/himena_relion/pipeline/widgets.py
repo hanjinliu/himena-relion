@@ -61,7 +61,6 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         btn.add_action("Set Root Job ...", self._set_root_job)
         btn.add_action("Unset Root Job", self._unset_root_job)
         # TODO: add these actions
-        # btn.add_action("Open Trash Directory", self._open_trash_dir)
         # btn.add_action("Gentle clean all", self._gentle_clean_all)
         # btn.add_action("Harsh clean all", self._harsh_clean_all)
         btn.add_action("Refresh", self._refresh_flowchart, shortcut="F5")
@@ -291,7 +290,7 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         btn.menu().exec(QtGui.QCursor.pos())
 
     def _open_trash(self):
-        """Open the Trash widget."""
+        """Open a widget that shows the contents of the RELION Trash directory."""
         self._flow_chart._ui.read_file(self._flow_chart._relion_project_dir / "Trash")
 
 
