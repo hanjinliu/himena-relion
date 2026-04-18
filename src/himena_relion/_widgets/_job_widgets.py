@@ -562,7 +562,7 @@ class QJobStateLabel(QtW.QWidget, JobWidgetBase):
         self._job_widget = parent
         layout = QtW.QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        self._job_desc = QtW.QLabel("XXX")
+        self._job_desc = QtW.QLabel("")
         self._job_desc.setSizePolicy(
             QtW.QSizePolicy.Policy.Minimum, QtW.QSizePolicy.Policy.Minimum
         )
@@ -572,7 +572,7 @@ class QJobStateLabel(QtW.QWidget, JobWidgetBase):
         self._set_alias_btn.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
         self._set_alias_btn.setFixedSize(18, 18)
         self._set_alias_btn.update_color("gray")
-        self._state_label = QtW.QLabel("Not started")
+        self._state_label = QtW.QLabel("")
         self._state_label.setSizePolicy(
             QtW.QSizePolicy.Policy.Minimum, QtW.QSizePolicy.Policy.Minimum
         )
@@ -591,6 +591,11 @@ class QJobStateLabel(QtW.QWidget, JobWidgetBase):
         font.setPointSize(font.pointSize() - 1)
         self._state_label.setFont(font)
         self.setFixedHeight(27)
+        self.clear_content()
+
+    def clear_content(self):
+        self._job_desc.setText("<b><span style='color: gray;'>Not Selected</span></b>")
+        self._state_label.setText("")
 
     def on_job_updated(self, job_dir, fp):
         if fp.name == "default_pipeline.star" or fp.suffix == "":

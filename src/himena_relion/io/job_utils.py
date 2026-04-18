@@ -157,31 +157,6 @@ def trash_job(ui: MainWindow, model: WidgetDataModel):
 
 
 @register_function(
-    menus=[MenuId.RELION_UTILS],
-    title="Restore Trashed RELION jobs",
-    command_id="himena-relion:restore-trashed-jobs",
-)
-def restore_trashed_jobs(ui: MainWindow):
-    if cur_widget := get_pipeline_widgets(ui):
-        start_path = cur_widget._flow_chart._relion_project_dir
-    else:
-        start_path = None
-    if res := ui.exec_file_dialog(
-        "d",
-        caption="Select RELION job directory to restore",
-        start_path=start_path,
-    ):
-        parts = res.parts
-        if len(parts) < 3 or parts[-3] != "Trash":
-            raise ValueError("Selected directory is not a trashed job directory.")
-        cur_relion_project_dir = res.parent.parent.parent
-        job_id = f"{parts[-2]}/{parts[-1]}/"
-        _impl.restore_trashed_jobs(cur_relion_project_dir, [job_id])
-    else:
-        raise Cancelled
-
-
-@register_function(
     menus=[MenuId.RELION],
     title="RELION Version Info",
     command_id="himena-relion:relion-version-info",
@@ -218,6 +193,20 @@ def start_new_project(ui: MainWindow):
         ui.read_file(path)
     else:
         raise Cancelled
+
+
+@register_function(
+    menus=[MenuId.RELION],
+    title="Open Trash Directory",
+    command_id="himena-relion:open-trash-directory",
+)
+def open_trash_directory(ui: MainWindow):
+    """Open the trash directory of the current RELION project."""
+    if cur_widget := get_pipeline_widgets(ui):
+        relion_project_dir = cur_widget._flow_chart._relion_project_dir
+        ui.read_file(relion_project_dir / "Trash", append_history=False)
+    else:
+        ui.show_notification("No RELION project is currently open.")
 
 
 def assert_job(model: WidgetDataModel) -> JobDirectory:

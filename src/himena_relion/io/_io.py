@@ -97,7 +97,28 @@ def read_relion_pipeline(path: Path) -> WidgetDataModel:
 def _(path: Path):
     if _get_default_pipeline_star(path) is not None:
         return Type.RELION_PIPELINE
-    return None
+
+
+@register_reader_plugin(priority=500, module="himena_relion.io")
+def read_relion_trash_directory(path: Path) -> WidgetDataModel:
+    """Read the trash directory of a RELION project."""
+    if path.is_dir():
+        return WidgetDataModel(
+            value=path,
+            type=Type.RELION_TRASH,
+            title=path.name,
+        ).use_tab()
+    raise ValueError(f"Expected a Trash directory, got {path}")
+
+
+@read_relion_trash_directory.define_matcher
+def _(path: Path):
+    if (
+        path.is_dir()
+        and path.name == "Trash"
+        and path.parent.joinpath("default_pipeline.star").exists()
+    ):
+        return Type.RELION_TRASH
 
 
 def _get_job_star(path: Path) -> Path | None:

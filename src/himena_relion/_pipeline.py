@@ -196,7 +196,7 @@ class RelionPipeline:
         process_status_label = pipeline.processes.status_label[0]
 
         # construct type map
-        _type_map = dict(zip(pipeline.nodes.name, pipeline.nodes.type_label))
+        _type_map = pipeline.nodes.make_type_map()
 
         if pipeline.input_edges is not None:
             inputs = [

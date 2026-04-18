@@ -75,6 +75,22 @@ class QRelionPipelineFlowChartView(QFlowChartView):
             if new_item := self._add_job_node_item(new_info, _allowed_parents):
                 new_item.setPos(default_pos)
 
+        # FIXME: Newly added node usually goes to a wrong place. Resetting positions
+        # fixes this problem for some reason ...
+        old_positions = {
+            node.item().id(): node.pos() for node in self._node_map.values()
+        }
+        self.scene().clear()
+        self._node_map.clear()
+        self._id_added.clear()
+
+        for info in pipeline._nodes:
+            if info.path in old_positions:
+                self._add_job_node_item(info, _allowed_parents)
+        for new_item in self._node_map.values():
+            if pos := old_positions.get(new_item.item().id()):
+                new_item.setPos(pos)
+
     def set_root_job(self, root_job_info: RelionJobInfo | None):
         self._root_job_info = root_job_info
         self._node_map.clear()

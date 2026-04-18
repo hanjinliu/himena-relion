@@ -5,6 +5,7 @@ from himena.plugins import configure_submenu
 class Type:
     RELION_JOB = "relion_job"
     RELION_PIPELINE = "relion_pipeline"
+    RELION_TRASH = "relion_trash"
 
 
 class MenuId:

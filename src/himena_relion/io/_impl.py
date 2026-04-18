@@ -205,17 +205,10 @@ def trash_job(ui: MainWindow, job_dir: JobDirectory):
         for ith, from_ in enumerate(pipeline.output_edges.process):
             if Path(from_) in to_trash:
                 output_indices_to_remove.append(ith)
-        # prepare HTML message
-        message_lines = ["<p>Following jobs would be moved to trash:</p><ul>"]
-        for p in to_trash:
-            message_lines.append(f"<li>{p}</li>")
-            if len(message_lines) >= 16:
-                message_lines.append("<li>...</li>")  # truncate long list
-                break
-        message_lines.append("</ul>")
+
         resp = ui.exec_choose_one_dialog(
             title="Trash job?",
-            message="".join(message_lines),
+            message=_html_list("Following jobs would be moved to trash:", to_trash),
             choices=[("Yes, move to trash", True), ("Cancel", False)],
         )
         if resp is None or not resp:
@@ -413,3 +406,18 @@ def _try_get_job_name(x: str) -> str:
     if "/" in x:
         return x.split("/")[1]
     return x
+
+
+def _html_list(
+    first_line: str,
+    items: list[str],
+    max_items: int = 15,
+):
+    message_lines = [f"<p>{first_line}</p><ul>"]
+    for p in items:
+        message_lines.append(f"<li>{p}</li>")
+        if len(message_lines) >= max_items + 1:
+            message_lines.append("<li>...</li>")  # truncate long list
+            break
+    message_lines.append("</ul>")
+    return "".join(message_lines)

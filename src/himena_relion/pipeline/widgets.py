@@ -55,16 +55,15 @@ class QRelionPipelineFlowChart(QtW.QWidget):
 
         btn.add_action("Open default_pipeline.star", self._open_as_raw_text)
         btn.add_action("Open Project Note", self._open_project_note)
+        btn.add_action("Open Trash", self._open_trash)
         btn.add_separator()
         btn.add_action("Find Job ...", self._find_job, shortcut="Ctrl+F")
         btn.add_action("Set Root Job ...", self._set_root_job)
         btn.add_action("Unset Root Job", self._unset_root_job)
         # TODO: add these actions
-        # btn.add_action("Open Trash Directory", self._open_trash_dir)
         # btn.add_action("Gentle clean all", self._gentle_clean_all)
         # btn.add_action("Harsh clean all", self._harsh_clean_all)
         btn.add_action("Refresh", self._refresh_flowchart, shortcut="F5")
-        btn.add_action("Restore Trashed Jobs", self._restore_trashed_jobs)
         self._more_action_btn = btn
 
         self._stacked_widget = QtW.QStackedWidget()
@@ -155,10 +154,6 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         """Manually trigger a refresh of the pipeline data."""
         self._on_pipeline_updated(self._flow_chart._pipeline)
 
-    def _restore_trashed_jobs(self):
-        """Restore trashed jobs."""
-        self._flow_chart._ui.exec_action("himena-relion:restore-trashed-jobs")
-
     @validate_protocol
     def update_model(self, model: WidgetDataModel) -> None:
         if not isinstance(src := model.source, Path):
@@ -232,17 +227,18 @@ class QRelionPipelineFlowChart(QtW.QWidget):
             yield
 
     def _on_job_state_changed(self, pipeline: RelionDefaultPipeline) -> None:
-        success_old = self._state_to_job_map[NodeStatus.SUCCEEDED]
-        failed_old = self._state_to_job_map[NodeStatus.FAILED]
+        success_old = set(self._state_to_job_map[NodeStatus.SUCCEEDED].keys())
+        failed_old = set(self._state_to_job_map[NodeStatus.FAILED].keys())
+        running_old = set(self._state_to_job_map[NodeStatus.RUNNING].keys())
         self._state_to_job_map.clear()
         for job in pipeline.iter_nodes():
             _dict = self._state_to_job_map[job.status]
             _dict[job.path.as_posix()] = job
-        success_new = self._state_to_job_map[NodeStatus.SUCCEEDED]
-        failed_new = self._state_to_job_map[NodeStatus.FAILED]
+        success_new = set(self._state_to_job_map[NodeStatus.SUCCEEDED].keys())
+        failed_new = set(self._state_to_job_map[NodeStatus.FAILED].keys())
         ui = self._flow_chart._ui
         # Notify newly succeeded jobs and run scheduled jobs
-        if succeeded := set(success_new.keys()) - set(success_old.keys()):
+        if succeeded := (success_new - success_old) & running_old:
             for job in self._state_to_job_map[NodeStatus.SCHEDULED].values():
                 # run all the scheduled jobs whose dependencies are met
                 if is_all_inputs_ready(job.path):
@@ -256,7 +252,7 @@ class QRelionPipelineFlowChart(QtW.QWidget):
             )
 
         # Notify newly failed jobs
-        if failed := set(failed_new.keys()) - set(failed_old.keys()):
+        if failed := failed_new - failed_old:
             ui.show_notification("\n".join(f"Job {job}/ failed." for job in failed))
 
     def keyPressEvent(self, a0):
@@ -292,6 +288,10 @@ class QRelionPipelineFlowChart(QtW.QWidget):
     def _on_background_right_clicked(self):
         btn = self._more_action_btn
         btn.menu().exec(QtGui.QCursor.pos())
+
+    def _open_trash(self):
+        """Open a widget that shows the contents of the RELION Trash directory."""
+        self._flow_chart._ui.read_file(self._flow_chart._relion_project_dir / "Trash")
 
 
 class QPipelineFinder(QSearchableComboBox):

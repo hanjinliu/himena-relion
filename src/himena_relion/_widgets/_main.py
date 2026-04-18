@@ -33,15 +33,10 @@ _LOGGER = logging.getLogger(__name__)
 _C = TypeVar("_C", bound=JobWidgetBase)
 
 
-class QRelionJobWidget(QtW.QWidget):
-    job_updated = QtCore.Signal(Path)
-    _instances = set["QRelionJobWidget"]()
-
-    def __init__(self, ui: MainWindow):
+class QRelionJobWidgetBase(QtW.QWidget):
+    def __init__(self):
         super().__init__()
-        self._ui_ref = weakref.ref(ui)
         self._job_dir: _job_dir.JobDirectory | None = None
-        self._control_widget: QRelionJobWidgetControl | None = None
         layout = QtW.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         self._state_widget = QJobStateLabel(self)
@@ -49,29 +44,19 @@ class QRelionJobWidget(QtW.QWidget):
         self._tab_widget = QtW.QTabWidget(self)
         self._tab_widget.tabBar().setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
         layout.addWidget(self._tab_widget)
-        self._watcher: GeneratorWorker | None = None
-        self.job_updated.connect(self._on_job_updated)
-        self._instances.add(self)
 
-    @validate_protocol
-    def update_model(self, model: WidgetDataModel):
-        """Update the widget with a new model."""
+    def add_job_widget(self, widget: JobWidgetBase):
+        """Add a job widget to the tab widget."""
+        if not isinstance(widget, JobWidgetBase):
+            raise TypeError(f"Expected JobWidgetBase, got {type(widget)}")
+        self._tab_widget.addTab(widget, widget.tab_title())
+
+    def clear_tabs(self):
         self._tab_widget.clear()
-        if self._watcher:
-            self._watcher.quit()
-        self._job_dir = job_dir = model.value
-        if not isinstance(job_dir, _job_dir.JobDirectory):
-            raise TypeError(f"Expected JobDirectory, got {type(job_dir)}")
-        if isinstance(model.metadata, RelionJobIsTesting):
-            self._watcher = None
-        else:
-            self._watcher = self._watch_job_directory(job_dir.path)
+        self._state_widget.clear_content()
 
-        if wcls := RelionJobViewRegistry.instance().get_widget_class(job_dir):
-            _LOGGER.info(f"Adding job widget for {job_dir.path}: {wcls!r}")
-            wdt = wcls(job_dir)
-            self.add_job_widget(wdt)
-
+    def update_job(self, job_dir: _job_dir.JobDirectory):
+        self._job_dir = job_dir
         self.add_job_widget(QJobPipelineViewer(show_tree_view=True))
         self.add_job_widget(QJobParameterView())
         self.add_job_widget(QRunOutErrLog())
@@ -94,6 +79,48 @@ class QRelionJobWidget(QtW.QWidget):
                 _LOGGER.info(
                     f"Initialization of {type(wdt).__name__} took {t1 - t0:.3f} seconds"
                 )
+
+    def _iter_job_widgets(self) -> Iterator[JobWidgetBase]:
+        """Iterate over all job widgets in the tab widget."""
+        yield self._state_widget
+        for i in range(self._tab_widget.count()):
+            if isinstance(wdt := self._tab_widget.widget(i), JobWidgetBase):
+                yield wdt
+
+
+class QRelionJobWidget(QRelionJobWidgetBase):
+    job_updated = QtCore.Signal(Path)
+    _instances = set["QRelionJobWidget"]()
+
+    def __init__(self, ui: MainWindow):
+        super().__init__()
+        self._ui_ref = weakref.ref(ui)
+        self._control_widget: QRelionJobWidgetControl | None = None
+        self._watcher: GeneratorWorker | None = None
+        self.job_updated.connect(self._on_job_updated)
+        self._instances.add(self)
+
+    @validate_protocol
+    def update_model(self, model: WidgetDataModel):
+        """Update the widget with a new model."""
+        if self._watcher:
+            self._watcher.quit()
+        job_dir = model.value
+        if not isinstance(job_dir, _job_dir.JobDirectory):
+            raise TypeError(f"Expected JobDirectory, got {type(job_dir)}")
+        if isinstance(model.metadata, RelionJobIsTesting):
+            self._watcher = None
+        else:
+            self._watcher = self._watch_job_directory(job_dir.path)
+
+        self.clear_tabs()
+
+        if wcls := RelionJobViewRegistry.instance().get_widget_class(job_dir):
+            _LOGGER.info(f"Adding job widget for {job_dir.path}: {wcls!r}")
+            wdt = wcls(job_dir)
+            self.add_job_widget(wdt)
+
+        self.update_job(job_dir)
 
     @validate_protocol
     def to_model(self) -> WidgetDataModel:
@@ -139,12 +166,6 @@ class QRelionJobWidget(QtW.QWidget):
             self._watcher.quit()
             self._watcher = None
 
-    def add_job_widget(self, widget: JobWidgetBase):
-        """Add a job widget to the tab widget."""
-        if not isinstance(widget, JobWidgetBase):
-            raise TypeError(f"Expected JobWidgetBase, got {type(widget)}")
-        self._tab_widget.addTab(widget, widget.tab_title())
-
     @thread_worker(start_thread=True)
     def _watch_job_directory(self, path: Path):
         """Watch the job directory for changes."""
@@ -180,13 +201,6 @@ class QRelionJobWidget(QtW.QWidget):
             self._control_widget.set_msg(msg)
         else:
             self._control_widget.set_msg("")
-
-    def _iter_job_widgets(self) -> Iterator[JobWidgetBase]:
-        """Iterate over all job widgets in the tab widget."""
-        yield self._state_widget
-        for i in range(self._tab_widget.count()):
-            if isinstance(wdt := self._tab_widget.widget(i), JobWidgetBase):
-                yield wdt
 
 
 class RelionJobViewRegistry:

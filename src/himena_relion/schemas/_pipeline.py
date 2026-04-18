@@ -22,6 +22,13 @@ class RelionPipelineNodes(schema.LoopDataModel):
         "rlnPipeLineNodeTypeLabelDepth", default=None
     )
 
+    def make_type_map(self, depth: int | None = None) -> dict[str, str]:
+        if depth is None:
+            type_label = self.type_label
+        else:
+            type_label = [".".join(t.split(".")[:depth]) for t in self.type_label]
+        return dict(zip(self.name, type_label))
+
 
 class RelionPipelineInputEdges(schema.LoopDataModel):
     """Pipeline input edges such as

@@ -1,4 +1,5 @@
 from __future__ import annotations
+from contextlib import suppress
 from pathlib import Path
 import logging
 
@@ -122,15 +123,16 @@ class QReconstructViewer(QJobScrollArea):
         # files, so we need to retrieve it from the input parameters.
         params = job_dir.get_job_params_as_dict()
 
-        binning = int(params["binning"])
-        if in_opt := params["in_optimisation"]:
-            tomo_star = OptimisationSetModel.validate_file(
-                job_dir.resolve_path(in_opt)
-            ).tomogram_star
-        elif in_tomo := params["in_tomograms"]:
-            tomo_star = job_dir.resolve_path(in_tomo)
-        else:
-            tomo_star = None
+        tomo_star = None
+        with suppress(Exception):
+            binning = int(params["binning"])
+            if in_opt := params["in_optimisation"]:
+                tomo_star = OptimisationSetModel.validate_file(
+                    job_dir.resolve_path(in_opt)
+                ).tomogram_star
+            elif in_tomo := params["in_tomograms"]:
+                tomo_star = job_dir.resolve_path(in_tomo)
+
         if tomo_star:
             tomo_model = TomogramsGroupModel.validate_file(tomo_star)
             self._img_raw_scale = tomo_model.original_pixel_size.mean() * binning
