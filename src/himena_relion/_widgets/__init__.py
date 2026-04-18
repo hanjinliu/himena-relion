@@ -27,6 +27,7 @@ from himena_relion._widgets._misc import (
     QSymmetryLabel,
 )
 from himena_relion._widgets._job_edit import QJobScheduler
+from himena_relion._widgets._trash_widget import QTrashWidget
 
 __all__ = [
     "register_job",
@@ -49,6 +50,7 @@ __all__ = [
     "QNumParticlesLabel",
     "QMoreActionButton",
     "QSymmetryLabel",
+    "QTrashWidget",
     "spacer_widget",
 ]
 

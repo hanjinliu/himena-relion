@@ -55,6 +55,7 @@ class QRelionPipelineFlowChart(QtW.QWidget):
 
         btn.add_action("Open default_pipeline.star", self._open_as_raw_text)
         btn.add_action("Open Project Note", self._open_project_note)
+        btn.add_action("Open Trash", self._open_trash)
         btn.add_separator()
         btn.add_action("Find Job ...", self._find_job, shortcut="Ctrl+F")
         btn.add_action("Set Root Job ...", self._set_root_job)
@@ -64,7 +65,6 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         # btn.add_action("Gentle clean all", self._gentle_clean_all)
         # btn.add_action("Harsh clean all", self._harsh_clean_all)
         btn.add_action("Refresh", self._refresh_flowchart, shortcut="F5")
-        btn.add_action("Restore Trashed Jobs", self._restore_trashed_jobs)
         self._more_action_btn = btn
 
         self._stacked_widget = QtW.QStackedWidget()
@@ -154,10 +154,6 @@ class QRelionPipelineFlowChart(QtW.QWidget):
     def _refresh_flowchart(self):
         """Manually trigger a refresh of the pipeline data."""
         self._on_pipeline_updated(self._flow_chart._pipeline)
-
-    def _restore_trashed_jobs(self):
-        """Restore trashed jobs."""
-        self._flow_chart._ui.exec_action("himena-relion:restore-trashed-jobs")
 
     @validate_protocol
     def update_model(self, model: WidgetDataModel) -> None:
@@ -292,6 +288,10 @@ class QRelionPipelineFlowChart(QtW.QWidget):
     def _on_background_right_clicked(self):
         btn = self._more_action_btn
         btn.menu().exec(QtGui.QCursor.pos())
+
+    def _open_trash(self):
+        """Open the Trash widget."""
+        self._flow_chart._ui.read_file(self._flow_chart._relion_project_dir / "Trash")
 
 
 class QPipelineFinder(QSearchableComboBox):
