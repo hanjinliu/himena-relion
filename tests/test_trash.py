@@ -20,6 +20,20 @@ def _extract_job_pipeline(pipeline: RelionPipelineModel, job_name: str) -> Relio
         }
     )
 
+_JOB_STAR_TEXT = """data_job
+
+_rlnJobTypeLabel             relion.XXX
+_rlnJobIsContinue                       0
+_rlnJobIsTomo                           0
+
+data_joboptions_values
+
+loop_
+_rlnJobOptionVariable #1
+_rlnJobOptionValue #2
+        ParameterA    1
+"""
+
 def _prep_project(tmpdir):
     rln_dir = Path(tmpdir)
 
@@ -33,7 +47,7 @@ def _prep_project(tmpdir):
     for pname in pipeline.processes.process_name:
         job_dir = rln_dir / pname
         job_dir.mkdir(parents=True)
-        job_dir.joinpath("job.star").touch()
+        job_dir.joinpath("job.star").write_text(_JOB_STAR_TEXT)
         _extract_job_pipeline(pipeline, pname).write(job_dir / "job_pipeline.star")
 
     # prepare .Nodes directory
@@ -54,8 +68,12 @@ def test_trash_untrash(himena_ui: MainWindow, tmpdir):
     assert (rln_dir / "MotionCorr/job002").exists()
     assert (rln_dir / "CtfFind/job003").exists()
     himena_ui.read_file(rln_dir / "default_pipeline.star")
+    himena_ui.read_file(rln_dir / "MotionCorr/job002")
+    himena_ui.read_file(rln_dir / "Import/job001")
+    assert "job002" in himena_ui.tabs.names
     with choose_one_dialog_response(himena_ui, True):
         trash_job(himena_ui, JobDirectory(rln_dir / "MotionCorr/job002"))
+    assert "job002" not in himena_ui.tabs.names
     assert (rln_dir / "Import/job001").exists()
     assert not (rln_dir / "MotionCorr/job002").exists()
     assert not (rln_dir / "CtfFind/job003").exists()
@@ -75,8 +93,12 @@ def test_trash_widget(himena_ui: MainWindow, tmpdir):
         trash_job(himena_ui, JobDirectory(rln_dir / "MotionCorr/job002"))
     win = himena_ui.read_file(rln_dir / "Trash")
     assert isinstance(win.widget, QTrashWidget)
+    assert win.widget.trash_dir() == rln_dir / "Trash"
 
     win.widget._make_context_menu()
+    win.widget._job_list_widget.setCurrentRow(0)
+    win.widget._make_context_menu()
+
     _copy_job_paths(["MotionCorr/job002/"], rln_dir / "Trash")
     assert (rln_dir / "Trash" / "MotionCorr/job002").exists()
     with choose_one_dialog_response(himena_ui, True):
