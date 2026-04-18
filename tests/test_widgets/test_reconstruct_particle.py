@@ -20,3 +20,22 @@ def test_reconstruct_particle_widget(
     assert not tester.widget._viewer.has_image
     tester.write_random_mrc("merged.mrc", (32, 32, 32))
     assert tester.widget._viewer.has_image
+
+def test_reconstruct_particle_widget_intermediate(
+    qtbot,
+    make_job_directory: Callable[[str, str], JobDirectory],
+    jobs_dir_tomo,
+):
+    star_text = Path(jobs_dir_tomo / "Reconstruct" / "job001" / "job.star").read_text()
+    job_dir = make_job_directory(star_text, "Reconstruct")
+
+    tester = JobWidgetTester(QReconstructViewer(job_dir), job_dir)
+    qtbot.addWidget(tester.widget)
+    assert not tester.widget._viewer.has_image
+    tester.widget.show()
+
+    assert not tester.widget._viewer.has_image
+    tester.mkdir("temp")
+    tester.write_random_mrc("temp/sum_2_data_half1.mrc", (64, 32, 17))
+    tester.write_random_mrc("temp/sum_2_data_half0.mrc", (64, 32, 17))
+    assert tester.widget._viewer.has_image
