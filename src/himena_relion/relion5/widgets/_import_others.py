@@ -43,7 +43,7 @@ class QImportOthersJob(QJobScrollArea):
             if tp.startswith(RelionNodeTypeLabels.DENSITY_MAP):
                 self._init_density_map(output.path)
             elif tp.startswith(RelionNodeTypeLabels.MASK):
-                self._init_density_map(output.path)
+                self._init_density_map(output.path, thresh=0.4)
             else:
                 pass
             node_type = job_dir.get_job_param("node_type")
@@ -56,7 +56,7 @@ class QImportOthersJob(QJobScrollArea):
             self.initialize(job_dir)
             _LOGGER.debug("%s Updated", self._job_dir.job_number)
 
-    def _init_density_map(self, path):
+    def _init_density_map(self, path, thresh: float | None = None):
         layout = self._layout
         self._viewer = Q3DViewer()
         layout.addWidget(self._viewer)
@@ -65,5 +65,5 @@ class QImportOthersJob(QJobScrollArea):
             with mrcfile.open(mrc_path, mode="r") as mrc:
                 img = mrc.data
             self._viewer.set_image(img)
-            self._viewer.auto_threshold()
+            self._viewer.auto_threshold(thresh=thresh)
             self._viewer.auto_fit()

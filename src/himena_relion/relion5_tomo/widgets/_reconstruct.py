@@ -16,7 +16,7 @@ from himena_relion._widgets import (
 )
 from himena_relion import _job_dir
 from himena_relion._utils import lowpass_filter
-from himena_relion.schemas import OptimisationSetModel
+from himena_relion.schemas import OptimisationSetModel, TomogramsGroupModel
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -25,6 +25,7 @@ _LOGGER = logging.getLogger(__name__)
 class QReconstructViewer(QJobScrollArea):
     def __init__(self, job_dir: _job_dir.JobDirectory):
         super().__init__()
+        self._file_name_label = QtW.QLabel()
         self._lowpass_widget = QLowpassParamWidget()
         self._lowpass_widget.value_changed.connect(self._on_lowpass_changed)
         self._viewer = Q3DViewer()
@@ -32,16 +33,23 @@ class QReconstructViewer(QJobScrollArea):
         self._num_particles_label = QNumParticlesLabel()
         self._num_particles_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
         self._num_particles_label.setMaximumWidth(self._viewer.maximumWidth())
+
+        self._layout.addWidget(self._file_name_label)
         self._layout.addWidget(self._lowpass_widget)
         self._layout.addWidget(self._viewer)
         self._layout.addWidget(self._num_particles_label)
+
         self._img_raw = None
         self._img_raw_scale = 1.0
 
     def on_job_updated(self, job_dir: _job_dir.JobDirectory, path: str):
         """Handle changes to the job directory."""
         fp = Path(path)
-        if fp.name.startswith("RELION_JOB_") or fp.suffix == ".mrc":
+        if (
+            fp.name.startswith("RELION_JOB_")
+            or fp.name == "merged.mrc"
+            or fp.name.endswith("_data_half1.mrc")
+        ):
             self.initialize(job_dir)
             _LOGGER.debug("%s Updated", job_dir.job_number)
 
@@ -49,10 +57,12 @@ class QReconstructViewer(QJobScrollArea):
         """Initialize the viewer with the job directory."""
         merged_mrc_path = merged_mrc(job_dir)
         if not merged_mrc_path.exists():
-            return
+            return self._open_intermediate_result(job_dir)
         with mrcfile.open(merged_mrc_path, permissive=True) as mrc:
             self._img_raw = np.array(mrc.data)
             self._img_raw_scale = float(mrc.voxel_size.x)
+
+        self._file_name_label.setText("merged.mrc")
         self._viewer.set_image(self._get_image_filtered(), update_now=False)
         self._viewer.auto_threshold(update_now=False)
         self._viewer.auto_fit()
@@ -84,6 +94,50 @@ class QReconstructViewer(QJobScrollArea):
                 exc_info=True,
             )
         self._num_particles_label.set_number(n_particles)
+
+    def _open_intermediate_result(self, job_dir: _job_dir.JobDirectory):
+        temp_dir = job_dir.path / "temp"
+        if not temp_dir.exists():
+            return
+        image_data: list[np.ndarray] = []
+        ith_tomo = ""
+        for impath in temp_dir.glob("sum_*_data_half?.mrc"):
+            with mrcfile.open(impath, mode="r") as mrc:
+                image_data.append(mrc.data)
+            ith_tomo = impath.stem.split("_")[1]
+        if len(image_data) == 0:
+            return
+        # Every sum_X_data_halfX.mrc is a (2N, N, N/2) float32 image for a (N, N, N)
+        # reconstruction. The first N planes are the real part and the next N planes are
+        # the imaginary part of the Fourier transform.
+        merged_c = sum(image_data)
+        nz = merged_c.shape[0]
+        merged_ft = merged_c[: nz // 2] + merged_c[nz // 2 :] * 1j
+        self._img_raw = np.fft.ifftshift(np.fft.irfftn(merged_ft))
+
+        # Try to get the pixel size. Pixel size is not set in the sum_X_data_halfX.mrc
+        # files, so we need to retrieve it from the input parameters.
+        params = job_dir.get_job_params_as_dict()
+
+        binning = int(params["binning"])
+        if in_opt := params["in_optimisation"]:
+            tomo_star = OptimisationSetModel.validate_file(
+                job_dir.resolve_path(in_opt)
+            ).tomogram_star
+        elif in_tomo := params["in_tomograms"]:
+            tomo_star = job_dir.resolve_path(in_tomo)
+        else:
+            tomo_star = None
+        if tomo_star:
+            tomo_model = TomogramsGroupModel.validate_file(tomo_star)
+            self._img_raw_scale = tomo_model.original_pixel_size.mean() * binning
+        else:
+            self._img_raw_scale = 0.3 * binning
+
+        self._file_name_label.setText(f"Intermediate reconstruction ({ith_tomo})")
+        self._viewer.set_image(self._get_image_filtered(), update_now=False)
+        self._viewer.auto_threshold(update_now=False)
+        self._viewer.auto_fit()
 
     def _on_lowpass_changed(self):
         self._viewer.set_image(self._get_image_filtered(), update_now=True)

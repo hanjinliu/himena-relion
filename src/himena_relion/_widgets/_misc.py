@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+from typing import Callable
 import uuid
 import numpy as np
 from qtpy import QtWidgets as QtW, QtCore
@@ -224,13 +225,14 @@ class QMoreActionButton(QtW.QPushButton):
         )
         self.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
 
-    def add_action(self, text: str, cb, shortcut: str | None = None):
+    def add_action(self, text: str, cb: Callable, shortcut: str | None = None):
         action = self.menu().addAction(text, cb)
         if isinstance(doc := cb.__doc__, str):
             lines = [line.strip() for line in doc.splitlines()]
             action.setToolTip("\n".join(lines))
         if shortcut:
             action.setShortcut(shortcut)
+            action.setShortcutContext(QtCore.Qt.ShortcutContext.WidgetShortcut)
 
     def add_separator(self):
         self.menu().addSeparator()
