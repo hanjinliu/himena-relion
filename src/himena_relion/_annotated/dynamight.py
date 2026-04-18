@@ -1,5 +1,6 @@
 from typing import Annotated
 
+from himena.qt.magicgui import ToggleButtons
 from himena_relion._widgets._path_input import PathDrop
 
 FN_STAR = Annotated[
@@ -117,6 +118,7 @@ HALFSET = Annotated[
             "give you an estimate of the errors in the deformations."
         ),
         "choices": [("validation set", 0), ("halfset 1", 1), ("halfset 2", 2)],
+        "widget_type": ToggleButtons,
         "group": "Visualization",
     },
 ]

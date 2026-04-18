@@ -1,5 +1,6 @@
 from typing import Annotated
 
+from himena.qt.magicgui import ToggleButtons
 from himena_relion._widgets._path_input import PathDrop
 
 
@@ -101,6 +102,7 @@ ALPHABET = Annotated[
     {
         "label": "Alphabet for the HMMer search",
         "choices": ["amino", "DNA", "RNA"],
+        "widget_type": ToggleButtons,
         "tooltip": "Type of Alphabet for HMM searches.",
         "group": "HMMer Search",
     },

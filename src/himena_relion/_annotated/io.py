@@ -1,4 +1,5 @@
 from typing import Annotated
+from himena.qt.magicgui import ToggleButtons
 from himena_relion._widgets._magicgui import PathDrop, OptimisationSetEdit
 
 IN_MOVIES = Annotated[
@@ -171,16 +172,18 @@ CONTINUE = Annotated[
 DO_F16 = Annotated[
     bool,
     {
-        "label": "Write output in float16",
+        "label": "Write output in",
         "tooltip": (
-            "If set to Yes, this program will write output images in float16 format. "
-            "This will save a factor of two in disk space compared to the default of "
+            "This program will write output images in this format. Writing in 16-bit "
+            "float will save a factor of two in disk space compared to "
             "writing in float32. Note that RELION and CCPEM will read float16 images, "
             "but other programs may not (yet) do so. For example, Gctf will not work "
             "with float16 images. Also note that this option does not work with UCSF "
             "MotionCor2. For CTF estimation, use CTFFIND-4.1 with pre-calculated power "
             "spectra (activate the 'Save sum of power spectra' option)."
         ),
+        "choices": [("16-bit float", True), ("32-bit float", False)],
+        "widget_type": ToggleButtons,
         "group": "I/O",
     },
 ]

@@ -272,6 +272,7 @@ class QRelionJobWidgetControl(QtW.QWidget):
         layout.addWidget(spacer_widget())
         for btn in self._tool_buttons:
             layout.addWidget(btn, alignment=QtCore.Qt.AlignmentFlag.AlignRight)
+            btn.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
 
         # initialize the message
         if parent._job_dir.state() is RelionJobState.RUNNING:

@@ -11,6 +11,7 @@ from himena_relion.consts import JOB_ID_MAP, RelionJobState
 from himena_relion._utils import read_or_show_job
 from himena_relion._pipeline import RelionDefaultPipeline, RelionJobInfo, NodeStatus
 from himena_relion._job_dir import ExternalJobDirectory, JobDirectory
+from himena_relion._job_class import execute_job
 from himena_relion.io import _impl
 
 
@@ -190,21 +191,34 @@ class QRelionPipelineFlowChartView(QFlowChartView):
         )
         action.setEnabled(status is not NodeStatus.FAILED)
         menu.addSeparator()
+        # Abort
         action = menu.addAction(
             "Abort", lambda: _ignore_cancel(_impl.abort_relion_job, self._ui, get_job())
         )
         action.setEnabled(status is RelionJobState.RUNNING)
         action.setToolTip("Notify the job to be aborted.")
+        # Run now
+        action = menu.addAction(
+            "Run Now", lambda: execute_job(item.id(), cwd=self._relion_project_dir)
+        )
+        action.setToolTip(
+            "Run this scheduled job immediately, regardless of whether all the parent\n"
+            "jobs have finished or not."
+        )
+        action.setEnabled(status is NodeStatus.SCHEDULED)
+        # Overwrite
         action = menu.addAction(
             "Overwrite ...", lambda: _impl.overwrite_relion_job(self._ui, get_job())
         )
         action.setToolTip(
             "Overwrite this job by re-running it with a new set of parameters."
         )
+        # Clone
         action = menu.addAction(
             "Clone ...", lambda: _impl.clone_relion_job(self._ui, get_job())
         )
         action.setToolTip("Create a same type of job with a new set of parameters.")
+
         menu.addAction(
             "Set Alias ...",
             lambda: _ignore_cancel(_impl.set_job_alias, self._ui, get_job()),

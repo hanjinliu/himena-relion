@@ -1,4 +1,5 @@
 from typing import Annotated
+from himena.qt.magicgui import ToggleButtons
 
 FIT_CTF_CHOICES = ["No", "Per-micrograph", "Per-particle"]
 
@@ -11,6 +12,7 @@ DO_DEFOCUS = Annotated[
             "estimate defocus values."
         ),
         "choices": FIT_CTF_CHOICES,
+        "widget_type": ToggleButtons,
         "group": "Fit",
     },
 ]
@@ -23,6 +25,7 @@ DO_ASTIG = Annotated[
             "estimate astigmatism."
         ),
         "choices": FIT_CTF_CHOICES,
+        "widget_type": ToggleButtons,
         "group": "Fit",
     },
 ]
@@ -35,6 +38,7 @@ DO_BFACTOR = Annotated[
             "estimate B-factors that describe the signal falloff."
         ),
         "choices": FIT_CTF_CHOICES,
+        "widget_type": ToggleButtons,
         "group": "Fit",
     },
 ]
@@ -47,6 +51,7 @@ DO_PHASE = Annotated[
             "estimate (VPP?) phase shift values."
         ),
         "choices": FIT_CTF_CHOICES,
+        "widget_type": ToggleButtons,
         "group": "Fit",
     },
 ]

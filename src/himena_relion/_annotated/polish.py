@@ -1,5 +1,6 @@
 from typing import Annotated
 
+from himena.qt.magicgui import ToggleButtons
 from himena_relion._widgets._path_input import PathDrop
 
 
@@ -241,6 +242,7 @@ SHIFT_ALIGN_TYPE = Annotated[
             "only misalignments smaller than half the box size of the particle can be "
             "corrected."
         ),
+        "widget_type": ToggleButtons,
         "group": "Polish",
     },
 ]

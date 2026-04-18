@@ -40,7 +40,7 @@ class SliceResult(NamedTuple):
 
 
 class QViewer(QtW.QWidget):
-    _always_force_sync: bool = False
+    _always_force_sync: bool = False  # for testing
 
     def set_background_color(self, color):
         self._canvas._scene.bgcolor = color

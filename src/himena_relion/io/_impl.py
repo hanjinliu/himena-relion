@@ -78,12 +78,12 @@ def abort_relion_job(ui: MainWindow, job_dir: JobDirectory):
     """Abort this RELION job."""
     if job_dir.state() == RelionJobState.EXIT_SUCCESS:
         raise RuntimeError("Cannot abort a finished job.")
-    ans = ui.exec_choose_one_dialog(
+    if ui.exec_choose_one_dialog(
         title="Abort job?",
         message="Are you sure you want to abort this job?",
-        choices=["Yes, abort", "Cancel"],
-    )
-    if ans == "Yes, abort":
+        choices=[("Yes, abort", True), ("Cancel", False)],
+        how="palette",
+    ):
         job_dir.path.joinpath(FileNames.ABORT_NOW).touch()
 
 
@@ -182,7 +182,7 @@ def trash_job(ui: MainWindow, job_dir: JobDirectory):
     from himena_relion._job_dir import JobDirectory
 
     rln_dir = job_dir.relion_project_dir
-    trash_dir = _trash_dir(rln_dir)
+
     # open the file to lock it.
     with rln_dir.joinpath("default_pipeline.star").open("r+") as f:
         pipeline = RelionPipelineModel.validate_text(f.read())
@@ -213,14 +213,12 @@ def trash_job(ui: MainWindow, job_dir: JobDirectory):
                 message_lines.append("<li>...</li>")  # truncate long list
                 break
         message_lines.append("</ul>")
-        _yes = "Yes, move to trash"
         resp = ui.exec_choose_one_dialog(
             title="Trash job?",
             message="".join(message_lines),
-            choices=[_yes, "Cancel"],
+            choices=[("Yes, move to trash", True), ("Cancel", False)],
         )
-        # ask user
-        if resp != _yes:
+        if resp is None or not resp:
             raise Cancelled
 
         # determine other fields to remove
@@ -233,6 +231,11 @@ def trash_job(ui: MainWindow, job_dir: JobDirectory):
         for ith, name in enumerate(pipeline.nodes.name):
             if Path(name).parent in to_trash:
                 process_nodes_to_remove.append(ith)
+
+        output_edges_trashed = pipeline.output_edges.dataframe.iloc[
+            output_indices_to_remove
+        ]
+        nodes_trashed = pipeline.nodes.dataframe.iloc[process_nodes_to_remove]
 
         pipeline.processes = pipeline.processes.dataframe.drop(
             index=process_name_to_remove
@@ -262,6 +265,9 @@ def trash_job(ui: MainWindow, job_dir: JobDirectory):
 
         f.seek(0)
         f.write(pipeline.to_string())
+
+        # move the job to trash
+        trash_dir = _trash_dir(rln_dir)
         trash_dir.mkdir(exist_ok=True)
         for p in to_trash:
             src = rln_dir / p
@@ -271,6 +277,19 @@ def trash_job(ui: MainWindow, job_dir: JobDirectory):
                 _LOGGER.warning(f"Destination {dest} already exists. Overwriting.")
                 _remove_dir_or_file(dest)
             src.rename(dest)
+
+        # remove nodes from directories like .Nodes/DensityMap/Reconstruct/job060
+        node_to_type_map = _make_node_to_type_map(nodes_trashed)
+        to_node_list = output_edges_trashed["rlnPipeLineEdgeToNode"]
+        for to_node in to_node_list:
+            if type_label := node_to_type_map.get(to_node):
+                file_in_node = rln_dir.joinpath(".Nodes", type_label, to_node)
+                if file_in_node.exists():
+                    file_in_node.unlink()
+                # remove directory if empty
+                if not any(file_in_node.parent.iterdir()):
+                    file_in_node.parent.rmdir()
+
     rln_dir.joinpath("default_pipeline.star").touch()
 
 
@@ -333,11 +352,46 @@ def restore_trashed_jobs(relion_project_dir: Path, job_ids: list[str]):
         pipeline.output_edges = df_output_edges
         f.seek(0)
         f.write(pipeline.to_string())
+
     relion_project_dir.joinpath("default_pipeline.star").touch()
+
+    # if the trash sub directory is empty, remove it.
+    for sub in trash_dir.iterdir():
+        if sub.is_dir() and not any(sub.iterdir()):
+            sub.rmdir()
+
+    # construct node to type map
+    node_to_type_map: dict[str, str] = {}
+    for df_node in all_nodes:
+        node_to_type_map.update(_make_node_to_type_map(df_node))
+
+    # restore .Nodes/
+    node_dir = relion_project_dir.joinpath(".Nodes")
+    for df_output_edge in all_output_edges[1:]:  # skip the original pipeline
+        # e.g.
+        # _rlnPipeLineEdgeProcess
+        # _rlnPipeLineEdgeToNode
+        # MotionCorr/job002/ MotionCorr/job002/corrected_micrographs.star
+
+        # .Nodes/DensityMap/Reconstruct/job060
+        for to_node in df_output_edge["rlnPipeLineEdgeToNode"]:
+            if type_label := node_to_type_map.get(to_node):
+                file_in_node = node_dir.joinpath(type_label, to_node)
+                file_in_node.parent.mkdir(parents=True, exist_ok=True)
+                file_in_node.touch()
 
 
 def _trash_dir(relion_job_dir: Path) -> Path:
     return relion_job_dir / "Trash"
+
+
+def _make_node_to_type_map(df_node) -> dict[str, str]:
+    node_to_type_map: dict[str, str] = {}
+    for node_name, type_label in zip(
+        df_node["rlnPipeLineNodeName"], df_node["rlnPipeLineNodeTypeLabel"]
+    ):
+        node_to_type_map[node_name] = type_label.split(".", maxsplit=1)[0]
+    return node_to_type_map
 
 
 def _remove_dir_or_file(dest: Path):

@@ -212,6 +212,11 @@ class QJobParameter(QtW.QScrollArea):
                     widget.text = ""
                 elif isinstance(widget, (_mgui.IntEdit, _mgui.FloatEdit, ComboBox)):
                     widget.max_width = 200
+                elif isinstance(widget, _mgui.ToggleButtons):
+                    if widget.orientation == "horizontal":
+                        widget.max_width = 120 * len(widget.choices)
+                    else:
+                        widget.max_width = 200
                 gb_layout.addWidget(widget.native)
                 self._mgui_widgets[widget.name] = widget
             self._param_layout.addWidget(gb)

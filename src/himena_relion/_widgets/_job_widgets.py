@@ -378,6 +378,11 @@ class QJobParameterView(QtW.QWidget, JobWidgetBase):
         self._header = QtW.QHBoxLayout()
         self._header.setContentsMargins(4, 1, 4, 0)
         self._copy_btn = QtW.QPushButton("Copy")
+        self._copy_btn.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
+        self._copy_btn.setToolTip(
+            "Copy the job parameters as text in job.star format.\n"
+            "Copied text can be pasted to the job scheduler from the `...` button."
+        )
         self._header.addWidget(QtW.QLabel("<b>Job Parameters</b>"))
         self._header.addWidget(
             self._copy_btn, alignment=QtCore.Qt.AlignmentFlag.AlignRight

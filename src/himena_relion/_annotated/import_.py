@@ -1,4 +1,5 @@
 from typing import Annotated
+from himena.qt.magicgui import ToggleButtons
 from himena_relion._widgets._magicgui import DoseRateEdit, PathDrop
 
 FN_IN_RAW = Annotated[
@@ -169,7 +170,8 @@ NODE_TYPE = Annotated[
             "3D mask (.mrc)",
             "Unfiltered half-map (unfil.mrc)",
         ],
-        "widget_type": "RadioButtons",
+        "widget_type": ToggleButtons,
+        "orientation": "vertical",
         "group": "I/O",
     },
 ]

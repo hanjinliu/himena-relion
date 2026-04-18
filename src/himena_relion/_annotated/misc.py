@@ -1,4 +1,5 @@
 from typing import Annotated
+from himena.qt.magicgui import ToggleButtons
 from himena_relion._widgets._magicgui import BfactorEdit
 
 
@@ -230,6 +231,7 @@ CENTER_METHOD = Annotated[
             "the x, y, z coordinates below. The unit is pixel, not angstrom. The "
             "origin is at the center of the box, not at the corner."
         ),
+        "widget_type": ToggleButtons,
         "group": "Centering",
     },
 ]

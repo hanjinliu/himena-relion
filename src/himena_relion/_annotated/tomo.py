@@ -205,7 +205,6 @@ TOMO_NAME = Annotated[
             "If not left empty, the program will only reconstruct this particular "
             "tomogram"
         ),
-        # "choices": [""],
         "group": "Reconstruct",
     },
 ]

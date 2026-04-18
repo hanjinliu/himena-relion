@@ -28,6 +28,7 @@ class QPathDropWidget(QtW.QWidget):
         self._btn_browse.setToolTip(
             "Browse in file dialog, or right-click for more actions"
         )
+        self._btn_browse.setMinimumHeight(18)
         self._btn_browse.setFixedWidth(24)
         self._btn_browse.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
         self._btn_browse.setContextMenuPolicy(
