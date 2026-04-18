@@ -45,10 +45,11 @@ class QReconstructViewer(QJobScrollArea):
     def on_job_updated(self, job_dir: _job_dir.JobDirectory, path: str):
         """Handle changes to the job directory."""
         fp = Path(path)
+        # NOTE: sometimes half1 will not be generated.
         if (
             fp.name.startswith("RELION_JOB_")
             or fp.name == "merged.mrc"
-            or fp.name.endswith("_data_half1.mrc")
+            or fp.name.endswith("_data_half0.mrc")
         ):
             self.initialize(job_dir)
             _LOGGER.debug("%s Updated", job_dir.job_number)
@@ -98,6 +99,8 @@ class QReconstructViewer(QJobScrollArea):
     def _open_intermediate_result(self, job_dir: _job_dir.JobDirectory):
         temp_dir = job_dir.path / "temp"
         if not temp_dir.exists():
+            self._img_raw = None
+            self._viewer.set_image(None, update_now=False)
             return
         image_data: list[np.ndarray] = []
         ith_tomo = ""
