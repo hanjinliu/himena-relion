@@ -216,7 +216,7 @@ class QJobParameter(QtW.QScrollArea):
                     if widget.orientation == "horizontal":
                         widget.max_width = 120 * len(widget.choices)
                     else:
-                        widget.max_width = 200
+                        widget.max_width = 270
                 gb_layout.addWidget(widget.native)
                 self._mgui_widgets[widget.name] = widget
             self._param_layout.addWidget(gb)

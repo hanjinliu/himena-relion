@@ -175,14 +175,16 @@ class TomogramsGroupModel(schema.LoopDataModel):
         "rlnMicrographOriginalPixelSize"
     )
     tomo_hand: schema.Series[int] = schema.Field("rlnTomoHand")
-    optics_group_name: schema.Series[str] = schema.Field("rlnOpticsGroupName")
+    # this is optional and not used yet
+    # optics_group_name: schema.Series[str] = schema.Field("rlnOpticsGroupName")
     tomo_tilt_series_pixel_size: schema.Series[float] = schema.Field(
         "rlnTomoTiltSeriesPixelSize"
     )
     tomo_tilt_series_star_file: schema.Series[str] = schema.Field(
         "rlnTomoTiltSeriesStarFile"
     )
-    etomo_directive_file: schema.Series[str] = schema.Field("rlnEtomoDirectiveFile")
+    # this is optional and not used yet
+    # etomo_directive_file: schema.Series[str] = schema.Field("rlnEtomoDirectiveFile")
     tomogram_binning: schema.Series[float] = schema.Field("rlnTomoTomogramBinning")
     size_x: schema.Series[int] = schema.Field("rlnTomoSizeX")
     size_y: schema.Series[int] = schema.Field("rlnTomoSizeY")

@@ -109,7 +109,7 @@ class _ImportTomoJob(_ImportTomoOrCoordsJob):
         self,
         # General
         movie_files: _a.import_.MOVIE_FILES = "frames/*.mrc",
-        mdoc_files: _a.import_.MDOC_FILES = "mdoc/*.mdoc",
+        mdoc_files: _a.import_.MDOC_FILES = "frames/*.mdoc",
         optics_group_name: _a.import_.OPTICS_GROUP_NAME = "",
         prefix: _a.import_.PREFIX = "",
         angpix: _a.import_.ANGPIX = 0.675,
