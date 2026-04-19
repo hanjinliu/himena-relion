@@ -47,6 +47,9 @@ class ParticlesModel(schema.LoopDataModel):
     centered_z: schema.Series[float] = schema.Field(
         "rlnCenteredCoordinateZAngst", default=None
     )
+    orig_x: schema.Series[float] = schema.Field("rlnOriginXAngst", default=None)
+    orig_y: schema.Series[float] = schema.Field("rlnOriginYAngst", default=None)
+    orig_z: schema.Series[float] = schema.Field("rlnOriginZAngst", default=None)
     class_number: schema.Series[int] = schema.Field("rlnClassNumber", default=None)
     angle_rot: schema.Series[float] = schema.Field("rlnAngleRot", default=None)
     angle_tilt: schema.Series[float] = schema.Field("rlnAngleTilt", default=None)
@@ -60,6 +63,9 @@ class ParticlesModel(schema.LoopDataModel):
             centered_x=pd.Series([0.0] * size, dtype="float"),
             centered_y=pd.Series([1.0] * size, dtype="float"),
             centered_z=pd.Series([2.0] * size, dtype="float"),
+            orig_x=pd.Series([0.0] * size, dtype="float"),
+            orig_y=pd.Series([0.0] * size, dtype="float"),
+            orig_z=pd.Series([0.0] * size, dtype="float"),
             class_number=pd.Series([1] * size, dtype="int"),
             angle_rot=pd.Series([5.0] * size, dtype="float"),
             angle_tilt=pd.Series([8.0] * size, dtype="float"),

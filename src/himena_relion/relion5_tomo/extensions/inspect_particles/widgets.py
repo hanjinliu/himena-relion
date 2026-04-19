@@ -156,6 +156,7 @@ def _make_get_particles(
     def get_particles() -> pd.DataFrame:
         if particles_star is None:
             cols = [f"rlnCenteredCoordinate{x}Angst" for x in "ZYX"]
+            cols += [f"rlnOrigin{x}Angst" for x in "ZYX"]
             return pd.DataFrame({c: [] for c in cols}, dtype=float)
         else:
             ptcl = ParticleMetaModel.validate_file(particles_star)
