@@ -54,6 +54,7 @@ class QClass3DViewer(QJobScrollArea):
         self._layout.addWidget(self._list_widget)
         hor = QtW.QWidget()
         hor.setMaximumWidth(400)
+        hor.setFixedHeight(26)
         hor_layout = QtW.QHBoxLayout(hor)
         hor_layout.setContentsMargins(0, 0, 0, 0)
         hor_layout.addWidget(self._arrow_visible)

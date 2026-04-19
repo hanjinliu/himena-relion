@@ -300,6 +300,8 @@ DENOISING_TOMO_NAME = Annotated[
     str,
     {
         "label": "Reconstruct only this tomogram",
+        "widget_type": PathDrop,
+        "allowed_extensions": [".tar.gz"],
         "tooltip": (
             "If not left empty, the program will only reconstruct this particular "
             "tomogram. Use the name in <code>rlnTomoName</code> to specify tomogram."

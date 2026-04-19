@@ -77,6 +77,7 @@ KV = Annotated[
     int,
     {
         "label": "Voltage (kV)",
+        "min": 1,
         "tooltip": "Voltage the microscope was operated on (in kV)",
         "group": "Optics",
     },
@@ -86,6 +87,7 @@ CS = Annotated[
     float,
     {
         "label": "Spherical aberration (mm)",
+        "min": 0.1,
         "tooltip": (
             "Spherical aberration of the microscope used to collect these images (in "
             "mm). Typical values are 2.7 (FEI Titan & Talos, most JEOL CRYO-ARM), 2.0 "
@@ -101,6 +103,7 @@ Q0 = Annotated[
     {
         "label": "Amplitude contrast",
         "min": 0.0,
+        "max": 1.0,
         "tooltip": (
             "Fraction of amplitude contrast. Often values around 10% work better than "
             "theoretically more accurate lower values..."

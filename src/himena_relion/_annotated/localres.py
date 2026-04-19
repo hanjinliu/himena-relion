@@ -1,5 +1,7 @@
 from typing import Annotated
 
+from himena_relion._widgets._path_input import PathDrop
+
 ANGPIX = Annotated[
     float | None,
     {
@@ -75,6 +77,7 @@ FN_MTF = Annotated[
     str,
     {
         "label": "MTF of the detector",
+        "widget_type": PathDrop,
         "tooltip": (
             "The MTF of the detector is used to complement the user-provided B-factor "
             "in the sharpening. If you don't have this curve, you can leave this field "

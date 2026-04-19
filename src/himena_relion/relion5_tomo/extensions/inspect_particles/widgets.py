@@ -27,6 +27,7 @@ class QInspectViewer(QtW.QWidget):
         layout = QtW.QVBoxLayout(self)
 
         self._viewer = Q3DTomogramViewer()
+        self._viewer.setMinimumHeight(480)
         self._worker: GeneratorWorker | None = None
         self._current_info: _job_dir.TomogramInfo | None = None
         self._filter_widget = Q2DFilterWidget()
@@ -82,7 +83,12 @@ class QInspectViewer(QtW.QWidget):
         if getter := info.get_particles:
             point_df = getter()
             cols = [f"rlnCenteredCoordinate{x}Angst" for x in "ZYX"]
-            points = point_df[cols].to_numpy(dtype=np.float32) / info.tomo_pixel_size
+            cols_orig = [f"rlnOrigin{x}Angst" for x in "ZYX"]
+
+            points = (
+                point_df[cols].to_numpy(dtype=np.float32)
+                + point_df[cols_orig].to_numpy(dtype=np.float32)
+            ) / info.tomo_pixel_size
             sizes = np.array(info.tomo_shape, dtype=np.float32) / info.tomogram_binning
             center = (sizes - 1) / 2
             bin_factor = int(self._filter_widget._bin_factor.text() or "1")

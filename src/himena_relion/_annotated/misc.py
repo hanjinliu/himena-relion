@@ -244,7 +244,7 @@ CENTER = Annotated[
     },
 ]
 NEW_BOX = Annotated[
-    int,
+    int | None,
     {
         "label": "New box size (pixels)",
         "tooltip": (

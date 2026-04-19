@@ -2497,6 +2497,8 @@ class ParticleSubtractionJob(_Relion5SpaJob):
         else:
             kwargs["do_center_mask"] = "No"
             kwargs["do_center_xyz"] = "No"
+        if kwargs.get("new_box", None) is None:
+            kwargs["new_box"] = -1
         return kwargs
 
     @classmethod
@@ -2517,6 +2519,8 @@ class ParticleSubtractionJob(_Relion5SpaJob):
             kwargs["center"] = center
         else:
             kwargs["center_method"] = "No"
+        if "new_box" in kwargs and float(kwargs["new_box"]) < 0:
+            kwargs["new_box"] = None
         return kwargs
 
     def run(
@@ -2528,7 +2532,7 @@ class ParticleSubtractionJob(_Relion5SpaJob):
         # Centering
         center_method: _a.misc.CENTER_METHOD = "No",
         center: _a.misc.CENTER = (0.0, 0.0, 0.0),
-        new_box: _a.misc.NEW_BOX = -1,
+        new_box: _a.misc.NEW_BOX = None,
         # Running
         nr_mpi: _a.running.NR_MPI = 1,
         do_queue: _a.running.DO_QUEUE = False,
@@ -2690,7 +2694,7 @@ class BayesianPolishJob(_Relion5SpaJob):
         _on_do_own_params_changed(widgets["do_own_params"].value)
 
 
-class DynaMightJob(_Relion5SpaJob):
+class DynaMightJob(_Relion5Job):
     """Run DynaMight for analysis of molecular motions and flexibility."""
 
     @classmethod
@@ -2748,7 +2752,7 @@ class DynaMightJob(_Relion5SpaJob):
         raise NotImplementedError("This is a builtin job placeholder.")
 
 
-class ModelAngeloJob(_Relion5SpaJob):
+class ModelAngeloJob(_Relion5Job):
     """ModelAngelo job placeholder."""
 
     @classmethod
