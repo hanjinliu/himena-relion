@@ -57,11 +57,14 @@ def relion_version() -> str:
     return res.stdout.strip()
 
 
-def relion_version_info() -> RelionVersionInfo:
+def relion_version_info(default_version: str | None = None) -> RelionVersionInfo:
     stdout = relion_version()
     lines = stdout.splitlines()
     if lines[0].startswith("RELION version: "):
         version_str, commit = lines[0][len("RELION version: ") :].split("-commit-")
         version = RelionVersion.from_string(version_str)
         return RelionVersionInfo(version=version, commit=commit.strip())
+    if default_version is not None:
+        version = RelionVersion.from_string(default_version)
+        return RelionVersionInfo(version=version, commit="")
     raise RuntimeError("Unexpected RELION version output: " + stdout)

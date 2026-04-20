@@ -5,6 +5,13 @@ from himena_relion._job_class import _Relion5BuiltinJob, parse_string
 from himena_relion import _configs
 from himena_relion._pipeline import RelionPipeline
 from himena_relion import _annotated as _a
+from himena_relion._adapt import (
+    norm_aligntilts,
+    norm_blush_reg,
+    norm_blush_reg_inv,
+    norm_extract_subtomo,
+    norm_extract_subtomo_inv,
+)
 from himena_relion.relion5._builtins import (
     CtfEstimationJob,
     Class3DNoAlignmentJob,
@@ -18,7 +25,7 @@ from himena_relion.relion5._builtins import (
 from himena_relion.consts import MenuId
 
 
-def norm_optim(**kwargs):
+def norm_optim(kwargs):
     optim = kwargs.pop("in_optim", {})
     kwargs["in_optimisation"] = optim.get("in_optimisation", "")
     kwargs["use_direct_entries"] = parse_string(
@@ -32,7 +39,7 @@ def norm_optim(**kwargs):
     return kwargs
 
 
-def norm_optim_inv(**kwargs):
+def norm_optim_inv(kwargs):
     if "in_optim" not in kwargs:
         kwargs["in_optim"] = {
             "in_optimisation": kwargs.pop("in_optimisation", ""),
@@ -472,7 +479,9 @@ class AlignTiltSeriesAreTomo2(_AlignTiltSeriesJobBase):
 
     @classmethod
     def param_matches(cls, job_params: dict[str, str]) -> bool:
-        return job_params.get("do_aretomo2", "No") == "Yes"
+        is_aretomo = job_params.get("do_aretomo2", "No") == "Yes"
+        is_rec = job_params.get("do_skip_aretomo_align", "No") == "Yes"
+        return is_aretomo and not is_rec
 
     @classmethod
     def job_title(cls) -> str:
@@ -483,23 +492,21 @@ class AlignTiltSeriesAreTomo2(_AlignTiltSeriesJobBase):
         kwargs["do_imod_fiducials"] = False
         kwargs["do_aretomo2"] = True
         kwargs["do_imod_patchtrack"] = False
-        if kwargs["aretomo_tiltcorrect_angle"] is not None:
-            kwargs["do_aretomo_tiltcorrect"] = True
-        else:
-            kwargs["do_aretomo_tiltcorrect"] = False
+        if kwargs["aretomo_tiltcorrect_angle"] is None:
             kwargs["aretomo_tiltcorrect_angle"] = 999
+        kwargs = norm_aligntilts(kwargs)
         return super().normalize_kwargs(**kwargs)
 
     @classmethod
     def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
         kwargs = super().normalize_kwargs_inv(**kwargs)
-        kwargs.pop("fiducial_diameter", None)
-        kwargs.pop("patch_size", None)
-        kwargs.pop("patch_overlap", None)
-        kwargs.pop("do_imod_fiducials", None)
-        kwargs.pop("do_aretomo2", None)
-        kwargs.pop("do_imod_patchtrack", None)
-        if kwargs.pop("do_aretomo_tiltcorrect", "No") == "No":
+        for key in [
+            "fiducial_diameter", "patch_size", "patch_overlap", "do_imod_fiducials",
+            "do_aretomo2", "do_imod_patchtrack"
+        ]:  # fmt: skip
+            kwargs.pop(key, None)
+
+        if int(kwargs.get("aretomo_tiltcorrect_angle", 999)) > 180:
             kwargs["aretomo_tiltcorrect_angle"] = None
         return kwargs
 
@@ -507,9 +514,14 @@ class AlignTiltSeriesAreTomo2(_AlignTiltSeriesJobBase):
         self,
         in_tiltseries: _a.io.IN_TILT = "",
         tomogram_thickness: _a.tomo.TOMO_THICKNESS = 300.0,
-        aretomo_tiltcorrect_angle: _a.tomo.ARETOMO_TILTCORRECT_ANGLE = 999,
+        do_aretomo_tiltcorrect: _a.tomo.DO_ARETOMO_TILTCORRECT = False,
+        aretomo_tiltcorrect_angle: _a.tomo.ARETOMO_TILTCORRECT_ANGLE = None,
         do_aretomo_ctf: _a.tomo.DO_ARETOMO_CTF = False,
         do_aretomo_phaseshift: _a.tomo.DO_ARETOMO_PHASESHIFT = False,
+        # Reconstruct
+        do_aretomo_reconstruct: _a.tomo.DO_ARETOMO_RECONSTRUCT = False,
+        aretomo_VolZ: _a.tomo.ARETOMO_VOLZ = 1000,
+        aretomo_OutBin: _a.tomo.ARETOMO_OUTBIN = 1,
         other_aretomo_args: _a.tomo.OTHER_ARETOMO_ARGS = "",
         gpu_ids: _a.compute.GPU_IDS = "",
         # Running
@@ -525,7 +537,77 @@ class AlignTiltSeriesAreTomo2(_AlignTiltSeriesJobBase):
         def _on_do_aretomo_ctf_changed(value: bool):
             widgets["do_aretomo_phaseshift"].enabled = value
 
+        @widgets["do_aretomo_tiltcorrect"].changed.connect
+        def _on_do_aretomo_tiltcorrect_changed(value: bool):
+            widgets["aretomo_tiltcorrect_angle"].enabled = value
+
+        @widgets["do_aretomo_reconstruct"].changed.connect
+        def _on_do_aretomo_reconstruct_changed(value: bool):
+            widgets["aretomo_VolZ"].enabled = value
+            widgets["aretomo_OutBin"].enabled = value
+
         _on_do_aretomo_ctf_changed(widgets["do_aretomo_ctf"].value)
+        _on_do_aretomo_tiltcorrect_changed(widgets["do_aretomo_tiltcorrect"].value)
+        _on_do_aretomo_reconstruct_changed(widgets["do_aretomo_reconstruct"].value)
+
+
+class ReconstructTomoByAreTomo2(_AlignTiltSeriesJobBase):
+    """Tomogram reconstruction using AreTomo2."""
+
+    @classmethod
+    def command_id(cls):
+        return super().command_id() + ".aretomo2-reconstruct"
+
+    @classmethod
+    def param_matches(cls, job_params: dict[str, str]) -> bool:
+        is_aretomo = job_params.get("do_aretomo2", "No") == "Yes"
+        is_rec = job_params.get("do_skip_aretomo_align", "No") == "Yes"
+        return is_aretomo and is_rec
+
+    @classmethod
+    def job_title(cls) -> str:
+        return "Reconstruct Tomos (AreTomo2)"
+
+    @classmethod
+    def normalize_kwargs(cls, **kwargs):
+        kwargs["do_imod_fiducials"] = False
+        kwargs["do_aretomo2"] = True
+        kwargs["do_imod_patchtrack"] = False
+        kwargs["do_aretomo_tiltcorrect"] = False
+        kwargs["do_aretomo_ctf"] = False
+        kwargs["do_aretomo_phaseshift"] = False
+        kwargs["do_aretomo_reconstruct"] = True
+        kwargs["do_skip_aretomo_align"] = True
+        kwargs["aretomo_tiltcorrect_angle"] = 999
+        kwargs["tomogram_thickness"] = 300.0
+        return super().normalize_kwargs(**kwargs)
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
+        kwargs = super().normalize_kwargs_inv(**kwargs)
+        for key in [
+            "fiducial_diameter", "patch_size", "patch_overlap", "do_imod_fiducials",
+            "do_aretomo2", "do_imod_patchtrack", "do_aretomo_tiltcorrect",
+            "aretomo_tiltcorrect_angle", "do_aretomo_ctf", "do_aretomo_phaseshift",
+            "do_skip_aretomo_align", "tomogram_thickness",
+        ]:  # fmt: skip
+            kwargs.pop(key, None)
+        return kwargs
+
+    def run(
+        self,
+        in_tiltseries: _a.io.IN_TILT = "",
+        # Reconstruct
+        aretomo_VolZ: _a.tomo.ARETOMO_VOLZ = 1000,
+        aretomo_OutBin: _a.tomo.ARETOMO_OUTBIN = 1,
+        other_aretomo_args: _a.tomo.OTHER_ARETOMO_ARGS = "",
+        gpu_ids: _a.compute.GPU_IDS = "",
+        # Running
+        nr_mpi: _a.running.NR_MPI = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")
 
 
 class _ReconstructTomogramBaseJob(_Relion5TomoJob):
@@ -623,6 +705,7 @@ class ReconstructTomogramJob(_ReconstructTomogramBaseJob):
         tomo_name: _a.tomo.TOMO_NAME = "",
         # Filter
         do_fourier: _a.tomo.DO_FOURIER = True,
+        do_skip_wiener: _a.tomo.DO_SKIP_WIENER = False,
         ctf_intact_first_peak: _a.tomo.CTF_INTACT_FIRST_PEAK = True,
         # Running
         nr_mpi: _a.running.NR_MPI = 1,
@@ -751,23 +834,26 @@ class ExtractParticlesTomoJob(_Relion5TomoJob):
 
     @classmethod
     def normalize_kwargs(cls, **kwargs):
-        kwargs = norm_optim(**super().normalize_kwargs(**kwargs))
+        kwargs = norm_optim(super().normalize_kwargs(**kwargs))
         for name in ["crop_size", "max_dose"]:
             if kwargs.get(name) is None:
                 kwargs[name] = -1
+        kwargs = norm_extract_subtomo(kwargs)
         return kwargs
 
     @classmethod
     def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
-        kwargs = norm_optim_inv(**super().normalize_kwargs_inv(**kwargs))
+        kwargs = norm_optim_inv(super().normalize_kwargs_inv(**kwargs))
         for name in ["crop_size", "max_dose"]:
             if name in kwargs and float(kwargs[name]) < 0:
                 kwargs[name] = None
+        kwargs = norm_extract_subtomo_inv(kwargs)
         return kwargs
 
     def run(
         self,
         in_optim: _a.io.IN_OPTIM = None,
+        do_float16: _a.io.DO_F16 = True,
         # Reconstruct
         binning: _a.extract.BINNING = 1,
         box_size: _a.extract.BOX_SIZE = 128,
@@ -775,7 +861,7 @@ class ExtractParticlesTomoJob(_Relion5TomoJob):
         max_dose: _a.extract.MAX_DOSE = None,
         min_frames: _a.extract.MIN_FRAMES = 1,
         do_stack2d: _a.extract.DO_STACK2D = True,
-        do_float16: _a.io.DO_F16 = True,
+        subtomo_format: _a.extract.SUBTOMO_FORMAT = "2D stacks",
         # Running
         nr_mpi: _a.running.NR_MPI = 1,
         nr_threads: _a.running.NR_THREADS = 1,
@@ -923,12 +1009,12 @@ class InitialModelTomoJob(_Relion5TomoJob, InitialModelJob):
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
         kwargs["fn_cont"] = ""
-        return norm_optim(**super().normalize_kwargs(**kwargs))
+        return norm_optim(super().normalize_kwargs(**kwargs))
 
     @classmethod
     def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
         kwargs.pop("fn_cont", None)
-        return norm_optim_inv(**super().normalize_kwargs_inv(**kwargs))
+        return norm_optim_inv(super().normalize_kwargs_inv(**kwargs))
 
     def run(
         self,
@@ -979,12 +1065,14 @@ class Class3DNoAlignmentTomoJob(_Relion5TomoJob, Class3DNoAlignmentJob):
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
         kwargs["sigma_tilt"] = -1
-        return norm_optim(**Class3DNoAlignmentJob.normalize_kwargs(**kwargs))
+        kwargs = norm_blush_reg(kwargs)
+        return norm_optim(Class3DNoAlignmentJob.normalize_kwargs(**kwargs))
 
     @classmethod
     def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
         kwargs.pop("sigma_tilt", None)
-        return norm_optim_inv(**Class3DNoAlignmentJob.normalize_kwargs_inv(**kwargs))
+        kwargs = norm_blush_reg_inv(kwargs)
+        return norm_optim_inv(Class3DNoAlignmentJob.normalize_kwargs_inv(**kwargs))
 
     def run(
         self,
@@ -1005,7 +1093,7 @@ class Class3DNoAlignmentTomoJob(_Relion5TomoJob, Class3DNoAlignmentJob):
         tau_fudge: _a.misc.TAU_FUDGE = 1,
         particle_diameter: _a.misc.MASK_DIAMETER = 200,
         do_zero_mask: _a.misc.MASK_WITH_ZEROS = True,
-        do_blush: _a.misc.DO_BLUSH = False,
+        blush_reg: _a.misc.BLUSH_REGULARISATION = "No",
         # Helix
         do_helix: _a.helix.DO_HELIX = False,
         helical_tube_diameter_range: _a.helix.HELICAL_TUBE_DIAMETER_RANGE = (-1, -1),
@@ -1042,11 +1130,13 @@ class Class3DTomoJob(_Relion5TomoJob, Class3DJob):
 
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
-        return norm_optim(**Class3DJob.normalize_kwargs(**kwargs))
+        kwargs = norm_blush_reg(kwargs)
+        return norm_optim(Class3DJob.normalize_kwargs(**kwargs))
 
     @classmethod
     def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
-        return norm_optim_inv(**Class3DJob.normalize_kwargs_inv(**kwargs))
+        kwargs = norm_blush_reg_inv(kwargs)
+        return norm_optim_inv(Class3DJob.normalize_kwargs_inv(**kwargs))
 
     def run(
         self,
@@ -1068,7 +1158,7 @@ class Class3DTomoJob(_Relion5TomoJob, Class3DJob):
         particle_diameter: _a.misc.MASK_DIAMETER = 200,
         do_zero_mask: _a.misc.MASK_WITH_ZEROS = True,
         highres_limit: _a.class_.HIGH_RES_LIMIT = None,
-        do_blush: _a.misc.DO_BLUSH = False,
+        blush_reg: _a.misc.BLUSH_REGULARISATION = "No",
         # Sampling
         sampling: _a.sampling.ANG_SAMPLING = "7.5 degrees",
         offset_range_step: _a.sampling.OFFSET_RANGE_STEP = (5, 1),
@@ -1116,11 +1206,13 @@ class Refine3DTomoJob(_Relion5TomoJob, Refine3DJob):
 
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
-        return norm_optim(**Refine3DJob.normalize_kwargs(**kwargs))
+        kwargs = norm_blush_reg(kwargs)
+        return norm_optim(Refine3DJob.normalize_kwargs(**kwargs))
 
     @classmethod
     def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
-        return norm_optim_inv(**Refine3DJob.normalize_kwargs_inv(**kwargs))
+        kwargs = norm_blush_reg_inv(kwargs)
+        return norm_optim_inv(Refine3DJob.normalize_kwargs_inv(**kwargs))
 
     def run(
         self,
@@ -1139,7 +1231,7 @@ class Refine3DTomoJob(_Relion5TomoJob, Refine3DJob):
         particle_diameter: _a.misc.MASK_DIAMETER = 200,
         do_zero_mask: _a.misc.MASK_WITH_ZEROS = True,
         do_solvent_fsc: _a.misc.SOLVENT_FLATTEN_FSC = False,
-        do_blush: _a.misc.DO_BLUSH = False,
+        blush_reg: _a.misc.BLUSH_REGULARISATION = "No",
         # Sampling
         sampling: _a.sampling.ANG_SAMPLING = "7.5 degrees",
         offset_range_step: _a.sampling.OFFSET_RANGE_STEP = (5, 1),
@@ -1189,14 +1281,14 @@ class ReconstructParticlesJob(_Relion5TomoJob):
 
     @classmethod
     def normalize_kwargs(cls, **kwargs):
-        kwargs = norm_optim(**super().normalize_kwargs(**kwargs))
+        kwargs = norm_optim(super().normalize_kwargs(**kwargs))
         if kwargs.get("crop_size") is None:
             kwargs["crop_size"] = -1
         return kwargs
 
     @classmethod
     def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
-        kwargs = norm_optim_inv(**super().normalize_kwargs_inv(**kwargs))
+        kwargs = norm_optim_inv(super().normalize_kwargs_inv(**kwargs))
         if "crop_size" in kwargs and float(kwargs["crop_size"]) < 0:
             kwargs["crop_size"] = None
         return kwargs
@@ -1257,7 +1349,7 @@ class CtfRefineTomoJob(_Relion5TomoJob):
 
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
-        kwargs = norm_optim(**super().normalize_kwargs(**kwargs))
+        kwargs = norm_optim(super().normalize_kwargs(**kwargs))
         if "lambda" not in kwargs:
             kwargs["lambda"] = kwargs.pop("lambda_param", None)
         if kwargs["lambda"] is None:
@@ -1269,7 +1361,7 @@ class CtfRefineTomoJob(_Relion5TomoJob):
 
     @classmethod
     def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
-        kwargs = norm_optim_inv(**super().normalize_kwargs_inv(**kwargs))
+        kwargs = norm_optim_inv(super().normalize_kwargs_inv(**kwargs))
         if "lambda" in kwargs:
             kwargs["lambda_param"] = kwargs.pop("lambda")
         if not kwargs.pop("do_reg_def", False):
@@ -1334,12 +1426,12 @@ class FrameAlignTomoJob(_Relion5TomoJob):
 
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
-        kwargs = norm_optim(**super().normalize_kwargs(**kwargs))
+        kwargs = norm_optim(super().normalize_kwargs(**kwargs))
         return kwargs
 
     @classmethod
     def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
-        kwargs = norm_optim_inv(**super().normalize_kwargs_inv(**kwargs))
+        kwargs = norm_optim_inv(super().normalize_kwargs_inv(**kwargs))
         return kwargs
 
     def run(

@@ -289,7 +289,11 @@ class QRelionJobWidgetControl(QtW.QWidget):
             btn.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
 
         # initialize the message
-        if parent._job_dir.state() is RelionJobState.RUNNING:
+        if parent._job_dir.state() in (
+            RelionJobState.RUNNING,
+            RelionJobState.ABORT_NOW,
+            RelionJobState.EXIT_ABORTED,
+        ):
             if wdt := self.find_child_widget(QRunOutErrLog):
                 msg = wdt.last_lines()
                 self.set_msg(msg)

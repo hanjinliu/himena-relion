@@ -1,4 +1,4 @@
-from typing import Annotated, Union
+from typing import Annotated
 
 from himena_relion._widgets._path_input import PathDrop
 
@@ -68,13 +68,15 @@ DO_ARETOMO_TILTCORRECT = Annotated[
     },
 ]
 ARETOMO_TILTCORRECT_ANGLE = Annotated[
-    Union[int, None],
+    float | None,
     {
-        "label": "Tilt angle offset",
+        "label": "Tilt angle offset (°)",
+        "min": -50,
+        "max": 50,
         "tooltip": (
-            "The tilt angle (in degrees) to be offset. If set to a value larger than "
-            "180, AreTomo will search for the optimal value itself, otherwise the "
-            "value specified here will be used."
+            "The tilt angle (in degrees) to be offset. By default, AreTomo will search "
+            "for the optimal value itself, otherwise the value specified here will be "
+            "used."
         ),
         "group": "Alignment",
     },
@@ -103,12 +105,49 @@ DO_ARETOMO_PHASESHIFT = Annotated[
         "group": "Alignment",
     },
 ]
+
+DO_ARETOMO_RECONSTRUCT = Annotated[
+    bool,
+    {
+        "label": "Reconstruct tomograms",
+        "tooltip": (
+            "If enabled, AreTomo2 will also perform tomogram reconstruction (the "
+            "default is to use weighted backprojection, but you can use SART by "
+            "providing the additional argument `--aretomo_sart`."
+        ),
+        "group": "Reconstruct",
+    },
+]
+ARETOMO_VOLZ = Annotated[
+    int,
+    {
+        "label": "Tomogram thickness (unbinned pix)",
+        "min": 1,
+        "tooltip": (
+            "The tomogram will be reconstructed to this thickness, using the -VolZ "
+            "parameter from AreTomo."
+        ),
+        "group": "Reconstruct",
+    },
+]
+ARETOMO_OUTBIN = Annotated[
+    int,
+    {
+        "label": "Tomogram binning",
+        "min": 1,
+        "tooltip": (
+            "The tomogram will be reconstructed with this integer binning factor, "
+            "using the -OutBin parameter from AreTomo."
+        ),
+        "group": "Reconstruct",
+    },
+]
 OTHER_ARETOMO_ARGS = Annotated[
     str,
     {
         "label": "Other AreTomo2 arguments",
         "tooltip": "Additional arguments that need to be passed to AreTomo2.",
-        "group": "Alignment",
+        "group": "Compute",
     },
 ]
 GENERATE_SPLIT_TOMOGRAMS = Annotated[
@@ -217,6 +256,22 @@ DO_FOURIER = Annotated[
             "When set to Yes, a Wiener-filtered reconstruction will be calculated by "
             "Fourier inversion. The SNRs of all frames will be measured from the "
             "odd/even frames, which should have thus been calculated"
+        ),
+        "group": "Filter",
+    },
+]
+DO_SKIP_WIENER = Annotated[
+    bool,
+    {
+        "label": "Skip Wiener filter",
+        "tooltip": (
+            "By default, the Fourier-inversion method uses a Wiener-filter, where the "
+            "signal-to-noise ratios are calculated from Fourier shell correlations "
+            "between the odd/even frames, which should have thus been calculated "
+            "during MotionCorrection. If this option is true, then the odd/even frames "
+            "are not necessary, and the images will only be pre-calculated with the "
+            "CTF, without any division by CTF^2 as in the Wiener filter. This is the "
+            "option that should be used for subsequent (real) sub-tomogram averaging."
         ),
         "group": "Filter",
     },
