@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from magicgui.widgets.bases import ValuedContainerWidget
 from magicgui.types import Undefined
-from himena.qt.magicgui import ToggleSwitch, FloatEdit, IntEdit, ToggleButtons
+from himena.qt.magicgui import FloatEdit, IntEdit, ToggleButtons
 
 from himena_relion._job_class import parse_string
 from himena_relion._widgets._path_input import PathDrop
@@ -48,7 +48,16 @@ class OptimisationSetEdit(ValuedContainerWidget):
     """Widget for selecting a optimisation set or direct entries."""
 
     def __init__(self, **kwargs):
-        self._toggle_switch = ToggleSwitch(text="Use direct entries", value=False)
+        self._toggle_switch = ToggleButtons(
+            choices=[("Optimisation set", False), ("Direct entries", True)],
+            value=False,
+            tooltip=(
+                "Select 'Optimisation set' to provide a path to the\n"
+                "optimisation_set.star file, or 'Direct entries' to provide paths to\n"
+                "the particles and tomograms separately."
+            ),
+        )
+        self._toggle_switch.max_width = 300
         self._in_opt = PathDrop(
             "",
             type_label="TomoOptimisationSet",
@@ -142,16 +151,16 @@ class BfactorEdit(ValuedContainerWidget):
     """Widget for entering B-factor related parameters."""
 
     def __init__(self, **kwargs):
-        self._toggle_switch = ToggleSwitch(
-            text="Use user-provided B-factor",
+        self._toggle_switch = ToggleButtons(
+            choices=[("Automatic", False), ("Provide a value", True)],
             value=False,
             tooltip=(
-                "If set to No, then the program will use the automated procedure "
-                "described by Rosenthal and Henderson (2003, JMB) to estimate an "
-                "overall B-factor for your map, and sharpen it accordingly. Note that "
-                "your map must extend well beyond the lowest resolution included in "
-                "the procedure below, which should not be set to resolutions much "
-                "lower than 10 Angstroms. \n\n"
+                "If set to 'Automatic', then the program will use the automated "
+                "procedure described by Rosenthal and Henderson (2003, JMB) to "
+                "estimate an overall B-factor for your map, and sharpen it "
+                "accordingly. Note that your map must extend well beyond the lowest "
+                "resolution included in the procedure below, which should not be set "
+                "to resolutions much lower than 10 Angstroms. \n\n"
                 "Otherwise, instead of using the automated B-factor estimation, "
                 "provide your own value. Use negative values for sharpening the map. "
                 "This option is useful if your map does not extend beyond the 10A "
@@ -160,6 +169,7 @@ class BfactorEdit(ValuedContainerWidget):
                 "map)."
             ),
         )
+        self._toggle_switch.max_width = 270
         self._auto_lowres = FloatEdit(
             label="Lowest resolution (A)",
             value=10.0,

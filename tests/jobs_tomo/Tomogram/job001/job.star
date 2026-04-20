@@ -20,6 +20,7 @@ ctf_intact_first_peak        Yes
 do_fourier        Yes
    do_proj        Yes
   do_queue         No
+  do_skip_wiener   No
 generate_split_tomograms         No
 in_tiltseries          ****
 min_dedicated          1

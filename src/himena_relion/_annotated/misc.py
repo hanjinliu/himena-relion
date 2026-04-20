@@ -77,7 +77,7 @@ REF_CORRECT_GRAY = Annotated[
 BLUSH_REGULARISATION = Annotated[
     str,
     {
-        "label": "Blush network version",
+        "label": "Blush regularisation",
         "tooltip": (
             "If specified, relion_refine will use a neural network to perform "
             "regularisation by denoising at every iteration, instead of the standard "

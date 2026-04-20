@@ -9,7 +9,7 @@ from himena_relion._version import relion_version_info
 def norm_blush_reg(kwargs: dict[str, Any]) -> dict[str, Any]:
     ver = relion_version_info("5.0.0").version
     if ver.major == 5:
-        blush_reg = kwargs.pop("blush_reg")
+        blush_reg = kwargs.pop("blush_reg", "No")
         kwargs["do_blush"] = blush_reg != "No"
         if ver.minor == 0:
             if blush_reg == "amy-v1.0":

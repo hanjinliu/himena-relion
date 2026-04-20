@@ -76,8 +76,9 @@ ADHOC_BFAC = Annotated[
 FN_MTF = Annotated[
     str,
     {
-        "label": "MTF of the detector",
+        "label": "MTF of the detector (STAR)",
         "widget_type": PathDrop,
+        "allowed_extensions": [".star"],
         "tooltip": (
             "The MTF of the detector is used to complement the user-provided B-factor "
             "in the sharpening. If you don't have this curve, you can leave this field "

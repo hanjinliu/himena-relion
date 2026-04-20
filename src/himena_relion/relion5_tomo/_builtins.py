@@ -7,8 +7,6 @@ from himena_relion._pipeline import RelionPipeline
 from himena_relion import _annotated as _a
 from himena_relion._adapt import (
     norm_aligntilts,
-    norm_blush_reg,
-    norm_blush_reg_inv,
     norm_extract_subtomo,
     norm_extract_subtomo_inv,
 )
@@ -388,6 +386,7 @@ class AlignTiltSeriesImodFiducial(_AlignTiltSeriesJobBase):
         kwargs["tomogram_thickness"] = 300.0
         kwargs = super().normalize_kwargs(**kwargs)
         kwargs["gpu_ids"] = ""
+        kwargs = norm_aligntilts(kwargs)
         return kwargs
 
     @classmethod
@@ -440,6 +439,7 @@ class AlignTiltSeriesImodPatch(_AlignTiltSeriesJobBase):
         kwargs["do_imod_patchtrack"] = True
         kwrags = super().normalize_kwargs(**kwargs)
         kwrags["gpu_ids"] = ""
+        kwargs = norm_aligntilts(kwargs)
         return kwrags
 
     @classmethod
@@ -721,6 +721,7 @@ class ReconstructTomogramJob(_ReconstructTomogramBaseJob):
 
         @widgets["do_fourier"].changed.connect
         def _on_do_fourier_changed(value: bool):
+            widgets["do_skip_wiener"].enabled = value
             widgets["ctf_intact_first_peak"].enabled = value
 
         _on_do_fourier_changed(widgets["do_fourier"].value)
@@ -732,6 +733,7 @@ class ReconstructHalfTomogramJob(_ReconstructTomogramBaseJob):
     @classmethod
     def normalize_kwargs(cls, **kwargs):
         kwargs["do_fourier"] = False
+        kwargs["do_skip_wiener"] = False
         kwargs["ctf_intact_first_peak"] = True
         kwargs["generate_split_tomograms"] = True
         return super().normalize_kwargs(**kwargs)
@@ -740,6 +742,7 @@ class ReconstructHalfTomogramJob(_ReconstructTomogramBaseJob):
     def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
         kwargs = super().normalize_kwargs_inv(**kwargs)
         kwargs.pop("do_fourier", None)
+        kwargs.pop("do_skip_wiener", None)
         kwargs.pop("ctf_intact_first_peak", None)
         kwargs.pop("generate_split_tomograms", None)
         return kwargs
@@ -1065,13 +1068,11 @@ class Class3DNoAlignmentTomoJob(_Relion5TomoJob, Class3DNoAlignmentJob):
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
         kwargs["sigma_tilt"] = -1
-        kwargs = norm_blush_reg(kwargs)
         return norm_optim(Class3DNoAlignmentJob.normalize_kwargs(**kwargs))
 
     @classmethod
     def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
         kwargs.pop("sigma_tilt", None)
-        kwargs = norm_blush_reg_inv(kwargs)
         return norm_optim_inv(Class3DNoAlignmentJob.normalize_kwargs_inv(**kwargs))
 
     def run(
@@ -1130,12 +1131,10 @@ class Class3DTomoJob(_Relion5TomoJob, Class3DJob):
 
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
-        kwargs = norm_blush_reg(kwargs)
         return norm_optim(Class3DJob.normalize_kwargs(**kwargs))
 
     @classmethod
     def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
-        kwargs = norm_blush_reg_inv(kwargs)
         return norm_optim_inv(Class3DJob.normalize_kwargs_inv(**kwargs))
 
     def run(
@@ -1206,12 +1205,10 @@ class Refine3DTomoJob(_Relion5TomoJob, Refine3DJob):
 
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
-        kwargs = norm_blush_reg(kwargs)
         return norm_optim(Refine3DJob.normalize_kwargs(**kwargs))
 
     @classmethod
     def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
-        kwargs = norm_blush_reg_inv(kwargs)
         return norm_optim_inv(Refine3DJob.normalize_kwargs_inv(**kwargs))
 
     def run(

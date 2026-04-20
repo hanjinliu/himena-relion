@@ -58,7 +58,13 @@ def relion_version() -> str:
 
 
 def relion_version_info(default_version: str | None = None) -> RelionVersionInfo:
-    stdout = relion_version()
+    try:
+        stdout = relion_version()
+    except Exception:
+        if default_version is not None:
+            version = RelionVersion.from_string(default_version)
+            return RelionVersionInfo(version=version, commit="")
+        raise
     lines = stdout.splitlines()
     if lines[0].startswith("RELION version: "):
         version_str, commit = lines[0][len("RELION version: ") :].split("-commit-")

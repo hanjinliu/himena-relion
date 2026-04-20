@@ -1,5 +1,6 @@
 from typing import Annotated
 
+from himena.qt.magicgui import ToggleButtons
 from himena_relion._widgets._path_input import PathDrop
 
 EXCLUDETILT_CACHE_SIZE = Annotated[
@@ -113,7 +114,7 @@ DO_ARETOMO_RECONSTRUCT = Annotated[
         "tooltip": (
             "If enabled, AreTomo2 will also perform tomogram reconstruction (the "
             "default is to use weighted backprojection, but you can use SART by "
-            "providing the additional argument `--aretomo_sart`."
+            "providing the additional argument `--aretomo_sart`)."
         ),
         "group": "Reconstruct",
     },
@@ -226,7 +227,7 @@ BINNED_ANGPIX = Annotated[
 TILTANGLE_OFFSET = Annotated[
     float,
     {
-        "label": "Tilt angle offset (deg)",
+        "label": "Tilt angle offset (°)",
         "tooltip": (
             "The tomogram tilt angles will all be changed by this value. This may be "
             "useful to reconstruct lamellae that are all milled under a given angle. "
@@ -247,17 +248,20 @@ TOMO_NAME = Annotated[
         "group": "Reconstruct",
     },
 ]
-# Filter
+# Back projection
 DO_FOURIER = Annotated[
     bool,
     {
-        "label": "Fourier-inversion with odd/even frames",
+        "label": "Back projection method",
         "tooltip": (
-            "When set to Yes, a Wiener-filtered reconstruction will be calculated by "
-            "Fourier inversion. The SNRs of all frames will be measured from the "
-            "odd/even frames, which should have thus been calculated"
+            "The back projection method to be used for tomogram reconstruction. The "
+            "Fourier-inversion method requires the odd/even frames to calculate "
+            "signals-to-noise ratios for the Wiener filter by default. In "
+            "RELION>=5.1, you can skip the Wiener filter by checking the next option."
         ),
-        "group": "Filter",
+        "choices": [("Fourier-inversion", True), ("Real-space", False)],
+        "widget_type": ToggleButtons,
+        "group": "Back projection",
     },
 ]
 DO_SKIP_WIENER = Annotated[
@@ -273,7 +277,7 @@ DO_SKIP_WIENER = Annotated[
             "CTF, without any division by CTF^2 as in the Wiener filter. This is the "
             "option that should be used for subsequent (real) sub-tomogram averaging."
         ),
-        "group": "Filter",
+        "group": "Back projection",
     },
 ]
 CTF_INTACT_FIRST_PEAK = Annotated[
@@ -285,7 +289,7 @@ CTF_INTACT_FIRST_PEAK = Annotated[
             "through CTF-correction, which will lead to a reconstruction with less "
             "low-resolution contrast, but better high-resolution details."
         ),
-        "group": "Filter",
+        "group": "Back projection",
     },
 ]
 
@@ -307,6 +311,7 @@ NUMBER_TRAINING_SUBVOLUMES = Annotated[
     int,
     {
         "label": "Number of sub-volumes per tomogram",
+        "min": 1,
         "tooltip": (
             "Number of sub-volumes to be extracted per training tomogram. Corresponds "
             "to num_slices in cryoCARE_extract_train_data.py."
@@ -330,6 +335,8 @@ CARE_DENOISING_MODEL = Annotated[
     str,
     {
         "label": "Denoising model",
+        "widget_type": PathDrop,
+        "allowed_extensions": [".tar.gz"],
         "tooltip": (
             "Provide the path to the denoising model generated in cryoCARE:train. This "
             "should be in the output directory of a cryoCARE:train job as a .tar.gz "
@@ -355,8 +362,6 @@ DENOISING_TOMO_NAME = Annotated[
     str,
     {
         "label": "Reconstruct only this tomogram",
-        "widget_type": PathDrop,
-        "allowed_extensions": [".tar.gz"],
         "tooltip": (
             "If not left empty, the program will only reconstruct this particular "
             "tomogram. Use the name in <code>rlnTomoName</code> to specify tomogram."
@@ -398,6 +403,7 @@ BOX_SIZE = Annotated[
     int,
     {
         "label": "Box size (binned pix)",
+        "min": 2,
         "tooltip": (
             "Box size of the reconstruction. Note that this is independent of the box "
             "size that has been used to refine the particle. This allows the user to "
@@ -427,6 +433,7 @@ SNR = Annotated[
     float,
     {
         "label": "Wiener SNR constant",
+        "min": 0.0,
         "tooltip": (
             "If set to a positive value, apply a Wiener filter with this "
             "signal-to-noise ratio. If omitted, the reconstruction will use a "
