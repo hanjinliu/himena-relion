@@ -15,6 +15,8 @@ from himena_relion.schemas import OptimisationSetModel, TomogramsGroupModel
 
 _LOGGER = logging.getLogger(__name__)
 
+OPTIMISATION_SET_STAR = "optimisation_set.star"
+
 
 def _pixel_size_from_opt_star(path: Path) -> float:
     _opt = OptimisationSetModel.validate_file(path)
@@ -29,11 +31,10 @@ def _pixel_size_from_tomogram_star(path: Path) -> float:
 
 def _subtomo_diameter_a(path: Path) -> float:
     """Extract particle diameter A from the job directory path."""
-    box_size = _subtomo_box_size(path)
-    bin_size = _subtomo_binning(path)
+    diameter_pix = _subtomo_diameter_pix(path)
     try:
-        pix_size = _pixel_size_from_opt_star(path / "optimisation_set.star")
-        diameter_a = box_size * pix_size * bin_size
+        pix_size = _pixel_size_from_opt_star(path / OPTIMISATION_SET_STAR)
+        diameter_a = diameter_pix * pix_size
     except Exception:
         _LOGGER.warning(
             "Failed to extract pixel size, using default diameter", exc_info=True
@@ -44,8 +45,7 @@ def _subtomo_diameter_a(path: Path) -> float:
 
 def _recon_diameter_a(path: Path) -> float:
     """Extract particle diameter A from the job directory path."""
-    box_size = _subtomo_box_size(path)
-    bin_size = _subtomo_binning(path)
+    diameter_pix = _subtomo_diameter_pix(path)
     jobdir = JobDirectory(path)
     params = jobdir.get_job_params_as_dict()
     is_direct_input = params.get("in_optimisation", "").strip() == ""
@@ -54,7 +54,7 @@ def _recon_diameter_a(path: Path) -> float:
             pix_size = _pixel_size_from_tomogram_star(params["in_tomograms"])
         else:
             pix_size = _pixel_size_from_opt_star(params["in_optimisation"])
-        diameter_a = box_size * pix_size * bin_size
+        diameter_a = diameter_pix * pix_size
     except Exception:
         _LOGGER.warning(
             "Failed to extract pixel size, using default diameter", exc_info=True
@@ -127,6 +127,11 @@ connect_jobs(
     _tomo.ReconstructHalfTomogramJob,
     node_mapping={"aligned_tilt_series.star": "in_tiltseries"},
 )
+connect_jobs(
+    _tomo.AlignTiltSeriesImodFiducial,
+    _tomo.ReconstructTomoByAreTomo2,
+    node_mapping={"aligned_tilt_series.star": "in_tiltseries"},
+)
 # connect_jobs(
 #     AlignTiltSeriesImodPatch,
 #     ReconstructTomogramJob,
@@ -153,6 +158,11 @@ connect_jobs(
     node_mapping={"tomograms.star": "in_tomoset"},
 )
 connect_jobs(
+    _tomo.ReconstructTomoByAreTomo2,
+    _tomo.PickJob,
+    node_mapping={"tomograms.star": "in_tomoset"},
+)
+connect_jobs(
     _tomo.DenoisePredict,
     _tomo.PickJob,
     node_mapping={"tomograms.star": "in_tomoset"},
@@ -160,7 +170,7 @@ connect_jobs(
 connect_jobs(
     _tomo.PickJob,
     _tomo.ExtractParticlesTomoJob,
-    node_mapping={"optimisation_set.star": "in_optim.in_optimisation"},
+    node_mapping={OPTIMISATION_SET_STAR: "in_optim.in_optimisation"},
 )
 connect_jobs(
     _spa.SelectClassesInteractiveJob,
@@ -220,7 +230,7 @@ connect_jobs(
     _tomo.ExtractParticlesTomoJob,
     _tomo.InitialModelTomoJob,
     node_mapping={
-        "optimisation_set.star": "in_optim.in_optimisation",
+        OPTIMISATION_SET_STAR: "in_optim.in_optimisation",
     },
     value_mapping={
         _subtomo_diameter_a: "particle_diameter",
@@ -230,7 +240,7 @@ connect_jobs(
     _tomo.ExtractParticlesTomoJob,
     _tomo.Refine3DTomoJob,
     node_mapping={
-        "optimisation_set.star": "in_optim.in_optimisation",
+        OPTIMISATION_SET_STAR: "in_optim.in_optimisation",
     },
     value_mapping={
         _subtomo_diameter_a: "particle_diameter",
@@ -255,11 +265,18 @@ def _subtomo_crop_size(path: Path) -> int:
     return int(jobdir.get_job_param("crop_size"))
 
 
+def _subtomo_diameter_pix(path: Path) -> float:
+    size = _subtomo_crop_size(path)
+    if size < 0:
+        size = _subtomo_box_size(path)
+    return _subtomo_binning(path) * size
+
+
 connect_jobs(
     _tomo.ExtractParticlesTomoJob,
     _tomo.ReconstructParticlesJob,
     node_mapping={
-        "optimisation_set.star": "in_optim.in_optimisation",
+        OPTIMISATION_SET_STAR: "in_optim.in_optimisation",
     },
     value_mapping={
         _subtomo_binning: "binning",
@@ -273,7 +290,7 @@ for class3d_job in [_tomo.Class3DTomoJob, _tomo.Class3DNoAlignmentTomoJob]:
         _tomo.InitialModelTomoJob,
         class3d_job,
         node_mapping={
-            "optimisation_set.star": "in_optim.in_optimisation",
+            OPTIMISATION_SET_STAR: "in_optim.in_optimisation",
             "initial_model.mrc": "fn_ref",
         },
         value_mapping={
@@ -320,7 +337,7 @@ connect_jobs(
     _tomo.InitialModelTomoJob,
     _tomo.Refine3DTomoJob,
     node_mapping={
-        "optimisation_set.star": "in_optim.in_optimisation",
+        OPTIMISATION_SET_STAR: "in_optim.in_optimisation",
         "initial_model.mrc": "fn_ref",
     },
     value_mapping={
@@ -457,7 +474,7 @@ connect_jobs(
 connect_jobs(
     _tomo.CtfRefineTomoJob,
     _tomo.ReconstructParticlesJob,
-    node_mapping={"optimisation_set.star": "in_optim.in_optimisation"},
+    node_mapping={OPTIMISATION_SET_STAR: "in_optim.in_optimisation"},
 )
 
 
@@ -470,7 +487,7 @@ connect_jobs(
     _tomo.CtfRefineTomoJob,
     _tomo.Refine3DTomoJob,
     node_mapping={
-        "optimisation_set.star": "in_optim.in_optimisation",
+        OPTIMISATION_SET_STAR: "in_optim.in_optimisation",
         _ctfrefine_search_mask: "fn_mask",
     },
 )

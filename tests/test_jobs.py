@@ -66,8 +66,19 @@ def test_tomo_job_match(job_str: str, make_himena_ui: Callable[[], MainWindow]):
     model = JobStarModel.validate_file(job_dir.job_star())
     params = model.joboptions_values.to_dict()
     params_py = job_cls_ins.normalize_kwargs_inv(**params)
+    # these are needed for compatibility with RELION 5.0 and 5.1
+    if job_cls_ins.type_label() == "relion.aligntiltseries":
+        allowed_diffs = ("other_args", "aretomo_OutBin", "do_aretomo_reconstruct", "aretomo_VolZ")
+    elif job_cls_ins.type_label() == "relion.pseudosubtomo":
+        allowed_diffs = ("other_args", "do_stack2d")
+    else:
+        allowed_diffs = ("other_args",)
     # run() vs params loaded from job.star to Python
-    assert_param_name_match(job_cls._signature().parameters.keys(), params_py.keys())
+    assert_param_name_match(
+        job_cls._signature().parameters.keys(),
+        params_py.keys(),
+        allowed_diffs=allowed_diffs,
+    )
     params_back = job_cls_ins.normalize_kwargs(**params_py)
 
     # check none of the parameters are None

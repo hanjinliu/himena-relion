@@ -31,17 +31,22 @@ def test_text_edit(qtbot: QtBot, tmpdir):
     assert note.toPlainText() == "Initial note."
     assert out.toPlainText() == "out"
     assert err.toPlainText() == "err"
+    out._on_wordwrap_changed(True)
+    out._on_wordwrap_changed(False)
 
 def test_pipeline_viewer(qtbot: QtBot, tmpdir):
     _job_dir = Path(tmpdir, "job001")
     _job_dir.mkdir()
     pipeline_file = _job_dir.joinpath("job_pipeline.star")
     pipeline_file.write_text(read_sample_job_pipeline_star("refine3d.star"))
-    viewer = QJobPipelineViewer()
+    viewer = QJobPipelineViewer(show_tree_view=True)
     qtbot.addWidget(viewer)
     job_dir_obj = JobDirectory(_job_dir)
     viewer.initialize(job_dir_obj)
     viewer.on_job_updated(job_dir_obj, _job_dir / "job_pipeline.star")
+    viewer._tree_view.set_job_directory(job_dir_obj)
+    viewer._tree_view._make_context_menu(viewer._tree_view.model().index(0, 0))
+    viewer._tree_view._make_drag(viewer._tree_view.model().index(0, 0))
 
 def test_flowchart(himena_ui: MainWindow, qtbot: QtBot, tmpdir):
     from himena_relion.pipeline.widgets import QRelionPipelineFlowChart

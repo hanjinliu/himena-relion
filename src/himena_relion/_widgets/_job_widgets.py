@@ -807,9 +807,7 @@ class QDirectoryTreeView(QtW.QTreeView):
     def _make_context_menu(self, index: QtCore.QModelIndex):
         menu = QtW.QMenu(self)
         path = Path(self.model().filePath(index))
-        menu.addAction(
-            "Open", lambda: current_instance().read_file(path, append_history=False)
-        )
+        menu.addAction("Open", lambda: self._read_file(path))
         menu.addSeparator()
         menu.addAction("Copy", lambda: current_instance().set_clipboard(files=[path]))
         menu.addAction(
@@ -829,7 +827,7 @@ class QDirectoryTreeView(QtW.QTreeView):
         path = Path(self.model().filePath(idx))
         if path.is_dir():
             return
-        current_instance().read_file(path, append_history=False)
+        self._read_file(path)
 
     def mouseMoveEvent(self, e: QtGui.QMouseEvent):
         if e.buttons() & QtCore.Qt.MouseButton.LeftButton:
@@ -870,3 +868,11 @@ class QDirectoryTreeView(QtW.QTreeView):
     if TYPE_CHECKING:
 
         def model(self) -> QFileSystemModel | None: ...
+
+    @staticmethod
+    def _read_file(path: Path):
+        if path.name in ("job.star", "run.out", "run.err"):
+            plugin = "himena_builtins.io.read_as_text_anyway"
+        else:
+            plugin = None
+        current_instance().read_file(path, append_history=False, plugin=plugin)

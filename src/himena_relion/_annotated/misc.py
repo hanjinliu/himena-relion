@@ -73,15 +73,21 @@ REF_CORRECT_GRAY = Annotated[
     },
 ]
 
-DO_BLUSH = Annotated[
-    bool,
+# RELION 5.1
+BLUSH_REGULARISATION = Annotated[
+    str,
     {
-        "label": "Use Blush regularisation",
+        "label": "Blush regularisation",
         "tooltip": (
-            "If set to Yes, relion_refine will use a neural network to perform "
+            "If specified, relion_refine will use a neural network to perform "
             "regularisation by denoising at every iteration, instead of the standard "
-            "smoothness regularisation."
+            "smoothness regularisation.\n"
+            "v1.0 is the original version published in Kiamnius et al (2024) Nature "
+            "Methods; amy-v1.0 (RELION>=5.1) is a newer version that was trained "
+            "specifically for use with amyloid filaments."
         ),
+        "choices": ["No", "v1.0", "amy-v1.0"],
+        "widget_type": ToggleButtons,
         "group": "Optimisation",
     },
 ]

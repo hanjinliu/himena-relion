@@ -1,4 +1,5 @@
 from typing import Annotated
+from himena_relion._widgets._magicgui import PathDrop
 
 # mask creation
 LOWPASS_FILTER = Annotated[
@@ -110,7 +111,9 @@ LOW_PASS = Annotated[
 FN_MTF = Annotated[
     str,
     {
-        "label": "MTF of the detector",
+        "label": "MTF of the detector (STAR file)",
+        "widget_type": PathDrop,
+        "allowed_extensions": [".star"],
         "tooltip": (
             "If you know the MTF of your detector, provide it here. Curves for some "
             "well-known detectors may be downloaded from the RELION Wiki. Also see "

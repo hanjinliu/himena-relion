@@ -280,8 +280,9 @@ def trash_job(ui: MainWindow, job_dir: JobDirectory):
                 if file_in_node.exists():
                     file_in_node.unlink()
                 # remove directory if empty
-                if not any(file_in_node.parent.iterdir()):
-                    file_in_node.parent.rmdir()
+                node_dir = file_in_node.parent
+                if node_dir.exists() and not any(node_dir.iterdir()):
+                    node_dir.rmdir()
 
     rln_dir.joinpath("default_pipeline.star").touch()
 

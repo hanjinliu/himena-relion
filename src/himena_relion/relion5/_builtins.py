@@ -7,6 +7,7 @@ from himena_relion._job_dir import JobDirectory
 from himena_relion import _configs, _annotated as _a
 from himena_relion.schemas import OptimisationSetModel
 from himena_relion.consts import MenuId
+from himena_relion._adapt import norm_blush_reg, norm_blush_reg_inv
 
 
 class _Relion5Job(_Relion5BuiltinJob):
@@ -1437,6 +1438,7 @@ class Class3DNoAlignmentJob(_Class3DJobBase):
         kwargs["sigma_angles"] = 5
         kwargs["allow_coarser"] = False
         kwargs["gpu_ids"] = ""
+        kwargs = norm_blush_reg(kwargs)
         return super().normalize_kwargs(**kwargs)
 
     @classmethod
@@ -1449,7 +1451,7 @@ class Class3DNoAlignmentJob(_Class3DJobBase):
             "helical_twist_range", "helical_rise_range", "gpu_ids",
         ]:  # fmt: skip
             kwargs.pop(name, None)
-
+        kwargs = norm_blush_reg_inv(kwargs)
         return kwargs
 
     def run(
@@ -1471,7 +1473,7 @@ class Class3DNoAlignmentJob(_Class3DJobBase):
         tau_fudge: _a.misc.TAU_FUDGE = 1,
         particle_diameter: _a.misc.MASK_DIAMETER = 200,
         do_zero_mask: _a.misc.MASK_WITH_ZEROS = True,
-        do_blush: _a.misc.DO_BLUSH = False,
+        blush_reg: _a.misc.BLUSH_REGULARISATION = "No",
         # Helix
         do_helix: _a.helix.DO_HELIX = False,
         helical_tube_diameter_range: _a.helix.HELICAL_TUBE_DIAMETER_RANGE = (-1, -1),
@@ -1515,6 +1517,7 @@ class Class3DJob(_Class3DJobBase):
         kwargs["dont_skip_align"] = True
         if kwargs.get("highres_limit", None) is None:
             kwargs["highres_limit"] = -1
+        kwargs = norm_blush_reg(kwargs)
         return kwargs
 
     @classmethod
@@ -1523,6 +1526,7 @@ class Class3DJob(_Class3DJobBase):
         kwargs.pop("dont_skip_align", None)
         if "highres_limit" in kwargs and float(kwargs["highres_limit"]) < 0:
             kwargs["highres_limit"] = None
+        kwargs = norm_blush_reg_inv(kwargs)
         return kwargs
 
     def run(
@@ -1545,7 +1549,7 @@ class Class3DJob(_Class3DJobBase):
         particle_diameter: _a.misc.MASK_DIAMETER = 200,
         do_zero_mask: _a.misc.MASK_WITH_ZEROS = True,
         highres_limit: _a.class_.HIGH_RES_LIMIT = None,
-        do_blush: _a.misc.DO_BLUSH = False,
+        blush_reg: _a.misc.BLUSH_REGULARISATION = "No",
         # Sampling
         sampling: _a.sampling.ANG_SAMPLING = "7.5 degrees",
         offset_range_step: _a.sampling.OFFSET_RANGE_STEP = (5, 1),
@@ -1636,6 +1640,7 @@ class Refine3DJob(_Relion5SpaJob):
                 "offset_range_step"
             )
         kwargs["fn_cont"] = ""
+        kwargs = norm_blush_reg(kwargs)
         return super().normalize_kwargs(**kwargs)
 
     @classmethod
@@ -1664,6 +1669,7 @@ class Refine3DJob(_Relion5SpaJob):
             kwargs.pop("offset_step", 1),
         )
         kwargs.pop("fn_cont", None)
+        kwargs = norm_blush_reg_inv(kwargs)
         return super().normalize_kwargs_inv(**kwargs)
 
     def run(
@@ -1683,7 +1689,7 @@ class Refine3DJob(_Relion5SpaJob):
         particle_diameter: _a.misc.MASK_DIAMETER = 200,
         do_zero_mask: _a.misc.MASK_WITH_ZEROS = True,
         do_solvent_fsc: _a.misc.SOLVENT_FLATTEN_FSC = False,
-        do_blush: _a.misc.DO_BLUSH = False,
+        blush_reg: _a.misc.BLUSH_REGULARISATION = "No",
         # Sampling
         sampling: _a.sampling.ANG_SAMPLING = "7.5 degrees",
         offset_range_step: _a.sampling.OFFSET_RANGE_STEP = (5, 1),

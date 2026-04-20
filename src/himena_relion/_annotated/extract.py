@@ -1,5 +1,5 @@
 from typing import Annotated, Union
-
+from himena.qt.magicgui import ToggleButtons
 
 SIZE = Annotated[
     int,
@@ -183,7 +183,7 @@ BINNING = Annotated[
             "reconstructed region becomes larger when specifying binning factors "
             "larger than one."
         ),
-        "group": "Reconstruct",
+        "group": "Extract",
     },
 ]
 BOX_SIZE = Annotated[
@@ -195,7 +195,7 @@ BOX_SIZE = Annotated[
             "allows more of the high-frequency signal to be captured that has been "
             "delocalised by the CTF."
         ),
-        "group": "Reconstruct",
+        "group": "Extract",
     },
 ]
 CROP_SIZE = Annotated[
@@ -208,7 +208,7 @@ CROP_SIZE = Annotated[
             "(generally expensive) refinement using relion_refine to proceed more "
             "rapidly."
         ),
-        "group": "Reconstruct",
+        "group": "Extract",
     },
 ]
 MAX_DOSE = Annotated[
@@ -221,7 +221,7 @@ MAX_DOSE = Annotated[
             "pseudo-subtomogram, or in the 2D stack. For the latter, this will disc "
             "I/O operations and increase speed."
         ),
-        "group": "Reconstruct",
+        "group": "Extract",
     },
 ]
 MIN_FRAMES = Annotated[
@@ -233,9 +233,10 @@ MIN_FRAMES = Annotated[
             "Each selected pseudo-subtomogram need to be visible in at least this "
             "number of tilt series frames with doses below the maximum dose"
         ),
-        "group": "Reconstruct",
+        "group": "Extract",
     },
 ]
+# RELION 5.0
 DO_STACK2D = Annotated[
     bool,
     {
@@ -247,6 +248,24 @@ DO_STACK2D = Annotated[
             "pseudo-subtomograms will be written out. Either can be used in subsequent "
             "refinements and classifications."
         ),
-        "group": "Reconstruct",
+        "group": "Extract",
+    },
+]
+# RELION 5.1
+SUBTOMO_FORMAT = Annotated[
+    str,
+    {
+        "label": "Subtomogram format",
+        "tooltip": (
+            "Format of the extracted subtomograms. Relion-5 type 2D stacks, relion-4 "
+            "type 3D pseudo-subtomograms, or relion-3 type real-space subtomograms. "
+            "Some people have reported that real-space 3D subtomograms are better for "
+            "initial alignments than 2D stacks or 3D pseudo-subtomograms. You may want "
+            "to use AreTomo2 reconstructions for extracting real-space subtomograms. "
+            "They can be made as part of the Align tilt-series job."
+        ),
+        "choices": ["2D stacks", "3D pseudo-subtomos", "3D subtomos"],
+        "widget_type": ToggleButtons,
+        "group": "Extract",
     },
 ]

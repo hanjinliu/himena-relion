@@ -13,7 +13,7 @@ from himena_builtins.qt.plot._canvas import QModelMatplotlibCanvas
 class QPlotCanvas(QModelMatplotlibCanvas):
     """A matplotlib canvas widget for plotting."""
 
-    def __init__(self, parent):
+    def __init__(self, parent=None):
         super().__init__()
         self.setParent(parent)
         self.setMaximumSize(400, 280)

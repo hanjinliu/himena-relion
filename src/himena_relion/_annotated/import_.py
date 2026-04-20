@@ -44,7 +44,7 @@ OPTICS_GROUP_NAME = Annotated[
 FN_MTF = Annotated[
     str,
     {
-        "label": "MTF of the detector",
+        "label": "MTF of the detector (STAR file)",
         "widget_type": PathDrop,
         "allowed_extensions": [".star"],
         "tooltip": (
