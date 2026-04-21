@@ -7,6 +7,7 @@ from himena_relion.relion5._connections import (
     mask_create_search_halfmap,
     run_class001_last_iter,
     inherit_particle_diameter,
+    inherit_mask,
 )
 from himena_relion.relion5_tomo import _builtins as _tomo
 from himena_relion._job_dir import JobDirectory
@@ -31,6 +32,7 @@ def _pixel_size_from_tomogram_star(path: Path) -> float:
 
 def _subtomo_diameter_a(path: Path) -> float:
     """Extract particle diameter A from the job directory path."""
+    # don't use optimisation_set.star because it may not be generated yet.
     diameter_pix = _subtomo_diameter_pix(path)
     try:
         pix_size = _pixel_size_from_opt_star(path / OPTIMISATION_SET_STAR)
@@ -310,13 +312,19 @@ for class3d_job in [_tomo.Class3DTomoJob, _tomo.Class3DNoAlignmentTomoJob]:
                 "run_optimisation_set.star": "in_optim.in_optimisation",
                 run_class001_last_iter: "fn_ref",
             },
-            value_mapping={inherit_particle_diameter: "particle_diameter"},
+            value_mapping={
+                inherit_particle_diameter: "particle_diameter",
+                inherit_mask: "fn_mask",
+            },
         )
     connect_jobs(
         _tomo.ReconstructParticlesJob,
         class3d_job,
         node_mapping={
             _tomo.ReconstructParticlesJob.get_optimisation_set: "in_optim.in_optimisation",
+            _tomo.ReconstructParticlesJob.get_particles: "in_optim.in_particles",
+            _tomo.ReconstructParticlesJob.get_tomoset: "in_optim.in_tomograms",
+            _tomo.ReconstructParticlesJob.get_trajectory: "in_optim.in_trajectory",
             "merged.mrc": "fn_ref",
         },
         value_mapping={_recon_diameter_a: "particle_diameter"},
@@ -330,6 +338,7 @@ for class3d_job in [_tomo.Class3DTomoJob, _tomo.Class3DNoAlignmentTomoJob]:
         },
         value_mapping={
             inherit_particle_diameter: "particle_diameter",
+            inherit_mask: "fn_mask",
         },
     )
 
@@ -372,6 +381,9 @@ connect_jobs(
     _tomo.Refine3DTomoJob,
     node_mapping={
         _tomo.ReconstructParticlesJob.get_optimisation_set: "in_optim.in_optimisation",
+        _tomo.ReconstructParticlesJob.get_particles: "in_optim.in_particles",
+        _tomo.ReconstructParticlesJob.get_tomoset: "in_optim.in_tomograms",
+        _tomo.ReconstructParticlesJob.get_trajectory: "in_optim.in_trajectory",
         "merged.mrc": "fn_ref",
     },
     value_mapping={
@@ -387,6 +399,7 @@ connect_jobs(
     _tomo.Refine3DTomoJob,
     _tomo.PostProcessTomoJob,
     node_mapping={"run_half1_class001_unfil.mrc": "fn_in"},
+    value_mapping={inherit_mask: "fn_mask"},
 )
 
 

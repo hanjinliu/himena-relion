@@ -125,9 +125,10 @@ class QTrashWidget(QtW.QSplitter):
             self._job_view.clear_tabs()
             return
         job_id = selected_items[0].text()
-        job_path = trash_dir / job_id
         self._job_view.clear_tabs()
-        self._job_view.update_job(JobDirectory(job_path))
+        self._job_view.update_job(
+            JobDirectory.from_job_star(trash_dir / job_id / "job.star")
+        )
         for widget in self._job_view._iter_job_widgets():
             if isinstance(widget, QNoteEdit):
                 widget.setReadOnly(True)

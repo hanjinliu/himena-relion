@@ -1314,14 +1314,33 @@ class ReconstructParticlesJob(_Relion5TomoJob):
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
-    @staticmethod
-    def get_optimisation_set(path: Path) -> str | None:
+    @classmethod
+    def get_optimisation_set(cls, path: Path) -> str | None:
         """Function used for job connection."""
         if (opt_path := path.joinpath("optimisation_set.star")).exists():
             return opt_path.as_posix()
+        return cls.get_node_path_from_pipeline(path, "TomoOptimisationSet")
+
+    @classmethod
+    def get_particles(cls, path: Path) -> str | None:
+        """Function used for job connection."""
+        return cls.get_node_path_from_pipeline(path, "ParticleGroupMetadata")
+
+    @classmethod
+    def get_tomoset(cls, path: Path) -> str | None:
+        """Function used for job connection."""
+        return cls.get_node_path_from_pipeline(path, "TomogramGroupMetadata")
+
+    @classmethod
+    def get_trajectory(cls, path: Path) -> str | None:
+        """Function used for job connection."""
+        return cls.get_node_path_from_pipeline(path, "TomoTrajectoryData")
+
+    @classmethod
+    def get_node_path_from_pipeline(cls, path: Path, node_type: str) -> str | None:
         if (pipeline_path := path.joinpath("job_pipeline.star")).exists():
             pipeline = RelionPipeline.from_star(pipeline_path)
-            if node := pipeline.get_input_by_type("TomoOptimisationSet"):
+            if node := pipeline.get_input_by_type(node_type):
                 return node.path
 
     @classmethod

@@ -14,6 +14,12 @@ def inherit_particle_diameter(path: Path) -> float:
     return round(float(dia), 1)
 
 
+def inherit_mask(path: Path) -> str | None:
+    """Inherit mask from the previous job."""
+    jobdir = JobDirectory(path)
+    return jobdir.get_job_param("fn_mask")
+
+
 connect_jobs(
     _spa.ImportMoviesJob,
     _spa.MotionCorr2Job,
@@ -263,13 +269,19 @@ for class3d_job in [_spa.Class3DJob, _spa.Class3DNoAlignmentJob]:
         class3d_job,
         _spa.Refine3DJob,
         node_mapping={run_class001_last_iter: "fn_ref"},
-        value_mapping={inherit_particle_diameter: "particle_diameter"},
+        value_mapping={
+            inherit_mask: "fn_mask",
+            inherit_particle_diameter: "particle_diameter",
+        },
     )
     connect_jobs(
         _spa.Refine3DJob,
         class3d_job,
         node_mapping={"run_data.star": "fn_img", "run_class001.mrc": "fn_ref"},
-        value_mapping={inherit_particle_diameter: "particle_diameter"},
+        value_mapping={
+            inherit_mask: "fn_mask",
+            inherit_particle_diameter: "particle_diameter",
+        },
     )
     connect_jobs(
         class3d_job,
@@ -312,6 +324,7 @@ connect_jobs(
     _spa.Refine3DJob,
     _spa.PostProcessJob,
     node_mapping={"run_half1_class001_unfil.mrc": "fn_in"},
+    value_mapping={inherit_mask: "fn_mask"},
 )
 connect_jobs(
     _spa.JoinParticlesJob,

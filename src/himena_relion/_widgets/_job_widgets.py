@@ -316,10 +316,13 @@ class QJobPipelineViewer(QtW.QWidget, JobWidgetBase):
             list_item.setSizeHint(item.sizeHint())
             self._list_widget_in.addItem(list_item)
             self._list_widget_in.setItemWidget(list_item, item)
-        if len(job_pipeline.outputs) == 0:
+        if (
+            len(job_pipeline.outputs) == 0
+            and (pipeline_star := rln_dir / "default_pipeline.star").exists()
+        ):
             # Some jobs, such as "split particles", do not have output nodes but the
             # default pipeline will be updated after the job finishes.
-            default = RelionPipeline.from_star(rln_dir / "default_pipeline.star")
+            default = RelionPipeline.from_star(pipeline_star)
             outputs = []
             this_job_id = job_dir.job_normal_id()
             for each in default.outputs:

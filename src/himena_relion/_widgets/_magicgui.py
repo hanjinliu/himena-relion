@@ -136,9 +136,9 @@ class OptimisationSetEdit(ValuedContainerWidget):
                 self._in_tomograms.value = value.get("in_tomograms", "")
                 self._in_trajectories.value = value.get("in_trajectories", "")
                 use_direct = (
-                    "in_particles" in value
-                    or "in_tomograms" in value
-                    or "in_trajectories" in value
+                    str(value.get("in_particles", "")).strip() != ""
+                    or str(value.get("in_tomograms", "")).strip() != ""
+                    or str(value.get("in_trajectories", "")).strip() != ""
                 )
                 val = value.get("use_direct_entries", use_direct)
                 self._toggle_switch.value = parse_string(val, bool)
