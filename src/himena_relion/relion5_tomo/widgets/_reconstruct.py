@@ -104,7 +104,7 @@ class QReconstructViewer(QJobScrollArea):
             self._viewer.set_image(None, update_now=False)
             return
         image_data: list[np.ndarray] = []
-        ith_tomo = ""
+        ith_tomo = "0"
         for impath in temp_dir.glob("sum_*_data_half?.mrc"):
             with mrcfile.open(impath, mode="r") as mrc:
                 image_data.append(mrc.data)
@@ -137,9 +137,11 @@ class QReconstructViewer(QJobScrollArea):
             tomo_model = TomogramsGroupModel.validate_file(tomo_star)
             self._img_raw_scale = tomo_model.original_pixel_size.mean() * binning
         else:
-            self._img_raw_scale = 0.3 * binning
+            self._img_raw_scale = 0.3 * binning  # fallback
 
-        self._file_name_label.setText(f"Intermediate reconstruction ({ith_tomo + 1})")
+        self._file_name_label.setText(
+            f"Intermediate reconstruction ({int(ith_tomo) + 1})"
+        )
         self._viewer.set_image(self._get_image_filtered(), update_now=False)
         self._viewer.auto_threshold(update_now=False)
         self._viewer.auto_fit()
