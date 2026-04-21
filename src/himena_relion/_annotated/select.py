@@ -101,7 +101,7 @@ DUPLICATE_THRESHOLD = Annotated[
     float,
     {
         "label": "Minimum inter-particle distance (A)",
-        "tooltip": (),
+        "tooltip": "Particles within this distance are removed leaving only one.",
     },
 ]
 IMAGE_ANGPIX = Annotated[

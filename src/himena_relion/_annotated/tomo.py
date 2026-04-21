@@ -90,7 +90,7 @@ DO_ARETOMO_CTF = Annotated[
             "If set to Yes, AreTomo2 will also perform CTF estimation and any CTF "
             "information that was already present in the input STAR files will be "
             "overwritten. Note that when using this option, it is no longer necessary "
-            "to run a CTF estimation job",
+            "to run a CTF estimation job"
         ),
         "group": "Alignment",
     },

@@ -139,7 +139,7 @@ class QReconstructViewer(QJobScrollArea):
         else:
             self._img_raw_scale = 0.3 * binning
 
-        self._file_name_label.setText(f"Intermediate reconstruction ({ith_tomo})")
+        self._file_name_label.setText(f"Intermediate reconstruction ({ith_tomo + 1})")
         self._viewer.set_image(self._get_image_filtered(), update_now=False)
         self._viewer.auto_threshold(update_now=False)
         self._viewer.auto_fit()

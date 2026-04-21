@@ -465,7 +465,7 @@ DO_TOPAZ_FILAMENTS = Annotated[
         "tooltip": (
             "If set to Yes, this option will activate the -f option in our modified "
             "version of topaz that can pick filaments, as described in "
-            "Lovestam & Scheres, Faraday Discussions 2022",
+            "Lovestam & Scheres, Faraday Discussions 2022"
         ),
         "group": "Topaz",
     },

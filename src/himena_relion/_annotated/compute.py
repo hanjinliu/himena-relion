@@ -63,7 +63,7 @@ USE_SCRATCH = Annotated[
         "label": "Copy particles to scratch directory",
         "tooltip": (
             "Preload particles to scratch directory to improve I/O performance during "
-            "computation.",
+            "computation."
         ),
         "group": "Compute",
     },
