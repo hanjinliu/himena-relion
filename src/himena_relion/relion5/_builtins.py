@@ -812,12 +812,14 @@ class AutoPickTopazTrain(_AutoPickJob):
         kwargs["do_topaz"] = True
         kwargs["do_topaz_train"] = True
         kwargs["fn_topaz_exe"] = _configs.get_topaz_exe()
+        if isinstance(kwargs["do_topaz_train_parts"], str):
+            kwargs["do_topaz_train_parts"] = kwargs["do_topaz_train_parts"] == "Yes"
         do_parts = kwargs["do_topaz_train_parts"]
         # RELION 5 gives a very confusing error message here by default.
         if not do_parts and kwargs["topaz_train_picks"] == "":
-            raise ValueError("Picked particles must be provided")
+            raise ValueError("Input picked coordinates for training must be provided")
         if do_parts and kwargs["topaz_train_parts"] == "":
-            raise ValueError("Picked particles must be provided")
+            raise ValueError("Particles STAR file for training must be provided")
         kwargs["threshold_autopick"] = 0.05
         kwargs["mindist_autopick"] = 100
         kwargs["maxstddevnoise_autopick"] = 1.1
@@ -844,10 +846,13 @@ class AutoPickTopazTrain(_AutoPickJob):
             "minavgnoise_autopick", "psi_sampling_autopick", "ref3d_sampling",
             "ref3d_symmetry", "threshold_autopick", "mindist_autopick",
             "maxstddevnoise_autopick", "do_write_fom_maps", "do_read_fom_maps",
-            "shrink", "do_pick_helical_segments", "do_amyloid",
+            "shrink", "do_pick_helical_segments", "do_amyloid", "do_topaz",
+            "topaz_model", "do_topaz_filaments", "topaz_filament_threshold",
+            "topaz_hough_length", "topaz_other_args", "do_topaz_train", "do_topaz_pick",
+
         ]  # fmt: skip
         for key in kwargs:
-            if key.startswith(("do_topaz", "topaz_", "log_", "helical_")):
+            if key.startswith(("log_", "helical_")):
                 keys_to_pop.append(key)
         for key in keys_to_pop:
             kwargs.pop(key, None)
