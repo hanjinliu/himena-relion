@@ -423,6 +423,6 @@ class QHTMLTextEdit(QtW.QTextEdit):
         if e.button() == QtCore.Qt.MouseButton.LeftButton:
             _anchor = self.anchorAt(e.pos())
             if self._anchor == _anchor:
-                QtGui.QDesktopServices.openUrl(QtCore.QUrl(self._anchor))
+                _utils.open_url(self._anchor)
             self._anchor = None
         return super().mouseReleaseEvent(e)

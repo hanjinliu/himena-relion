@@ -6,7 +6,7 @@ from himena.exceptions import Cancelled
 from himena.plugins import register_function
 from himena_relion.consts import Type, MenuId, FileNames
 from himena_relion.io import _impl
-from himena_relion._utils import get_pipeline_widgets
+from himena_relion._utils import get_pipeline_widgets, open_url
 
 if TYPE_CHECKING:
     from himena_relion._job_dir import JobDirectory
@@ -193,6 +193,16 @@ def start_new_project(ui: MainWindow):
         ui.read_file(path)
     else:
         raise Cancelled
+
+
+@register_function(
+    menus=[MenuId.RELION],
+    title="RELION Documentation",
+    command_id="himena-relion:relion-documentation",
+)
+def open_relion_docs():
+    """Open the RELION documentation in the default web browser."""
+    open_url("https://relion.readthedocs.io/en/latest/")
 
 
 @register_function(

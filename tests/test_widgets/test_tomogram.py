@@ -1,7 +1,7 @@
 from typing import Callable
 from pathlib import Path
 from himena_relion._job_dir import JobDirectory
-from himena_relion.relion5_tomo.widgets._tomogram import QTomogramViewer, QDenoiseTomogramViewer
+from himena_relion.relion5_tomo.widgets._tomogram import QTomogramViewer, QDenoiseTrainViewer, QDenoiseTomogramViewer
 from himena_relion.testing import JobWidgetTester
 
 def test_reconstruct_tomo_widget(
@@ -64,6 +64,41 @@ def test_reconstruct_tomo_widget_halfsets(
     assert tester.widget._tomo_list.current_text() == "TS_01"
 
     tester.widget._tomo_list.set_current_row(1)
+
+def test_denoise_train_widget(
+    qtbot,
+    make_job_directory: Callable[[str, str], JobDirectory],
+    jobs_dir_tomo,
+):
+    import tarfile
+    import pickle
+    from io import BytesIO
+
+    star_text = Path(jobs_dir_tomo / "Denoise" / "job001" / "job.star").read_text()
+    job_dir = make_job_directory(star_text, "Denoise")
+
+    tester = JobWidgetTester(QDenoiseTrainViewer(job_dir), job_dir)
+    qtbot.addWidget(tester.widget)
+
+    hist = {
+        "loss": [1.0, 0.8, 0.6],
+        "mae": [0.5, 0.4, 0.3],
+        "mse": [0.25, 0.16, 0.09],
+        "val_loss": [1.1, 0.9, 0.7],
+        "val_mae": [0.55, 0.45, 0.35],
+        "val_mse": [0.3, 0.2, 0.1],
+    }
+
+    with tarfile.open(tester.job_dir.path / "denoising_model.tar.gz", "w:gz") as tar:
+        hist_bytes = pickle.dumps(hist)
+        infodir = tarfile.TarInfo(name="denoising_model/")
+        infodir.type = tarfile.DIRTYPE
+        tar.addfile(infodir)
+        tarinfo = tarfile.TarInfo(name="denoising_model/history.dat")
+        tarinfo.size = len(hist_bytes)
+        tar.addfile(tarinfo, fileobj=BytesIO(hist_bytes))
+
+    tester.initialize()
 
 def test_denoise_widget(
     qtbot,

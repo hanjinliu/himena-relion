@@ -355,6 +355,6 @@ class QTopazTrainPickViewer(QJobScrollArea):
         df_train = df[is_train]  # multiple values per epoch
         df_test = df[~is_train]
 
-        self._canvas0.plot_train_and_test(df_train, df_test, "loss")
-        self._canvas1.plot_train_and_test(df_train, df_test, "tpr")
-        self._canvas2.plot_train_and_test(df_train, df_test, "fpr")
+        self._canvas0.plot_topaz_train(df_train, df_test, "loss")
+        self._canvas1.plot_topaz_train(df_train, df_test, "tpr")
+        self._canvas2.plot_topaz_train(df_train, df_test, "fpr")

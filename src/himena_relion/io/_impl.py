@@ -82,7 +82,7 @@ def abort_relion_job(ui: MainWindow, job_dir: JobDirectory):
         title="Abort job?",
         message="Are you sure you want to abort this job?",
         choices=[("Yes, abort", True), ("Cancel", False)],
-        how="palette",
+        how="buttons",
     ):
         job_dir.path.joinpath(FileNames.ABORT_NOW).touch()
 

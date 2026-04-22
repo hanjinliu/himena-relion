@@ -35,7 +35,7 @@ def test_plot_widget(qtbot):
         "epoch": [1, 2, 3, 4],
         ycol: [0.52, 0.43, 0.37, 0.33],
     })
-    widget.plot_train_and_test(df_train, df_test, ycol)
+    widget.plot_topaz_train(df_train, df_test, ycol)
 
     df = pl.DataFrame({
         "rlnResolution": [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4],

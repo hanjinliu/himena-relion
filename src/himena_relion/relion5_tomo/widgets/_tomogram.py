@@ -15,6 +15,7 @@ from himena_relion._widgets import (
 )
 from himena_relion import _job_dir
 from himena_relion._image_readers import ArrayFilteredView
+from himena_relion._widgets._plot import QPlotCanvas
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -62,8 +63,10 @@ class QTomogramViewer(QJobScrollArea):
                 if p.stem.endswith("_half2"):
                     continue
                 elif p.stem.endswith("_half1"):
+                    # strip off "rec_" prefix and "_half1" suffix
                     items.append((p.stem[4:-6], "half tomograms"))
             else:
+                # strip off "rec_" prefix
                 items.append((p.stem[4:], "full tomogram"))
         items.sort(key=lambda x: x[0])
         self._tomo_list.set_choices(items)
@@ -94,9 +97,54 @@ class QTomogramViewer(QJobScrollArea):
 @register_job("relion.denoisetomo", is_tomo=True)
 def denoise_tomogram_viewer(job_dir: _job_dir.JobDirectory):
     if job_dir.get_job_param("do_cryocare_train") == "Yes":
-        return QJobScrollArea()
+        return QDenoiseTrainViewer(job_dir)
     else:
         return QDenoiseTomogramViewer(job_dir)
+
+
+_MODEL_GZ = "denoising_model.tar.gz"
+
+
+class QDenoiseTrainViewer(QJobScrollArea):
+    def __init__(self, job_dir: _job_dir.JobDirectory):
+        super().__init__()
+        layout = self._layout
+        self._canvas_loss = QPlotCanvas(self)
+        self._canvas_mae = QPlotCanvas(self)
+        self._canvas_mse = QPlotCanvas(self)
+        layout.addWidget(QtW.QLabel("<b>Loss</b>"))
+        layout.addWidget(self._canvas_loss)
+        layout.addWidget(QtW.QLabel("<b>Mean Absolute Error (MAE)</b>"))
+        layout.addWidget(self._canvas_mae)
+        layout.addWidget(QtW.QLabel("<b>Mean Squared Error (MSE)</b>"))
+        layout.addWidget(self._canvas_mse)
+
+    def on_job_updated(self, job_dir: _job_dir.JobDirectory, path: str):
+        fp = Path(path)
+        if fp.name.startswith("RELION_JOB_") or fp.name == _MODEL_GZ:
+            self.initialize(job_dir)
+            _LOGGER.debug("%s Updated", job_dir.job_number)
+
+    def initialize(self, job_dir: _job_dir.JobDirectory):
+        import tarfile
+        import pickle
+
+        denoising_model = job_dir.path / _MODEL_GZ
+        if not denoising_model.exists():
+            self._canvas_loss.clear()
+            self._canvas_mae.clear()
+            self._canvas_mse.clear()
+            return
+
+        # NOTE: CryoCARE output training history as a pickle file named "history.dat"
+        with tarfile.open(denoising_model) as tar:
+            hist_dat = tar.extractfile("denoising_model/history.dat")
+            if hist_dat is not None:
+                history = pickle.load(hist_dat)
+
+        self._canvas_loss.plot_cryocare_train(history, ycol="loss")
+        self._canvas_mae.plot_cryocare_train(history, ycol="mae")
+        self._canvas_mse.plot_cryocare_train(history, ycol="mse")
 
 
 class QDenoiseTomogramViewer(QJobScrollArea):
