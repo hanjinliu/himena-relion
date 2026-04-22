@@ -4,7 +4,7 @@ import logging
 from typing import Iterator
 import mrcfile
 import numpy as np
-import pandas as pd
+import polars as pl
 from starfile_rs import read_star
 from superqt import QToggleSwitch
 from superqt.utils import thread_worker
@@ -350,10 +350,10 @@ class QTopazTrainPickViewer(QJobScrollArea):
             return
         # model_training.txt has columns:
         # epoch, iter, split, loss, ge_penalty, precision, tpr, fpr, auprc
-        df = pd.read_csv(model_training_txt, sep="\t")
-        is_train = df["split"] == "train"
-        df_train = df[is_train]  # multiple values per epoch
-        df_test = df[~is_train]
+        df = pl.read_csv(model_training_txt, separator="\t")
+        is_train = pl.col("split") == "train"
+        df_train = df.filter(is_train)  # multiple values per epoch
+        df_test = df.filter(~is_train)
 
         self._canvas0.plot_topaz_train(df_train, df_test, "loss")
         self._canvas1.plot_topaz_train(df_train, df_test, "tpr")

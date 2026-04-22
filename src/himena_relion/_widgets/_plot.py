@@ -1,7 +1,6 @@
 from __future__ import annotations
 from typing import Any
 import numpy as np
-import pandas as pd
 import polars as pl
 from himena.style import Theme
 from himena.widgets import current_instance
@@ -87,20 +86,20 @@ class QPlotCanvas(QModelMatplotlibCanvas):
         self.tight_layout()
 
     def plot_topaz_train(
-        self, df_train: pd.DataFrame, df_test: pd.DataFrame, ycol: str
+        self, df_train: pl.DataFrame, df_test: pl.DataFrame, ycol: str
     ):
         theme = self._main_theme()
         fig = hplt.figure(theme.background)
         epoch = df_test["epoch"]
-        y_train_group = df_train.groupby("epoch", sort=True)[ycol]
-        y_test = df_test[ycol]
+        y_train_group = df_train.sort("epoch").group_by("epoch", maintain_order=True)
+        y_test = df_test.sort("epoch")[ycol]
         color_test = "#ff7f0e" if theme.is_light_background() else "#ff69b4"
         color_train = "#1f77b4" if theme.is_light_background() else "#00ced1"
         fig.plot(epoch, y_test, name="Test", color=color_test)
         fig.errorbar(
             epoch,
-            y_train_group.mean(),
-            y_error=y_train_group.std(),
+            y_train_group.agg(pl.col(ycol).mean())[ycol],
+            y_error=y_train_group.agg(pl.col(ycol).std())[ycol],
             capsize=2,
             name="Train",
             color=color_train,

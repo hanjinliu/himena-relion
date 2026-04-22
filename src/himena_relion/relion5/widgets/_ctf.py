@@ -120,7 +120,7 @@ class QCtfFindViewer(QJobScrollArea):
             arr = np.stack(arrs, axis=0)
             df = pl.DataFrame(
                 arr,
-                columns=[
+                schema=[
                     "micrograph_number",
                     "rlnDefocusU",
                     "rlnDefocusV",
@@ -193,6 +193,9 @@ class QCtfRefineAnisoMagViewer(QJobScrollArea):
     def initialize(self, job_dir):
         # update optics group list
         star_path = job_dir.path / "particles_ctf_refine.star"
+        if not star_path.exists():
+            self._optics_group_list.set_choices([])
+            return
         optics = OpticsModel.validate_block(read_star_block(star_path, "optics"))
         choices = []
         for name, i in zip(optics.optics_group_name, optics.optics_group):
@@ -202,9 +205,19 @@ class QCtfRefineAnisoMagViewer(QJobScrollArea):
         # update result views
         self._process_update()
 
+    def on_job_updated(self, job_dir, path: str):
+        fp = Path(path)
+        if fp.name.startswith("RELION_JOB_"):
+            self._process_update()
+            _LOGGER.debug("%s Updated", self._job_dir.job_number)
+
     def _process_update(self):
         row = self._optics_group_list.current_row_texts()
         if row is None:
+            self._view_x_obs.clear()
+            self._view_y_obs.clear()
+            self._view_x_fit.clear()
+            self._view_y_fit.clear()
             return
         index = row[1]
         job_dir = self._job_dir
@@ -355,3 +368,6 @@ class Q2DViewWithTitle(QtW.QWidget):
                 clim = None
             self.view.set_image(img, cmap=Colormap(["blue", "black", "red"]), clim=clim)
             self.view.auto_fit()
+
+    def clear(self):
+        self.view.set_image(None)

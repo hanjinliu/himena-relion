@@ -59,7 +59,7 @@ class InspectParticles(RelionExternalJob):
             particles_star=self._check_and_normalize_path(in_parts),
         )
         star.with_loop_block(
-            "optimisation_set", opt_model.block.trust_loop().to_pandas()
+            "optimisation_set", opt_model.block.trust_loop().to_polars()
         )
         out_path = self.output_job_dir.path / "optimisation_set.star"
         star.write(out_path)

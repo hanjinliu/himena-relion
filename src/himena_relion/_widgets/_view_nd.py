@@ -93,7 +93,7 @@ class Q2DSimpleViewer(Q2DViewerBase):
         layout.addWidget(self._canvas.native)
         self._canvas.markers_visual.scaling = False
 
-    def set_image(self, image: np.ndarray, cmap: str = "gray", clim=None):
+    def set_image(self, image: np.ndarray | None, cmap: str = "gray", clim=None):
         self._canvas.image = image
         self._canvas._image.cmap = cmap
         if clim is not None:
