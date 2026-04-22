@@ -1,5 +1,4 @@
 import polars as pl
-import pandas as pd
 from himena_relion._widgets._plot import QPlotCanvas
 
 def test_plot_widget(qtbot):
@@ -27,11 +26,11 @@ def test_plot_widget(qtbot):
     widget.plot_ctf_max_resolution(df)
 
     ycol = "val-test"
-    df_train = pd.DataFrame({
+    df_train = pl.DataFrame({
         "epoch": [1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4],
         ycol: [0.5, 0.6, 0.55, 0.4, 0.45, 0.42, 0.35, 0.38, 0.36, 0.3, 0.32, 0.31],
     })
-    df_test = pd.DataFrame({
+    df_test = pl.DataFrame({
         "epoch": [1, 2, 3, 4],
         ycol: [0.52, 0.43, 0.37, 0.33],
     })

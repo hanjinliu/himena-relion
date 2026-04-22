@@ -299,7 +299,7 @@ def get_particles_star_before(job_dir: _job_dir.JobDirectory) -> Path:
 def get_is_selected(job_dir: _job_dir.JobDirectory) -> np.ndarray | None:
     path = job_dir.path / "backup_selection.star"
     try:
-        df = read_star(path).first().trust_loop().to_pandas()
+        df = read_star(path).first().trust_loop().to_polars()
         return df["rlnSelected"].to_numpy(dtype=np.bool_)
     except Exception:
         return None

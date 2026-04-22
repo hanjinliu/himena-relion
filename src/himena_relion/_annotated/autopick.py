@@ -1,5 +1,6 @@
 from typing import Annotated
 
+from himena.qt.magicgui import ToggleButtons
 from himena_relion._widgets._path_input import PathDrop
 
 ANGPIX = Annotated[
@@ -408,12 +409,9 @@ TOPAZ_NR_PARTICLES = Annotated[
 DO_TOPAZ_TRAIN_PARTS = Annotated[
     bool,
     {
-        "label": "Train on a set of particles",
-        "tooltip": (
-            "If set to Yes, the input Coordinates above will be ignored. Instead, one "
-            "uses a _data.star file from a previous 2D or 3D refinement or selection "
-            "to use those particle positions for training."
-        ),
+        "label": "Train on",
+        "choices": [("Picked coordinates", False), ("Refined particles", True)],
+        "widget_type": ToggleButtons,
         "group": "Topaz",
     },
 ]

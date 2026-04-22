@@ -3,7 +3,6 @@ from typing import Annotated
 
 import imodmodel
 import mrcfile
-import pandas as pd
 import numpy as np
 from starfile_rs import as_star, read_star
 from himena_relion import _job_dir
@@ -133,7 +132,6 @@ class EraseGold(RelionExternalJob):
                 .trust_loop()
                 .to_pandas()
             )
-            assert isinstance(tilt_star_df, pd.DataFrame)
             tomo_center = (np.array(info.tomo_shape, dtype=np.float32) - 1) / 2
             rng = np.random.default_rng(seed)
             mic_paths = tilt_star_df[MIC_NAME]

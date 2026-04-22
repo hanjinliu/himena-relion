@@ -5,7 +5,7 @@ from enum import Enum
 from pathlib import Path
 from dataclasses import dataclass, field
 from starfile_rs.schema import ValidationError
-import pandas as pd
+import polars as pl
 from himena_relion.consts import FileNames
 from himena_relion.schemas import RelionPipelineModel
 
@@ -165,7 +165,7 @@ class RelionJobPipelineNode:
 
 @dataclass
 class RelionPipeline:
-    general: pd.DataFrame
+    general: pl.DataFrame
     process_name: str
     process_type_label: str
     process_type_label_depth: int | None = None
@@ -189,7 +189,7 @@ class RelionPipeline:
     @classmethod
     def from_star(cls, path: str | Path) -> RelionPipeline:
         pipeline = RelionPipelineModel.validate_file(path)
-        df_general = pipeline.general.block.to_pandas()
+        df_general = pipeline.general.block.to_polars()
         process_name = pipeline.processes.process_name[0]
         process_alias = pipeline.processes.alias[0]
         process_type_label = pipeline.processes.type_label[0]

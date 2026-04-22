@@ -4,8 +4,8 @@ from pathlib import Path
 import logging
 import subprocess
 import numpy as np
+import polars as pl
 
-import pandas as pd
 from qtpy import QtWidgets as QtW, QtGui, QtCore
 import scipy.ndimage as ndi
 from himena.consts import MonospaceFontFamily
@@ -165,7 +165,7 @@ class QAlignTiltSeriesViewer(QJobScrollArea):
             )
             fid_proj[:, 1:] /= aligner._nbin
             fid_tr = aligner.transform_points(
-                pd.DataFrame(fid_proj, columns=["z", "y", "x"]),
+                pl.DataFrame(fid_proj, schema=["z", "y", "x"]),
                 (ny, nx),
             )
             self._viewer.set_points(fid_tr, size=10, out_of_slice=False)
@@ -207,15 +207,15 @@ class ImodImageAligner:
 
     def transform_points(
         self,
-        fid: pd.DataFrame,
+        fid: pl.DataFrame,
         shape: tuple[int, int],
     ) -> np.ndarray:
         """Transform fiducial points for tilt index i."""
         # fid is zyx
-        fid_out = fid.to_numpy(np.float32, copy=True)
-        for z, sub in fid.groupby("z"):
+        fid_out = fid.to_numpy().astype(np.float32)
+        for z, sub in fid.group_by("z"):
             mat = self.matrix(int(z), shape)
-            fid_yx = sub[["y", "x"]].to_numpy(np.float32, copy=False)
+            fid_yx = sub.select("y", "x").to_numpy().astype(np.float32)
             fid_yxz = np.hstack(
                 [fid_yx, np.ones((fid_yx.shape[0], 1), dtype=np.float32)]
             )

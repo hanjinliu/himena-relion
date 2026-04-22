@@ -4,7 +4,7 @@ from pathlib import Path
 import uuid
 import mrcfile
 import numpy as np
-import pandas as pd
+import polars as pl
 from starfile_rs import read_star
 from superqt.utils import thread_worker
 from qtpy import QtWidgets as QtW, QtCore
@@ -99,22 +99,23 @@ class QClass2DViewer(QJobScrollArea):
         if not wait_for_file(path_model, num_retry=100, delay=0.3):
             msg = f"Failed to load model file {path_model}. Cannot get class distributions and resolutions.\n\n"
             yield self._on_text_ready, (msg, session)
-            dist_percent = pd.Series([0] * img.shape[0])
-            resolutions = pd.Series([0] * img.shape[0])
+            dist_percent = pl.Series([0] * img.shape[0], dtype=pl.Float64)
+            resolutions = pl.Series([0] * img.shape[0], dtype=pl.Float64)
         else:
-            _df = read_star(path_model)["model_classes"].trust_loop().to_pandas()
+            _df = read_star(path_model)["model_classes"].trust_loop().to_polars()
             dist_percent = _df["rlnClassDistribution"] * 100
             resolutions = _df["rlnEstimatedResolution"]
         # sorting
         if self._sort_by.currentIndex() == 1:
-            sort_indices = np.argsort(-dist_percent.values)
+            # uint cannot be negated.
+            sort_indices = (-dist_percent.cast(pl.Int64)).arg_sort()
         elif self._sort_by.currentIndex() == 2:
-            sort_indices = np.argsort(resolutions.values)
+            sort_indices = resolutions.arg_sort()
         else:
-            sort_indices = np.arange(len(dist_percent))
+            sort_indices = pl.arange(0, len(dist_percent), eager=True)
         for ith in sort_indices:
-            distribution = dist_percent.iloc[ith]
-            resolution = resolutions.iloc[ith]
+            distribution = dist_percent[ith]
+            resolution = resolutions[ith]
             img_slice = img[ith]
             text = f"{ith + 1}\n{distribution:.2f}%\n{resolution:.1f} A"
             img_str = self._text_edit.image_to_base64(img_slice, text)
