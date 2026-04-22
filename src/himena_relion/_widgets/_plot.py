@@ -86,7 +86,7 @@ class QPlotCanvas(QModelMatplotlibCanvas):
         self.update_model(WidgetDataModel(value=fig, type=StandardType.PLOT))
         self.tight_layout()
 
-    def plot_train_and_test(
+    def plot_topaz_train(
         self, df_train: pd.DataFrame, df_test: pd.DataFrame, ycol: str
     ):
         theme = self._main_theme()
@@ -106,6 +106,21 @@ class QPlotCanvas(QModelMatplotlibCanvas):
             color=color_train,
             edge_width=1,
         )
+        fig.x.label = "Epoch"
+        fig.set_legend(font_size=9.0)
+        self.update_model(WidgetDataModel(value=fig, type=StandardType.PLOT))
+        self.tight_layout()
+
+    def plot_cryocare_train(self, hist: dict, ycol: str):
+        theme = self._main_theme()
+        fig = hplt.figure(theme.background)
+        ytrain = hist[ycol]
+        yval = hist[f"val_{ycol}"]
+        epoch = np.arange(1, len(ytrain) + 1)
+        color_train = "#ff7f0e" if theme.is_light_background() else "#ff69b4"
+        color_val = "#1f77b4" if theme.is_light_background() else "#00ced1"
+        fig.plot(epoch, ytrain, name="Train", color=color_train)
+        fig.plot(epoch, yval, name="Validation", color=color_val)
         fig.x.label = "Epoch"
         fig.set_legend(font_size=9.0)
         self.update_model(WidgetDataModel(value=fig, type=StandardType.PLOT))

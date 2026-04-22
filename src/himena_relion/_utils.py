@@ -275,3 +275,11 @@ def get_pipeline_widgets(
             dir_for_this = flowchart._flow_chart._relion_project_dir
             if dir_for_this == relion_project_dir or relion_project_dir is None:
                 return dock.widget
+
+
+def open_url(url: str) -> None:
+    """Open the URL with the default browser."""
+    from qtpy.QtGui import QDesktopServices
+    from qtpy.QtCore import QUrl
+
+    QDesktopServices.openUrl(QUrl(url))

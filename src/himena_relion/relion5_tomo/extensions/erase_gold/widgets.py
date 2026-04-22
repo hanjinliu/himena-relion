@@ -76,7 +76,6 @@ class QFindBeads3DViewer(QtW.QWidget):
         bead_size = float(self._job_dir.get_job_param("gold_nm"))
         point_size = bead_size / info.tomo_pixel_size * 10 + 0.5
         self._viewer.set_points(df_mod[["z", "y", "x"]].to_numpy(), size=point_size)
-        self._viewer.redraw()
 
     def _iter_tomogram_info(self) -> Iterator[_job_dir.TomogramInfo]:
         pipe = self._job_dir.parse_job_pipeline()
