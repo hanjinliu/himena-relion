@@ -116,8 +116,12 @@ class QJobScheduler(QtW.QWidget):
     def set_schedule_mode(self):
         self._set_mode(ScheduleMode())
 
-    def set_continue_mode(self, job_dir: _job_dir.JobDirectory):
-        self._set_mode(ContinueMode(job_dir))
+    def set_continue_mode(
+        self,
+        job_dir: _job_dir.JobDirectory,
+        orig_params: dict[str, Any],
+    ):
+        self._set_mode(ContinueMode(job_dir, orig_params))
 
     def set_edit_mode(self, job_dir: _job_dir.JobDirectory):
         self._set_mode(EditMode(job_dir))
@@ -282,13 +286,17 @@ class ScheduleMode(Mode):
 
 
 class ContinueMode(Mode):
-    def __init__(self, job_dir: _job_dir.JobDirectory):
+    def __init__(
+        self, job_dir: _job_dir.JobDirectory, orig_params: dict[str, Any] = {}
+    ):
         self.job_dir = job_dir
+        self.orig_params = dict(orig_params)
 
     def exec(self, widget: QJobScheduler):
         if not issubclass(job_cls := widget._current_job_cls, _Relion5BuiltinContinue):
             raise RuntimeError(f"Cannot continue this job type {job_cls!r}.")
-        params = widget.get_parameters()
+        params = self.orig_params.copy()
+        params.update(widget.get_parameters())
         proc = job_cls(self.job_dir).continue_job(**params)
         widget.clear_content()
         if isinstance(proc, RelionJobExecution):
