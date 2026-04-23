@@ -10,6 +10,14 @@ def norm_blush_reg(kwargs: dict[str, Any]) -> dict[str, Any]:
     ver = relion_version_info("5.0.0").version
     if ver.major == 5:
         blush_reg = kwargs.pop("blush_reg", "No")
+        if blush_reg not in ["No", "v1.0", "amy-v1.0"]:
+            warnings.warn(
+                f"Blush regularisation method {blush_reg!r} is not recognised. "
+                "Defaulting to 'No'.",
+                UserWarning,
+                stacklevel=1,
+            )
+            blush_reg = "No"
         kwargs["do_blush"] = blush_reg != "No"
         if ver.minor == 0:
             if blush_reg == "amy-v1.0":
@@ -26,6 +34,8 @@ def norm_blush_reg(kwargs: dict[str, Any]) -> dict[str, Any]:
 
 def norm_blush_reg_inv(kwargs: dict[str, Any]) -> dict[str, Any]:
     do_blush = kwargs.pop("do_blush", False)
+    if isinstance(do_blush, str):
+        do_blush = do_blush == "Yes"
     blush_version = kwargs.pop("blush_version", "v1.0")
     kwargs["blush_reg"] = "No" if not do_blush else blush_version
     return kwargs
