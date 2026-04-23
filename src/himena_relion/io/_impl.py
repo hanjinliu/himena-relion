@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 from himena import MainWindow
 from himena.exceptions import Cancelled
 from himena_relion.consts import RelionJobState, FileNames
+from himena_relion._configs import get_relion_pipeliner_exe
 from himena_relion._utils import normalize_job_id, update_default_pipeline
 from himena_relion.schemas._pipeline import RelionPipelineModel
 
@@ -44,7 +45,7 @@ def gentle_clean_relion_job(ui: MainWindow, job_dir: JobDirectory):
     # Work like this:
     # $ relion_pipeliner --gentle_clean 5
     subprocess.run(
-        ["relion_pipeliner", "--gentle_clean", str(job_num)],
+        [get_relion_pipeliner_exe(), "--gentle_clean", str(job_num)],
         check=True,
         cwd=job_dir.relion_project_dir,
     )
@@ -57,7 +58,7 @@ def harsh_clean_relion_job(ui: MainWindow, job_dir: JobDirectory):
     # Work like this:
     # $ relion_pipeliner --harsh_clean 5
     subprocess.run(
-        ["relion_pipeliner", "--harsh_clean", str(job_num)],
+        [get_relion_pipeliner_exe(), "--harsh_clean", str(job_num)],
         check=True,
         cwd=job_dir.relion_project_dir,
     )

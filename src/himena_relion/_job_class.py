@@ -27,6 +27,7 @@ from himena.widgets import MainWindow
 from himena.plugins import when_reader_used, register_function
 import numpy as np
 from himena_relion import _configs, _job_dir
+from himena_relion._configs import get_relion_pipeliner_exe
 from himena_relion._pipeline import is_all_inputs_ready
 from himena_relion.consts import Type, MenuId, JOB_ID_MAP
 from himena_relion._utils import (
@@ -157,7 +158,7 @@ class RelionJob(ABC):
             # This reformats the input job.star and creates a new job directory.
             # The new job is scheduled but NOT run yet. To run the job, we need to
             # call relion_pipeliner --RunJobs <job_dir>
-            args = ["relion_pipeliner", "--addJobFromStar", str(job_star_path)]
+            args = [get_relion_pipeliner_exe(), "--addJobFromStar", str(job_star_path)]
             proc = subprocess.run(args, cwd=_cwd)
             if proc.returncode != 0:
                 args_str = " ".join(args)
@@ -619,7 +620,7 @@ def execute_job(
             raise e
         _LOGGER.warning("Error executing RELION job %s", job_name, exc_info=True)
         return None
-    args = ["relion_pipeliner", "--RunJobs", job_name]
+    args = [get_relion_pipeliner_exe(), "--RunJobs", job_name]
     # NOTE: Because himena also uses Qt, RELION jobs that depend on napari (such as
     # ExcludeTiltSeries) may fail to start, saying no Qt bindings are available. This
     # seems to be due to environment variable QT_API being set to incompatible value
