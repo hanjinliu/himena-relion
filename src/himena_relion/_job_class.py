@@ -256,7 +256,11 @@ class RelionJob(ABC):
 
     @classmethod
     def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
-        """This is used to convert job.star to python, such as editing existing jobs."""
+        """This is used to convert job.star to python, such as editing existing jobs.
+
+        This method may be called *before* string parsing, i.e. boolean values may still
+        be in "Yes"/"No" format
+        """
         return kwargs
 
 
@@ -414,9 +418,8 @@ class _Relion5BuiltinContinue(_Relion5BuiltinJob):
             if not isinstance(job_dir, _job_dir.JobDirectory):
                 raise RuntimeError("Widget model does not contain a job directory.")
             scheduler.update_by_job(cls, cwd=job_dir.relion_project_dir)
-            orig_params = cls.original_class.normalize_kwargs_inv(
-                **job_dir.get_job_params_as_dict()
-            )
+            orig_params_raw = job_dir.get_job_params_as_dict()
+            orig_params = cls.original_class.normalize_kwargs_inv(**orig_params_raw)
             sig = cls._signature()
             for orig_key, orig_val in orig_params.items():
                 if orig_key in sig.parameters:
@@ -424,7 +427,7 @@ class _Relion5BuiltinContinue(_Relion5BuiltinJob):
             if context:
                 scheduler.set_parameters(context)
         finally:
-            scheduler.set_continue_mode(job_dir)
+            scheduler.set_continue_mode(job_dir, orig_params_raw)
         return scheduler
 
     def make_job_star(self, **kwargs) -> JobStarModel:
@@ -445,12 +448,26 @@ class _Relion5BuiltinContinue(_Relion5BuiltinJob):
 
     def continue_job(self, **kwargs) -> RelionJobExecution | None:
         """Continue this job with updated parameters."""
+        # This will be called when the "Continue" button is clicked.
         job_dir = self.output_job_dir
         job_star_path = job_dir.job_star()
         job_star = self.make_job_star(**kwargs)
+        if job_star_path.exists():
+            job_star_old_text = job_star_path.read_text()
+        else:
+            job_star_old_text = None
         job_star.write(job_star_path)
         d = job_dir.path.relative_to(job_dir.relion_project_dir).as_posix()
-        return execute_job(d, cwd=job_dir.relion_project_dir)
+        try:
+            _exec = execute_job(d, cwd=job_dir.relion_project_dir)
+        except Exception:
+            # Restore old job.star if execution fails
+            # This happens when, for example, continue job was executed from a system
+            # in which RELION commands are not available.
+            if job_star_old_text is not None:
+                job_star_path.write_text(job_star_old_text)
+            raise
+        return _exec
 
 
 @dataclass
