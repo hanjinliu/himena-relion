@@ -25,7 +25,7 @@ do_aretomo_tiltcorrect         No
 do_imod_fiducials         No
 do_imod_patchtrack         No
   do_queue         No
-do_skip_aretomo_align         No
+do_skip_aretomo_align         Yes
 fiducial_diameter         10
 fn_aretomo_exe /public/EM/AreTomo/AreTomo2/AreTomo2
 fn_batchtomo_exe /public/EM/imod/IMOD/bin/batchruntomo
