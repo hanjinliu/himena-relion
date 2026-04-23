@@ -1,6 +1,5 @@
 from typing import Callable
 from pathlib import Path
-import polars as pl
 from himena_relion._job_dir import JobDirectory
 from himena_relion.relion5.widgets._pick import QManualPickViewer, QLoGPickViewer, QTopazTrainPickViewer
 from himena_relion.schemas import CoordsModel, MicrographsStarModel
@@ -116,6 +115,26 @@ def test_log_pick_widget(
     assert tester.widget._mic_list.text(1, 1) == "4"
     assert tester.widget._mic_list.text(2, 1) == "1"
 
+# model_training.txt has columns:
+# epoch, iter, split, loss, ge_penalty, precision, tpr, fpr, auprc
+_TOPAZ_MODEL_TRAINING_TEXT = \
+"""epoch\titer\tsplit\tloss\tge_penalty\tprecision\ttpr\tfpr\tauprc
+1\t1\ttrain\t0.5\t0.01\t0.8\t0.7\t0.1\t-
+1\t1\ttrain\t0.4\t0.01\t0.8\t0.75\t0.08\t-
+1\t1\ttrain\t0.3\t0.01\t0.9\t0.8\t0.06\t-
+1\t2\ttrain\t0.2\t0.01\t0.9\t0.85\t0.04\t-
+1\t2\ttrain\t0.1\t0.01\t0.9\t0.9\t0.02\t-
+1\t2\ttrain\t0.6\t0.01\t0.7\t0.65\t0.12\t-
+1\t3\ttest\t0.5\t-\t0.8\t0.7\t0.1\t0.85
+2\t1\ttrain\t0.5\t0.01\t0.8\t0.7\t0.1\t-
+2\t1\ttrain\t0.4\t0.01\t0.8\t0.75\t0.08\t-
+2\t1\ttrain\t0.3\t0.01\t0.9\t0.8\t0.06\t-
+2\t2\ttrain\t0.2\t0.01\t0.9\t0.85\t0.04\t-
+2\t2\ttrain\t0.1\t0.01\t0.9\t0.9\t0.02\t-
+2\t2\ttrain\t0.6\t0.01\t0.7\t0.65\t0.12\t-
+2\t3\ttest\t0.5\t-\t0.8\t0.7\t0.1\t0.85
+"""
+
 def test_topaz_train_widget(
     qtbot,
     make_job_directory: Callable[[str, str], JobDirectory],
@@ -127,22 +146,7 @@ def test_topaz_train_widget(
     tester = JobWidgetTester(QTopazTrainPickViewer(job_dir), job_dir)
     qtbot.addWidget(tester.widget)
 
-    # model_training.txt has columns:
-    # epoch, iter, split, loss, ge_penalty, precision, tpr, fpr, auprc
-    model_training_text = pl.DataFrame(
-        {
-            "epoch": [1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2],
-            "iter": [1, 1, 1, 2, 2, 2, 3, 1, 1, 1, 2, 2, 2, 3],
-            "split": ["train"] * 6 + ["test"] + ["train"] * 6 + ["test"],
-            "loss": [0.5, 0.4, 0.3, 0.2, 0.1, 0.6, 0.5] * 2,
-            "ge_penalty": [0.01] * 14,
-            "precision": [0.8, 0.8, 0.9, 0.9, 0.9, 0.7, 0.8] * 2,
-            "tpr": [0.7, 0.75, 0.8, 0.85, 0.9, 0.65, 0.7] * 2,
-            "fpr": [0.1, 0.08, 0.06, 0.04, 0.02, 0.12, 0.1] * 2,
-            "auprc": [0.85, 0.88, 0.9, 0.92, 0.95, 0.8, 0.85] * 2,
-        }
-    ).write_csv(separator="\t")
-    tester.write_text("model_training.txt", model_training_text)
+    tester.write_text("model_training.txt", _TOPAZ_MODEL_TRAINING_TEXT)
     tester.write_text("mock.sav", "")
 
 

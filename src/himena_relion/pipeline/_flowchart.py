@@ -179,6 +179,7 @@ class QRelionPipelineFlowChartView(QFlowChartView):
 
         status = item._job.status
         menu = QtW.QMenu(self)
+        menu.setToolTipsVisible(True)
         submenu_open = menu.addMenu("Open")
         submenu_cleanup = menu.addMenu("Cleanup")
         submenu_mark = menu.addMenu("Mark As")
@@ -215,7 +216,8 @@ class QRelionPipelineFlowChartView(QFlowChartView):
         action.setToolTip("Notify the job to be aborted.")
         # Run now
         action = menu.addAction(
-            "Run Now", lambda: execute_job(item.id(), cwd=self._relion_project_dir)
+            "Run This Scheduled Job Now",
+            lambda: execute_job(item.id(), cwd=self._relion_project_dir),
         )
         action.setToolTip(
             "Run this scheduled job immediately, regardless of whether all the parent\n"

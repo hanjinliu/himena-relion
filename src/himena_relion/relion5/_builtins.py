@@ -1741,48 +1741,74 @@ class Refine3DJob(_Relion5SpaJob):
         _setup_helix_params(widgets)
 
 
-def _setup_helix_params(widgets: dict[str, ValueWidget]) -> None:
-    helical_names = [
-        "helical_tube_diameter_range",
-        "rot_tilt_psi_range",
-        "do_apply_helical_symmetry",
-        "do_local_search_helical_symmetry",
-        "helical_range_distance",
-        "helical_twist_initial",
-        "helical_twist_range",
-        "helical_rise_initial",
-        "helical_rise_range",
-        "helical_nr_asu",
-        "helical_z_percentage",
-        "keep_tilt_prior_fixed",
-    ]
+class MultiBodyJob(_Relion5SpaJob):
+    """3D multibody refinement."""
 
-    @widgets["do_helix"].changed.connect
-    def _on_helical(value: bool):
-        for name in helical_names:
-            widgets[name].enabled = value
-        if "do_local_search_helical_symmetry" in widgets:
-            _on_do_local_search_helical_symmetry(
-                widgets["do_local_search_helical_symmetry"].value
-            )
+    @classmethod
+    def type_label(cls) -> str:
+        return "relion.multibody"
 
-    for name in helical_names:
-        if name in widgets:
-            widgets[name].enabled = False
+    @classmethod
+    def menu_id(cls):
+        return MenuId.RELION_REFINE_JOB
 
-    if "do_local_search_helical_symmetry" in widgets:
+    @classmethod
+    def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
+        kwargs["fn_cont"] = ""
+        if eigenval_range := kwargs.pop("eigenval_range", None):
+            kwargs["eigenval_min"], kwargs["eigenval_max"] = eigenval_range
+        kwargs = norm_blush_reg(kwargs)
+        return super().normalize_kwargs(**kwargs)
 
-        @widgets["do_local_search_helical_symmetry"].changed.connect
-        def _on_do_local_search_helical_symmetry(value: bool):
-            if "helical_twist_range" in widgets:
-                widgets["helical_twist_range"].enabled = value
-            if "helical_rise_range" in widgets:
-                widgets["helical_rise_range"].enabled = value
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
+        eigenval_min = kwargs.pop("eigenval_min", -999)
+        eigenval_max = kwargs.pop("eigenval_max", 999)
+        kwargs["eigenval_range"] = (eigenval_min, eigenval_max)
+        kwargs = norm_blush_reg_inv(kwargs)
+        kwargs.pop("fn_cont", None)
+        return super().normalize_kwargs_inv(**kwargs)
 
-    if "helical_twist_range" in widgets:
-        widgets["helical_twist_range"].enabled = False
-    if "helical_rise_range" in widgets:
-        widgets["helical_rise_range"].enabled = False
+    def run(
+        self,
+        fn_in: _a.multibody.FN_IN = "",
+        fn_bodies: _a.multibody.FN_BODIES = "",
+        do_subtracted_bodies: _a.multibody.DO_SUBTRACTED_BODIES = True,
+        blush_reg: _a.misc.BLUSH_REGULARISATION = "No",
+        # Auto-sampling
+        sampling: _a.multibody.SAMPING = "1.8 degrees",
+        offset_range: _a.multibody.OFFSET_RANGE = 3,
+        offset_step: _a.multibody.OFFSET_STEP = 0.75,
+        # Analyse
+        do_analyse: _a.multibody.DO_ANALYSE = True,
+        nr_movies: _a.multibody.NR_MOVIES = 3,
+        do_select: _a.multibody.DO_SELECT = False,
+        select_eigenval: _a.multibody.SELECT_EIGENVAL = 1,
+        eigenval_range: _a.multibody.EIGENVAL_RANGE = (-999, 999),
+        # Compute
+        do_parallel_discio: _a.compute.USE_PARALLEL_DISC_IO = True,
+        nr_pool: _a.compute.NUM_POOL = 3,
+        use_scratch: _a.compute.USE_SCRATCH = False,
+        do_pad1: _a.compute.DO_PAD1 = False,
+        do_preread_images: _a.compute.DO_PREREAD = False,
+        do_combine_thru_disc: _a.compute.DO_COMBINE_THRU_DISC = False,
+        gpu_ids: _a.compute.GPU_IDS = "",
+        # Running
+        nr_mpi: _a.running.NR_MPI = 1,
+        nr_threads: _a.running.NR_THREADS = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")
+
+    @classmethod
+    def setup_widgets(cls, widgets):
+        @widgets["do_select"].changed.connect
+        def _on_do_select_changed(value: bool):
+            widgets["select_eigenval"].enabled = value
+            widgets["eigenval_range"].enabled = value
+
+        _on_do_select_changed(widgets["do_select"].value)
 
 
 class _SelectJob(_Relion5Job):
@@ -2830,3 +2856,47 @@ def _autopick_helix_setup(widgets: dict[str, ValueWidget]) -> None:
         widgets["do_amyloid"].enabled = value
 
     _on_do_pick_helical_segments_changed(widgets["do_pick_helical_segments"].value)
+
+
+def _setup_helix_params(widgets: dict[str, ValueWidget]) -> None:
+    helical_names = [
+        "helical_tube_diameter_range",
+        "rot_tilt_psi_range",
+        "do_apply_helical_symmetry",
+        "do_local_search_helical_symmetry",
+        "helical_range_distance",
+        "helical_twist_initial",
+        "helical_twist_range",
+        "helical_rise_initial",
+        "helical_rise_range",
+        "helical_nr_asu",
+        "helical_z_percentage",
+        "keep_tilt_prior_fixed",
+    ]
+
+    @widgets["do_helix"].changed.connect
+    def _on_helical(value: bool):
+        for name in helical_names:
+            widgets[name].enabled = value
+        if "do_local_search_helical_symmetry" in widgets:
+            _on_do_local_search_helical_symmetry(
+                widgets["do_local_search_helical_symmetry"].value
+            )
+
+    for name in helical_names:
+        if name in widgets:
+            widgets[name].enabled = False
+
+    if "do_local_search_helical_symmetry" in widgets:
+
+        @widgets["do_local_search_helical_symmetry"].changed.connect
+        def _on_do_local_search_helical_symmetry(value: bool):
+            if "helical_twist_range" in widgets:
+                widgets["helical_twist_range"].enabled = value
+            if "helical_rise_range" in widgets:
+                widgets["helical_rise_range"].enabled = value
+
+    if "helical_twist_range" in widgets:
+        widgets["helical_twist_range"].enabled = False
+    if "helical_rise_range" in widgets:
+        widgets["helical_rise_range"].enabled = False
