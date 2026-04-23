@@ -130,3 +130,17 @@ def test_tomo_set_job_param(job_str: str, make_himena_ui: Callable[[], MainWindo
 
     params = scheduler.get_parameters()
     job_cls.prep_job_star(**params).to_string()
+
+def test_job_class_parse_arg():
+    from himena_relion.relion5.extensions.transform.jobs import ShiftMapJob
+
+    args = ShiftMapJob._parse_args({"in_3dref": "ref.mrc", "center_by": "pixel"})
+    assert args["in_3dref"] == "ref.mrc"
+    assert args["center_by"] == "pixel"
+
+def test_continue_job(himena_ui):
+    from himena_relion.relion5._continues import Refine3DContinue
+
+    _job_dir = JobDirectory(JOBS_DIR_SPA / "Refine3D/job001")
+    ref_job = Refine3DContinue(_job_dir)
+    ref_job.make_job_star()

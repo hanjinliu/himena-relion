@@ -1,9 +1,15 @@
+from pathlib import Path
 from dataclasses import dataclass
 from himena.plugins import register_config, config_field, get_config
 
 
 @dataclass
 class RelionConfig:
+    relion_pipeliner: str = config_field(
+        default="relion_pipeliner",
+        label="relion_pipeliner executable",
+        tooltip="Path to the relion_pipeliner executable, usually is relion-directory/build/bin/relion_pipeliner",
+    )
     motioncor2: str = config_field(
         default="MotionCor2",
         label="MotionCor2 Executable",
@@ -73,48 +79,52 @@ class RelionConfig:
 register_config("himena-relion", "RELION", RelionConfig())
 
 
+def get_relion_pipeliner_exe() -> str:
+    return _get_himena_relion_config().relion_pipeliner
+
+
 def get_motioncor2_exe() -> str:
     return _get_himena_relion_config().motioncor2
 
 
 def get_ctffind4_exe() -> str:
-    return _get_himena_relion_config().ctffind4
+    return _may_expand_user(_get_himena_relion_config().ctffind4)
 
 
 def get_topaz_exe() -> str:
-    return _get_himena_relion_config().fn_topaz_exe
+    return _may_expand_user(_get_himena_relion_config().fn_topaz_exe)
 
 
 def get_batchruntomo_exe() -> str:
-    return _get_himena_relion_config().batchruntomo
+    return _may_expand_user(_get_himena_relion_config().batchruntomo)
 
 
 def get_aretomo2_exe() -> str:
-    return _get_himena_relion_config().aretomo2
+    return _may_expand_user(_get_himena_relion_config().aretomo2)
 
 
 def get_resmap_exe() -> str:
-    return _get_himena_relion_config().resmap
+    return _may_expand_user(_get_himena_relion_config().resmap)
 
 
 def get_dynamight_exe() -> str:
-    return _get_himena_relion_config().dynamight
+    return _may_expand_user(_get_himena_relion_config().dynamight)
 
 
 def get_modelangelo_exe() -> str:
-    return _get_himena_relion_config().modelangelo
+    return _may_expand_user(_get_himena_relion_config().modelangelo)
 
 
 def get_cryocare_dir() -> str:
-    return _get_himena_relion_config().cryocare
+    return _may_expand_user(_get_himena_relion_config().cryocare)
 
 
 def get_qsubscript() -> str:
-    return _get_himena_relion_config().qsubscript
+    return _may_expand_user(_get_himena_relion_config().qsubscript)
 
 
 def get_scratch_dir() -> str:
-    return _get_himena_relion_config().scratch_dir
+    return _may_expand_user(_get_himena_relion_config().scratch_dir)
 
 
 def get_queue_dict() -> dict[str, str]:
@@ -131,3 +141,9 @@ def _get_himena_relion_config() -> RelionConfig:
     if config is None:
         raise RuntimeError("RELION configuration not found.")
     return config
+
+
+def _may_expand_user(path: str) -> str:
+    if path.startswith("~/"):
+        return str(Path(path).expanduser())
+    return path

@@ -50,8 +50,14 @@ class RelionVersionInfo:
 
 
 def relion_version() -> str:
-    """Return the output of `relion --version`."""
-    res = subprocess.run(["relion", "--version"], capture_output=True, text=True)
+    """Return the output of `relion_pipeliner --version`."""
+    from himena_relion._configs import get_relion_pipeliner_exe
+
+    res = subprocess.run(
+        [get_relion_pipeliner_exe(), "--version"],
+        capture_output=True,
+        text=True,
+    )
     if res.returncode != 0:
         raise RuntimeError("Failed to get RELION version info: " + res.stderr)
     return res.stdout.strip()
