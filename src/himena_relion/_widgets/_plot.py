@@ -95,7 +95,6 @@ class QPlotCanvas(QModelMatplotlibCanvas):
         y_test = df_test.sort("epoch")[ycol].to_numpy()
         color_test = "#ff7f0e" if theme.is_light_background() else "#ff69b4"
         color_train = "#1f77b4" if theme.is_light_background() else "#00ced1"
-        print(epoch, y_test)
         fig.plot(epoch, y_test, name="Test", color=color_test)
         fig.errorbar(
             epoch,

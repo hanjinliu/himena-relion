@@ -480,8 +480,8 @@ class AlignTiltSeriesAreTomo2(_AlignTiltSeriesJobBase):
     @classmethod
     def param_matches(cls, job_params: dict[str, str]) -> bool:
         is_aretomo = job_params.get("do_aretomo2", "No") == "Yes"
-        is_rec = job_params.get("do_skip_aretomo_align", "No") == "Yes"
-        return is_aretomo and not is_rec
+        is_skip_align = job_params.get("do_skip_aretomo_align", "No") == "Yes"
+        return is_aretomo and not is_skip_align
 
     @classmethod
     def job_title(cls) -> str:
@@ -502,7 +502,7 @@ class AlignTiltSeriesAreTomo2(_AlignTiltSeriesJobBase):
         kwargs = super().normalize_kwargs_inv(**kwargs)
         for key in [
             "fiducial_diameter", "patch_size", "patch_overlap", "do_imod_fiducials",
-            "do_aretomo2", "do_imod_patchtrack"
+            "do_aretomo2", "do_imod_patchtrack", "do_skip_aretomo_align",
         ]:  # fmt: skip
             kwargs.pop(key, None)
 
@@ -561,8 +561,9 @@ class ReconstructTomoByAreTomo2(_AlignTiltSeriesJobBase):
     @classmethod
     def param_matches(cls, job_params: dict[str, str]) -> bool:
         is_aretomo = job_params.get("do_aretomo2", "No") == "Yes"
-        is_rec = job_params.get("do_skip_aretomo_align", "No") == "Yes"
-        return is_aretomo and is_rec
+        is_skip_align = job_params.get("do_skip_aretomo_align", "No") == "Yes"
+        is_rec = job_params.get("do_aretomo_reconstruct", "No") == "Yes"
+        return is_aretomo and is_skip_align and is_rec
 
     @classmethod
     def job_title(cls) -> str:
@@ -580,6 +581,7 @@ class ReconstructTomoByAreTomo2(_AlignTiltSeriesJobBase):
         kwargs["do_skip_aretomo_align"] = True
         kwargs["aretomo_tiltcorrect_angle"] = 999
         kwargs["tomogram_thickness"] = 300.0
+        print(kwargs)
         return super().normalize_kwargs(**kwargs)
 
     @classmethod
@@ -589,7 +591,7 @@ class ReconstructTomoByAreTomo2(_AlignTiltSeriesJobBase):
             "fiducial_diameter", "patch_size", "patch_overlap", "do_imod_fiducials",
             "do_aretomo2", "do_imod_patchtrack", "do_aretomo_tiltcorrect",
             "aretomo_tiltcorrect_angle", "do_aretomo_ctf", "do_aretomo_phaseshift",
-            "do_skip_aretomo_align", "tomogram_thickness",
+            "do_skip_aretomo_align", "tomogram_thickness", "do_aretomo_reconstruct",
         ]:  # fmt: skip
             kwargs.pop(key, None)
         return kwargs

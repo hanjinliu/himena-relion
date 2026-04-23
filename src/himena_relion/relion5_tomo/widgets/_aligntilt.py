@@ -10,6 +10,7 @@ from qtpy import QtWidgets as QtW, QtGui, QtCore
 import scipy.ndimage as ndi
 from himena.consts import MonospaceFontFamily
 from himena_relion._image_readers._array import ArrayFilteredView
+from himena_relion.relion5_tomo.widgets._tomogram import QTomogramViewer
 from himena_relion._widgets import (
     QJobScrollArea,
     Q2DViewer,
@@ -24,6 +25,13 @@ _LOGGER = logging.getLogger(__name__)
 
 
 @register_job("relion.aligntiltseries", is_tomo=True)
+def aligntilt_viewer(job_dir: _job_dir.JobDirectory):
+    if job_dir.get_job_param("do_aretomo_reconstruct") == "Yes":
+        return QAreTomo2TomogramViewer(job_dir)
+    else:
+        return QAlignTiltSeriesViewer(job_dir)
+
+
 class QAlignTiltSeriesViewer(QJobScrollArea):
     def __init__(self, job_dir: _job_dir.JobDirectory):
         super().__init__()
@@ -236,6 +244,24 @@ class ImodImageAligner:
         )
         mat = t @ np.linalg.inv(mat) @ np.linalg.inv(t)
         return mat
+
+
+class QAreTomo2TomogramViewer(QTomogramViewer):
+    def _has_tomogram_splits(self, job_dir):
+        return False
+
+    def _get_binned_angpix(self, job_dir: _job_dir.JobDirectory) -> float:
+        nbins = int(job_dir.get_job_param("aretomo_OutBin"))
+        try:
+            in_tilt = job_dir.get_job_param("in_tiltseries")
+            ts_group = TSGroupModel.validate_file(in_tilt)
+            return ts_group.original_pixel_size[0] * nbins
+        except Exception:
+            _LOGGER.warning(
+                "Failed to get binned angpix for AreTomo2. Use default value.",
+                exc_info=True,
+            )
+            return 3 * nbins
 
 
 class QAlignJobLog(QtW.QPlainTextEdit):

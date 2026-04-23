@@ -169,10 +169,10 @@ class QCtfRefineAnisoMagViewer(QJobScrollArea):
         self._optics_group_list = QMicrographListWidget(["Optics Group", "Index"])
         self._optics_group_list.current_changed.connect(self._process_update)
 
-        self._view_x_obs = Q2DViewWithTitle("Observed Anisotropic Magnification X")
-        self._view_y_obs = Q2DViewWithTitle("Observed Anisotropic Magnification Y")
-        self._view_x_fit = Q2DViewWithTitle("Fitted Anisotropic Magnification X")
-        self._view_y_fit = Q2DViewWithTitle("Fitted Anisotropic Magnification Y")
+        self._view_x_obs = Q2DViewWithTitle("Observed Magnification X")
+        self._view_y_obs = Q2DViewWithTitle("Observed Magnification Y")
+        self._view_x_fit = Q2DViewWithTitle("Fitted Magnification X")
+        self._view_y_fit = Q2DViewWithTitle("Fitted Magnification Y")
 
         layout_obs = QtW.QHBoxLayout()
         layout_obs.setContentsMargins(0, 0, 0, 0)

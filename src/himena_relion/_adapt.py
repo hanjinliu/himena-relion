@@ -15,7 +15,7 @@ def norm_blush_reg(kwargs: dict[str, Any]) -> dict[str, Any]:
             if blush_reg == "amy-v1.0":
                 warnings.warn(
                     "Blush regularisation method 'amy-v1.0' is selected but is not "
-                    "supported in Relion 5.0",
+                    "supported in RELION 5.0",
                     UserWarning,
                     stacklevel=1,
                 )
@@ -39,7 +39,7 @@ def norm_extract_subtomo(kwargs: dict[str, Any]) -> dict[str, Any]:
             if subtomo_format == "3D subtomos":
                 warnings.warn(
                     "Subtomogram format '3D subtomos' is selected but is not "
-                    "supported in Relion 5.0",
+                    "supported in RELION 5.0",
                     UserWarning,
                     stacklevel=1,
                 )
@@ -65,7 +65,7 @@ def norm_reconstruct_tomo(kwargs: dict[str, Any]) -> dict[str, Any]:
             if kwargs.pop("do_skip_wiener", False):
                 warnings.warn(
                     "Option 'Skip Wiener filtering' is selected but is not "
-                    "supported in Relion 5.0",
+                    "supported in RELION 5.0",
                     UserWarning,
                     stacklevel=1,
                 )
@@ -79,17 +79,19 @@ def norm_aligntilts(kwargs: dict[str, Any]) -> dict[str, Any]:
             if kwargs.pop("do_aretomo_reconstruct", False):
                 warnings.warn(
                     "Option 'Reconstruct with AreTomo' is selected but is not "
-                    "supported in Relion 5.0",
+                    "supported in RELION 5.0",
                     UserWarning,
                     stacklevel=1,
                 )
             if kwargs.pop("do_skip_aretomo_align", False):
                 warnings.warn(
                     "Option 'Skip AreTomo alignment' is selected but is not "
-                    "supported in Relion 5.0",
+                    "supported in RELION 5.0",
                     UserWarning,
                     stacklevel=1,
                 )
             kwargs.pop("aretomo_VolZ", None)
             kwargs.pop("aretomo_OutBin", None)
+        else:
+            kwargs["do_skip_aretomo_align"] = False
     return kwargs
