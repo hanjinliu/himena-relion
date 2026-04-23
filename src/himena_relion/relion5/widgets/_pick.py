@@ -359,3 +359,8 @@ class QTopazTrainPickViewer(QJobScrollArea):
         self._canvas0.plot_topaz_train(df_train, df_test, "loss")
         self._canvas1.plot_topaz_train(df_train, df_test, "tpr")
         self._canvas2.plot_topaz_train(df_train, df_test, "fpr")
+
+    def widget_added_callback(self):
+        self._canvas0.widget_added_callback()
+        self._canvas1.widget_added_callback()
+        self._canvas2.widget_added_callback()

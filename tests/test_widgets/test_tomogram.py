@@ -1,6 +1,7 @@
 from typing import Callable
 from pathlib import Path
 from himena_relion._job_dir import JobDirectory
+from himena_relion.relion5_tomo.widgets._aligntilt import aligntilt_viewer, QAreTomo2TomogramViewer
 from himena_relion.relion5_tomo.widgets._tomogram import QTomogramViewer, QDenoiseTrainViewer, QDenoiseTomogramViewer
 from himena_relion.testing import JobWidgetTester
 
@@ -11,7 +12,7 @@ def test_reconstruct_tomo_widget(
 ):
     star_text = Path(jobs_dir_tomo / "Tomogram" / "job001" / "job.star").read_text()
     star_text = _replace_is_halfset(star_text, False)
-    job_dir = make_job_directory(star_text, "Refine3D")
+    job_dir = make_job_directory(star_text, "Tomogram")
 
     tester = JobWidgetTester(QTomogramViewer(job_dir), job_dir)
     qtbot.addWidget(tester.widget)
@@ -32,6 +33,36 @@ def test_reconstruct_tomo_widget(
     assert tester.widget._tomo_list.current_text() == "TS_01"
 
     tester.widget._tomo_list.set_current_row(1)
+
+def test_reconstruct_by_aretomo_widget(
+    qtbot,
+    make_job_directory: Callable[[str, str], JobDirectory],
+    jobs_dir_tomo,
+):
+    star_text = Path(jobs_dir_tomo / "AlignTiltSeries" / "job004" / "job.star").read_text()
+    job_dir = make_job_directory(star_text, "AlignTiltSeries")
+
+    tester = JobWidgetTester(aligntilt_viewer(job_dir), job_dir)
+    assert isinstance(tester.widget, QAreTomo2TomogramViewer)
+    qtbot.addWidget(tester.widget)
+    assert not tester.widget._viewer.has_image
+
+    tester.mkdir("tomograms")
+    assert not tester.widget._viewer.has_image
+    assert tester.widget._tomo_list.rowCount() == 0
+
+    tester.write_random_mrc("tomograms/rec_TS_01.mrc", (40, 100, 100))
+    assert tester.widget._viewer.has_image
+    assert tester.widget._tomo_list.rowCount() == 1
+    assert tester.widget._tomo_list.current_text() == "TS_01"
+
+    tester.write_random_mrc("tomograms/rec_TS_02.mrc", (40, 100, 100))
+    assert tester.widget._viewer.has_image
+    assert tester.widget._tomo_list.rowCount() == 2
+    assert tester.widget._tomo_list.current_text() == "TS_01"
+
+    tester.widget._tomo_list.set_current_row(1)
+
 
 def test_reconstruct_tomo_widget_halfsets(
     qtbot,

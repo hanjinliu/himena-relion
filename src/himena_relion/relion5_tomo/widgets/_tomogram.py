@@ -46,18 +46,24 @@ class QTomogramViewer(QJobScrollArea):
     def on_job_updated(self, job_dir: _job_dir.JobDirectory, path: str):
         """Handle changes to the job directory."""
         fp = Path(path)
-        if fp.name.startswith("RELION_JOB_") or fp.suffix == ".mrc":
+        is_new_tomo = fp.parent.name == "tomograms" and fp.suffix == ".mrc"
+        if fp.name.startswith("RELION_JOB_") or is_new_tomo:
             self.initialize(job_dir)
             _LOGGER.debug("%s Updated", job_dir.job_number)
+
+    def _has_tomogram_splits(self, job_dir: _job_dir.JobDirectory) -> bool:
+        return job_dir.get_job_param("generate_split_tomograms") == "Yes"
+
+    def _get_binned_angpix(self, job_dir: _job_dir.JobDirectory) -> float:
+        return float(job_dir.get_job_param("binned_angpix"))
 
     def initialize(self, job_dir: _job_dir.JobDirectory):
         """Initialize the viewer with the job directory."""
         items: list[tuple[str, ...]] = []
         job_dir = self._job_dir
-        self._is_split = job_dir.get_job_param("generate_split_tomograms") == "Yes"
-        self._filter_widget.set_image_scale(
-            float(job_dir.get_job_param("binned_angpix"))
-        )
+
+        self._is_split = self._has_tomogram_splits(job_dir)
+        self._filter_widget.set_image_scale(self._get_binned_angpix(job_dir))
         for p in job_dir.path.joinpath("tomograms").glob("*.mrc"):
             if self._is_split:
                 if p.stem.endswith("_half2"):
@@ -145,6 +151,11 @@ class QDenoiseTrainViewer(QJobScrollArea):
         self._canvas_loss.plot_cryocare_train(history, ycol="loss")
         self._canvas_mae.plot_cryocare_train(history, ycol="mae")
         self._canvas_mse.plot_cryocare_train(history, ycol="mse")
+
+    def widget_added_callback(self):
+        self._canvas_loss.widget_added_callback()
+        self._canvas_mae.widget_added_callback()
+        self._canvas_mse.widget_added_callback()
 
 
 class QDenoiseTomogramViewer(QJobScrollArea):
