@@ -350,7 +350,8 @@ class QTopazTrainPickViewer(QJobScrollArea):
             return
         # model_training.txt has columns:
         # epoch, iter, split, loss, ge_penalty, precision, tpr, fpr, auprc
-        df = pl.read_csv(model_training_txt, separator="\t")
+        # and the null values are represented as "-"
+        df = pl.read_csv(model_training_txt, separator="\t", null_values="-")
         is_train = pl.col("split") == "train"
         df_train = df.filter(is_train)  # multiple values per epoch
         df_test = df.filter(~is_train)

@@ -11,6 +11,7 @@ from himena_relion.relion5._builtins import (
     InitialModelJob,
     Class3DJob,
     Refine3DJob,
+    MultiBodyJob,
     ManualPickJob,
     AutoPickLogJob,
     AutoPickTemplate2DJob,
@@ -276,6 +277,40 @@ class Refine3DContinue(_Relion5BuiltinContinue):
     @classmethod
     def more_node_mappings(cls) -> dict[str, str]:
         return {_latest_optimiser_star: "fn_cont"}
+
+
+class MultiBodyContinue(_Relion5BuiltinContinue):
+    original_class = MultiBodyJob
+
+    def run(
+        self,
+        fn_cont: _a.io.CONTINUE = "",
+        # Analyse
+        do_analyse: _a.multibody.DO_ANALYSE = True,
+        nr_movies: _a.multibody.NR_MOVIES = 3,
+        do_select: _a.multibody.DO_SELECT = False,
+        select_eigenval: _a.multibody.SELECT_EIGENVAL = 1,
+        eigenval_range: _a.multibody.EIGENVAL_RANGE = (-999, 999),
+        # Compute
+        do_parallel_discio: _a.compute.USE_PARALLEL_DISC_IO = True,
+        nr_pool: _a.compute.NUM_POOL = 3,
+        use_scratch: _a.compute.USE_SCRATCH = False,
+        do_pad1: _a.compute.DO_PAD1 = False,
+        do_preread_images: _a.compute.DO_PREREAD = False,
+        do_combine_thru_disc: _a.compute.DO_COMBINE_THRU_DISC = False,
+        gpu_ids: _a.compute.GPU_IDS = "",
+        # Running
+        nr_mpi: _a.running.NR_MPI = 1,
+        nr_threads: _a.running.NR_THREADS = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")
+
+    # TODO: check the output file name format.
+    # @classmethod
+    # def more_node_mappings(cls) -> dict[str, str]:
+    #     return {_latest_optimiser_star: "fn_cont"}
 
 
 class _DynaMightContinue(_Relion5BuiltinContinue):

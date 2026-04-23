@@ -92,14 +92,15 @@ class QPlotCanvas(QModelMatplotlibCanvas):
         fig = hplt.figure(theme.background)
         epoch = df_test["epoch"]
         y_train_group = df_train.sort("epoch").group_by("epoch", maintain_order=True)
-        y_test = df_test.sort("epoch")[ycol]
+        y_test = df_test.sort("epoch")[ycol].to_numpy()
         color_test = "#ff7f0e" if theme.is_light_background() else "#ff69b4"
         color_train = "#1f77b4" if theme.is_light_background() else "#00ced1"
+        print(epoch, y_test)
         fig.plot(epoch, y_test, name="Test", color=color_test)
         fig.errorbar(
             epoch,
-            y_train_group.agg(pl.col(ycol).mean())[ycol],
-            y_error=y_train_group.agg(pl.col(ycol).std())[ycol],
+            y_train_group.agg(pl.col(ycol).mean())[ycol].to_numpy(),
+            y_error=y_train_group.agg(pl.col(ycol).std())[ycol].to_numpy(),
             capsize=2,
             name="Train",
             color=color_train,
