@@ -19,7 +19,6 @@ from himena_builtins.qt.widgets._image_components import (
 )
 
 from himena_relion._image_readers import ArrayFilteredView
-from himena_relion._widgets._misc import spacer_widget
 from himena_relion._widgets._spinbox import QIntWidget
 from himena_relion._widgets._vispy import (
     Vispy2DViewer,
@@ -844,9 +843,16 @@ class Q2DFilterWidget(QtW.QWidget):
         self._lowpass_cutoff.setMinimum(0.0)
         self._lowpass_cutoff.setMaximum(200.0)
         self._lowpass_cutoff.setFixedWidth(80)
+        self._spacer = QtW.QLabel()
+        self._spacer.setSizePolicy(
+            QtW.QSizePolicy.Policy.Expanding, QtW.QSizePolicy.Policy.Expanding
+        )
+        self._spacer.setAlignment(
+            QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignVCenter
+        )
         layout.addWidget(labeled("Binning factor:", self._bin_factor))
         layout.addWidget(labeled("Lowpass cutoff (Å):", self._lowpass_cutoff))
-        layout.addWidget(spacer_widget())
+        layout.addWidget(self._spacer)
         self._image_scale = 1.0
         self._bin_factor.textChanged.connect(self.value_changed)
         self._lowpass_cutoff.textChanged.connect(self.value_changed)
@@ -880,6 +886,10 @@ class Q2DFilterWidget(QtW.QWidget):
         """Set the binning factor and lowpass cutoff frequency."""
         self._bin_factor.setText(str(bin_factor))
         self._lowpass_cutoff.setText(str(lowpass_cutoff))
+
+    def set_label_text(self, text: str):
+        """Set the label text to the spacer widget."""
+        self._spacer.setText(text)
 
 
 def _norm_color(color, num: int) -> NDArray[np.float32]:

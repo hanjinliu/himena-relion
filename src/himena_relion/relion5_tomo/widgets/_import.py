@@ -19,21 +19,13 @@ _LOGGER = logging.getLogger(__name__)
 
 @register_job("relion.importtomo", is_tomo=True)
 def import_tilt_series_viewer(job_dir: _job_dir.JobDirectory):
-    try:
-        is_import_coords = job_dir.get_job_param("do_coords")
-    except KeyError:
-        is_import_coords = "No"
-    if is_import_coords == "Yes":
+    if job_dir.get_job_param("do_coords", default="No") == "Yes":
         return QJobScrollArea()
     return QImportTiltSeriesViewer(job_dir)
 
 
 def _is_import_micrographs(job_dir: _job_dir.JobDirectory) -> bool:
-    try:
-        is_import_mics = job_dir.get_job_param("images_are_motion_corrected")
-    except KeyError:
-        is_import_mics = "No"
-    return is_import_mics == "Yes"
+    return job_dir.get_job_param("images_are_motion_corrected", default="No") == "Yes"
 
 
 class QImportTiltSeriesViewer(QJobScrollArea):

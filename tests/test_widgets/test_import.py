@@ -124,7 +124,6 @@ def test_import_tomo_widget(
             pre_exposure=[0.0, 5.0, 10.0, 15.0, 20.0],
             nominal_defocus=[3.5] * 5,
             micrograph_name=[""] * 5,
-            micrograph_movie_name=[f"frames/TS_{i+1:02d}_{j:03d}.tif" for j in range(5)],
             ctf_image=[""] * 5,
         )
         tester.write_text(f"tilt_series/TS_{i+1:02d}.star", ts.to_string())

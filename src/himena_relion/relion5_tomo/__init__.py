@@ -3,6 +3,7 @@ from himena_relion.relion5_tomo.extensions import (
     FindBeads3D,
     EraseGold,
     InspectParticles,
+    AutoExcludeTiltImages,
 )
 
 
@@ -12,4 +13,5 @@ __all__ = [
     "FindBeads3D",
     "EraseGold",
     "InspectParticles",
+    "AutoExcludeTiltImages",
 ]

@@ -148,6 +148,9 @@ class QMotionCorrViewer(QJobScrollArea):
         ts_view = ArrayFilteredView.from_mrcs(corrected.paths)
         self._filter_widget.set_image_scale(ts_view.get_scale())
         self._viewer.set_array_view(ts_view.with_filter(self._filter_widget.apply))
+        scale = ts_view.get_scale()
+        shape = ts_view.get_shape()
+        self._filter_widget.set_label_text(f"{shape} {scale:.2f} A/pix")
 
 
 @register_job("relion.excludetilts", is_tomo=True)
@@ -213,6 +216,10 @@ class QExcludeTiltViewer(QJobScrollArea):
         self._filter_widget.set_image_scale(info.tomo_tilt_series_pixel_size)
         ts_view = info.read_tilt_series(job_dir.relion_project_dir)
         self._viewer.set_array_view(ts_view.with_filter(self._filter_widget.apply))
+
+        scale = ts_view.get_scale()
+        shape = ts_view.get_shape()
+        self._filter_widget.set_label_text(f"{shape} {scale:.2f} A/pix")
 
 
 def iter_tilt_series_excludetilt(self: _job_dir.JobDirectory):

@@ -80,7 +80,9 @@ class MicrographsStarModel(schema.StarModel):
 class TSModel(schema.LoopDataModel):
     """Star file content such as TS_01.star"""
 
-    movie_name: schema.Series[str] = schema.Field("rlnMicrographMovieName")
+    movie_name: schema.Series[str] = schema.Field(
+        "rlnMicrographMovieName", default=None
+    )
     frame_count: schema.Series[int] = schema.Field("rlnTomoTiltMovieFrameCount")
     nominal_stage_tilt_angle: schema.Series[float] = schema.Field(
         "rlnTomoNominalStageTiltAngle"
@@ -92,9 +94,6 @@ class TSModel(schema.LoopDataModel):
     nominal_defocus: schema.Series[float] = schema.Field("rlnTomoNominalDefocus")
     micrograph_name: schema.Series[str] = schema.Field(
         "rlnMicrographName", default=None
-    )
-    micrograph_movie_name: schema.Series[str] = schema.Field(
-        "rlnMicrographMovieName", default=None
     )
     ctf_image: schema.Series[str] = schema.Field("rlnCtfImage", default=None)
 
