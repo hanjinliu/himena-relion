@@ -44,3 +44,8 @@ the gold beads.
 This job simply creates a "optimisation_set.star" file from the inputs. The main purpose
 of this job will be to inspect the filtered particle file after any of the "Select"
 jobs.
+
+#### Auto-exclude Tilt Images
+
+This job automatically excludes bad tilt images based on the dark pixel percentage,
+defocus, total motion, and ice thickness value.

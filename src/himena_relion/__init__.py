@@ -1,4 +1,4 @@
-__version__ = "0.0.2"
+__version__ = "0.0.3"
 
 from himena_relion._job_class import connect_jobs
 from himena_relion.external.job_class import RelionExternalJob
