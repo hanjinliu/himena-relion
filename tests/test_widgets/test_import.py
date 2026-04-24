@@ -117,14 +117,13 @@ def test_import_tomo_widget(
             with tifffile.TiffWriter(tiff_path) as tif:
                 tif.write(frame_img, compression="lzw")
         ts = TSModel(
-            movie_name=[f"frames/TS_{i+1:02d}_{j:03d}" for j in range(5)],
+            movie_name=[f"frames/TS_{i+1:02d}_{j:03d}.tif" for j in range(5)],
             frame_count=[4] * 5,
             nominal_stage_tilt_angle=[-60 + j * 30 for j in range(5)],
             nominal_tilt_axis_angle=[0.0] * 5,
             pre_exposure=[0.0, 5.0, 10.0, 15.0, 20.0],
             nominal_defocus=[3.5] * 5,
             micrograph_name=[""] * 5,
-            micrograph_movie_name=[f"frames/TS_{i+1:02d}_{j:03d}.tif" for j in range(5)],
             ctf_image=[""] * 5,
         )
         tester.write_text(f"tilt_series/TS_{i+1:02d}.star", ts.to_string())

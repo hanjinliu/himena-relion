@@ -157,6 +157,9 @@ class QMotionCorrViewer(QJobScrollArea):
             clim=self._viewer._last_clim,
         )
         self._viewer._auto_contrast()
+        scale = movie_view.get_scale()
+        shape = movie_view.get_shape()
+        self._filter_widget.set_label_text(f"{shape} {scale:.2f} A/pix")
 
     def _filter_param_changed(self):
         """Handle changes to filter parameters."""

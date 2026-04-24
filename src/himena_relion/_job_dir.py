@@ -196,8 +196,8 @@ class JobDirectory:
         else:
             return RelionJobState.RUNNING
 
-    def get_job_param(self, param: str) -> str:
-        return self.get_job_params_as_dict()[param]
+    def get_job_param(self, param: str, default: str = "") -> str:
+        return self.get_job_params_as_dict().get(param, default)
 
     def get_job_params_as_dict(self) -> dict[str, str]:
         job_star = JobStarModel.validate_file(self.job_star())

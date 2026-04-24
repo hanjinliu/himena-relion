@@ -26,7 +26,7 @@ _LOGGER = logging.getLogger(__name__)
 
 @register_job("relion.aligntiltseries", is_tomo=True)
 def aligntilt_viewer(job_dir: _job_dir.JobDirectory):
-    if job_dir.get_job_param("do_aretomo_reconstruct") == "Yes":
+    if job_dir.get_job_param("do_aretomo_reconstruct", default="No") == "Yes":
         return QAreTomo2TomogramViewer(job_dir)
     else:
         return QAlignTiltSeriesViewer(job_dir)
