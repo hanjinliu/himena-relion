@@ -195,11 +195,14 @@ def update_default_pipeline(
             pipeline_star = RelionPipelineModel.validate_text(f.read())
             pos_sl = pipeline_star.processes.process_name == normalize_job_id(job_id)
             if len(true_ids := np.where(pos_sl)) == 1:
+                true_id = int(true_ids[0][0])
                 df = pipeline_star.processes.dataframe
                 if state is not None:
-                    df.loc[true_ids[0][0], "rlnPipeLineProcessStatusLabel"] = state
+                    ic = df.columns.index("rlnPipeLineProcessStatusLabel")
+                    df[true_id, ic] = state
                 if alias is not None:
-                    df.loc[true_ids[0][0], "rlnPipeLineProcessAlias"] = alias
+                    ic = df.columns.index("rlnPipeLineProcessAlias")
+                    df[true_id, ic] = alias
                 pipeline_star.processes = df
                 f.seek(0)
                 f.write(pipeline_star.to_string())
