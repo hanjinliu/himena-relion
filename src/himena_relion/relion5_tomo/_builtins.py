@@ -249,6 +249,13 @@ class MotionCorr2TomoJob(_Relion5TomoJob, MotionCorr2Job):
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
+    @classmethod
+    def prerun_check(cls, **kwargs) -> None:
+        if shutil.which(mcor2 := _configs.get_motioncor2_exe()) is None:
+            raise ValueError(
+                command_not_found_err_msg(f"MotionCor2 executable not found: {mcor2}")
+            )
+
 
 class MotionCorrOwnTomoJob(_Relion5TomoJob, MotionCorrOwnJob):
     def run(
@@ -301,6 +308,13 @@ class CtfEstimationTomoJob(_Relion5TomoJob, CtfEstimationJob):
         min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
+
+    @classmethod
+    def prerun_check(cls, **kwargs) -> None:
+        if shutil.which(cmd := _configs.get_ctffind4_exe()) is None:
+            raise ValueError(
+                command_not_found_err_msg(f"CTFFind4 executable not found: {cmd}")
+            )
 
 
 class ExcludeTiltJob(_Relion5TomoJob):

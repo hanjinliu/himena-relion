@@ -117,9 +117,9 @@ class QAlignTiltSeriesViewer(QJobScrollArea):
         in_tilt = job_dir.get_job_param("in_tiltseries")
         try:
             ts_group = TSGroupModel.validate_file(in_tilt)
-            ts_file = ts_group.tomo_tilt_series_star_file[
+            ts_file = ts_group.tomo_tilt_series_star_file.filter(
                 ts_group.tomo_name == text
-            ].iloc[0]
+            ).first()
             rln_dir = job_dir.relion_project_dir
             ts_paths = TSModel.validate_file(ts_file).ts_paths_sorted(rln_dir)
             ts_view = ArrayFilteredView.from_mrcs(ts_paths)

@@ -36,7 +36,10 @@ class QTableModel(QtCore.QAbstractTableModel):
         index: QtCore.QModelIndex,
         role: int = QtCore.Qt.ItemDataRole.DisplayRole,
     ) -> QtCore.QVariant:
-        if role == QtCore.Qt.ItemDataRole.DisplayRole:
+        if role in (
+            QtCore.Qt.ItemDataRole.DisplayRole,
+            QtCore.Qt.ItemDataRole.ToolTipRole,
+        ):
             return str(self._data[index.row()][index.column()])
         return QtCore.QVariant()
 
@@ -63,6 +66,7 @@ class QMicrographListWidget(QtW.QTableView):
         self.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
         self.selectionModel().selectionChanged.connect(self._on_selection_changed)
         self.verticalHeader().setDefaultSectionSize(20)
+        self.setTextElideMode(QtCore.Qt.TextElideMode.ElideLeft)
 
     def rowCount(self) -> int:
         return self.model().rowCount()
@@ -95,6 +99,7 @@ class QMicrographListWidget(QtW.QTableView):
             self.resizeColumnsToContents()
         if was_empty:
             self.selectRow(0)
+            self._on_selection_changed()
 
     def _on_selection_changed(self):
         selected_rows = self.selectionModel().selectedRows()

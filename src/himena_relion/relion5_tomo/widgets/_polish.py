@@ -150,9 +150,9 @@ class QFrameAlignTomoViewer(QJobScrollArea):
             model = ParticleMetaModel.validate_file(particles_star)
             part = model.particles
             mask = part.tomo_name == tomo_name
-            z = part.centered_z[mask]
-            y = part.centered_y[mask]
-            x = part.centered_x[mask]
+            z = part.centered_z.filter(mask)
+            y = part.centered_y.filter(mask)
+            x = part.centered_x.filter(mask)
         else:
             return np.empty((0, 3), dtype=np.float32)  # nothing available
         return np.stack([z, y, x], axis=1).astype(np.float32, copy=False)

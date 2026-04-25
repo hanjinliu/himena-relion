@@ -113,7 +113,9 @@ def run_function(argv: list[str] | None = None) -> None:
             except Exception:
                 o_dir.joinpath(FileNames.EXIT_FAILURE).touch()
                 raise
-            if o_dir.joinpath(FileNames.ABORT_NOW).exists():
+            if (abort_now := o_dir.joinpath(FileNames.ABORT_NOW)).exists():
+                o_dir.joinpath(FileNames.EXIT_ABORTED).touch()
+                abort_now.unlink()
                 raise RuntimeError("Job aborted by user.")
     else:
         try:

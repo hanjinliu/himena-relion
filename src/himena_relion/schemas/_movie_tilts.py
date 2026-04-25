@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Iterator, NamedTuple
-import starfile_rs.schema.pandas as schema
+import polars as pl
+import starfile_rs.schema.polars as schema
 
 
 class OpticsModel(schema.LoopDataModel):
@@ -98,7 +99,7 @@ class TSModel(schema.LoopDataModel):
     ctf_image: schema.Series[str] = schema.Field("rlnCtfImage", default=None)
 
     def ts_paths_sorted(self, rln_dir: Path | None = None) -> list[str]:
-        order = self.nominal_stage_tilt_angle.argsort()
+        order = self.nominal_stage_tilt_angle.arg_sort()
         if rln_dir is None:
             paths = list(self.micrograph_name)
         else:
@@ -106,7 +107,7 @@ class TSModel(schema.LoopDataModel):
         return [paths[i] for i in order]
 
     def ts_movie_paths_sorted(self) -> list[str]:
-        order = self.nominal_stage_tilt_angle.argsort()
+        order = self.nominal_stage_tilt_angle.arg_sort()
         paths = list(self.movie_name)
         return [paths[i] for i in order]
 
@@ -132,7 +133,7 @@ class TSGroupModel(schema.LoopDataModel):
     original_pixel_size: schema.Series[float] = schema.Field(
         "rlnMicrographOriginalPixelSize"
     )
-    tomo_hand: schema.Series[int] = schema.Field("rlnTomoHand")
+    tomo_hand: schema.Series[float] = schema.Field("rlnTomoHand")
     optics_group_name: schema.Series[str] = schema.Field(
         "rlnOpticsGroupName", default=None
     )
@@ -145,7 +146,7 @@ class TSGroupModel(schema.LoopDataModel):
             self.cs,
             self.amplitude_contrast,
             self.original_pixel_size,
-            self.tomo_hand,
+            self.tomo_hand.cast(pl.Int32),
             self.optics_group_name
             if self.optics_group_name is not None
             else ["--"] * len(self.tomo_name),
@@ -173,7 +174,7 @@ class TomogramsGroupModel(schema.LoopDataModel):
     original_pixel_size: schema.Series[float] = schema.Field(
         "rlnMicrographOriginalPixelSize"
     )
-    tomo_hand: schema.Series[int] = schema.Field("rlnTomoHand")
+    tomo_hand: schema.Series[float] = schema.Field("rlnTomoHand")
     # this is optional and not used yet
     # optics_group_name: schema.Series[str] = schema.Field("rlnOpticsGroupName")
     tomo_tilt_series_pixel_size: schema.Series[float] = schema.Field(

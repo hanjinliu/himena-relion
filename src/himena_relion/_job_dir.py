@@ -5,11 +5,11 @@ import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 import shutil
-from typing import Callable, Iterator, Literal, TYPE_CHECKING
+from typing import Any, Callable, Iterator, Literal, TYPE_CHECKING
 import numpy as np
 from numpy.typing import NDArray
-import pandas as pd
-from starfile_rs import read_star, read_star_block
+import polars as pl
+from starfile_rs import read_star
 import mrcfile
 from himena_relion._image_readers._array import ArrayFilteredView
 from himena_relion._utils import change_name_for_tomo, normalize_job_id
@@ -219,9 +219,7 @@ class JobDirectory:
                 pipeline = RelionPipelineModel.validate_file(path)
                 _id = "/".join(path.parent.as_posix().split("/")[-2:]) + "/"
                 pos_sl = pipeline.processes.process_name == _id
-                out = bool(
-                    pipeline.processes.status_label[pos_sl].iloc[0] == "Scheduled"
-                )
+                out = pipeline.processes.status_label.filter(pos_sl)[0] == "Scheduled"
         return out
 
     def parent_jobs(self) -> list[JobDirectory]:
@@ -337,31 +335,27 @@ class TiltSeriesInfo:
     voltage: float = -1.0
     spherical_abberation: float = -1.0
     amplitude_contrast: float = -1.0
-    micrograph_original_pixel_size: float = -1.0
+    micrograph_orig_pixel_size: float = -1.0
     tomo_hand: Literal[1, -1] = 1
     tomo_tilt_series_pixel_size: float = -1.0
 
     @classmethod
-    def from_series(cls, series: pd.Series) -> Self:
-        """Create a TiltSeriesInfo instance from a pandas Series."""
+    def from_dict(cls, d: dict[str, Any]) -> Self:
+        """Create a TiltSeriesInfo instance from a dict."""
         return cls(
-            tomo_name=series.get("rlnTomoName", ""),
-            tomo_tilt_series_star_file=Path(
-                series.get("rlnTomoTiltSeriesStarFile", "")
-            ),
-            voltage=series.get("rlnVoltage", -1.0),
-            spherical_abberation=series.get("rlnSphericalAberration", -1.0),
-            amplitude_contrast=series.get("rlnAmplitudeContrast", -1.0),
-            micrograph_original_pixel_size=series.get(
-                "rlnMicrographOriginalPixelSize", -1.0
-            ),
-            tomo_hand=series.get("rlnTomoHand", 1),
+            tomo_name=d.get("rlnTomoName", ""),
+            tomo_tilt_series_star_file=Path(d.get("rlnTomoTiltSeriesStarFile", "")),
+            voltage=d.get("rlnVoltage", -1.0),
+            spherical_abberation=d.get("rlnSphericalAberration", -1.0),
+            amplitude_contrast=d.get("rlnAmplitudeContrast", -1.0),
+            micrograph_orig_pixel_size=d.get("rlnMicrographOriginalPixelSize", -1.0),
+            tomo_hand=int(d.get("rlnTomoHand", 1)),
         )
 
     def read_tilt_series(self, rln_dir: Path) -> ArrayFilteredView:
         """Read the tilt series from the file."""
         ts = self._ts_model(rln_dir)
-        order = ts.nominal_stage_tilt_angle.argsort()
+        order = ts.nominal_stage_tilt_angle.arg_sort()
         paths = [rln_dir / p for p in ts.micrograph_name]
         return ArrayFilteredView.from_mrcs([paths[i] for i in order])
 
@@ -373,10 +367,10 @@ class TiltSeriesInfo:
 @dataclass
 class CorrectedTiltSeriesInfo(TiltSeriesInfo):
     @classmethod
-    def from_series(cls, series: pd.Series) -> Self:
-        """Create a CorrectedTiltSeriesInfo instance from a pandas Series."""
-        out = super().from_series(series)
-        out.tomo_tilt_series_pixel_size = series.get("rlnTomoTiltSeriesPixelSize", -1.0)
+    def from_dict(cls, d: dict[str, Any]) -> Self:
+        """Create a CorrectedTiltSeriesInfo instance from a dict."""
+        out = super().from_dict(d)
+        out.tomo_tilt_series_pixel_size = d.get("rlnTomoTiltSeriesPixelSize", -1.0)
         return out
 
 
@@ -385,9 +379,9 @@ class SelectedTiltSeriesInfo(CorrectedTiltSeriesInfo):
     tilt_series_star_file: Path = Path("")
 
     @classmethod
-    def from_series(cls, series: pd.Series) -> Self:
-        """Create a SelectedTiltSeriesInfo instance from a pandas Series."""
-        out = super().from_series(series)
+    def from_dict(cls, series: dict[str, Any]) -> Self:
+        """Create a SelectedTiltSeriesInfo instance from a dict."""
+        out = super().from_dict(series)
         out.tilt_series_star_file = Path(series.get("rlnTomoTiltSeriesStarFile", ""))
         return out
 
@@ -402,13 +396,13 @@ class AlignedTiltSeriesInfo(SelectedTiltSeriesInfo):
     imod_leave_out_error: float = -1.0
 
     @classmethod
-    def from_series(cls, series: pd.Series) -> Self:
-        """Create an ALignedTiltSeriesInfo instance from a pandas Series."""
-        out = super().from_series(series)
-        out.etomo_directive_file = Path(series.get("rlnEtomoDirectiveFile", ""))
-        out.imod_residual_error_mean = series.get("rlnImodResidualErrorMean", -1.0)
-        out.imod_residual_error_stddev = series.get("rlnImodResidualErrorStddev", -1.0)
-        out.imod_leave_out_error = series.get("rlnImodLeaveOutError", -1.0)
+    def from_dict(cls, d: dict[str, Any]) -> Self:
+        """Create an ALignedTiltSeriesInfo instance from a dict."""
+        out = super().from_dict(d)
+        out.etomo_directive_file = Path(d.get("rlnEtomoDirectiveFile", ""))
+        out.imod_residual_error_mean = d.get("rlnImodResidualErrorMean", -1.0)
+        out.imod_residual_error_stddev = d.get("rlnImodResidualErrorStddev", -1.0)
+        out.imod_leave_out_error = d.get("rlnImodLeaveOutError", -1.0)
         return out
 
 
@@ -419,40 +413,27 @@ class TomogramInfo(AlignedTiltSeriesInfo):
     tomo_size_y: int = -1
     tomo_size_z: int = -1
     reconstructed_tomogram: list[Path] = field(default_factory=list)
-    get_particles: Callable[[], pd.DataFrame] | None = None
+    get_particles: Callable[[], pl.DataFrame] | None = None
 
     @classmethod
-    def from_series(cls, series: pd.Series) -> Self:
-        """Create a TomogramInfo instance from a pandas Series."""
-        out = super().from_series(series)
-        out.tomogram_binning = series.get("rlnTomoTomogramBinning", -1.0)
-        out.tomo_size_x = series.get("rlnTomoSizeX", -1)
-        out.tomo_size_y = series.get("rlnTomoSizeY", -1)
-        out.tomo_size_z = series.get("rlnTomoSizeZ", -1)
-        if "rlnTomoReconstructedTomogram" in series:
-            out.reconstructed_tomogram = [Path(series["rlnTomoReconstructedTomogram"])]
-        elif "rlnTomoReconstructedTomogramDenoised" in series:
+    def from_dict(cls, d: dict[str, Any]) -> Self:
+        """Create a TomogramInfo instance from a dict."""
+        out = super().from_dict(d)
+        out.tomogram_binning = d.get("rlnTomoTomogramBinning", -1.0)
+        out.tomo_size_x = d.get("rlnTomoSizeX", -1)
+        out.tomo_size_y = d.get("rlnTomoSizeY", -1)
+        out.tomo_size_z = d.get("rlnTomoSizeZ", -1)
+        if "rlnTomoReconstructedTomogram" in d:
+            out.reconstructed_tomogram = [Path(d["rlnTomoReconstructedTomogram"])]
+        elif "rlnTomoReconstructedTomogramDenoised" in d:
             out.reconstructed_tomogram = [
-                Path(series["rlnTomoReconstructedTomogramDenoised"])
+                Path(d["rlnTomoReconstructedTomogramDenoised"])
             ]
         else:
             out.reconstructed_tomogram = [
-                Path(series.get("rlnTomoReconstructedTomogramHalf1")),
-                Path(series.get("rlnTomoReconstructedTomogramHalf2")),
+                Path(d.get("rlnTomoReconstructedTomogramHalf1")),
+                Path(d.get("rlnTomoReconstructedTomogramHalf2")),
             ]
-        return out
-
-    @classmethod
-    def from_series_denoised(cls, series: pd.Series) -> Self:
-        """Create a TomogramInfo instance from a pandas Series for denoised tomograms."""
-        out = super().from_series(series)
-        out.tomogram_binning = series.get("rlnTomoTomogramBinning", -1.0)
-        out.tomo_size_x = series.get("rlnTomoSizeX", -1)
-        out.tomo_size_y = series.get("rlnTomoSizeY", -1)
-        out.tomo_size_z = series.get("rlnTomoSizeZ", -1)
-        out.reconstructed_tomogram = [
-            Path(series.get("rlnTomoReconstructedTomogramDenoised"))
-        ]
         return out
 
     @property
@@ -515,26 +496,29 @@ class PickJobDirectory(JobDirectory):
         tomo_star, particles_star = self.tomo_and_particles_star()
         if tomo_star is None:
             return
-        star = read_star(tomo_star).first().trust_loop().to_pandas()
-        for _, row in star.iterrows():
-            info = TomogramInfo.from_series(row)
+        star = read_star(tomo_star).first().trust_loop().to_polars()
+        for row in star.iter_rows(named=True):
+            info = TomogramInfo.from_dict(row)
             getter = self._make_get_particles(particles_star, info.tomo_name)
             info.get_particles = getter
             yield info
 
     def _make_get_particles(
         self, particles_star: Path, tomo_name: str
-    ) -> Callable[[], pd.DataFrame]:
+    ) -> Callable[[], pl.DataFrame]:
         """Create a function to get particles for a given tomogram."""
 
-        def get_particles() -> pd.DataFrame:
+        def get_particles() -> pl.DataFrame:
             if particles_star is None:
                 cols = [f"rlnCenteredCoordinate{x}Angst" for x in "ZYX"]
-                return pd.DataFrame({c: [] for c in cols}, dtype=float)
+                return pl.DataFrame(
+                    {c: [] for c in cols}, schema={c: pl.Float32 for c in cols}
+                )
             else:
                 ptcl = ParticleMetaModel.validate_file(particles_star)
-                sl = ptcl.particles.tomo_name == tomo_name
-                return ptcl.particles.dataframe[sl].reset_index(drop=True)
+                return ptcl.particles.dataframe.filter(
+                    pl.col("rlnTomoName") == tomo_name
+                )
 
         return get_particles
 
@@ -693,15 +677,6 @@ class Class3DResults(_3DResultsBase):
         with mrcfile.open(mrc_path, mode="r") as mrc:
             return mrc.data, mrc.voxel_size.x
 
-    def fsc_dataframe(self, class_id: int) -> pd.DataFrame | None:
-        starpath = self.path / f"run{self.it_str}_model.star"
-        try:
-            block = read_star_block(starpath, f"model_class_{class_id}")
-            return block.trust_loop().to_pandas()
-        except Exception as e:
-            _LOGGER.warning(f"Failed to read FSC data from {starpath}: {e}")
-            return None
-
     def angdist(self, class_id: int, map_scale: float) -> list[TubeObject]:
         """Return the angular distribution for a given class ID."""
         path = f"run{self.it_str}_class{class_id:03d}_angdist.bild"
@@ -770,7 +745,7 @@ class SelectInteractiveJobDirectory(JobDirectory):
 
     def _opt_star(self) -> Path:
         pipeline = RelionPipelineModel.validate_file(self.path / "job_pipeline.star")
-        optimizer_star_path = Path(pipeline.input_edges.from_node.iloc[0])
+        optimizer_star_path = Path(pipeline.input_edges.from_node[0])
         new_stem = optimizer_star_path.stem[: -len("optimiser")] + "optimisation_set"
         return self.relion_project_dir / optimizer_star_path.parent / f"{new_stem}.star"
 

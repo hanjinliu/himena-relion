@@ -227,6 +227,6 @@ def iter_tilt_series_excludetilt(self: _job_dir.JobDirectory):
     star_path = self.path / "selected_tilt_series.star"
     if not star_path.exists():
         return
-    star = read_star(star_path).first().trust_loop().to_pandas()
-    for _, row in star.iterrows():
-        yield _job_dir.SelectedTiltSeriesInfo.from_series(row)
+    star = read_star(star_path).first().trust_loop().to_polars()
+    for row in star.iter_rows(named=True):
+        yield _job_dir.SelectedTiltSeriesInfo.from_dict(row)

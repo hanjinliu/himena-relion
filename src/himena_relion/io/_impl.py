@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
+import polars as pl
 import subprocess
 import shutil
 from typing import TYPE_CHECKING
@@ -14,7 +15,6 @@ from himena_relion.schemas._pipeline import RelionPipelineModel
 
 if TYPE_CHECKING:
     from himena_relion._job_dir import JobDirectory
-    import pandas as pd
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -68,6 +68,7 @@ def harsh_clean_relion_job(ui: MainWindow, job_dir: JobDirectory):
 def mark_as_finished(job_dir: JobDirectory):
     """Mark this job as 'finished'"""
     job_dir.path.joinpath(FileNames.EXIT_SUCCESS).touch()
+    # TODO: update default_pipeline.star
 
 
 def mark_as_failed(job_dir: JobDirectory):
@@ -125,9 +126,9 @@ def set_job_alias(ui: MainWindow, job_dir: JobDirectory):
     pipeline = RelionPipelineModel.validate_file(default_pipeline_path)
     # look for current alias
     _matched = pipeline.processes.process_name == job_dir.job_normal_id()
-    matched = pipeline.processes.alias[_matched]
+    matched = pipeline.processes.alias.filter(_matched)
     if len(matched) == 1:
-        current_alias = matched.iloc[0]
+        current_alias = matched[0]
         if current_alias == "None":
             current_alias = ""
         elif "/" in current_alias:
@@ -187,12 +188,11 @@ def trash_job(ui: MainWindow, job_dir: JobDirectory):
     # open the file to lock it.
     with rln_dir.joinpath("default_pipeline.star").open("r+") as f:
         pipeline = RelionPipelineModel.validate_text(f.read())
-        input_indices_to_remove: list[int] = []
-        output_indices_to_remove: list[int] = []
+        input_indices_to_remove: list[bool] = []
         # to_trash is all the relative paths to be moved to trash
         to_trash = [job_dir.path.relative_to(rln_dir)]
-        for ith, (from_, to_) in enumerate(
-            zip(pipeline.input_edges.from_node, pipeline.input_edges.process)
+        for from_, to_ in zip(
+            pipeline.input_edges.from_node, pipeline.input_edges.process
         ):
             job_spec = Path(to_)
             if Path(from_).parent in to_trash or job_spec in to_trash:
@@ -202,10 +202,14 @@ def trash_job(ui: MainWindow, job_dir: JobDirectory):
                     and job_spec not in to_trash[::-1]  # faster to search backwards
                 ):
                     to_trash.append(job_spec)
-                input_indices_to_remove.append(ith)
-        for ith, from_ in enumerate(pipeline.output_edges.process):
-            if Path(from_) in to_trash:
-                output_indices_to_remove.append(ith)
+                input_indices_to_remove.append(True)
+            else:
+                input_indices_to_remove.append(False)
+
+        input_indices_to_remove = pl.Series(input_indices_to_remove)
+        output_edges_to_remove = pl.Series(
+            [Path(from_) in to_trash for from_ in pipeline.output_edges.process]
+        )
 
         resp = ui.exec_choose_one_dialog(
             title="Trash job?",
@@ -216,30 +220,28 @@ def trash_job(ui: MainWindow, job_dir: JobDirectory):
             raise Cancelled
 
         # determine other fields to remove
-        process_name_to_remove: list[int] = []
-        for ith, name in enumerate(pipeline.processes.process_name):
-            if Path(name) in to_trash:
-                process_name_to_remove.append(ith)
-
-        process_nodes_to_remove: list[int] = []
-        for ith, name in enumerate(pipeline.nodes.name):
-            if Path(name).parent in to_trash:
-                process_nodes_to_remove.append(ith)
-
-        output_edges_trashed = pipeline.output_edges.dataframe.iloc[
-            output_indices_to_remove
-        ]
-        nodes_trashed = pipeline.nodes.dataframe.iloc[process_nodes_to_remove]
-
-        pipeline.processes = pipeline.processes.dataframe.drop(
-            index=process_name_to_remove
+        process_name_to_remove = pl.Series(
+            [Path(name) in to_trash for name in pipeline.processes.process_name]
         )
-        pipeline.nodes = pipeline.nodes.dataframe.drop(index=process_nodes_to_remove)
-        pipeline.input_edges = pipeline.input_edges.dataframe.drop(
-            index=input_indices_to_remove
+
+        process_nodes_to_remove = pl.Series(
+            [Path(name) in to_trash for name in pipeline.nodes.name]
         )
-        pipeline.output_edges = pipeline.output_edges.dataframe.drop(
-            index=output_indices_to_remove
+
+        output_edges_trashed = pipeline.output_edges.dataframe.filter(
+            output_edges_to_remove
+        )
+        nodes_trashed = pipeline.nodes.dataframe.filter(process_nodes_to_remove)
+
+        pipeline.processes = pipeline.processes.dataframe.filter(
+            ~process_name_to_remove
+        )
+        pipeline.nodes = pipeline.nodes.dataframe.filter(~process_nodes_to_remove)
+        pipeline.input_edges = pipeline.input_edges.dataframe.filter(
+            ~input_indices_to_remove
+        )
+        pipeline.output_edges = pipeline.output_edges.dataframe.filter(
+            ~output_edges_to_remove
         )
 
         # close all the tabs with trashed jobs
@@ -265,6 +267,9 @@ def trash_job(ui: MainWindow, job_dir: JobDirectory):
         trash_dir.mkdir(exist_ok=True)
         for p in to_trash:
             src = rln_dir / p
+            if not src.exists():
+                _LOGGER.warning(f"Source {src} does not exist. Skipping.")
+                continue
             dest = trash_dir / p
             dest.parent.mkdir(parents=True, exist_ok=True)
             if dest.exists():
@@ -325,8 +330,8 @@ def restore_trashed_jobs(relion_project_dir: Path, job_ids: list[str]):
                 status_label[sl] = "Failed"
             elif path_to_undo.joinpath(FileNames.EXIT_ABORTED).exists():
                 status_label[sl] = "Aborted"
-            df_proc["rlnPipeLineProcessStatusLabel"] = status_label
-            all_processes.append(job_pipeline.processes.dataframe)
+            df_proc = df_proc.with_columns(status_label)
+            all_processes.append(df_proc)
             all_nodes.append(job_pipeline.nodes.dataframe)
             all_input_edges.append(job_pipeline.input_edges.dataframe)
             all_output_edges.append(job_pipeline.output_edges.dataframe)
@@ -396,12 +401,10 @@ def _remove_dir_or_file(dest: Path):
         dest.unlink()
 
 
-def _concat_and_reorder(dfs: list[pd.DataFrame], column_name: str):
-    import pandas as pd
-
-    df_processes = pd.concat(dfs, ignore_index=True)
-    order = df_processes[column_name].apply(_try_get_job_name).argsort()
-    return df_processes.iloc[order].reset_index(drop=True)
+def _concat_and_reorder(dfs: list[pl.DataFrame], column_name: str):
+    df_processes = pl.concat(dfs, how="vertical_relaxed")
+    order = df_processes[column_name].map_elements(_try_get_job_name).arg_sort()
+    return df_processes[order]
 
 
 def _try_get_job_name(x: str) -> str:

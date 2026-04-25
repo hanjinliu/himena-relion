@@ -4,7 +4,7 @@ import logging
 from typing import Iterator
 import imodmodel
 import mrcfile
-import pandas as pd
+import polars as pl
 from qtpy import QtWidgets as QtW, QtCore
 from starfile_rs import read_star
 from himena_relion._image_readers import ArrayFilteredView
@@ -23,6 +23,7 @@ class QFindBeads3DViewer(QtW.QWidget):
         layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignTop)
 
         self._viewer = Q2DViewer()
+        self._viewer.setMinimumHeight(420)
         self._viewer.setMaximumHeight(480)
         self._tomo_choice = QMicrographListWidget(["Tomogram", "Fiducials"])
         self._tomo_choice.current_changed.connect(self._on_tomo_changed)
@@ -50,7 +51,7 @@ class QFindBeads3DViewer(QtW.QWidget):
             if df_mod is None:
                 num_fid = "?"
             else:
-                num_fid = str(len(df_mod))
+                num_fid = str(df_mod.height)
             choices.append((tomo_name, num_fid))
         choices.sort(key=lambda x: x[0])
         self._tomo_choice.set_choices(choices)
@@ -75,7 +76,9 @@ class QFindBeads3DViewer(QtW.QWidget):
         self._viewer.set_array_view(tomo_view, self._viewer._last_clim)
         bead_size = float(self._job_dir.get_job_param("gold_nm"))
         point_size = bead_size / info.tomo_pixel_size * 10 + 0.5
-        self._viewer.set_points(df_mod[["z", "y", "x"]].to_numpy(), size=point_size)
+        self._viewer.set_points(
+            df_mod.select("z", "y", "x").to_numpy(), size=point_size
+        )
 
     def _iter_tomogram_info(self) -> Iterator[_job_dir.TomogramInfo]:
         pipe = self._job_dir.parse_job_pipeline()
@@ -87,14 +90,14 @@ class QFindBeads3DViewer(QtW.QWidget):
                 f"No TomogramGroupMetadata input found in {self._job_dir.path}"
             )
         if input0.path.exists():
-            df_tomo = read_star(input0.path).first().trust_loop().to_pandas()
-            for _, row in df_tomo.iterrows():
-                yield _job_dir.TomogramInfo.from_series(row)
+            df_tomo = read_star(input0.path).first().trust_loop().to_polars()
+            for row in df_tomo.iter_rows(named=True):
+                yield _job_dir.TomogramInfo.from_dict(row)
 
-    def _read_mod(self, tomo_name: str) -> pd.DataFrame | None:
+    def _read_mod(self, tomo_name: str) -> pl.DataFrame | None:
         mod_path = self._job_dir.path / "models" / f"{tomo_name}.mod"
         if mod_path.exists():
-            return imodmodel.read(mod_path)
+            return pl.DataFrame(imodmodel.read(mod_path))
 
 
 class QEraseGoldViewer(QtW.QWidget):
@@ -104,6 +107,8 @@ class QEraseGoldViewer(QtW.QWidget):
         layout = QtW.QVBoxLayout(self)
 
         self._viewer = Q2DViewer(zlabel="Tilt index")
+        self._viewer.setMinimumHeight(420)
+        self._viewer.setMaximumHeight(480)
         self._filter_widget = Q2DFilterWidget(bin_default=8, lowpass_default=30)
         self._ts_choice = QMicrographListWidget(["Tilt Series"])
         self._ts_choice.current_changed.connect(self._ts_choice_changed)

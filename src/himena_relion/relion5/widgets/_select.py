@@ -291,7 +291,7 @@ _NOT_ENOUGH_MSG = "Not enough output files to display results."
 
 def get_particles_star_before(job_dir: _job_dir.JobDirectory) -> Path:
     pipeline = RelionPipelineModel.validate_file(job_dir.path / "job_pipeline.star")
-    optimizer_star_path = Path(pipeline.input_edges.from_node.iloc[0])
+    optimizer_star_path = Path(pipeline.input_edges.from_node[0])
     new_stem = optimizer_star_path.stem[: -len("optimiser")] + "data"
     return job_dir.resolve_path(optimizer_star_path.parent / f"{new_stem}.star")
 
