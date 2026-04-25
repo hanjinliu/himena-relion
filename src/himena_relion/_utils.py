@@ -1,4 +1,6 @@
 from __future__ import annotations
+
+import os
 from pathlib import Path
 import logging
 import time
@@ -279,7 +281,28 @@ def get_pipeline_widgets(
 
 def open_url(url: str) -> None:
     """Open the URL with the default browser."""
-    from qtpy.QtGui import QDesktopServices
-    from qtpy.QtCore import QUrl
+    import webbrowser
 
-    QDesktopServices.openUrl(QUrl(url))
+    webbrowser.open(url)
+
+
+def iter_directory_content_summary(path: Path, yield_every: int = 2000):
+    # NOTE: Path.walk is not available in Python 3.11, and using os.walk is faster.
+    num_files = 0
+    total_size_bytes = 0
+    for root, _dirs, files in os.walk(str(path)):
+        for file in files:
+            num_files += 1
+            total_size_bytes += os.path.getsize(os.path.join(root, file))
+            if num_files % yield_every == 0:
+                yield num_files, total_size_bytes
+    if num_files % yield_every != 0:
+        yield num_files, total_size_bytes
+
+
+def command_not_found_err_msg(first_sentense: str):
+    return (
+        f"{first_sentense}. Please set a correct path in the config (Ctrl+,).\n"
+        "See https://hanjinliu.github.io/himena-relion/getting_started/ for more "
+        "details."
+    )

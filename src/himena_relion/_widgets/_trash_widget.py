@@ -12,6 +12,7 @@ from himena.plugins import register_widget_class, validate_protocol
 from himena_relion._job_dir import JobDirectory
 from himena_relion._widgets._main import QRelionJobWidgetBase
 from himena_relion._widgets._job_widgets import QNoteEdit, QJobPipelineViewer
+from himena_relion._widgets._content_info import QJobContentInfo
 from himena_relion.consts import Type
 from himena_relion.io._impl import restore_trashed_jobs, _html_list
 
@@ -24,7 +25,7 @@ class QTrashWidget(QtW.QSplitter):
         self._project_dir = None
         self._watcher = None
 
-        self._trash_label = QtW.QLabel("<b>Trashed jobs:</b>")
+        self._trash_label = QtW.QLabel("<b>Trashed jobs</b>")
         font = self._trash_label.font()
         font.setPointSize(12)
         self._trash_label.setFont(font)
@@ -32,6 +33,7 @@ class QTrashWidget(QtW.QSplitter):
         self._job_list_widget.setSelectionMode(
             QtW.QAbstractItemView.SelectionMode.ExtendedSelection
         )
+        self._content_info = QJobContentInfo()
         self._job_view = QRelionJobWidgetBase()
         self._job_view._state_widget._set_alias_btn.hide()
 
@@ -40,6 +42,7 @@ class QTrashWidget(QtW.QSplitter):
         left_layout.setContentsMargins(0, 0, 0, 0)
         left_layout.addWidget(self._trash_label)
         left_layout.addWidget(self._job_list_widget)
+        left_layout.addWidget(self._content_info)
         self.addWidget(left)
         self.addWidget(self._job_view)
 
@@ -125,10 +128,13 @@ class QTrashWidget(QtW.QSplitter):
             self._job_view.clear_tabs()
             return
         job_id = selected_items[0].text()
+        job_dir = JobDirectory.from_job_star(trash_dir / job_id / "job.star")
+        if (current := self._job_view._job_dir) and job_dir.path == current.path:
+            return  # same job selected, do nothing
+
+        self._content_info.count_directory_content(job_dir.path)
         self._job_view.clear_tabs()
-        self._job_view.update_job(
-            JobDirectory.from_job_star(trash_dir / job_id / "job.star")
-        )
+        self._job_view.update_job(job_dir)
         for widget in self._job_view._iter_job_widgets():
             if isinstance(widget, QNoteEdit):
                 widget.setReadOnly(True)

@@ -1,3 +1,4 @@
+from contextlib import suppress
 from typing import Callable
 from himena import MainWindow
 import pytest
@@ -104,6 +105,8 @@ def test_spa_set_job_param(job_str: str, make_himena_ui: Callable[[], MainWindow
 
     params = scheduler.get_parameters()
     job_cls.prep_job_star(**params).to_string()
+    with suppress(ValueError):
+        job_cls.prerun_check(**params)
 
     # TODO: this is failing because not all the parameters are round-trippable.
     # For example, in import job, changing in_coords does not affect running import

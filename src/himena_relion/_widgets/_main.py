@@ -54,6 +54,7 @@ class QRelionJobWidgetBase(QtW.QWidget):
     def clear_tabs(self):
         self._tab_widget.clear()
         self._state_widget.clear_content()
+        self._job_dir = None
 
     def update_job(self, job_dir: _job_dir.JobDirectory):
         self._job_dir = job_dir

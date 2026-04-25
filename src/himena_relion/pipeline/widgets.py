@@ -26,6 +26,7 @@ from himena_relion.pipeline._flowchart import (
     QRelionPipelineFlowChartView,
     RelionJobNodeItem,
 )
+from himena_relion._widgets._content_info import QJobContentInfo
 from himena_relion.pipeline._startscreen import QRelionPipelineStartScreen
 
 _LOGGER = logging.getLogger(__name__)
@@ -64,6 +65,7 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         # btn.add_action("Gentle clean all", self._gentle_clean_all)
         # btn.add_action("Harsh clean all", self._harsh_clean_all)
         btn.add_action("Refresh", self._refresh_flowchart, shortcut="F5")
+        # TODO: copy path
         self._more_action_btn = btn
 
         self._stacked_widget = QtW.QStackedWidget()
@@ -72,7 +74,15 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         self._stacked_widget.addWidget(self._flow_chart)
         self._stacked_widget.addWidget(self._start_screen)
         self._stacked_widget.setCurrentWidget(self._flow_chart)
-        self._footer = QJobPipelineViewer()
+        self._content_info = QJobContentInfo()
+        self._inout = QJobPipelineViewer()
+
+        self._footer = QtW.QWidget()
+        _footer_layout = QtW.QVBoxLayout(self._footer)
+        _footer_layout.setContentsMargins(0, 0, 0, 0)
+        _footer_layout.addWidget(self._content_info)
+        _footer_layout.addWidget(self._inout)
+
         self._watcher: GeneratorWorker | None = None
         layout = QtW.QVBoxLayout(self)
         splitter = QtW.QSplitter(QtCore.Qt.Orientation.Vertical)
@@ -106,11 +116,15 @@ class QRelionPipelineFlowChart(QtW.QWidget):
 
     def _on_item_left_clicked(self, item: RelionJobNodeItem):
         if job_dir := item.job_dir(self._flow_chart._relion_project_dir):
-            self._footer.initialize(job_dir)
-            self._footer.update_item_colors(job_dir)
+            self._inout.initialize(job_dir)
+            self._inout.update_item_colors(job_dir)
+            self._content_info.count_directory_content(job_dir.path)
+        else:
+            self._on_background_left_clicked()
 
     def _on_background_left_clicked(self):
-        self._footer.clear_in_out()
+        self._inout.clear_in_out()
+        self._content_info.clear_content_info()
 
     def _open_as_raw_text(self):
         """Open the default_pipeline.star file as a raw text file."""

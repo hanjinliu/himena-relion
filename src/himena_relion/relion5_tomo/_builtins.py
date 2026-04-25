@@ -1,4 +1,5 @@
 from pathlib import Path
+import shutil
 from typing import Any
 
 from himena_relion._job_class import _Relion5BuiltinJob, parse_string
@@ -10,6 +11,7 @@ from himena_relion._adapt import (
     norm_extract_subtomo,
     norm_extract_subtomo_inv,
 )
+from himena_relion._utils import command_not_found_err_msg
 from himena_relion.relion5._builtins import (
     CtfEstimationJob,
     Class3DNoAlignmentJob,
@@ -416,6 +418,13 @@ class AlignTiltSeriesImodFiducial(_AlignTiltSeriesJobBase):
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
+    @classmethod
+    def prerun_check(cls, **kwargs) -> None:
+        if shutil.which(cmd := _configs.get_batchruntomo_exe()) is None:
+            raise ValueError(
+                command_not_found_err_msg(f"batchruntomo executable not found: {cmd}")
+            )
+
 
 class AlignTiltSeriesImodPatch(_AlignTiltSeriesJobBase):
     """Automatic tilt series alignment using IMOD patch tracking."""
@@ -468,6 +477,13 @@ class AlignTiltSeriesImodPatch(_AlignTiltSeriesJobBase):
         min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
+
+    @classmethod
+    def prerun_check(cls, **kwargs) -> None:
+        if shutil.which(cmd := _configs.get_batchruntomo_exe()) is None:
+            raise ValueError(
+                command_not_found_err_msg(f"batchruntomo executable not found: {cmd}")
+            )
 
 
 class AlignTiltSeriesAreTomo2(_AlignTiltSeriesJobBase):
@@ -550,6 +566,13 @@ class AlignTiltSeriesAreTomo2(_AlignTiltSeriesJobBase):
         _on_do_aretomo_tiltcorrect_changed(widgets["do_aretomo_tiltcorrect"].value)
         _on_do_aretomo_reconstruct_changed(widgets["do_aretomo_reconstruct"].value)
 
+    @classmethod
+    def prerun_check(cls, **kwargs) -> None:
+        if shutil.which(cmd := _configs.get_aretomo2_exe()) is None:
+            raise ValueError(
+                command_not_found_err_msg(f"AreTomo2 executable not found: {cmd}")
+            )
+
 
 class ReconstructTomoByAreTomo2(_AlignTiltSeriesJobBase):
     """Tomogram reconstruction using AreTomo2."""
@@ -610,6 +633,13 @@ class ReconstructTomoByAreTomo2(_AlignTiltSeriesJobBase):
         min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
+
+    @classmethod
+    def prerun_check(cls, **kwargs) -> None:
+        if shutil.which(cmd := _configs.get_aretomo2_exe()) is None:
+            raise ValueError(
+                command_not_found_err_msg(f"AreTomo2 executable not found: {cmd}")
+            )
 
 
 class _ReconstructTomogramBaseJob(_Relion5TomoJob):

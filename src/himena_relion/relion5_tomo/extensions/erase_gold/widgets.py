@@ -86,9 +86,10 @@ class QFindBeads3DViewer(QtW.QWidget):
             raise ValueError(
                 f"No TomogramGroupMetadata input found in {self._job_dir.path}"
             )
-        df_tomo = read_star(input0.path).first().trust_loop().to_pandas()
-        for _, row in df_tomo.iterrows():
-            yield _job_dir.TomogramInfo.from_series(row)
+        if input0.path.exists():
+            df_tomo = read_star(input0.path).first().trust_loop().to_pandas()
+            for _, row in df_tomo.iterrows():
+                yield _job_dir.TomogramInfo.from_series(row)
 
     def _read_mod(self, tomo_name: str) -> pd.DataFrame | None:
         mod_path = self._job_dir.path / "models" / f"{tomo_name}.mod"
