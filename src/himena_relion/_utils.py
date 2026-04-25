@@ -145,7 +145,7 @@ def make_tilt_projection_mat(deg: float) -> NDArray[np.float32]:
 def last_job_directory() -> str:
     """Get the identifier of the latest job."""
     pipeline = RelionPipelineModel.validate_file("default_pipeline.star")
-    return pipeline.processes.process_name.iloc[-1]
+    return pipeline.processes.process_name[-1]
 
 
 def unwrap_annotated(annot: Any) -> Any:

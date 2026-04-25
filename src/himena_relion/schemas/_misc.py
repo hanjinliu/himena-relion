@@ -1,6 +1,6 @@
 from pathlib import Path
-import pandas as pd
-import starfile_rs.schema.pandas as schema
+import polars as pl
+import starfile_rs.schema.polars as schema
 from himena_relion.schemas._movie_tilts import TomogramsGroupModel
 
 
@@ -21,7 +21,7 @@ class JobModel(schema.SingleDataModel):
 
 class JobOptionsValues(schema.LoopDataModel):
     variable: schema.Series[str] = schema.Field("rlnJobOptionVariable")
-    value: schema.Series[object] = schema.Field("rlnJobOptionValue")
+    value: schema.Series[str] = schema.Field("rlnJobOptionValue")
 
     def to_dict(self) -> dict[str, str]:
         """Return the parameters as a dictionary."""
@@ -59,16 +59,16 @@ class ParticlesModel(schema.LoopDataModel):
         s0 = size // 2
         s1 = size - s0
         return cls(
-            tomo_name=pd.Series(["TS_01"] * s0 + ["TS_02"] * s1, dtype="string"),
-            centered_x=pd.Series([0.0] * size, dtype="float"),
-            centered_y=pd.Series([1.0] * size, dtype="float"),
-            centered_z=pd.Series([2.0] * size, dtype="float"),
-            orig_x=pd.Series([0.0] * size, dtype="float"),
-            orig_y=pd.Series([0.0] * size, dtype="float"),
-            orig_z=pd.Series([0.0] * size, dtype="float"),
-            class_number=pd.Series([1] * size, dtype="int"),
-            angle_rot=pd.Series([5.0] * size, dtype="float"),
-            angle_tilt=pd.Series([8.0] * size, dtype="float"),
+            tomo_name=pl.Series(["TS_01"] * s0 + ["TS_02"] * s1, dtype=pl.String),
+            centered_x=pl.Series([0.0] * size, dtype=pl.Float64),
+            centered_y=pl.Series([1.0] * size, dtype=pl.Float64),
+            centered_z=pl.Series([2.0] * size, dtype=pl.Float64),
+            orig_x=pl.Series([0.0] * size, dtype=pl.Float64),
+            orig_y=pl.Series([0.0] * size, dtype=pl.Float64),
+            orig_z=pl.Series([0.0] * size, dtype=pl.Float64),
+            class_number=pl.Series([1] * size, dtype=pl.Int64),
+            angle_rot=pl.Series([5.0] * size, dtype=pl.Float64),
+            angle_tilt=pl.Series([8.0] * size, dtype=pl.Float64),
         )
 
 
@@ -119,23 +119,23 @@ class ModelStarModel(schema.StarModel):
         """Create an example model with given size."""
         return cls(
             classes=ModelClasses(
-                ref_image=pd.Series(
+                ref_image=pl.Series(
                     [
                         f"000000{ith:03d}@Class2D/job001/000000001.mrcs"
                         for ith in range(size)
                     ],
-                    dtype="string",
+                    dtype=pl.String,
                 ),
-                class_distribution=pd.Series([1.0 / size] * size, dtype="float"),
-                resolution=pd.Series([5.0] * size, dtype="float"),
-                accuracy_rotation=pd.Series([0.5] * size, dtype="float"),
-                accyracy_translation=pd.Series([1.0] * size, dtype="float"),
+                class_distribution=pl.Series([1.0 / size] * size, dtype=pl.Float64),
+                resolution=pl.Series([5.0] * size, dtype=pl.Float64),
+                accuracy_rotation=pl.Series([0.5] * size, dtype=pl.Float64),
+                accyracy_translation=pl.Series([1.0] * size, dtype=pl.Float64),
             ),
             groups=ModelGroups(
-                number=pd.Series([1] * size, dtype="int"),
-                name=pd.Series(["Group1"] * size, dtype="string"),
-                num_particles=pd.Series([100] * size, dtype="int"),
-                scale_correction=pd.Series([1.0] * size, dtype="float"),
+                number=pl.Series([1] * size, dtype=pl.Int64),
+                name=pl.Series(["Group1"] * size, dtype=pl.String),
+                num_particles=pl.Series([100] * size, dtype=pl.Int64),
+                scale_correction=pl.Series([1.0] * size, dtype=pl.Float64),
             ),
         )
 

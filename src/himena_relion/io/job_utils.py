@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 from himena import MainWindow, WidgetDataModel
 from himena.exceptions import Cancelled
 from himena.plugins import register_function
-from himena_relion.consts import Type, MenuId, FileNames
+from himena_relion.consts import Type, MenuId
 from himena_relion.io import _impl
 from himena_relion._utils import get_pipeline_widgets, open_url
 
@@ -70,7 +70,7 @@ def harsh_clean_relion_job(ui: MainWindow, model: WidgetDataModel):
 def mark_as_finished(model: WidgetDataModel):
     """Mark this job as 'finished'"""
     job_dir = assert_job(model)
-    job_dir.path.joinpath(FileNames.EXIT_SUCCESS).touch()
+    _impl.mark_as_finished(job_dir)
 
 
 @register_function(
@@ -83,7 +83,7 @@ def mark_as_finished(model: WidgetDataModel):
 def mark_as_failed(model: WidgetDataModel):
     """Mark this job as 'failed'"""
     job_dir = assert_job(model)
-    job_dir.path.joinpath(FileNames.EXIT_FAILURE).touch()
+    _impl.mark_as_failed(job_dir)
 
 
 @register_function(

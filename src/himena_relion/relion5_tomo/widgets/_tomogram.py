@@ -276,7 +276,7 @@ class QPickViewer(QJobScrollArea):
         if getter := info.get_particles:
             point_df = getter()
             cols = [f"rlnCenteredCoordinate{x}Angst" for x in "ZYX"]
-            points = point_df[cols].to_numpy(dtype=np.float32) / info.tomo_pixel_size
+            points = point_df.select(cols).to_numpy() / info.tomo_pixel_size
             sizes = np.array(info.tomo_shape, dtype=np.float32) / info.tomogram_binning
             center = (sizes - 1) / 2
             bin_factor = int(self._filter_widget._bin_factor.text() or "1")

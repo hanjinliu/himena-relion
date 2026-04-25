@@ -4,7 +4,7 @@ from pathlib import Path
 import logging
 
 from qtpy import QtWidgets as QtW
-import pandas as pd
+import polars as pl
 import numpy as np
 from starfile_rs import read_star
 from superqt.utils import thread_worker, GeneratorWorker
@@ -86,8 +86,7 @@ class QInspectViewer(QtW.QWidget):
             cols_orig = [f"rlnOrigin{x}Angst" for x in "ZYX"]
 
             points = (
-                point_df[cols].to_numpy(dtype=np.float32)
-                + point_df[cols_orig].to_numpy(dtype=np.float32)
+                point_df.select(cols).to_numpy() + point_df.select(cols_orig).to_numpy()
             ) / info.tomo_pixel_size
             sizes = np.array(info.tomo_shape, dtype=np.float32) / info.tomogram_binning
             center = (sizes - 1) / 2
@@ -139,9 +138,9 @@ def _iter_tomograms(
     tomo_star, particles_star = _tomo_and_particles_star(job)
     if tomo_star is None:
         return
-    star = read_star(tomo_star).first().trust_loop().to_pandas()
-    for _, row in star.iterrows():
-        info = _job_dir.TomogramInfo.from_series(row)
+    star = read_star(tomo_star).first().trust_loop().to_polars()
+    for row in star.iter_rows(named=True):
+        info = _job_dir.TomogramInfo.from_dict(row)
         getter = _make_get_particles(particles_star, info.tomo_name)
         info.get_particles = getter
         yield info
@@ -150,14 +149,16 @@ def _iter_tomograms(
 def _make_get_particles(
     particles_star: Path,
     tomo_name: str,
-) -> Callable[[], pd.DataFrame]:
+) -> Callable[[], pl.DataFrame]:
     """Create a function to get particles for a given tomogram."""
 
-    def get_particles() -> pd.DataFrame:
+    def get_particles() -> pl.DataFrame:
         if particles_star is None:
             cols = [f"rlnCenteredCoordinate{x}Angst" for x in "ZYX"]
             cols += [f"rlnOrigin{x}Angst" for x in "ZYX"]
-            return pd.DataFrame({c: [] for c in cols}, dtype=float)
+            return pl.DataFrame(
+                {c: [] for c in cols}, schema={c: pl.Float32 for c in cols}
+            )
         else:
             ptcl = ParticleMetaModel.validate_file(particles_star)
             sl = ptcl.particles.tomo_name == tomo_name

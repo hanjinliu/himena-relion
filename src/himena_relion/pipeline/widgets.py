@@ -12,6 +12,7 @@ from watchfiles import watch, Change
 from himena import MainWindow, WidgetDataModel
 from himena.plugins import validate_protocol
 from himena.style import Theme
+from himena.types import is_subtype
 from himena_relion._job_class import execute_job
 from himena_relion._widgets._job_widgets import QJobPipelineViewer
 from himena_relion._widgets._misc import QMoreActionButton
@@ -65,7 +66,8 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         # btn.add_action("Gentle clean all", self._gentle_clean_all)
         # btn.add_action("Harsh clean all", self._harsh_clean_all)
         btn.add_action("Refresh", self._refresh_flowchart, shortcut="F5")
-        # TODO: copy path
+        btn.add_action("Copy Project Path", self._copy_project_path)
+        btn.add_action("Close All Tabs", self._close_all_tabs)
         self._more_action_btn = btn
 
         self._stacked_widget = QtW.QStackedWidget()
@@ -126,13 +128,16 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         self._inout.clear_in_out()
         self._content_info.clear_content_info()
 
+    def _ui(self):
+        return self._flow_chart._ui
+
     def _open_as_raw_text(self):
         """Open the default_pipeline.star file as a raw text file."""
         path = self._flow_chart._relion_project_dir / "default_pipeline.star"
         if not path.exists():
             _LOGGER.warning("default_pipeline.star not found at %s.", path.as_posix())
             return
-        self._flow_chart._ui.read_file(
+        self._ui().read_file(
             path,
             plugin="himena_builtins.io.read_as_text_anyway",
             append_history=False,
@@ -143,7 +148,7 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         path = self._flow_chart._relion_project_dir / "project_note.txt"
         if not path.exists():
             path.touch()  # create an empty project_note.txt if it doesn't exist
-        self._flow_chart._ui.read_file(path, append_history=False)
+        self._ui().read_file(path, append_history=False)
 
     def _set_root_job(self):
         """Set a job as the root of the flowchart.
@@ -153,7 +158,7 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         file.
         """
         choices = _list_jobs_for_palette(self._flow_chart._pipeline)
-        if resp := self._flow_chart._ui.exec_choose_one_dialog(
+        if resp := self._ui().exec_choose_one_dialog(
             message="Select the root job.",
             choices=choices,
             how="palette",
@@ -167,6 +172,23 @@ class QRelionPipelineFlowChart(QtW.QWidget):
     def _refresh_flowchart(self):
         """Manually trigger a refresh of the pipeline data."""
         self._on_pipeline_updated(self._flow_chart._pipeline)
+
+    def _copy_project_path(self):
+        """Copy the RELION project path to clipboard."""
+        path = self._flow_chart._relion_project_dir.as_posix()
+        self._ui().set_clipboard(text=path)
+        self._ui().show_notification(f"Copied project path {path!r} to clipboard.")
+
+    def _close_all_tabs(self):
+        """Close all job tabs in the main window."""
+        indices: list[int] = []
+        for i_tab, tab in self._ui().tabs.enumerate():
+            if not tab.is_single_window:
+                continue
+            if is_subtype(tab[0].model_type(), Type.RELION_JOB):
+                indices.append(i_tab)
+        for i in reversed(indices):
+            del self._ui().tabs[i]
 
     @validate_protocol
     def update_model(self, model: WidgetDataModel) -> None:
@@ -250,7 +272,7 @@ class QRelionPipelineFlowChart(QtW.QWidget):
             _dict[job.path.as_posix()] = job
         success_new = set(self._state_to_job_map[NodeStatus.SUCCEEDED].keys())
         failed_new = set(self._state_to_job_map[NodeStatus.FAILED].keys())
-        ui = self._flow_chart._ui
+        ui = self._ui()
         # Notify newly succeeded jobs and run scheduled jobs
         if succeeded := (success_new - success_old) & running_old:
             for job in self._state_to_job_map[NodeStatus.SCHEDULED].values():
@@ -291,7 +313,7 @@ class QRelionPipelineFlowChart(QtW.QWidget):
     def _find_job(self):
         """Find a job in the flowchart and center on it."""
         choices = _list_jobs_for_palette(self._flow_chart._pipeline)
-        if resp := self._flow_chart._ui.exec_choose_one_dialog(
+        if resp := self._ui().exec_choose_one_dialog(
             message="Select the root job.",
             choices=choices,
             how="palette",
@@ -305,7 +327,7 @@ class QRelionPipelineFlowChart(QtW.QWidget):
 
     def _open_trash(self):
         """Open a widget that shows the contents of the RELION Trash directory."""
-        self._flow_chart._ui.read_file(self._flow_chart._relion_project_dir / "Trash")
+        self._ui().read_file(self._flow_chart._relion_project_dir / "Trash")
 
 
 class QPipelineFinder(QSearchableComboBox):

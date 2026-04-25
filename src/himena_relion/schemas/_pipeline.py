@@ -1,4 +1,4 @@
-import starfile_rs.schema.pandas as schema
+import starfile_rs.schema.polars as schema
 
 
 class RelionPipelineGeneral(schema.SingleDataModel):

@@ -448,8 +448,8 @@ class _Relion5BuiltinContinue(_Relion5BuiltinJob):
             mask = job_star.joboptions_values.variable == key
             idx = np.where(mask)[0]
             if len(idx) == 1:
-                params_df.iloc[idx[0], 1] = to_string(val_new)
-        job_star.joboptions_values = params_df.to_dict(orient="list")
+                params_df[int(idx[0]), 1] = to_string(val_new)
+        job_star.joboptions_values = params_df
         job_star.job.job_is_continue = 1
         return job_star
 

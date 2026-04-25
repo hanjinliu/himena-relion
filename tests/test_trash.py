@@ -12,11 +12,11 @@ def _extract_job_pipeline(pipeline: RelionPipelineModel, job_name: str) -> Relio
 
     return RelionPipelineModel.validate_dict(
         {
-            "pipeline_general": RelionPipelineModel.General(count= 3),
-            "pipeline_processes": pipeline.processes.dataframe[pipeline.processes.process_name == job_name],
-            "pipeline_nodes": pipeline.nodes.dataframe[pipeline.nodes.name.str.startswith(job_name)],
-            "pipeline_input_edges": pipeline.input_edges.dataframe[pipeline.input_edges.process == job_name],
-            "pipeline_output_edges": pipeline.output_edges.dataframe[pipeline.output_edges.process == job_name],
+            "pipeline_general": RelionPipelineModel.General(count=3),
+            "pipeline_processes": pipeline.processes.dataframe.filter(pipeline.processes.process_name == job_name),
+            "pipeline_nodes": pipeline.nodes.dataframe.filter(pipeline.nodes.name.str.starts_with(job_name)),
+            "pipeline_input_edges": pipeline.input_edges.dataframe.filter(pipeline.input_edges.process == job_name),
+            "pipeline_output_edges": pipeline.output_edges.dataframe.filter(pipeline.output_edges.process == job_name),
         }
     )
 

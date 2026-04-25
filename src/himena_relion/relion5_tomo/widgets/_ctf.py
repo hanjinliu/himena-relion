@@ -99,7 +99,7 @@ class QCtfFindViewer(QJobScrollArea):
         df = ts.block.to_polars()
         rln_dir = job_dir.relion_project_dir
         tilt_angles = ts.nominal_stage_tilt_angle
-        order = list(tilt_angles.argsort())
+        order = list(tilt_angles.arg_sort())
         paths = [rln_dir / p for p in ts.ctf_image]
         paths = [paths[i] for i in order]
         df = df[order]
