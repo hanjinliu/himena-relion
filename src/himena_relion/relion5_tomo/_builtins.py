@@ -945,6 +945,13 @@ class _DenoiseJobBase(_Relion5TomoJob):
         kwargs.pop("cryocare_path", None)
         return super().normalize_kwargs_inv(**kwargs)
 
+    @classmethod
+    def prerun_check(cls, **kwargs) -> None:
+        if not Path(d := _configs.get_cryocare_dir()).exists():
+            raise ValueError(
+                command_not_found_err_msg(f"CryoCARE directory does not exist: {d}")
+            )
+
 
 class DenoiseTrain(_DenoiseJobBase):
     @classmethod
@@ -993,6 +1000,14 @@ class DenoiseTrain(_DenoiseJobBase):
         min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
+
+    @classmethod
+    def prerun_check(cls, **kwargs) -> None:
+        super().prerun_check(**kwargs)
+        if (dim := kwargs.get("subvolume_dimensions", 8)) % 8 != 0:
+            raise ValueError(
+                f"Subvolume dimensions must be divisible by 8 (got {dim})."
+            )
 
 
 class DenoisePredict(_DenoiseJobBase):

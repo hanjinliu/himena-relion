@@ -60,7 +60,9 @@ class JobDirectory:
     @staticmethod
     def from_job_star(path: str | Path) -> JobDirectory:
         fp = Path(path)
-        if fp.name != "job.star" or not fp.exists():
+        if fp.name != "job.star":
+            raise ValueError(f"Expected job.star file, got {fp.name}")
+        if not fp.exists():
             raise FileNotFoundError(f"File not found: {fp}")
         job_star = JobStarModel.validate_file(fp)
         cls = JobDirectory._type_map.get(job_star.job.job_type_label, JobDirectory)

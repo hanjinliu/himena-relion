@@ -1,8 +1,14 @@
 from typing import Callable
 from pathlib import Path
+
+import mrcfile
+import polars as pl
+import numpy as np
+from starfile_rs import as_star
 from himena_relion._job_dir import JobDirectory
 from himena_relion.relion5.widgets._pick import QManualPickViewer, QLoGPickViewer, QTopazTrainPickViewer
-from himena_relion.schemas import CoordsModel, MicrographsStarModel
+from himena_relion.relion5_tomo.widgets._tomogram import QPickViewer
+from himena_relion.schemas import CoordsModel, MicrographsStarModel, TomogramsGroupModel, OptimisationSetModel, ParticlesModel
 from himena_relion.testing import JobWidgetTester
 
 def test_manual_pick_widget(
@@ -149,6 +155,58 @@ def test_topaz_train_widget(
     tester.write_text("model_training.txt", _TOPAZ_MODEL_TRAINING_TEXT)
     tester.write_text("mock.sav", "")
 
+def test_tomo_pick(
+    qtbot,
+    make_job_directory: Callable[[str, str], JobDirectory],
+    jobs_dir_tomo,
+):
+    star_text = Path(jobs_dir_tomo / "Picks" / "job001" / "job.star").read_text()
+    job_dir = make_job_directory(star_text, "Picks")
+
+    tomo_dir = job_dir.relion_project_dir / "Tomogram" / "job023"
+    tomo_dir.mkdir(parents=True)
+    tomo_dir.joinpath("tomograms").mkdir(parents=True)
+    with mrcfile.new(tomo_dir / "tomograms" / "tomo_001.mrc") as mrc:
+        mrc.set_data((100 * np.random.rand(10, 10, 10)).astype(np.float32))
+        mrc.voxel_size = (1.0, 1.0, 1.0)
+
+    df = TomogramsGroupModel(
+        tomo_name=["tomo_001"],
+        voltage=[300.0],
+        cs=[2.7],
+        amplitude_contrast=[0.1],
+        original_pixel_size=[1.0],
+        tomo_hand=[-1],
+        tomo_tilt_series_pixel_size=[1.0],
+        tomo_tilt_series_star_file=["xxx.star"],
+        tomogram_binning=[1],
+        size_x=[10],
+        size_y=[10],
+        size_z=[10],
+    ).dataframe.with_columns(pl.lit("Tomogram/job023/tomograms/tomo_001.mrc").alias("rlnTomoReconstructedTomogram"))
+    as_star({"global": df}).write(tomo_dir / "tomograms.star")
+    tester = JobWidgetTester(QPickViewer(job_dir), job_dir)
+    qtbot.addWidget(tester.widget)
+
+    tester.write_text(
+        "particles.star",
+        ParticlesModel(
+            tomo_name=["tomo_001"] * 3,
+            centered_x=[-12, 15, 14],
+            centered_y=[3, 21, -3],
+            centered_z=[5, -10, 15],
+            orig_x=[0] * 3,
+            orig_y=[0] * 3,
+            orig_z=[0] * 3,
+        ).to_string(),
+    )
+    tester.write_text(
+        "optimisation_set.star",
+        OptimisationSetModel(
+            tomogram_star="Tomogram/job023/tomograms/tomo_001.mrc",
+            particles_star=f"{job_dir.job_normal_id()}particles.star",
+        ).to_string()
+    )
 
 def _prep_mcor_jobdir(
     jobs_dir_spa: Path,

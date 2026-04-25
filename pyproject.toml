@@ -24,7 +24,7 @@ classifiers = [
   "Programming Language :: Python :: Implementation :: PyPy",
 ]
 dependencies = [
-  "starfile-rs>=0.1.6",
+  "starfile-rs>=0.1.9",
   "imodmodel>=0.1.0",
   "rich",
   "scipy>=1.15.3",
@@ -35,7 +35,7 @@ dependencies = [
   "imagecodecs>=2025.11.11",  # for viewing LZW compressed tiff files
   "watchfiles>=1.1.0",
   "superqt>=0.7.6",
-  "himena>=0.1.12",
+  "himena>=0.1.13",
   "matplotlib>=3.7.2",
   "scikit-image>=0.25.1",
   "psygnal>=0.15.0",

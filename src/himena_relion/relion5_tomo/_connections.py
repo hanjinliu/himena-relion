@@ -30,6 +30,11 @@ def _pixel_size_from_tomogram_star(path: Path) -> float:
     return _tomo.original_pixel_size.mean()
 
 
+def _denoise_model_path(path: Path) -> str | None:
+    job_dir = JobDirectory(path)
+    return job_dir.job_normal_id() + "denoising_model.tar.gz"
+
+
 def _subtomo_diameter_a(path: Path) -> float:
     """Extract particle diameter A from the job directory path."""
     # don't use optimisation_set.star because it may not be generated yet.
@@ -153,6 +158,7 @@ connect_jobs(
     _tomo.DenoiseTrain,
     _tomo.DenoisePredict,
     node_mapping={"tomograms.star": "in_tomoset"},
+    value_mapping={_denoise_model_path: "care_denoising_model"},
 )
 connect_jobs(
     _tomo.ReconstructTomogramJob,
