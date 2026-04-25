@@ -162,6 +162,6 @@ def _make_get_particles(
         else:
             ptcl = ParticleMetaModel.validate_file(particles_star)
             sl = ptcl.particles.tomo_name == tomo_name
-            return ptcl.particles.dataframe[sl].reset_index(drop=True)
+            return ptcl.particles.dataframe.filter(sl)
 
     return get_particles
