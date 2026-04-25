@@ -23,6 +23,7 @@ class QFindBeads3DViewer(QtW.QWidget):
         layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignTop)
 
         self._viewer = Q2DViewer()
+        self._viewer.setMinimumHeight(420)
         self._viewer.setMaximumHeight(480)
         self._tomo_choice = QMicrographListWidget(["Tomogram", "Fiducials"])
         self._tomo_choice.current_changed.connect(self._on_tomo_changed)
@@ -106,6 +107,8 @@ class QEraseGoldViewer(QtW.QWidget):
         layout = QtW.QVBoxLayout(self)
 
         self._viewer = Q2DViewer(zlabel="Tilt index")
+        self._viewer.setMinimumHeight(420)
+        self._viewer.setMaximumHeight(480)
         self._filter_widget = Q2DFilterWidget(bin_default=8, lowpass_default=30)
         self._ts_choice = QMicrographListWidget(["Tilt Series"])
         self._ts_choice.current_changed.connect(self._ts_choice_changed)

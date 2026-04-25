@@ -57,29 +57,37 @@ class FindBeads3D(RelionExternalJob):
             str, {"label": "findbeads3d executable"}
         ] = "findbeads3d",
     ):
-        df_tomo = read_star(in_mics).first().trust_loop().to_polars()
         out_job_dir = self.output_job_dir
         models_dir = out_job_dir.path.joinpath("models")
         models_dir.mkdir(exist_ok=True, parents=True)
+        rln_dir = out_job_dir.relion_project_dir
+        df_tomo = (
+            read_star(out_job_dir.resolve_path(in_mics))
+            .first()
+            .trust_loop()
+            .to_polars()
+        )
 
         model_paths = []
         for row in df_tomo.iter_rows(named=True):
             info = _job_dir.TomogramInfo.from_dict(row)
-            path_star = info.tilt_series_star_file
+            path_star = out_job_dir.resolve_path(info.tilt_series_star_file)
             tomo_path = info.reconstructed_tomogram[0]
             size_pix = gold_nm / info.tomo_pixel_size * 10
             tilt_star_df = read_star(path_star).first().trust_loop().to_polars()
             angrange = tilt_star_df[TILT_ANGLE].min(), tilt_star_df[TILT_ANGLE].max()
             model_path = models_dir / f"{info.tomo_name}.mod"
-            model_paths.append(model_path.relative_to(out_job_dir.relion_project_dir))
+            model_paths.append(model_path.relative_to(rln_dir).as_posix())
             self.console.log(f"Running findbeads3d for tomogram {info.tomo_name}")
             _impl.findbeads3d_wrapped(
                 findbeads3d_exe, tomo_path, model_path, size_pix, angrange
             )
             yield
 
-        df_tomo["TomoBeadModel"] = model_paths
-        df_tomo["TomoBeadSize"] = gold_nm
+        df_tomo = df_tomo.with_columns(
+            pl.Series("TomoBeadModel", model_paths),
+            pl.lit(gold_nm).alias("TomoBeadSize"),
+        )
         output_node_path = out_job_dir.path / "tomograms.star"
         as_star({"global": df_tomo}).write(output_node_path)
         self.console.log(
@@ -116,8 +124,9 @@ class EraseGold(RelionExternalJob):
         process_halves: Annotated[bool, {"label": "Also process odd/even micrographs"}] = False,
     ):  # fmt: skip
         """Erase gold fiducials from tilt series using the output model files."""
-        df_tomo = read_star(in_mics).first().trust_loop().to_polars()
         out_job_dir = self.output_job_dir
+        in_mics = out_job_dir.resolve_path(in_mics)
+        df_tomo = read_star(in_mics).first().trust_loop().to_polars()
 
         tilt_save_dir = out_job_dir.path / "tilt_series"
         tilt_save_dir.mkdir(exist_ok=True, parents=True)
@@ -131,15 +140,11 @@ class EraseGold(RelionExternalJob):
             model_path = rln_dir / str(row["TomoBeadModel"])
             edf_path = rln_dir / str(row[ETOMO_FILE])
             gold_nm = row["TomoBeadSize"]
-            tilt_star_df = (
-                read_star(info.tomo_tilt_series_star_file)
-                .first()
-                .trust_loop()
-                .to_polars()
-            )
+            star_path = out_job_dir.resolve_path(info.tomo_tilt_series_star_file)
+            tilt_star_df = read_star(star_path).first().trust_loop().to_polars()
             tomo_center = (np.array(info.tomo_shape, dtype=np.float32) - 1) / 2
             rng = np.random.default_rng(seed)
-            mic_paths = tilt_star_df[MIC_NAME]
+            mic_paths = [rln_dir / p for p in tilt_star_df[MIC_NAME]]
             with mrcfile.open(mic_paths[0], header_only=True) as mrc:
                 tilt_shape = (mrc.header.ny, mrc.header.nx)
             tilt_center = (np.array(tilt_shape, dtype=np.float32) - 1) / 2
@@ -194,11 +199,13 @@ class EraseGold(RelionExternalJob):
             self.console.log(f"Erased tilt series starfile saved to {star_save_path}")
             yield
 
-        df_tomo[TILT_STAR] = [
+        new_columns = [
             tilt_save_dir.relative_to(rln_dir)
-            / f"{_job_dir.TomogramInfo.from_dict(row).tomo_name}.star"
+            .joinpath(f"{_job_dir.TomogramInfo.from_dict(row).tomo_name}.star")
+            .as_posix()
             for row in df_tomo.iter_rows(named=True)
         ]
+        df_tomo = df_tomo.with_columns(pl.Series(TILT_STAR, new_columns))
         as_star({"global": df_tomo}).write(output_node_path)
         self.console.log(
             f"EraseGold jobs finished successfully, output saved to {output_node_path}"
@@ -209,7 +216,7 @@ class EraseGold(RelionExternalJob):
 
     @classmethod
     def init_widgets_for_run(cls, widgets):
-        widgets["seed"].value = int(np.random.random_integers(0, 99999999))
+        widgets["seed"].value = int(np.random.randint(0, 99999999))
 
 
 connect_jobs(

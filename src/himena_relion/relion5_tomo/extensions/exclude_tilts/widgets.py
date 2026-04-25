@@ -19,6 +19,7 @@ class QAutoExcludeTiltsViewer(QtW.QWidget):
         layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignTop)
 
         self._viewer = Q2DViewer()
+        self._viewer.setMinimumHeight(420)
         self._viewer.setMaximumHeight(480)
         self._filter_widget = Q2DFilterWidget(bin_default=8, lowpass_default=30)
         self._mic_choice = QMicrographListWidget(["Micrograph"])
