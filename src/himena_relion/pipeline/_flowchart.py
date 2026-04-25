@@ -181,6 +181,7 @@ class QRelionPipelineFlowChartView(QFlowChartView):
         menu = QtW.QMenu(self)
         menu.setToolTipsVisible(True)
         submenu_open = menu.addMenu("Open")
+        submenu_copy = menu.addMenu("Copy")
         submenu_cleanup = menu.addMenu("Cleanup")
         submenu_mark = menu.addMenu("Mark As")
         submenu_open.addAction(
@@ -190,6 +191,14 @@ class QRelionPipelineFlowChartView(QFlowChartView):
         submenu_open.addAction(
             "Open job_pipeline.star as text",
             lambda: _impl.open_relion_job_pipeline_star(self._ui, get_job()),
+        )
+        submenu_copy.addAction(
+            "Copy job directory path",
+            lambda: self._ui.set_clipboard(text=str(path.parent)),
+        )
+        submenu_copy.addAction(
+            "Copy job directory relative path",
+            lambda: self._ui.set_clipboard(text=str(item.id())),
         )
         action = submenu_cleanup.addAction(
             "Gentle clean", lambda: _impl.gentle_clean_relion_job(self._ui, get_job())

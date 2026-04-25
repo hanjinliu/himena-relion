@@ -148,6 +148,7 @@ class RelionJob(ABC):
     @classmethod
     def create_and_run_job(cls, _cwd, **kwargs) -> RelionJobExecution | None:
         """Run or schedule job."""
+        cls.prerun_check(**kwargs)
         with tempfile.TemporaryDirectory() as tmpdir:
             tmpdir = Path(tmpdir)
             job_star_path = tmpdir / "job.star"
@@ -178,6 +179,7 @@ class RelionJob(ABC):
 
     def edit_and_run_job(self, **kwargs) -> RelionJobExecution | None:
         """Edit the existing job directory and run it."""
+        self.prerun_check(**kwargs)
         job_dir = self.output_job_dir
         job_star_model = self.prep_job_star(**kwargs)
         job_star_model.write(job_dir.job_star())
@@ -263,6 +265,10 @@ class RelionJob(ABC):
         be in "Yes"/"No" format
         """
         return kwargs
+
+    @classmethod
+    def prerun_check(cls, **kwargs) -> None:
+        """Check the parameters and raise error if parameters are not valid."""
 
 
 class _Relion5BuiltinJob(RelionJob):

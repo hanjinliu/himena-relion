@@ -65,7 +65,7 @@ class AutoExcludeTiltImages(RelionExternalJob):
         dark_pixel_value: Annotated[
             float,
             {
-                "label": "Dark pixel threshold (A)",
+                "label": "Dark pixel threshold (a.u.)",
                 "min": -10000.0,
                 "max": 10000.0,
                 "tooltip": (
@@ -143,7 +143,8 @@ class AutoExcludeTiltImages(RelionExternalJob):
             loop_filt = loop[indices]
             tilt_save_dir_path = tilt_save_dir / Path(ts_star_path).name
             self.console.log(
-                f"{loop.height - len(indices)}/{loop.height} tilt images excluded."
+                f"{ts_star_path_abs.stem} | {loop.height - len(indices)}/{loop.height} "
+                "tilt images excluded."
             )
             star_out = as_star({tilt_save_dir_path.stem: loop_filt})
             star_out.write(tilt_save_dir_path)

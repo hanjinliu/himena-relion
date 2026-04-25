@@ -279,7 +279,27 @@ def get_pipeline_widgets(
 
 def open_url(url: str) -> None:
     """Open the URL with the default browser."""
-    from qtpy.QtGui import QDesktopServices
-    from qtpy.QtCore import QUrl
+    import webbrowser
 
-    QDesktopServices.openUrl(QUrl(url))
+    webbrowser.open(url)
+
+
+def iter_directory_content_summary(path: Path, yield_every: int = 2000):
+    num_files = 0
+    total_size_bytes = 0
+    for root, dirs, files in path.walk():
+        for file in files:
+            num_files += 1
+            total_size_bytes += (root / file).stat().st_size
+            if num_files % yield_every == 0:
+                yield num_files, total_size_bytes
+    if num_files % yield_every != 0:
+        yield num_files, total_size_bytes
+
+
+def command_not_found_err_msg(first_sentense: str):
+    return (
+        f"{first_sentense}. Please set a correct path in the config (Ctrl+,).\n"
+        "See https://hanjinliu.github.io/himena-relion/getting_started/ for more "
+        "details."
+    )

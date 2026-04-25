@@ -1,10 +1,12 @@
 from pathlib import Path
+import shutil
 from typing import Any, Literal
 
 from magicgui.widgets.bases import ValueWidget
 from himena_relion._job_class import _Relion5BuiltinJob, parse_string
 from himena_relion._job_dir import JobDirectory
 from himena_relion import _configs, _annotated as _a
+from himena_relion._utils import command_not_found_err_msg
 from himena_relion.schemas import OptimisationSetModel
 from himena_relion.consts import MenuId
 from himena_relion._adapt import norm_blush_reg, norm_blush_reg_inv
@@ -272,6 +274,13 @@ class MotionCorr2Job(_MotionCorrJobBase):
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
+    @classmethod
+    def prerun_check(cls, **kwargs) -> None:
+        if shutil.which(mcor2 := _configs.get_motioncor2_exe()) is None:
+            raise ValueError(
+                command_not_found_err_msg(f"MotionCor2 executable not found: {mcor2}")
+            )
+
 
 class MotionCorrOwnJob(_MotionCorrJobBase):
     """Motion correction using RELION's implementation (CPU)."""
@@ -404,6 +413,13 @@ class CtfEstimationJob(_Relion5SpaJob):
             widgets["phase_range"].enabled = value
 
         widgets["phase_range"].enabled = False
+
+    @classmethod
+    def prerun_check(cls, **kwargs) -> None:
+        if shutil.which(cmd := _configs.get_ctffind4_exe()) is None:
+            raise ValueError(
+                command_not_found_err_msg(f"CTFFind4 executable not found: {cmd}")
+            )
 
 
 class ManualPickJob(_Relion5SpaJob):
@@ -886,6 +902,13 @@ class AutoPickTopazTrain(_AutoPickJob):
 
         _on_do_topaz_train_parts_changed(widgets["do_topaz_train_parts"].value)
 
+    @classmethod
+    def prerun_check(cls, **kwargs) -> None:
+        if shutil.which(cmd := _configs.get_topaz_exe()) is None:
+            raise ValueError(
+                command_not_found_err_msg(f"Topaz executable not found: {cmd}")
+            )
+
 
 class AutoPickTopazPick(_AutoPickJob):
     @classmethod
@@ -967,6 +990,13 @@ class AutoPickTopazPick(_AutoPickJob):
                     widget.enabled = value
 
         _on_do_topaz_filaments_changed(widgets["do_topaz_filaments"].value)
+
+    @classmethod
+    def prerun_check(cls, **kwargs) -> None:
+        if shutil.which(cmd := _configs.get_topaz_exe()) is None:
+            raise ValueError(
+                command_not_found_err_msg(f"Topaz executable not found: {cmd}")
+            )
 
 
 class _ExtractJobBase(_Relion5SpaJob):
@@ -2465,6 +2495,13 @@ class LocalResolutionResmapJob(_LocalResolutionJobBase):
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
+    @classmethod
+    def prerun_check(cls, **kwargs) -> None:
+        if shutil.which(cmd := _configs.get_resmap_exe()) is None:
+            raise ValueError(
+                command_not_found_err_msg(f"ResMap executable not found: {cmd}")
+            )
+
 
 class LocalResolutionOwnJob(_LocalResolutionJobBase):
     """Local resolution estimation using RELION's own algorithm."""
@@ -2788,6 +2825,13 @@ class DynaMightJob(_Relion5Job):
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
+    @classmethod
+    def prerun_check(cls, **kwargs) -> None:
+        if shutil.which(cmd := _configs.get_dynamight_exe()) is None:
+            raise ValueError(
+                command_not_found_err_msg(f"DynaMight executable not found: {cmd}")
+            )
+
 
 class ModelAngeloJob(_Relion5Job):
     """ModelAngelo job placeholder."""
@@ -2843,6 +2887,13 @@ class ModelAngeloJob(_Relion5Job):
                 widgets[name].enabled = value
 
         _on_do_hhmer_changed(widgets["do_hhmer"].value)
+
+    @classmethod
+    def prerun_check(cls, **kwargs) -> None:
+        if shutil.which(cmd := _configs.get_modelangelo_exe()) is None:
+            raise ValueError(
+                command_not_found_err_msg(f"ModelAngelo executable not found: {cmd}")
+            )
 
 
 def _autopick_helix_setup(widgets: dict[str, ValueWidget]) -> None:
