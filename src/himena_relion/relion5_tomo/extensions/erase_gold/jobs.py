@@ -8,7 +8,11 @@ from starfile_rs import as_star, read_star
 from himena_relion import _job_dir
 from himena_relion.external import RelionExternalJob
 from himena_relion._job_class import connect_jobs
-from himena_relion.relion5_tomo._builtins import ReconstructTomogramJob
+from himena_relion.relion5_tomo._builtins import (
+    ReconstructTomogramJob,
+    ReconstructHalfTomogramJob,
+    ReconstructTomoByAreTomo2,
+)
 from himena_relion._annotated.io import IN_TILT
 from himena_relion.relion5_tomo.extensions.erase_gold.widgets import (
     QFindBeads3DViewer,
@@ -216,8 +220,13 @@ connect_jobs(
     EraseGold,
     node_mapping={"tomograms.star": "in_mics"},
 )
-connect_jobs(
-    EraseGold,
+for job_cls in [
     ReconstructTomogramJob,
-    node_mapping={"tilt_series.star": "in_tiltseries"},
-)
+    ReconstructHalfTomogramJob,
+    ReconstructTomoByAreTomo2,
+]:
+    connect_jobs(
+        EraseGold,
+        job_cls,
+        node_mapping={"tilt_series.star": "in_tiltseries"},
+    )

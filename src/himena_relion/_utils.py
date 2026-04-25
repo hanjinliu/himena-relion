@@ -1,4 +1,6 @@
 from __future__ import annotations
+
+import os
 from pathlib import Path
 import logging
 import time
@@ -285,12 +287,13 @@ def open_url(url: str) -> None:
 
 
 def iter_directory_content_summary(path: Path, yield_every: int = 2000):
+    # NOTE: Path.walk is not available in Python 3.11, and using os.walk is faster.
     num_files = 0
     total_size_bytes = 0
-    for root, dirs, files in path.walk():
+    for root, _dirs, files in os.walk(str(path)):
         for file in files:
             num_files += 1
-            total_size_bytes += (root / file).stat().st_size
+            total_size_bytes += os.path.getsize(os.path.join(root, file))
             if num_files % yield_every == 0:
                 yield num_files, total_size_bytes
     if num_files % yield_every != 0:
