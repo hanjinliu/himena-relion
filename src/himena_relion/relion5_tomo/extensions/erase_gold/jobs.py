@@ -145,7 +145,14 @@ class EraseGold(RelionExternalJob):
             tomo_center = (np.array(info.tomo_shape, dtype=np.float32) - 1) / 2
             rng = np.random.default_rng(seed)
             tilt_center = _tilt_center(rln_dir, tilt_star_df)
-            fid = imodmodel.read(model_path)[["z", "y", "x"]].to_numpy(np.float32)
+            if model_path.exists():
+                fid = imodmodel.read(model_path)[["z", "y", "x"]].to_numpy(np.float32)
+            else:
+                self.console.log(
+                    f"Model file {model_path} not found for tomogram {info.tomo_name}, "
+                    "defaulting to no fiducials."
+                )
+                fid = np.empty((0, 3), dtype=np.float32)
             fid = fid * info.tomogram_binning
             deg = tilt_star_df[TILT_ANGLE].cast(pl.Float32).to_numpy()
             xf = _impl.xf_to_array(edf_path.with_suffix(".xf"))

@@ -137,6 +137,10 @@ class TSGroupModel(schema.LoopDataModel):
     optics_group_name: schema.Series[str] = schema.Field(
         "rlnOpticsGroupName", default=None
     )
+    tomo_tilt_series_pixel_size: schema.Series[float] = schema.Field(
+        "rlnTomoTiltSeriesPixelSize",
+        default=None,
+    )
 
     def zip(self) -> Iterator["TSMeta"]:
         """Zip the fields into a list of tuples."""
@@ -150,6 +154,9 @@ class TSGroupModel(schema.LoopDataModel):
             self.optics_group_name
             if self.optics_group_name is not None
             else ["--"] * len(self.tomo_name),
+            self.tomo_tilt_series_pixel_size
+            if self.tomo_tilt_series_pixel_size is not None
+            else self.original_pixel_size,
         ):
             yield TSMeta(*val)
 
@@ -162,6 +169,22 @@ class TSMeta(NamedTuple):
     original_pixel_size: float
     tomo_hand: int
     optics_group_name: str
+    tomo_tilt_series_pixel_size: float
+
+
+class TomoMeta(NamedTuple):
+    tomo_name: str
+    voltage: float
+    cs: float
+    amplitude_contrast: float
+    original_pixel_size: float
+    tomo_hand: int
+    optics_group_name: str
+    tomo_tilt_series_pixel_size: float
+    tomogram_binning: float
+    size_x: int
+    size_y: int
+    size_z: int
 
 
 class TomogramsGroupModel(schema.LoopDataModel):
@@ -175,8 +198,9 @@ class TomogramsGroupModel(schema.LoopDataModel):
         "rlnMicrographOriginalPixelSize"
     )
     tomo_hand: schema.Series[float] = schema.Field("rlnTomoHand")
-    # this is optional and not used yet
-    # optics_group_name: schema.Series[str] = schema.Field("rlnOpticsGroupName")
+    optics_group_name: schema.Series[str] = schema.Field(
+        "rlnOpticsGroupName", default=None
+    )
     tomo_tilt_series_pixel_size: schema.Series[float] = schema.Field(
         "rlnTomoTiltSeriesPixelSize"
     )
@@ -189,6 +213,28 @@ class TomogramsGroupModel(schema.LoopDataModel):
     size_x: schema.Series[int] = schema.Field("rlnTomoSizeX")
     size_y: schema.Series[int] = schema.Field("rlnTomoSizeY")
     size_z: schema.Series[int] = schema.Field("rlnTomoSizeZ")
+
+    def zip(self) -> Iterator["TomoMeta"]:
+        """Zip the fields into a list of tuples."""
+        for val in zip(
+            self.tomo_name,
+            self.voltage,
+            self.cs,
+            self.amplitude_contrast,
+            self.original_pixel_size,
+            self.tomo_hand.cast(pl.Int32),
+            self.optics_group_name
+            if self.optics_group_name is not None
+            else ["--"] * len(self.tomo_name),
+            self.tomo_tilt_series_pixel_size
+            if self.tomo_tilt_series_pixel_size is not None
+            else self.original_pixel_size,
+            self.tomogram_binning,
+            self.size_x,
+            self.size_y,
+            self.size_z,
+        ):
+            yield TomoMeta(*val)
 
 
 def _ith_or_none(series: schema.Series | None, i: int):

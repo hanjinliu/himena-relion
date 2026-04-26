@@ -7,7 +7,14 @@ import polars as pl
 from starfile_rs import as_star, read_star
 from himena_relion._job_dir import JobDirectory
 from himena_relion.testing import ExternalJobTester
-from himena_relion.schemas import TSGroupModel, TSModel, RelionPipelineModel
+from himena_relion.schemas import (
+    TSGroupModel,
+    TSModel,
+    RelionPipelineModel,
+    TomogramsGroupModel,
+    ParticleMetaModel,
+    ParticlesModel,
+)
 
 def test_shift_map(qtbot, tmpdir):
     from himena_relion.relion5.extensions.transform import ShiftMapJob
@@ -181,3 +188,89 @@ def test_erase_gold(
     widget = tester.provide_widget(erasegold_dir)
     qtbot.addWidget(widget)
     tester.test_run(erasegold_dir, widget=widget)
+
+def test_take_zerotilts(
+    qtbot,
+    tmpdir,
+    jobs_dir_tomo,
+):
+    from himena_relion.relion5_tomo.extensions import TakeZeroTiltMicrographs
+
+    rln_dir = Path(tmpdir)
+    frames_dir = rln_dir.joinpath("frames")
+    frames_dir.mkdir(parents=True, exist_ok=True)
+    for i in range(4):
+        for j in range(5):
+            with mrcfile.new(frames_dir.joinpath(f"TS_0{i}_{j}.mrc")) as mrc:
+                mrc.set_data(np.random.normal(size=(8, 8)).astype(np.float32))
+                mrc.voxel_size = (0.78, 0.78, 0.78)
+
+    some_dir = rln_dir.joinpath("some_dir")
+    tilt_series_dir = some_dir.joinpath("tilt_series")
+    some_dir.mkdir(parents=True, exist_ok=True)
+    tilt_series_dir.mkdir()
+
+    # frames/
+    #   TS_00_00.mrc
+    #   TS_00_01.mrc
+    #   ...
+    # some_dir/
+    #   tilt_series/
+    #     TS_00.star
+    #     TS_01.star
+    #     ...
+    #   tomograms.star
+    #   run_data.star
+
+    for i in range(4):
+        ts_star = TSModel(
+            movie_name=[f"TS_0{i}_{j}.mrc" for j in range(5)],
+            frame_count=[4] * 5,
+            nominal_stage_tilt_angle=[-40, -20, 0, 20, 60],
+            nominal_tilt_axis_angle=[85] * 5,
+            pre_exposure=[0] * 5,
+            nominal_defocus=[-2] * 5,
+            micrograph_name=[f"TS_0{i}_{j}.mrc" for j in range(5)],
+        )
+        tilt_series_dir.joinpath(f"TS_0{i}.star").write_text(ts_star.to_string())
+
+    tomogram_star = TomogramsGroupModel(
+        tomo_name=[f"TS_0{i}" for i in range(4)],
+        voltage=[300] * 4,
+        cs=[2.7] * 4,
+        amplitude_contrast=[0.1] * 4,
+        original_pixel_size=[0.78] * 4,
+        tomo_hand=[1] * 4,
+        optics_group_name=["group1", "group1", "group2", "group2"],
+        tomo_tilt_series_pixel_size=[0.78, 0.78, 0.78, 0.78],
+        tomo_tilt_series_star_file=[f"some_dir/tilt_series/TS_0{i}.star" for i in range(4)],
+        tomogram_binning=[1.0] * 4,
+        size_x=[4000] * 4,
+        size_y=[3000] * 4,
+        size_z=[1000] * 4,
+    )
+    some_dir.joinpath("tomograms.star").write_text(tomogram_star.to_string())
+
+    run_data = ParticleMetaModel(
+        particles=ParticlesModel(
+            tomo_name=[f"TS_0{i}" for i in range(4) for _ in range(10)],
+            centered_x=[0.0] * 40,
+            centered_y=[0.0] * 40,
+            centered_z=[0.0] * 40,
+            orig_x=[0.0] * 40,
+            orig_y=[0.0] * 40,
+            orig_z=[0.0] * 40,
+            angle_rot=[0.0] * 40,
+            angle_tilt=[0.0] * 40,
+        )
+    )
+    some_dir.joinpath("particles.star").write_text(run_data.to_string())
+
+    ext_dir = rln_dir.joinpath("External/job001")
+    ext_dir.mkdir(parents=True, exist_ok=True)
+    tester = ExternalJobTester(TakeZeroTiltMicrographs)
+    tester.prep_job_star(ext_dir, in_mics="some_dir/tomograms.star", in_parts="some_dir/particles.star")
+    # widget = tester.provide_widget(ext_dir)
+    # qtbot.addWidget(widget)
+    widget = None
+    tester.test_run(ext_dir, widget=widget)
