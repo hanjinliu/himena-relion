@@ -316,6 +316,30 @@ class CtfEstimationTomoJob(_Relion5TomoJob, CtfEstimationJob):
                 command_not_found_err_msg(f"CTFFind4 executable not found: {cmd}")
             )
 
+    @classmethod
+    def normalize_kwargs(cls, **kwargs):
+        kwargs = CtfEstimationJob.normalize_kwargs(**kwargs)
+        if kwargs.get("localsearch_nominal_defocus") is None:
+            kwargs["localsearch_nominal_defocus"] = -1
+        return kwargs
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs):
+        kwargs = CtfEstimationJob.normalize_kwargs_inv(**kwargs)
+        if float(kwargs.get("localsearch_nominal_defocus", 0)) <= 0:
+            kwargs["localsearch_nominal_defocus"] = None
+        return kwargs
+
+    @classmethod
+    def setup_widgets(cls, widgets):
+        CtfEstimationJob.setup_widgets(widgets)
+
+        @widgets["localsearch_nominal_defocus"].changed.connect
+        def _on_localsearch_nominal_defocus_changed(value):
+            # NOTE: FloatEdit emits string
+            value = widgets["localsearch_nominal_defocus"].value
+            widgets["dfrange"].enabled = value is None
+
 
 class ExcludeTiltJob(_Relion5TomoJob):
     """Manually select tilts to exclude from further processing."""

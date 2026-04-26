@@ -289,14 +289,18 @@ def open_url(url: str) -> None:
     webbrowser.open(url)
 
 
-def iter_directory_content_summary(path: Path, yield_every: int = 2000):
+def iter_directory_content_summary(path: Path, yield_every: int = 5000):
     # NOTE: Path.walk is not available in Python 3.11, and using os.walk is faster.
     num_files = 0
     total_size_bytes = 0
+    yield num_files, total_size_bytes
     for root, _dirs, files in os.walk(str(path)):
         for file in files:
             num_files += 1
-            total_size_bytes += os.path.getsize(os.path.join(root, file))
+            try:
+                total_size_bytes += os.path.getsize(os.path.join(root, file))
+            except Exception:
+                continue  # e.g. file deleted during walk
             if num_files % yield_every == 0:
                 yield num_files, total_size_bytes
     if num_files % yield_every != 0:
