@@ -144,10 +144,7 @@ class EraseGold(RelionExternalJob):
             tilt_star_df = read_star(star_path).first().trust_loop().to_polars()
             tomo_center = (np.array(info.tomo_shape, dtype=np.float32) - 1) / 2
             rng = np.random.default_rng(seed)
-            mic_paths = [rln_dir / p for p in tilt_star_df[MIC_NAME]]
-            with mrcfile.open(mic_paths[0], header_only=True) as mrc:
-                tilt_shape = (mrc.header.ny, mrc.header.nx)
-            tilt_center = (np.array(tilt_shape, dtype=np.float32) - 1) / 2
+            tilt_center = _tilt_center(rln_dir, tilt_star_df)
             fid = imodmodel.read(model_path)[["z", "y", "x"]].to_numpy(np.float32)
             fid = fid * info.tomogram_binning
             deg = tilt_star_df[TILT_ANGLE].cast(pl.Float32).to_numpy()
@@ -168,6 +165,7 @@ class EraseGold(RelionExternalJob):
                         f"Column {col} not found in {info.tomo_name}, skipping."
                     )
                 _to_update: list[str] = []
+                mic_paths = [rln_dir / p for p in tilt_star_df[col]]
                 for ith, mic_path in enumerate(mic_paths):
                     mic_path = Path(mic_path)
                     with mrcfile.open(mic_path, mode="r") as mrc:
@@ -217,6 +215,14 @@ class EraseGold(RelionExternalJob):
     @classmethod
     def init_widgets_for_run(cls, widgets):
         widgets["seed"].value = int(np.random.randint(0, 99999999))
+
+
+def _tilt_center(rln_dir: Path, tilt_star_df: pl.DataFrame) -> np.ndarray:
+    mic_paths = [rln_dir / p for p in tilt_star_df[MIC_NAME]]
+    with mrcfile.open(mic_paths[0], header_only=True) as mrc:
+        tilt_shape = (mrc.header.ny, mrc.header.nx)
+    tilt_center = (np.array(tilt_shape, dtype=np.float32) - 1) / 2
+    return tilt_center
 
 
 connect_jobs(

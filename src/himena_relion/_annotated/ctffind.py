@@ -116,9 +116,10 @@ DFRANGE = Annotated[
 ]
 
 LOCALSEARCH_NOMINAL_DEFOCUS = Annotated[
-    float,
+    float | None,
     {
         "label": "Nominal defocus search range (A)",
+        "min": 1,
         "tooltip": (
             "If a positive value is given, the defocus search range will be set to +/- "
             "this value (in A) around the nominal defocus value from the input STAR "
