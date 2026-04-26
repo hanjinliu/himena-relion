@@ -23,22 +23,27 @@ def findbeads3d_wrapped(
     a0, a1 = angle_range
     stdout_path = Path(out_path).with_suffix(".out")
     stderr_path = Path(out_path).with_suffix(".err")
+
+    first_args = [
+        "-angle",
+        f"{a0},{a1}",
+        "-si",
+        str(size_pix),
+    ]
+    second_args = ["-angle", f"{a0},{a1}", "-si", str(size_pix), "-th", "5"]
     with open(stdout_path, "w") as stdout_file, open(stderr_path, "w") as stderr_file:
         out = subprocess.run(
-            [
-                exe,
-                str(tomo_path),
-                str(out_path),
-                "-angle",
-                f"{a0},{a1}",
-                "-si",
-                str(size_pix),
-            ],
+            [exe, str(tomo_path), str(out_path)] + first_args,
             stdout=stdout_file,
             stderr=stderr_file,
         )
-    if out.returncode != 0:
-        raise RuntimeError(f"findbeads3d failed with return code {out.returncode}")
+        if out.returncode != 0:
+            stdout_file.write(f"findbeads3d failed with return code {out.returncode}\n")
+        out = subprocess.run(
+            [exe, str(tomo_path), str(out_path)] + second_args,
+            stdout=stdout_file,
+            stderr=stderr_file,
+        )
 
 
 def erase_gold(

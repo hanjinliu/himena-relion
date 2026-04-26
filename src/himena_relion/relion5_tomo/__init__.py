@@ -4,14 +4,15 @@ from himena_relion.relion5_tomo.extensions import (
     EraseGold,
     InspectParticles,
     AutoExcludeTiltImages,
+    TakeZeroTiltMicrographs,
 )
-
 
 del widgets, _builtins, _connections, _continues
 
 __all__ = [
     "FindBeads3D",
     "EraseGold",
+    "TakeZeroTiltMicrographs",
     "InspectParticles",
     "AutoExcludeTiltImages",
 ]

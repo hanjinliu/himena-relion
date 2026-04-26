@@ -121,10 +121,13 @@ class QAlignTiltSeriesViewer(QJobScrollArea):
                 ts_group.tomo_name == text
             ).first()
             rln_dir = job_dir.relion_project_dir
-            ts_paths = TSModel.validate_file(ts_file).ts_paths_sorted(rln_dir)
+            ts_model = TSModel.validate_file(ts_file)
+            ts_paths = ts_model.ts_paths_sorted(rln_dir)
+            _rot_90 = _tilt_axis_angle(ts_model.nominal_tilt_axis_angle.mean()) > 45
+
             ts_view = ArrayFilteredView.from_mrcs(ts_paths)
             nbin = max(round(16 / ts_view.get_scale()), 1)
-            aligner = ImodImageAligner.from_xf(xf, nbin)
+            aligner = ImodImageAligner.from_xf(xf, nbin, rot90=_rot_90)
             self._viewer.set_array_view(ts_view.with_filter(aligner.transform_image))
             # TODO: not aligned well yet.
             # self._udpate_fiducials(text, aligner)
@@ -187,12 +190,13 @@ class QAlignTiltSeriesViewer(QJobScrollArea):
 
 
 class ImodImageAligner:
-    def __init__(self, components, nbin: int = 4):
+    def __init__(self, components, nbin: int = 4, rot90: bool = False):
         self._components: list[np.ndarray] = components
         self._nbin = nbin
+        self._rot90 = rot90
 
     @classmethod
-    def from_xf(cls, path: str | Path, nbin: int = 4) -> ImodImageAligner:
+    def from_xf(cls, path, nbin: int = 4, rot90: bool = False) -> ImodImageAligner:
         """Create an ImodImageAligner from an IMOD .xf file."""
         components = []
         with open(path) as f:
@@ -202,14 +206,22 @@ class ImodImageAligner:
                     raise ValueError("Invalid .xf file format.")
                 a11, a12, a21, a22, dx, dy = map(float, vals)
                 components.append(np.array([a11, a12, a21, a22, dx, dy]))
-        return cls(components, nbin=nbin)
+        return cls(components, nbin=nbin, rot90=rot90)
 
     def transform_image(self, img: np.ndarray, i: int) -> np.ndarray:
         mat = self.matrix(i, img.shape)
         imgb = _utils.bin_image(img, self._nbin)
         cval = np.mean(imgb[::50])
+        if self._rot90:
+            output_shape = (imgb.shape[1], imgb.shape[0])
+        else:
+            output_shape = imgb.shape
         out = ndi.affine_transform(
-            imgb.astype(np.float32, copy=False), mat, order=1, cval=cval
+            imgb.astype(np.float32, copy=False),
+            mat,
+            order=1,
+            cval=cval,
+            output_shape=output_shape,
         )
         return out
 
@@ -221,7 +233,7 @@ class ImodImageAligner:
         """Transform fiducial points for tilt index i."""
         # fid is zyx
         fid_out = fid.to_numpy().astype(np.float32)
-        for z, sub in fid.group_by("z"):
+        for (z,), sub in fid.group_by("z"):
             mat = self.matrix(int(z), shape)
             fid_yx = sub.select("y", "x").to_numpy().astype(np.float32)
             fid_yxz = np.hstack(
@@ -235,15 +247,15 @@ class ImodImageAligner:
     def matrix(self, i: int, shape: tuple[int, int]) -> np.ndarray:
         """Get the transformation matrix for tilt index i."""
         ny, nx = shape
-        t = np.array(
-            [[1, 0, ny // self._nbin / 2], [0, 1, nx // self._nbin / 2], [0, 0, 1]]
-        )
+        nbin = self._nbin
+        t = [[1, 0, ny // nbin / 2], [0, 1, nx // nbin / 2], [0, 0, 1]]
+        if self._rot90:
+            t_inv = [[1, 0, nx // nbin / 2], [0, 1, ny // nbin / 2], [0, 0, 1]]
+        else:
+            t_inv = t
         a11, a12, a21, a22, dx, dy = self._components[i]
-        mat = np.array(
-            [[a22, a21, dy / self._nbin], [a12, a11, dx / self._nbin], [0, 0, 1]]
-        )
-        mat = t @ np.linalg.inv(mat) @ np.linalg.inv(t)
-        return mat
+        mat = [[a22, a21, dy / nbin], [a12, a11, dx / nbin], [0, 0, 1]]
+        return t @ np.linalg.inv(mat) @ np.linalg.inv(t_inv)
 
 
 class QAreTomo2TomogramViewer(QTomogramViewer):
@@ -319,6 +331,10 @@ def image_shape_params(
     if ny > 0 and nx > 0:
         return (ny, nx)
     return None
+
+
+def _tilt_axis_angle(degree: float) -> float:
+    return abs((float(degree) + 90) % 180 - 90)
 
 
 def _imod_output_align_file(subdir: Path) -> str:
