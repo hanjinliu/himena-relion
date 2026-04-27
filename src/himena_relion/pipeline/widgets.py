@@ -308,6 +308,11 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         elif key == QtCore.Qt.Key.Key_F5:
             self._refresh_flowchart()
             return
+        elif key == QtCore.Qt.Key.Key_Delete:
+            for item in self._flow_chart.scene().selectedItems():
+                if isinstance(item, RelionJobNodeItem):
+                    self._trash_job(item)
+            return
         return super().keyPressEvent(a0)
 
     def _find_job(self):
@@ -328,6 +333,13 @@ class QRelionPipelineFlowChart(QtW.QWidget):
     def _open_trash(self):
         """Open a widget that shows the contents of the RELION Trash directory."""
         self._ui().read_file(self._flow_chart._relion_project_dir / "Trash")
+
+    def _trash_job(self, item: RelionJobNodeItem):
+        """Move a job to the RELION Trash directory."""
+        from himena_relion.io import _impl
+
+        if job_dir := item.job_dir(self._flow_chart._relion_project_dir):
+            _impl.trash_job(self._ui(), job_dir)
 
 
 class QPipelineFinder(QSearchableComboBox):

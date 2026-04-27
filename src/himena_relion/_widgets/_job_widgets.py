@@ -104,7 +104,12 @@ class QTextEditBase(QtW.QWidget, JobWidgetBase):
         self._wordwrap_checkbox = QToggleSwitch("Word wrap")
         self._wordwrap_checkbox.setChecked(False)
         self._wordwrap_checkbox.toggled.connect(self._on_wordwrap_changed)
-        self._filename_label = QtW.QLabel("")
+        self._filename_label = QtW.QPushButton("")
+        self._filename_label.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
+        self._filename_label.setObjectName("FilenameLabel")
+        self._filename_label.setStyleSheet("padding: 2px; border-radius: 4px;")
+        self._filename_label.setToolTip("Click to open this file in another window.")
+        self._filename_label.clicked.connect(self._on_filename_label_clicked)
         self._text_edit = QtW.QPlainTextEdit()
         self._text_edit.setFont(QtGui.QFont(MonospaceFontFamily, 8))
         self._text_edit.setReadOnly(True)
@@ -118,12 +123,25 @@ class QTextEditBase(QtW.QWidget, JobWidgetBase):
         )
         layout.addLayout(header_layout)
         layout.addWidget(self._text_edit)
+        self._filename_label_open_target = None
 
     def _on_wordwrap_changed(self, checked: bool):
         if checked:
             self._text_edit.setWordWrapMode(QtGui.QTextOption.WrapMode.WordWrap)
         else:
             self._text_edit.setWordWrapMode(QtGui.QTextOption.WrapMode.NoWrap)
+
+    def _on_filename_label_clicked(self):
+        if self._filename_label_open_target is not None:
+            current_instance().read_file(
+                self._filename_label_open_target,
+                plugin="himena_builtins.io.read_as_text_anyway",
+                append_history=False,
+            )
+
+    def set_label_file(self, fp: Path):
+        self._filename_label.setText(fp.name)
+        self._filename_label_open_target = fp
 
     def toPlainText(self) -> str:
         return self._text_edit.toPlainText()
@@ -196,11 +214,14 @@ class QRunOutLog(QTextEditBase):
         super().__init__(parent)
         self._last_line = ""
         self._second_last_line = ""
+        self._job_dir: _job_dir.JobDirectory | None = None
 
     def initialize(self, job_dir: _job_dir.JobDirectory):
         lines: list[str] = []
+        run_out_path = job_dir.path / "run.out"
+        self.set_label_file(run_out_path)
         with suppress(Exception):
-            with open(job_dir.path / "run.out", encoding="utf-8", newline="\n") as f:
+            with open(run_out_path, encoding="utf-8", newline="\n") as f:
                 for line in f:
                     # run.out use "\r" to overwrite lines. Keep only the last part.
                     lines.append(line.split("\r")[-1])
@@ -218,6 +239,7 @@ class QRunOutLog(QTextEditBase):
 
 class QRunErrLog(QTextEditBase):
     def initialize(self, job_dir: _job_dir.JobDirectory):
+        self.set_label_file(job_dir.path / "run.err")
         with suppress(Exception):
             self.setText(job_dir.path.joinpath("run.err").read_text(encoding="utf-8"))
 
@@ -230,7 +252,6 @@ class QNoteEdit(QTextEditBase):
         self.setReadOnly(False)
         self._job_dir: _job_dir.JobDirectory | None = None
         self._text_edit.textChanged.connect(self._autosave_throttled)
-        self._filename_label.setText("note.txt")
 
     def on_job_updated(self, job_dir: _job_dir.JobDirectory, fp: Path):
         """Handle updates to the job directory."""
@@ -240,11 +261,13 @@ class QNoteEdit(QTextEditBase):
 
     def initialize(self, job_dir: _job_dir.JobDirectory):
         self._job_dir = job_dir
+        note_txt = job_dir.path / "note.txt"
+        self.set_label_file(note_txt)
         with suppress(Exception):
             # Check if the content is different before setting text. Without this,
             # text will be initialized every time after the autosave, causing cursor
             # jump.
-            incoming = job_dir.path.joinpath("note.txt").read_text(encoding="utf-8")
+            incoming = note_txt.read_text(encoding="utf-8")
             if incoming != self.toPlainText():
                 self.setText(incoming)
 
