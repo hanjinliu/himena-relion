@@ -84,10 +84,10 @@ class QInspectViewer(QtW.QWidget):
             point_df = getter()
             cols = [f"rlnCenteredCoordinate{x}Angst" for x in "ZYX"]
             cols_orig = [f"rlnOrigin{x}Angst" for x in "ZYX"]
-
-            points = (
-                point_df.select(cols).to_numpy() + point_df.select(cols_orig).to_numpy()
-            ) / info.tomo_pixel_size
+            points_arr = point_df.select(cols).to_numpy()
+            if all(c in point_df.columns for c in cols_orig):
+                points_arr = points_arr + point_df.select(cols_orig).to_numpy()
+            points = points_arr / info.tomo_pixel_size
             sizes = np.array(info.tomo_shape, dtype=np.float32) / info.tomogram_binning
             center = (sizes - 1) / 2
             bin_factor = int(self._filter_widget._bin_factor.text() or "1")
