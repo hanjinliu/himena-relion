@@ -1,5 +1,6 @@
 from pathlib import Path
 from typing import Iterator, NamedTuple
+import numpy as np
 import polars as pl
 import starfile_rs.schema.polars as schema
 
@@ -98,6 +99,16 @@ class TSModel(schema.LoopDataModel):
     )
     ctf_image: schema.Series[str] = schema.Field("rlnCtfImage", default=None)
 
+    tomo_xtilt: schema.Series[float] = schema.Field("rlnTomoXTilt", default=None)
+    tomo_ytilt: schema.Series[float] = schema.Field("rlnTomoYTilt", default=None)
+    tomo_zrot: schema.Series[float] = schema.Field("rlnTomoZRot", default=None)
+    tomo_xshift_angst: schema.Series[float] = schema.Field(
+        "rlnTomoXShiftAngst", default=None
+    )
+    tomo_yshift_angst: schema.Series[float] = schema.Field(
+        "rlnTomoYShiftAngst", default=None
+    )
+
     def ts_paths_sorted(self, rln_dir: Path | None = None) -> list[str]:
         order = self.nominal_stage_tilt_angle.arg_sort()
         if rln_dir is None:
@@ -111,13 +122,59 @@ class TSModel(schema.LoopDataModel):
         paths = list(self.movie_name)
         return [paths[i] for i in order]
 
+    def prep_matrix(
+        self,
+        index: int,
+        tomo_shape_xyz: tuple[int, int, int],
+        tilt_shape_xy: tuple[int, int],
+        pixel_size: float,
+    ):
+        from scipy.spatial.transform import Rotation
 
-class TSAlignModel(schema.LoopDataModel):
-    xtilt: schema.Series[float] = schema.Field("rlnTomoXTilt")  # 21
-    ytilt: schema.Series[float] = schema.Field("rlnTomoYTilt")  # 22
-    zrot: schema.Series[float] = schema.Field("rlnTomoZRot")  # 23
-    xshift: schema.Series[float] = schema.Field("rlnTomoXShiftAngst")  # 24
-    yshift: schema.Series[float] = schema.Field("rlnTomoYShiftAngst")  # 25
+        s0 = _as_translate_matrix(
+            -tomo_shape_xyz[0] // 2,
+            -tomo_shape_xyz[1] // 2,
+            -tomo_shape_xyz[2] // 2,
+        )
+        r0 = _as_affine_matrix(
+            Rotation.from_rotvec(
+                [self.tomo_xtilt[index], 0, 0], degrees=True
+            ).as_matrix()
+        )
+        r1 = _as_affine_matrix(
+            Rotation.from_rotvec(
+                [0, self.tomo_ytilt[index], 0], degrees=True
+            ).as_matrix()
+        )
+        r2 = _as_affine_matrix(
+            Rotation.from_rotvec(
+                [0, 0, self.tomo_zrot[index]], degrees=True
+            ).as_matrix()
+        )
+        s1 = _as_translate_matrix(
+            self.tomo_xshift_angst[index] / pixel_size,
+            self.tomo_yshift_angst[index] / pixel_size,
+            0,
+        )
+        s2 = _as_translate_matrix(
+            tilt_shape_xy[0] // 2,
+            tilt_shape_xy[1] // 2,
+            0,
+        )
+        transformations = s2 @ s1 @ r2 @ r1 @ r0 @ s0
+        return transformations
+
+
+def _as_translate_matrix(tx, ty, tz):
+    out = np.eye(4, dtype=np.float32)
+    out[:3, 3] = [tx, ty, tz]
+    return out
+
+
+def _as_affine_matrix(rot: np.ndarray):
+    out = np.eye(4, dtype=np.float32)
+    out[:3, :3] = rot
+    return out
 
 
 class TSGroupModel(schema.LoopDataModel):

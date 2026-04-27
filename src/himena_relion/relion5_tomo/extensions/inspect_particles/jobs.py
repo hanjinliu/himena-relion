@@ -38,7 +38,7 @@ class InspectParticles(RelionExternalJob):
 
     @classmethod
     def job_title(cls):
-        return "Inspect Particles"
+        return "Inspect Particles (Tomo)"
 
     @classmethod
     def menu_id(cls):

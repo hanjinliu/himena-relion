@@ -1030,8 +1030,7 @@ class _ExtractJobBase(_Relion5SpaJob):
                 kwargs[name] = -1
         if (_rescale := kwargs.get("rescale", None)) is None:
             kwargs["rescale"] = kwargs["extract_size"]
-        else:
-            kwargs["do_rescale"] = _rescale != kwargs["extract_size"]
+        kwargs["do_rescale"] = _rescale != kwargs["extract_size"]
 
         return kwargs
 
@@ -1097,7 +1096,7 @@ class ExtractJob(_ExtractJobBase):
         do_float16: _a.io.DO_F16 = True,
         # Extract
         extract_size: _a.extract.SIZE = 128,
-        rescale: _a.extract.RESCALE = 128,
+        rescale: _a.extract.RESCALE = None,
         do_invert: _a.extract.DO_INVERT = True,
         do_norm: _a.extract.DO_NORM = True,
         bg_diameter: _a.extract.DIAMETER = None,

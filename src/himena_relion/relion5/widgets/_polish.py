@@ -123,7 +123,7 @@ class QPolishViewer(QJobScrollArea):
         motions = [t.to_polars().to_numpy() for t in star_track.values()]
         motions = motions[1:]  # first one is data_general
         model_shiny = CoordsModel.validate_file(shiny_path)
-        if len(motions) != model_shiny.x.size:
+        if len(motions) != model_shiny.x.len():
             _LOGGER.warning(
                 "Number of motion tracks does not match number of particles"
             )
