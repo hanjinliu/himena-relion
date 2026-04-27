@@ -100,6 +100,14 @@ class QManualPickViewer(QJobScrollArea):
         # cache current coordinates here
         self._coords: CoordsModel | None = None
 
+    def initialize(self, job_dir: _job_dir.JobDirectory):
+        """Initialize the viewer with the job directory."""
+        self._job_dir = job_dir
+        self._viewer.clear()
+        self._last_update.clear()
+        self._process_update(force_update=True)
+        self._viewer.auto_fit()
+
     def on_job_updated(self, job_dir: _job_dir.JobDirectory, path: str):
         """Handle changes to the job directory."""
         fp = Path(path)
@@ -160,7 +168,7 @@ class QManualPickViewer(QJobScrollArea):
             self._clear_points()
         else:
             arr = self._marker_widget.filter_by_fom(self._coords)
-            image_scale = self._filter_widget._image_scale
+            image_scale = self._filter_widget.image_scale()
             bins = self._filter_widget.bin_factor()
             try:
                 diameter = self._get_diameter()
@@ -168,14 +176,6 @@ class QManualPickViewer(QJobScrollArea):
                 diameter = _DIAMETER_DEFAULT
             self._viewer.set_points(arr / bins, size=diameter / image_scale / bins)
             self._viewer.redraw()
-
-    def initialize(self, job_dir: _job_dir.JobDirectory):
-        """Initialize the viewer with the job directory."""
-        self._job_dir = job_dir
-        self._viewer.clear()
-        self._last_update.clear()
-        self._process_update(force_update=True)
-        self._viewer.auto_fit()
 
     def _process_update(self, force_update: bool = False):
         if force_update or self._worker is None:

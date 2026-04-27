@@ -5,9 +5,11 @@ from himena_relion.relion5.extensions.symmetry_expansion import (
     HelicalSymmetryExpansionJob,
 )
 from himena_relion.relion5.extensions.transform import ShiftMapJob
+from himena_relion.relion5.extensions.inspect_particles import InspectParticlesSPA
 
 __all__ = [
     "SymmetryExpansionJob",
     "HelicalSymmetryExpansionJob",
     "ShiftMapJob",
+    "InspectParticlesSPA",
 ]

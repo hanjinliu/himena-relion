@@ -99,7 +99,6 @@ class QMicrographListWidget(QtW.QTableView):
             self.resizeColumnsToContents()
         if was_empty:
             self.selectRow(0)
-            self._on_selection_changed()
 
     def _on_selection_changed(self):
         selected_rows = self.selectionModel().selectedRows()

@@ -857,6 +857,10 @@ class Q2DFilterWidget(QtW.QWidget):
         self._bin_factor.textChanged.connect(self.value_changed)
         self._lowpass_cutoff.textChanged.connect(self.value_changed)
 
+    def image_scale(self) -> float:
+        """Get the image scale in Å/pixel."""
+        return self._image_scale
+
     def set_image_scale(self, scale: float):
         """Set the image scale in Å/pixel."""
         self._image_scale = scale

@@ -12,12 +12,14 @@ from himena_relion.schemas import (
     TSModel,
     RelionPipelineModel,
     TomogramsGroupModel,
+    CoordsModel,
+    MicrographsStarModel,
     ParticleMetaModel,
     ParticlesModel,
 )
 
 def test_shift_map(qtbot, tmpdir):
-    from himena_relion.relion5.extensions.transform import ShiftMapJob
+    from himena_relion.relion5.extensions import ShiftMapJob
 
     tmpdir = Path(tmpdir)
     ext_dir = tmpdir / "External/job010"
@@ -37,6 +39,56 @@ def test_shift_map(qtbot, tmpdir):
     tester.prep_job_star(ext_dir, in_3dref=str(img_path), center_by="angstrom", new_center=(1, 0, -1.2))
     tester.prep_job_star(ext_dir, in_3dref=str(img_path), center_by="map-com")
     tester.prep_job_star(ext_dir, in_3dref=str(img_path), in_mask=str(mask_path), center_by="map-com")
+
+def test_inspect_particles_spa(qtbot, tmpdir):
+    from himena_relion.relion5.extensions.inspect_particles import InspectParticlesSPA, InspectParticlesSPAWidget
+
+    tmpdir = Path(tmpdir)
+    mic_dir = tmpdir / "micrographs"
+    mic_dir.mkdir(parents=True, exist_ok=True)
+    for i in range(3):
+        with mrcfile.new(mic_dir / f"mic{i}.mrc") as mrc:
+            mrc.set_data(np.random.normal(size=(8, 8)).astype(np.float32))
+            mrc.voxel_size = (0.78, 0.78, 0.78)
+
+    ext_dir = tmpdir / "External/job010"
+    ext_dir.mkdir(parents=True, exist_ok=True)
+    mic_path = ext_dir / "micrographs.star"
+    parts_path = ext_dir / "particles.star"
+
+    mic_path.write_text(
+        MicrographsStarModel(
+            optics=MicrographsStarModel.Optics(
+                optics_group_name=["group1"],
+                optics_group=[1],
+                mic_orig_pixel_size=[0.78],
+                voltage=[300],
+                cs=[2.7],
+            ),
+            micrographs=MicrographsStarModel.Micrographs(
+                mic_name=[f"micrographs/mic{i}.mrc" for i in range(3)],
+                optics_group=[1, 1, 1],
+            )
+        ).to_string()
+    )
+    parts_path.write_text(
+        CoordsModel(
+            x=[4, 5, 4, 5, 6, 7, 8, 3, 4],
+            y=[4, 4, 5, 5, 6, 7, 8, 3, 4],
+            orig_x=[0.1] * 9,
+            orig_y=[0.1] * 9,
+            mic_name=[f"mic{i}.mrc" for i in [0, 0, 0, 1, 1, 1, 2, 2, 2]],
+        ).to_string()
+    )
+
+    tester = ExternalJobTester(InspectParticlesSPA)
+    widget = tester.provide_widget(ext_dir)
+    qtbot.addWidget(widget)
+    tester.prep_job_star(ext_dir, in_mics=str(mic_path), in_parts=str(parts_path))
+    tester.test_run(ext_dir, widget=widget)
+    assert isinstance(widget, InspectParticlesSPAWidget)
+    widget._show_points_switch.value = False
+    widget._show_points_switch.value = True
 
 def _prep_ctffind_job(ctffind_dir: JobDirectory):
     ctffind_dir.path.joinpath("frames").mkdir()
@@ -86,7 +138,7 @@ def test_exclude_tilts_job(
     make_job_directory: Callable[[str, str], JobDirectory],
     jobs_dir_tomo,
 ):
-    from himena_relion.relion5_tomo.extensions.exclude_tilts import AutoExcludeTiltImages
+    from himena_relion.relion5_tomo.extensions import AutoExcludeTiltImages
 
     star_text = Path(jobs_dir_tomo).joinpath("CtfFind/job001/job.star").read_text()
     ctffind_dir = make_job_directory(star_text, "CtfFind")
@@ -230,7 +282,12 @@ def test_take_zerotilts(
             nominal_tilt_axis_angle=[85] * 5,
             pre_exposure=[0] * 5,
             nominal_defocus=[-2] * 5,
-            micrograph_name=[f"TS_0{i}_{j}.mrc" for j in range(5)],
+            micrograph_name=[f"frames/TS_0{i}_{j}.mrc" for j in range(5)],
+            tomo_xtilt=[1, 1, 2, 1, 2],
+            tomo_ytilt=[1, 1, 2, 1, 2],
+            tomo_zrot=[0, 0, 0, 0, 0],
+            tomo_xshift_angst=[0.2, 0.2, 0.3, 0.2, 0.3],
+            tomo_yshift_angst=[0.2, 0.2, 0.3, 0.2, 0.3],
         )
         tilt_series_dir.joinpath(f"TS_0{i}.star").write_text(ts_star.to_string())
 

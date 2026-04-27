@@ -148,8 +148,17 @@ class MicCoordSetModel(schema.LoopDataModel):
 
 
 class CoordsModel(schema.LoopDataModel):
-    """Model for coordinate files inside Movies/ directory."""
+    """Model for coordinate files, inside Movies/ directory or run_data.star"""
 
     x: schema.Series[float] = schema.Field("rlnCoordinateX")
     y: schema.Series[float] = schema.Field("rlnCoordinateY")
     fom: schema.Series[float] = schema.Field("rlnAutopickFigureOfMerit", default=None)
+    orig_x: schema.Series[float] = schema.Field("rlnOriginXAngst", default=None)
+    orig_y: schema.Series[float] = schema.Field("rlnOriginYAngst", default=None)
+    class_number: schema.Series[int] = schema.Field("rlnClassNumber", default=None)
+    angle_rot: schema.Series[float] = schema.Field("rlnAngleRot", default=None)
+    angle_tilt: schema.Series[float] = schema.Field("rlnAngleTilt", default=None)
+    image_name: schema.Series[str] = schema.Field("rlnImageName", default=None)
+    """Particle image, such as 00000113@Extract/job009/Movies/XYZ_frameImage.mrcs"""
+    mic_name: schema.Series[str] = schema.Field("rlnMicrographName", default=None)
+    """Micrograph, such as MotionCorr/job002/Movies/XYZ_frameImage.mrc"""
