@@ -327,7 +327,6 @@ def test_take_zerotilts(
     ext_dir.mkdir(parents=True, exist_ok=True)
     tester = ExternalJobTester(TakeZeroTiltMicrographs)
     tester.prep_job_star(ext_dir, in_mics="some_dir/tomograms.star", in_parts="some_dir/particles.star")
-    # widget = tester.provide_widget(ext_dir)
-    # qtbot.addWidget(widget)
-    widget = None
+    widget = tester.provide_widget(ext_dir)
+    qtbot.addWidget(widget)
     tester.test_run(ext_dir, widget=widget)

@@ -9,6 +9,9 @@ from himena_relion.consts import MenuId
 from himena_relion.external import RelionExternalJob
 from himena_relion.schemas import TomogramsGroupModel, TSModel, ParticleMetaModel
 from himena_relion._annotated.io import IN_TILT, IN_PARTICLES
+from himena_relion.relion5_tomo.extensions.hybridize.widgets import (
+    TakeZeroTiltMicrographsWidget,
+)
 
 
 class TakeZeroTiltMicrographs(RelionExternalJob):
@@ -163,6 +166,9 @@ class TakeZeroTiltMicrographs(RelionExternalJob):
         df_parts = pl.concat(subs, how="vertical_relaxed")
         part_star_spa = as_star({"optics": df_optics, "particles": df_parts})
         part_star_spa.write(self.output_job_dir.path / "hybrid_data.star")
+
+    def provide_widget(self, job_dir):
+        return TakeZeroTiltMicrographsWidget(job_dir)
 
 
 # Adapted from
