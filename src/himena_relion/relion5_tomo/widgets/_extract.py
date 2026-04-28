@@ -65,6 +65,7 @@ class QExtractJobViewer(QJobScrollArea):
 
     def initialize(self, job_dir: _job_dir.JobDirectory):
         """Initialize the viewer with the job directory."""
+        t0 = time.time()
         subtomo_dir = self._job_dir.path.joinpath("Subtomograms")
         if not subtomo_dir.exists():
             self._tomo_list.set_choices([])
@@ -76,7 +77,7 @@ class QExtractJobViewer(QJobScrollArea):
                 self._job_dir.make_relative_path(subtomo_dir / path.name).as_posix(),
             )
             for path in subtomo_dir.iterdir()
-            if path.is_dir() and (next(path.iterdir(), None) is not None)
+            if path.is_dir()
         ]
         tomo_names.sort(key=lambda x: x[0])
         self._tomo_list.set_choices(tomo_names)
@@ -98,12 +99,9 @@ class QExtractJobViewer(QJobScrollArea):
         if value is None:
             return
         tomo_name = value[0]
-        self._subtomo_paths = _list_subtomo_names(self._job_dir, tomo_name)
-        current_pos = self._slider.value()
-        max_num = len(self._subtomo_paths)
-        self._slider.setRange(0, max_num // self._num_page)
-        current_pos = min(current_pos, self._slider.maximum())
-        self._slider_value_changed(current_pos, udpate_slider=True)
+
+        self.window_closed_callback()
+        self._worker = self.scan_subtomos(tomo_name)
 
     def _end_index(self, start: int) -> int:
         return min(start + self._num_page, len(self._subtomo_paths))
@@ -119,6 +117,11 @@ class QExtractJobViewer(QJobScrollArea):
         self.window_closed_callback()
         self._worker = self.plot_extracts(start, self._plot_session_id)
         self._start_worker()
+
+    @thread_worker
+    def scan_subtomos(self, tomo_name: str):
+        self._subtomo_paths = _list_subtomo_names(self._job_dir, tomo_name)
+        yield self._on_scanned, self._subtomo_paths
 
     @thread_worker
     def plot_extracts(self, start_index: int, session: uuid.UUID):
@@ -166,6 +169,13 @@ class QExtractJobViewer(QJobScrollArea):
         if my_uuid != self._plot_session_id or self._worker is None:
             return
         self._text_edit.insert_base64_image(img_str)
+
+    def _on_scanned(self, subtomo_paths: list[str]):
+        current_pos = self._slider.value()
+        max_num = len(subtomo_paths)
+        self._slider.setRange(0, max_num // self._num_page)
+        current_pos = min(current_pos, self._slider.maximum())
+        self._slider_value_changed(current_pos, udpate_slider=True)
 
 
 def _list_subtomo_names(job_dir: _job_dir.JobDirectory, tomoname: str) -> list[str]:

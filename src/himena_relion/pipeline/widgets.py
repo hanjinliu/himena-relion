@@ -180,7 +180,7 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         self._ui().show_notification(f"Copied project path {path!r} to clipboard.")
 
     def _close_all_tabs(self):
-        """Close all job tabs in the main window."""
+        """Close all tabs in the main window that contain jobs from this pipeline."""
         indices: list[int] = []
         for i_tab, tab in self._ui().tabs.enumerate():
             if not tab.is_single_window:
