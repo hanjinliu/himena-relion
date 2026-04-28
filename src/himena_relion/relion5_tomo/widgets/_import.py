@@ -2,7 +2,11 @@ from __future__ import annotations
 from pathlib import Path
 from qtpy import QtWidgets as QtW
 import logging
+from starfile_rs import read_star
 from superqt.utils import thread_worker
+from himena import WidgetDataModel, StandardType
+from himena.widgets import current_instance
+from himena_builtins.qt.dataframe import QDataFrameView
 from himena_relion._image_readers import ArrayFilteredView
 from himena_relion._widgets import (
     QJobScrollArea,
@@ -10,6 +14,7 @@ from himena_relion._widgets import (
     Q2DFilterWidget,
     register_job,
     QMicrographListWidget,
+    QNumParticlesLabel,
 )
 from himena_relion import _job_dir
 from himena_relion.schemas import TSModel, TSGroupModel
@@ -137,3 +142,33 @@ class QImportTiltSeriesViewer(QJobScrollArea):
         if self._binsize_old != new_binsize:
             self._binsize_old = new_binsize
             self._viewer.auto_fit()
+
+
+class QImportCoordsViewer(QJobScrollArea):
+    def __init__(self, job_dir: _job_dir.JobDirectory):
+        super().__init__()
+        self._job_dir = job_dir
+        self._table = QDataFrameView(current_instance())
+        self._num_particles_label = QNumParticlesLabel()
+        self._layout.addWidget(QtW.QLabel("<b>Imported coordinates</b>"))
+        self._layout.addWidget(self._table)
+        self._layout.addWidget(self._num_particles_label)
+
+    def on_job_updated(self, job_dir: _job_dir.JobDirectory, path: str):
+        """Handle changes to the job directory."""
+        fp = Path(path)
+        if fp.name == "particles.star":
+            self.initialize(job_dir)
+            _LOGGER.debug("%s Updated", job_dir.job_number)
+
+    def initialize(self, job_dir: _job_dir.JobDirectory):
+        """Initialize the viewer with the job directory."""
+        coords_star_path = job_dir.path / "particles.star"
+        if coords_star_path.exists():
+            df = read_star(coords_star_path).first().to_polars()
+            data_model = WidgetDataModel(value=df, type=StandardType.DATAFRAME)
+            self._num_particles_label.set_number(df.height)
+        else:
+            data_model = WidgetDataModel(value={}, type=StandardType.DATAFRAME)
+            self._num_particles_label.set_number(-1)
+        self._table.update_model(data_model)

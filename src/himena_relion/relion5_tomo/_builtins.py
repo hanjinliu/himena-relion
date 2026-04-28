@@ -206,7 +206,25 @@ class ImportCoordinatesJob(_ImportTomoOrCoordsJob):
     @classmethod
     def normalize_kwargs_inv(cls, **kwargs):
         kwargs = super().normalize_kwargs_inv(**kwargs)
-        kwargs.pop("do_coords", None)
+        for name in [
+            "Cs",
+            "Q0",
+            "angpix",
+            "dose_is_per_movie_frame",
+            "dose_rate",
+            "flip_tiltseries_hand",
+            "images_are_motion_corrected",
+            "is_center",
+            "kV",
+            "mdoc_files",
+            "movie_files",
+            "mtf_file",
+            "optics_group_name",
+            "prefix",
+            "tilt_axis_angle",
+            "do_coords",
+        ]:
+            kwargs.pop(name, None)
         return kwargs
 
     def run(
