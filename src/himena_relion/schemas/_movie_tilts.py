@@ -122,6 +122,10 @@ class TSModel(schema.LoopDataModel):
         paths = list(self.movie_name)
         return [paths[i] for i in order]
 
+    def need_rot90(self) -> bool:
+        degree = self.nominal_tilt_axis_angle.mean()
+        return abs((float(degree) + 90) % 180 - 90)
+
     def prep_matrix(
         self,
         index: int,
@@ -197,6 +201,9 @@ class TSGroupModel(schema.LoopDataModel):
     tomo_tilt_series_pixel_size: schema.Series[float] = schema.Field(
         "rlnTomoTiltSeriesPixelSize",
         default=None,
+    )
+    etomo_directive_file: schema.Series[str] = schema.Field(
+        "rlnEtomoDirectiveFile", default=None
     )
 
     def zip(self) -> Iterator["TSMeta"]:

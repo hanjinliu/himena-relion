@@ -123,7 +123,7 @@ class QAlignTiltSeriesViewer(QJobScrollArea):
             rln_dir = job_dir.relion_project_dir
             ts_model = TSModel.validate_file(ts_file)
             ts_paths = ts_model.ts_paths_sorted(rln_dir)
-            _rot_90 = _tilt_axis_angle(ts_model.nominal_tilt_axis_angle.mean()) > 45
+            _rot_90 = ts_model.need_rot90()
 
             ts_view = ArrayFilteredView.from_mrcs(ts_paths)
             nbin = max(round(16 / ts_view.get_scale()), 1)
