@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 from himena_relion._job_dir import JobDirectory
 from himena_relion.testing import JobWidgetTester
-from himena_relion.schemas import MoviesStarModel, MicrographsStarModel, TSGroupModel, TSModel
+from himena_relion.schemas import MoviesStarModel, MicrographsStarModel, TSGroupModel, TSModel, ParticlesModel
 
 def test_import_spa_widget(
     qtbot,
@@ -94,11 +94,11 @@ def test_import_mic_spa_widget(
 def test_import_tomo_widget(
     qtbot,
     make_job_directory: Callable[[str, str], JobDirectory],
-    jobs_dir_spa,
+    jobs_dir_tomo,
 ):
     from himena_relion.relion5_tomo.widgets._import import QImportTiltSeriesViewer
 
-    star_text = Path(jobs_dir_spa / "Import" / "job001" / "job.star").read_text()
+    star_text = Path(jobs_dir_tomo / "Import" / "job001" / "job.star").read_text()
     job_dir = make_job_directory(star_text, "Import")
 
     tester = JobWidgetTester(QImportTiltSeriesViewer(job_dir), job_dir)
@@ -147,6 +147,22 @@ def test_import_tomo_widget(
     tester.widget._ts_list.set_current_row(0)
 
     tester.initialize()
+
+def test_import_coords_tomo_widget(
+    make_himena_ui,
+    qtbot,
+    make_job_directory: Callable[[str, str], JobDirectory],
+    jobs_dir_tomo,
+):
+    from himena_relion.relion5_tomo.widgets._import import QImportCoordsViewer
+
+    ui = make_himena_ui("mock")  # noqa: F841
+    star_text = Path(jobs_dir_tomo / "Import" / "job002" / "job.star").read_text()
+    job_dir = make_job_directory(star_text, "Import")
+
+    tester = JobWidgetTester(QImportCoordsViewer(job_dir), job_dir)
+    qtbot.addWidget(tester.widget)
+    tester.write_text("particles.star", ParticlesModel.example(10).to_string())
 
 def _random_movie(tester: JobWidgetTester):
     return tester._rng.integers(-100, 100, (32, 48)).astype(np.int8)
