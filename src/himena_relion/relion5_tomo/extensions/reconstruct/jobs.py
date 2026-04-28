@@ -87,8 +87,8 @@ class ReconstructTomoIMOD(RelionExternalJob):
                 edf_path=self.output_job_dir.resolve_path(
                     tsgroup.etomo_directive_file[ith]
                 ),
+                nominal_stage_tilt_angle=ts.nominal_stage_tilt_angle,
                 fileinlist_path=fileinlist_path,
-                tomo_name=tomo_name,
                 output_tomo_path=_dir_tomo / f"rec_{tomo_name}.mrc",
                 tomo_size=tomo_size,
                 outbin=outbin,
@@ -200,8 +200,8 @@ class ReconstructHalfTomoIMOD(RelionExternalJob):
                     edf_path=self.output_job_dir.resolve_path(
                         tsgroup.etomo_directive_file[ith]
                     ),
+                    nominal_stage_tilt_angle=ts.nominal_stage_tilt_angle,
                     fileinlist_path=fpath,
-                    tomo_name=tomo_name,
                     output_tomo_path=_dir_tomo / f"rec_{tomo_name}_half{half}.mrc",
                     tomo_size=tomo_size,
                     outbin=outbin,
@@ -234,8 +234,8 @@ class ReconstructHalfTomoIMOD(RelionExternalJob):
 
 def _run_impl(
     edf_path: Path,
+    nominal_stage_tilt_angle: pl.Series,
     fileinlist_path: Path,
-    tomo_name: str,
     output_tomo_path: Path,
     tomo_size: tuple[int, int, int],
     outbin: int,
@@ -245,12 +245,18 @@ def _run_impl(
     gpu_id_imod: int | None,
 ):
     _dir_fileinlists = fileinlist_path.parent
+    tomo_name = output_tomo_path.stem
+    if tomo_name.startswith("rec_"):
+        tomo_name = tomo_name[4:]
+    temp_tlt_path = _dir_fileinlists.joinpath(f"{tomo_name}.tlt")
     temp_stack_path = _dir_fileinlists.joinpath(f"{tomo_name}_stack.mrc")
     temp_rec_path = _dir_fileinlists.joinpath(f"{tomo_name}.mrc")
     temp_ali_path = _dir_fileinlists.joinpath(f"{tomo_name}_ali.mrc")
 
-    tlt_path = edf_path.with_suffix(".tlt")
     xtilt_path = edf_path.with_suffix(".xtilt")
+    temp_tlt_path.write_text(
+        "\n".join(f"{tilt:.2f}" for tilt in nominal_stage_tilt_angle)
+    )
 
     # NOTE: newstack may not work properly if the file list is directly used
     # for alignment.
@@ -276,7 +282,7 @@ def _run_impl(
     _run_tilt(
         temp_ali_path,
         output_path=temp_rec_path,
-        tlt_path=tlt_path,
+        tlt_path=temp_tlt_path,
         size=tomo_size[:2],
         thickness=tomo_size[2],
         xtilt_path=xtilt_path,
