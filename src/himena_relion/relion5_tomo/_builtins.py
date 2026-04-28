@@ -199,9 +199,25 @@ class ImportCoordinatesJob(_ImportTomoOrCoordsJob):
 
     @classmethod
     def normalize_kwargs(cls, **kwargs):
-        kwargs = super().normalize_kwargs(**kwargs)
-        kwargs["do_coords"] = True
-        return kwargs
+        for name, value in [
+            ("Cs", 2.7),
+            ("Q0", 0.1),
+            ("angpix", 0.675),
+            ("dose_is_per_movie_frame", False),
+            ("dose_rate", 5.0),
+            ("flip_tiltseries_hand", True),
+            ("images_are_motion_corrected", False),
+            ("kV", 300),
+            ("mdoc_files", "frames/*.mdoc"),
+            ("movie_files", "frames/*.mrc"),
+            ("mtf_file", ""),
+            ("optics_group_name", ""),
+            ("prefix", ""),
+            ("tilt_axis_angle", 85),
+            ("do_coords", True),
+        ]:
+            kwargs[name] = value
+        return super().normalize_kwargs(**kwargs)
 
     @classmethod
     def normalize_kwargs_inv(cls, **kwargs):
