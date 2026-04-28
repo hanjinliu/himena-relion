@@ -208,7 +208,7 @@ class ImportCoordinatesJob(_ImportTomoOrCoordsJob):
         kwargs = super().normalize_kwargs_inv(**kwargs)
         for name in [
             "Cs", "Q0", "angpix", "dose_is_per_movie_frame", "dose_rate",
-            "flip_tiltseries_hand", "images_are_motion_corrected", "is_center",
+            "flip_tiltseries_hand", "images_are_motion_corrected",
             "kV", "mdoc_files", "movie_files", "mtf_file", "optics_group_name",
             "prefix", "tilt_axis_angle", "do_coords",
         ]:  # fmt: skip
