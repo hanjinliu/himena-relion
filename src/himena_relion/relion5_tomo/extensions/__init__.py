@@ -4,7 +4,10 @@ from himena_relion.relion5_tomo.extensions.erase_gold import FindBeads3D, EraseG
 from himena_relion.relion5_tomo.extensions.exclude_tilts import AutoExcludeTiltImages
 from himena_relion.relion5_tomo.extensions.hybridize import TakeZeroTiltMicrographs
 from himena_relion.relion5_tomo.extensions.inspect_particles import InspectParticles
-from himena_relion.relion5_tomo.extensions.reconstruct import ReconstructTomoIMOD
+from himena_relion.relion5_tomo.extensions.reconstruct import (
+    ReconstructTomoIMOD,
+    ReconstructHalfTomoIMOD,
+)
 
 __all__ = [
     "FindBeads3D",
@@ -13,4 +16,5 @@ __all__ = [
     "EraseGold",
     "InspectParticles",
     "ReconstructTomoIMOD",
+    "ReconstructHalfTomoIMOD",
 ]

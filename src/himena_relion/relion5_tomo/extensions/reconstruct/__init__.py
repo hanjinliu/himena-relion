@@ -1,3 +1,3 @@
-from .jobs import ReconstructTomoIMOD
+from .jobs import ReconstructTomoIMOD, ReconstructHalfTomoIMOD
 
-__all__ = ["ReconstructTomoIMOD"]
+__all__ = ["ReconstructTomoIMOD", "ReconstructHalfTomoIMOD"]
