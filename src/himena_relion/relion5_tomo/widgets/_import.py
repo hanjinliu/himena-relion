@@ -25,7 +25,7 @@ _LOGGER = logging.getLogger(__name__)
 @register_job("relion.importtomo", is_tomo=True)
 def import_tilt_series_viewer(job_dir: _job_dir.JobDirectory):
     if job_dir.get_job_param("do_coords", default="No") == "Yes":
-        return QJobScrollArea()
+        return QImportCoordsViewer(job_dir)
     return QImportTiltSeriesViewer(job_dir)
 
 
