@@ -102,6 +102,7 @@ class QExtractJobViewer(QJobScrollArea):
 
         self.window_closed_callback()
         self._worker = self.scan_subtomos(tomo_name)
+        self._start_worker()
 
     def _end_index(self, start: int) -> int:
         return min(start + self._num_page, len(self._subtomo_paths))

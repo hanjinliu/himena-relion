@@ -149,6 +149,7 @@ class QImportCoordsViewer(QJobScrollArea):
         super().__init__()
         self._job_dir = job_dir
         self._table = QDataFrameView(current_instance())
+        self._table.setFixedHeight(480)
         self._num_particles_label = QNumParticlesLabel()
         self._layout.addWidget(QtW.QLabel("<b>Imported coordinates</b>"))
         self._layout.addWidget(self._table)
