@@ -207,23 +207,11 @@ class ImportCoordinatesJob(_ImportTomoOrCoordsJob):
     def normalize_kwargs_inv(cls, **kwargs):
         kwargs = super().normalize_kwargs_inv(**kwargs)
         for name in [
-            "Cs",
-            "Q0",
-            "angpix",
-            "dose_is_per_movie_frame",
-            "dose_rate",
-            "flip_tiltseries_hand",
-            "images_are_motion_corrected",
-            "is_center",
-            "kV",
-            "mdoc_files",
-            "movie_files",
-            "mtf_file",
-            "optics_group_name",
-            "prefix",
-            "tilt_axis_angle",
-            "do_coords",
-        ]:
+            "Cs", "Q0", "angpix", "dose_is_per_movie_frame", "dose_rate",
+            "flip_tiltseries_hand", "images_are_motion_corrected", "is_center",
+            "kV", "mdoc_files", "movie_files", "mtf_file", "optics_group_name",
+            "prefix", "tilt_axis_angle", "do_coords",
+        ]:  # fmt: skip
             kwargs.pop(name, None)
         return kwargs
 
@@ -232,7 +220,7 @@ class ImportCoordinatesJob(_ImportTomoOrCoordsJob):
         in_coords: _a.import_.IN_COORDS = "",
         remove_substring: _a.import_.REMOVE_SUBSTRING = "",
         remove_substring2: _a.import_.REMOVE_SUBSTRING2 = "",
-        is_centered: _a.import_.IS_CENTERED = False,
+        is_center: _a.import_.IS_CENTERED = False,
         scale_factor: _a.import_.SCALE_FACTOR = 1.0,
         add_factor: _a.import_.ADD_FACTOR = 0.0,
         # Running
