@@ -72,10 +72,10 @@ class ShiftMapJob(RelionExternalJob):
         new_center: NEW_CENTER = (0.0, 0.0, 0.0),
     ):
         out_job_dir = self.output_job_dir
+        _, scale = _read_image(in_3dref)
         if center_by == "pixel":
             new_center_pix = new_center
         elif center_by == "angstrom":
-            _, scale = _read_image(in_3dref)
             new_center_pix = tuple(s / scale for s in new_center)
         elif center_by == "map-com":
             new_center_pix = self._center_by_com(in_3dref)
@@ -83,10 +83,13 @@ class ShiftMapJob(RelionExternalJob):
             new_center_pix = self._center_by_com(in_mask)
         else:
             raise ValueError(f"Invalid value for center_by: {center_by}")
+        new_center_ang = tuple(s * scale for s in new_center_pix)
+        self.console.log(f"Shift in pixels: {new_center_pix}")
+        self.console.log(f"Shift in angstroms: {new_center_ang}")
         _shift_image(in_3dref, out_job_dir.path / _c.OUTPUT_MAP, new_center_pix)
         self.console.log(f"Write shifted map to {out_job_dir.path / _c.OUTPUT_MAP}")
         if in_mask:
-            _shift_image(in_mask, out_job_dir.path / _c.OUTPUT_MASK, new_center_pix)
+            _shift_image(in_mask, out_job_dir.path / _c.OUTPUT_MASK, new_center_ang)
             self.console.log(
                 f"Write shifted mask to {out_job_dir.path / _c.OUTPUT_MASK}"
             )
@@ -130,7 +133,15 @@ def _shift_image(path_in, path_out, shift):
         mrc.voxel_size = pixel_size
 
 
-def _shift_star(path_in, path_out, shift):
+def _shift_star(path_in, path_out, shift_ang):
+    """Use relion_star_handler to shift the particle coordinates.
+
+    Note that relion_star_handler uses the optics block in the input star file to
+    determine the pixel size, but this causes confusion when the scale of particle
+    images and the input map are different. Therefore, we set the pixel size to 1 and
+    directly specify the shift in angstroms, along with the `--ignore_optics` option to
+    ignore the optics block.
+    """
     args_star = [
         _c.RELION_STAR_HANDLER,
         "--i",
@@ -139,11 +150,14 @@ def _shift_star(path_in, path_out, shift):
         str(path_out),
         "--center",
         "--center_X",
-        str(-shift[0]),
+        str(-shift_ang[0]),
         "--center_Y",
-        str(-shift[1]),
+        str(-shift_ang[1]),
         "--center_Z",
-        str(-shift[2]),
+        str(-shift_ang[2]),
+        "--angpix",
+        "1",
+        "--ignore_optics",
     ]
     subprocess.run(args_star, check=True)
 
