@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 import shutil
 from glob import glob
+import sys
 from qtpy import QtCore, QtWidgets as QtW
 from watchfiles import watch
 from superqt.utils import thread_worker
@@ -114,7 +115,10 @@ class QTrashWidget(QtW.QSplitter):
             job_path = Path(job_path)
             entries.append(job_path)
         # NOTE: `mv` will update ctime (st_birthtime) but not mtime
-        entries.sort(key=lambda x: x.stat().st_birthtime)
+        if sys.version_info >= (3, 12) and sys.platform == "win32":
+            entries.sort(key=lambda x: x.stat().st_birthtime)
+        else:
+            entries.sort(key=lambda x: x.stat().st_ctime)
         for job_path in entries:
             job_id = f"{job_path.parent.name}/{job_path.name}/"
             item = QtW.QListWidgetItem(job_id)
