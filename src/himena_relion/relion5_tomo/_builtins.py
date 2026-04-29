@@ -664,7 +664,6 @@ class ReconstructTomoByAreTomo2(_AlignTiltSeriesJobBase):
         kwargs["do_skip_aretomo_align"] = True
         kwargs["aretomo_tiltcorrect_angle"] = 999
         kwargs["tomogram_thickness"] = 300.0
-        print(kwargs)
         return super().normalize_kwargs(**kwargs)
 
     @classmethod

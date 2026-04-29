@@ -178,7 +178,6 @@ class QRelionPipelineFlowChartView(QFlowChartView):
             return JobDirectory.from_job_star(path)
 
         status = item._job.status
-        print(status)
         menu = QtW.QMenu(self)
         menu.setToolTipsVisible(True)
         submenu_open = menu.addMenu("Open")
