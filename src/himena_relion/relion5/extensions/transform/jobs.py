@@ -25,7 +25,8 @@ CENTER_BY = Annotated[
         "tooltip": (
             "Unit of the shift value.\n"
             "<ul>"
-            "<li><b>Pixel</b>: Shift by the specified number of pixels.</li>"
+            "<li><b>Pixel</b>: Shift by the specified number of pixels <b>in the input "
+            "3D map</b>.</li>"
             "<li><b>Angstrom</b>: Shift by the specified number of angstroms.</li>"
             "<li><b>Map center of mass</b>: Shift the center of mass of the map.</li>"
             "<li><b>Mask center of mass</b>: Shift the center of mass of the mask.</li>"
@@ -72,18 +73,21 @@ class ShiftMapJob(RelionExternalJob):
         new_center: NEW_CENTER = (0.0, 0.0, 0.0),
     ):
         out_job_dir = self.output_job_dir
-        _, scale = _read_image(in_3dref)
         if center_by == "pixel":
+            _, scale = _read_image(in_3dref)
             new_center_pix = new_center
+            new_center_ang = tuple(s * scale for s in new_center_pix)
         elif center_by == "angstrom":
+            _, scale = _read_image(in_3dref)
             new_center_pix = tuple(s / scale for s in new_center)
+            new_center_ang = new_center
         elif center_by == "map-com":
-            new_center_pix = self._center_by_com(in_3dref)
+            new_center_pix, new_center_ang = _center_by_com(in_3dref)
         elif center_by == "mask-com":
-            new_center_pix = self._center_by_com(in_mask)
+            new_center_pix, new_center_ang = _center_by_com(in_mask)
         else:
             raise ValueError(f"Invalid value for center_by: {center_by}")
-        new_center_ang = tuple(s * scale for s in new_center_pix)
+
         self.console.log(f"Shift in pixels: {new_center_pix}")
         self.console.log(f"Shift in angstroms: {new_center_ang}")
         _shift_image(in_3dref, out_job_dir.path / _c.OUTPUT_MAP, new_center_pix)
@@ -113,12 +117,16 @@ class ShiftMapJob(RelionExternalJob):
 
         _on_center_by_changed(widgets["center_by"].value)
 
-    def _center_by_com(self, path):
-        img, _ = _read_image(path)
-        com = _img_center_of_mass(img)
-        self.console.log(f"Center of mass of image {path}: {com}")
-        center = tuple((s - 1) / 2 for s in img.shape)
-        return tuple(float(cm - c) for c, cm in zip(center, com))
+
+def _center_by_com(
+    path,
+) -> tuple[tuple[float, float, float], tuple[float, float, float]]:
+    img, img_scale = _read_image(path)
+    com = _img_center_of_mass(img)
+    center = tuple((s - 1) / 2 for s in img.shape)
+    out_pix = tuple(float(cm - c) for c, cm in zip(center, com))
+    out_angst = tuple(d * img_scale for d in out_pix)
+    return out_pix, out_angst
 
 
 def _shift_image(path_in, path_out, shift):
