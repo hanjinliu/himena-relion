@@ -664,7 +664,6 @@ class ReconstructTomoByAreTomo2(_AlignTiltSeriesJobBase):
         kwargs["do_skip_aretomo_align"] = True
         kwargs["aretomo_tiltcorrect_angle"] = 999
         kwargs["tomogram_thickness"] = 300.0
-        print(kwargs)
         return super().normalize_kwargs(**kwargs)
 
     @classmethod
@@ -955,7 +954,7 @@ class ExtractParticlesTomoJob(_Relion5TomoJob):
         crop_size: _a.extract.CROP_SIZE = None,
         max_dose: _a.extract.MAX_DOSE = None,
         min_frames: _a.extract.MIN_FRAMES = 1,
-        do_stack2d: _a.extract.DO_STACK2D = True,
+        # do_stack2d: _a.extract.DO_STACK2D = True,
         subtomo_format: _a.extract.SUBTOMO_FORMAT = "2D stacks",
         # Running
         nr_mpi: _a.running.NR_MPI = 1,

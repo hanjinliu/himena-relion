@@ -7,7 +7,7 @@ from cmap import Color
 from himena import MainWindow
 from himena.exceptions import Cancelled
 from himena.qt._qflowchart import QFlowChartView, BaseNodeItem
-from himena_relion.consts import JOB_ID_MAP, RelionJobState
+from himena_relion.consts import JOB_ID_MAP
 from himena_relion._utils import read_or_show_job
 from himena_relion._pipeline import RelionDefaultPipeline, RelionJobInfo, NodeStatus
 from himena_relion._job_dir import ExternalJobDirectory, JobDirectory
@@ -221,7 +221,7 @@ class QRelionPipelineFlowChartView(QFlowChartView):
         action = menu.addAction(
             "Abort", lambda: _ignore_cancel(_impl.abort_relion_job, self._ui, get_job())
         )
-        action.setEnabled(status is RelionJobState.RUNNING)
+        action.setEnabled(status is NodeStatus.RUNNING)
         action.setToolTip("Notify the job to be aborted.")
         # Run now
         action = menu.addAction(

@@ -187,7 +187,7 @@ def _read_image(path) -> tuple[np.ndarray, float]:
     with mrcfile.open(path, mode="r") as mrc:
         img = mrc.data
         pixel_size = mrc.voxel_size.x  # assuming isotropic voxels
-    return img, pixel_size
+    return img, float(pixel_size)
 
 
 connect_jobs(
