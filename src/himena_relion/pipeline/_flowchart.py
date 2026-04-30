@@ -7,6 +7,7 @@ from cmap import Color
 from himena import MainWindow
 from himena.exceptions import Cancelled
 from himena.qt._qflowchart import QFlowChartView, BaseNodeItem
+from himena.workflow import LocalReaderMethod
 from himena_relion.consts import JOB_ID_MAP
 from himena_relion._utils import read_or_show_job
 from himena_relion._pipeline import RelionDefaultPipeline, RelionJobInfo, NodeStatus
@@ -180,23 +181,23 @@ class QRelionPipelineFlowChartView(QFlowChartView):
         status = item._job.status
         menu = QtW.QMenu(self)
         menu.setToolTipsVisible(True)
-        submenu_open = menu.addMenu("Open")
-        submenu_copy = menu.addMenu("Copy")
+        submenu_file = menu.addMenu("File")
         submenu_cleanup = menu.addMenu("Cleanup")
         submenu_mark = menu.addMenu("Mark As")
-        submenu_open.addAction(
+        submenu_file.addAction(
             "Open job.star as text",
             lambda: _impl.open_relion_job_star(self._ui, get_job()),
         )
-        submenu_open.addAction(
+        submenu_file.addAction(
             "Open job_pipeline.star as text",
             lambda: _impl.open_relion_job_pipeline_star(self._ui, get_job()),
         )
-        submenu_copy.addAction(
+        submenu_file.addSeparator()
+        submenu_file.addAction(
             "Copy job directory path",
             lambda: self._ui.set_clipboard(text=str(path.parent)),
         )
-        submenu_copy.addAction(
+        submenu_file.addAction(
             "Copy job directory relative path",
             lambda: self._ui.set_clipboard(text=str(item.id())),
         )
@@ -217,6 +218,15 @@ class QRelionPipelineFlowChartView(QFlowChartView):
         )
         action.setEnabled(status is not NodeStatus.FAILED)
         menu.addSeparator()
+
+        # Prepare next actions
+        action_hints = _create_action_hint_menu(self._ui, path)
+        if action_hints:
+            action_hint_menu = menu.addMenu("Next Action ...")
+            for action in action_hints:
+                action.setParent(action_hint_menu)
+                action_hint_menu.addAction(action)
+
         # Abort
         action = menu.addAction(
             "Abort", lambda: _ignore_cancel(_impl.abort_relion_job, self._ui, get_job())
@@ -268,12 +278,6 @@ class QRelionPipelineFlowChartView(QFlowChartView):
         action.setToolTip("Unset the root job and show all jobs in the flowchart.")
         action.setEnabled(item._job is self._root_job_info)
         return menu
-
-
-def _ignore_cancel(func, *args, **kwargs):
-    """Decorator to ignore Cancelled exception."""
-    with suppress(Cancelled):
-        return func(*args, **kwargs)
 
 
 class RelionJobNodeItem(BaseNodeItem):
@@ -334,3 +338,28 @@ def _track_children(root: RelionJobInfo) -> set[Path]:
         all_paths.add(child.node.path)
         all_paths.update(_track_children(child.node))
     return all_paths
+
+
+def _create_action_hint_menu(ui: MainWindow, job_star_path: Path) -> list[QtW.QAction]:
+    actions = []
+    try:
+        model_type = JobDirectory.from_job_star(job_star_path).himena_model_type()
+        method = LocalReaderMethod(
+            path=job_star_path,
+            plugin="himena_relion.io.read_relion_job",
+            output_model_type=model_type,
+        )
+        for attr, exe in ui.action_hint_registry.iter_executors(ui, model_type, method):
+            action = QtW.QAction(attr.title)
+            action.triggered.connect(exe)
+            action.setToolTip(attr.tooltip)
+            actions.append(action)
+    except Exception as e:
+        ui.show_notification(f"Failed to create action hint menu: {e}", title="Warning")
+    return actions
+
+
+def _ignore_cancel(func, *args, **kwargs):
+    """Decorator to ignore Cancelled exception."""
+    with suppress(Cancelled):
+        return func(*args, **kwargs)

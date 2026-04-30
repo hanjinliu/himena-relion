@@ -46,6 +46,9 @@ NEW_CENTER = Annotated[
 class ShiftMapJob(RelionExternalJob):
     """Shift a density map and the corresponding particles."""
 
+    OUTPUT_PARTICLES = _c.OUTPUT_PARTICLES
+    OUTPUT_MAP = _c.OUTPUT_MAP
+
     def output_nodes(self):
         return [
             (_c.OUTPUT_PARTICLES, "ParticleGroupMetadata.star"),
