@@ -253,13 +253,22 @@ class QSplitParticlesViewer(QSelectJobBase):
     def iter_particles_stars(self) -> Iterator[Path]:
         """Iterate over all particles star files."""
         path_ith_list: list[tuple[Path, int]] = []
-        num = len("particles_split")
-        for path in self._job_dir.path.glob("particles_split*.star"):
-            ith = int(path.stem[num:])
+        prefix = "particles_split"
+        for path in self._job_dir.path.glob(f"{prefix}*.star"):
+            # NOTE: if user created files such as "particles_split001_edit.star",
+            # this may cause problems.
+            ith = _try_parse_int(path.stem[len(prefix) :])
             path_ith_list.append((path, ith))
         path_ith_list.sort(key=lambda x: x[1])
         for path, _ in path_ith_list:
             yield path
+
+
+def _try_parse_int(a: str) -> int:
+    try:
+        return int(a)
+    except ValueError:
+        return 9999999
 
 
 @register_job("relion.select.onvalue")

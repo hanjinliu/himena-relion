@@ -83,13 +83,15 @@ class QInspectViewer(QtW.QWidget):
         if getter := info.get_particles:
             point_df = getter()
             cols = [f"rlnCenteredCoordinate{x}Angst" for x in "ZYX"]
-            cols_orig = [f"rlnOrigin{x}Angst" for x in "ZYX"]
             points_arr = point_df.select(cols).to_numpy()
+
+            # Shift particles by origin (transformed by rotation operator)
+            cols_orig = [f"rlnOrigin{x}Angst" for x in "ZYX"]
             if all(c in point_df.columns for c in cols_orig):
                 points_arr = points_arr + point_df.select(cols_orig).to_numpy()
             points = points_arr / info.tomo_pixel_size
             sizes = np.array(info.tomo_shape, dtype=np.float32) / info.tomogram_binning
-            center = (sizes - 1) / 2
+            center = sizes / 2
             bin_factor = int(self._filter_widget._bin_factor.text() or "1")
             points_processed = (points + center[np.newaxis]) / bin_factor
             yield self._viewer.set_points, points_processed
