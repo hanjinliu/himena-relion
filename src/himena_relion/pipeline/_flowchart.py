@@ -183,40 +183,44 @@ class QRelionPipelineFlowChartView(QFlowChartView):
         menu.setToolTipsVisible(True)
         submenu_file = menu.addMenu("File")
         submenu_cleanup = menu.addMenu("Cleanup")
-        submenu_mark = menu.addMenu("Mark As")
+        # submenu_mark = menu.addMenu("Mark As")
         submenu_file.addAction(
-            "Open job.star as text",
+            "Open 'job.star' As Text",
             lambda: _impl.open_relion_job_star(self._ui, get_job()),
         )
         submenu_file.addAction(
-            "Open job_pipeline.star as text",
+            "Open 'job_pipeline.star' As Text",
             lambda: _impl.open_relion_job_pipeline_star(self._ui, get_job()),
+        )
+        submenu_file.addAction(
+            "Open Job Parameters",
+            lambda: _impl.open_job_parameters(self._ui, get_job()),
         )
         submenu_file.addSeparator()
         submenu_file.addAction(
-            "Copy job directory path",
+            "Copy Directory Path",
             lambda: self._ui.set_clipboard(text=str(path.parent)),
         )
         submenu_file.addAction(
-            "Copy job directory relative path",
+            "Copy Directory Relative Path",
             lambda: self._ui.set_clipboard(text=str(item.id())),
         )
         action = submenu_cleanup.addAction(
-            "Gentle clean", lambda: _impl.gentle_clean_relion_job(self._ui, get_job())
+            "Gentle Clean", lambda: _impl.gentle_clean_relion_job(self._ui, get_job())
         )
         action.setEnabled(status not in [NodeStatus.RUNNING, NodeStatus.SCHEDULED])
         action = submenu_cleanup.addAction(
-            "Harsh clean", lambda: _impl.harsh_clean_relion_job(self._ui, get_job())
+            "Harsh Clean", lambda: _impl.harsh_clean_relion_job(self._ui, get_job())
         )
         action.setEnabled(status not in [NodeStatus.RUNNING, NodeStatus.SCHEDULED])
-        action = submenu_mark.addAction(
-            "Mark As Finished", lambda: _impl.mark_as_finished(get_job())
-        )
-        action.setEnabled(status is not NodeStatus.SUCCEEDED)
-        action = submenu_mark.addAction(
-            "Mark As Failed", lambda: _impl.mark_as_failed(get_job())
-        )
-        action.setEnabled(status is not NodeStatus.FAILED)
+        # action = submenu_mark.addAction(
+        #     "Mark As Finished", lambda: _impl.mark_as_finished(get_job())
+        # )
+        # action.setEnabled(status is not NodeStatus.SUCCEEDED)
+        # action = submenu_mark.addAction(
+        #     "Mark As Failed", lambda: _impl.mark_as_failed(get_job())
+        # )
+        # action.setEnabled(status is not NodeStatus.FAILED)
         menu.addSeparator()
 
         # Prepare next actions

@@ -4,6 +4,7 @@ import logging
 from typing import Iterator
 import mrcfile
 import numpy as np
+from numpy.typing import NDArray
 from qtpy import QtGui
 from superqt.utils import thread_worker
 from starfile_rs import read_star, read_star_block
@@ -134,6 +135,8 @@ class QSelectInteractiveViewer(QSelectJobBase):
             yield _NOT_ENOUGH_MSG
             return
         model = ModelClasses.validate_file(class_avg_path)
+        # model.ref_image[0] is like:
+        # 00000002@Class2D/job010/run_it200_classes.mrcs
         class2d_path = model.ref_image[0].split("@")[1]
         class2d_selected = {int(_id.split("@")[0]) - 1 for _id in model.ref_image}
 
@@ -156,6 +159,7 @@ class QSelectInteractiveViewer(QSelectJobBase):
 
         is_selected = get_is_selected(job_dir)
         if is_selected is None:
+            yield "Could not determine which particles are selected."
             return
 
         # print selected and removed HTML images in the text edit
@@ -305,10 +309,10 @@ def get_particles_star_before(job_dir: _job_dir.JobDirectory) -> Path:
     return job_dir.resolve_path(optimizer_star_path.parent / f"{new_stem}.star")
 
 
-def get_is_selected(job_dir: _job_dir.JobDirectory) -> np.ndarray | None:
+def get_is_selected(job_dir: _job_dir.JobDirectory) -> NDArray[np.bool_] | None:
     path = job_dir.path / "backup_selection.star"
     try:
         df = read_star(path).first().trust_loop().to_polars()
-        return df["rlnSelected"].to_numpy(dtype=np.bool_)
+        return df["rlnSelected"].to_numpy() > 0
     except Exception:
         return None

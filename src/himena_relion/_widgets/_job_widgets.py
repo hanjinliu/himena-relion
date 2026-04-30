@@ -569,6 +569,7 @@ class QRelionNodeItem(QtW.QWidget):
         current_instance().read_file(
             path,
             plugin=plugin_for_filetype(self.file_type_category()),
+            append_history=False,
         )
 
 
@@ -766,6 +767,7 @@ class QFileLabel(QtW.QWidget):
         current_instance().read_file(
             path,
             plugin=plugin_for_filetype(self._relion_node_item.file_type_category()),
+            append_history=False,
         )
 
     def _copy_path_to_clipboard(self):

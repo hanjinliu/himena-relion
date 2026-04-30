@@ -39,6 +39,18 @@ def open_relion_job_pipeline_star(ui: MainWindow, job_dir: JobDirectory):
     )
 
 
+def open_job_parameters(ui: MainWindow, job_dir: JobDirectory):
+    from himena_relion._widgets._job_widgets import QJobParameterView
+
+    widget = QJobParameterView()
+    widget.initialize(job_dir)
+    win = ui.add_widget(
+        widget,
+        title=f"Parameters of {job_dir.job_normal_id()}",
+    )
+    win.size = (480, 480)
+
+
 def gentle_clean_relion_job(ui: MainWindow, job_dir: JobDirectory):
     """Perform a gentle clean of this RELION job."""
     job_num = int(job_dir.job_number)
@@ -63,17 +75,6 @@ def harsh_clean_relion_job(ui: MainWindow, job_dir: JobDirectory):
         cwd=job_dir.relion_project_dir,
     )
     ui.show_notification(f"Harsh cleaned job {job_dir.job_normal_id()}.")
-
-
-def mark_as_finished(job_dir: JobDirectory):
-    """Mark this job as 'finished'"""
-    job_dir.path.joinpath(FileNames.EXIT_SUCCESS).touch()
-    # TODO: update default_pipeline.star
-
-
-def mark_as_failed(job_dir: JobDirectory):
-    """Mark this job as 'failed'"""
-    job_dir.path.joinpath(FileNames.EXIT_FAILURE).touch()
 
 
 def abort_relion_job(ui: MainWindow, job_dir: JobDirectory):
