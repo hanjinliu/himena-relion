@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import overload
 from superqt.utils import thread_worker, GeneratorWorker
 from qtpy import QtWidgets as QtW, QtCore
-from himena_relion._utils import iter_directory_content_summary
+from himena_relion._utils import bytes_to_size_str, iter_directory_content_summary
 
 create_worker = thread_worker(iter_directory_content_summary)
 
@@ -29,13 +29,7 @@ class QJobContentInfo(QtW.QLabel):
     ):
         if isinstance(num_files, tuple):
             num_files, total_size_bytes, *_ = num_files
-        if total_size_bytes < 1024 * 1024:
-            size_str = f"{total_size_bytes / 1024:.1f} KB"
-        elif total_size_bytes < 1024 * 1024 * 1024:
-            size_str = f"{total_size_bytes / 1024**2:.1f} MB"
-        else:
-            size_str = f"{total_size_bytes / 1024**3:.1f} GB"
-        self.setText(f"{num_files} files, {size_str}")
+        self.setText(f"{num_files} files, {bytes_to_size_str(total_size_bytes)}")
 
     def count_directory_content(self, path: Path):
         """Start counting the directory content in a separate thread."""

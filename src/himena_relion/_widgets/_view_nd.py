@@ -416,6 +416,7 @@ class Q3DViewer(Q3DViewerBase):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self._control_widget: Q3DViewerControl | None = None  # delayed
         self._rendering = QtW.QComboBox()
         self._rendering.addItems(["Surface", "Maximum", "Average"])
         self._rendering.setCurrentIndex(0)
@@ -432,6 +433,10 @@ class Q3DViewer(Q3DViewerBase):
         self._auto_thresh_btn.setToolTip("Automatically set the iso-surface threshold")
         self._has_image = False
         _thresh = QtW.QWidget()
+        _thresh.setSizePolicy(
+            QtW.QSizePolicy.Policy.MinimumExpanding,
+            QtW.QSizePolicy.Policy.Fixed,
+        )
         _thresh_layout = QtW.QHBoxLayout(_thresh)
         _thresh_layout.setContentsMargins(0, 0, 0, 0)
         _thresh_layout.addWidget(self._rendering)
@@ -480,6 +485,8 @@ class Q3DViewer(Q3DViewerBase):
         self._hist_view.set_minmax((th_min, th_max))
 
         self._canvas.set_iso_threshold(self._hist_view.threshold())
+        if self._control_widget is not None:
+            self._control_widget.set_info(image)
         if update_now:
             self._canvas.update_canvas()
 
@@ -542,6 +549,31 @@ class Q3DViewer(Q3DViewerBase):
     @validate_protocol
     def size_hint(self):
         return 330, 350
+
+    @validate_protocol
+    def control_widget(self) -> Q3DViewerControl:
+        if self._control_widget is None:
+            self._control_widget = Q3DViewerControl()
+            if self.has_image:
+                self._control_widget.set_info(self._canvas.image)
+        return self._control_widget
+
+    @validate_protocol
+    def widget_added_callback(self):
+        # if this widget is added as a subwindow in a himena tab, user may want to
+        # expand the canvas. Allow this widget to expand.
+        self._canvas.native.setMaximumSize(6000, 6000)
+
+
+class Q3DViewerControl(QtW.QWidget):
+    def __init__(self):
+        super().__init__()
+        self._image_info_label = QtW.QLabel("")
+
+    def set_info(self, img: np.ndarray):
+        size_str = _utils.bytes_to_size_str(img.nbytes)
+        txt = f"{img.shape}, {img.dtype}, {size_str}"
+        self._image_info_label.setText(txt)
 
 
 class Q3DTomogramViewer(QViewer):
@@ -701,6 +733,7 @@ class Q3DLocalResViewer(Q3DViewerBase):
         self._iso_slider.threshold_changed.connect(self._on_iso_changed)
         self._iso_slider.set_hist_scale("log")
         self._auto_threshold_btn = QtW.QPushButton("Auto")
+        self._auto_threshold_btn.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
         self._auto_threshold_btn.setFixedWidth(40)
         self._auto_threshold_btn.clicked.connect(lambda: self.auto_threshold())
         self._clim_slider = QHistogramView(mode="clim")

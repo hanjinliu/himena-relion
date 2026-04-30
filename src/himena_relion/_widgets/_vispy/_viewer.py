@@ -228,13 +228,14 @@ class _Vispy3DDensityBase(_Vispy3DBase):
         return self._arrow_visual
 
     def set_rendering_mode(self, mode: str):
+        mode = mode.title()
         if mode == "Surface":
             self._volume_visual.method = "iso"
         elif mode == "Maximum":
             self._volume_visual.method = "mip"
         elif mode == "Average":
             self._volume_visual.method = "average"
-        else:
+        else:  # pragma: no cover
             raise ValueError(f"Unknown rendering mode: {mode}")
 
     def set_iso_threshold(self, value):

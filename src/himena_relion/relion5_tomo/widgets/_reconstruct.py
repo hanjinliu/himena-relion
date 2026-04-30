@@ -33,6 +33,9 @@ class QReconstructViewer(QJobScrollArea):
         self._viewer = Q3DViewer()
         self._viewer.setMaximumWidth(400)
         self._sym_label = QSymmetryLabel()
+        self._sym_label.setAlignment(
+            QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter
+        )
         self._num_particles_label = QNumParticlesLabel()
         self._num_particles_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
         self._num_particles_label.setMaximumWidth(self._viewer.maximumWidth())

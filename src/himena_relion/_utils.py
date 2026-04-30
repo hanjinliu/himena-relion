@@ -313,3 +313,15 @@ def command_not_found_err_msg(first_sentense: str):
         "See https://hanjinliu.github.io/himena-relion/getting_started/ for more "
         "details."
     )
+
+
+def bytes_to_size_str(num_bytes: int) -> str:
+    if num_bytes < 1024:
+        size_str = f"{num_bytes} B"
+    elif num_bytes < 1024 * 1024:
+        size_str = f"{num_bytes / 1024:.1f} KB"
+    elif num_bytes < 1024 * 1024 * 1024:
+        size_str = f"{num_bytes / 1024**2:.1f} MB"
+    else:
+        size_str = f"{num_bytes / 1024**3:.1f} GB"
+    return size_str
