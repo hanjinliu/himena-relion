@@ -148,10 +148,7 @@ class TakeZeroTiltMicrographs(RelionExternalJob):
             mtx = tomo_name_to_mtx_map[tomo_name]
             scale = tomo_name_to_scale_map[tomo_name]
             xyz = _get_xyz(sub, scale)
-            xyz_transformed = (mtx @ np.hstack((xyz, np.ones((xyz.shape[0], 1)))).T).T[
-                :, :3
-            ]
-            # xyz_transformed = (np.linalg.inv(mtx) @ np.hstack((xyz, np.ones((xyz.shape[0], 1)))).T).T[:, :3]
+            xyz_transformed = (mtx @ np.hstack((xyz, np.ones((xyz.shape[0], 1)))).T).T
             sub = sub.with_columns(
                 pl.Series("rlnCoordinateX", xyz_transformed[:, 0]),
                 pl.Series("rlnCoordinateY", xyz_transformed[:, 1]),
@@ -214,4 +211,6 @@ def _get_xyz(particle_df: pl.DataFrame, scale: float) -> np.ndarray:
     if origin_in_dataframe:
         zyx -= origin_zyx / scale
         # zyx -= origin_zyx / particle_df["rlnImagePixelSize"].to_numpy()
+
+    # TODO: also apply "rlnAngleRot" etc?
     return zyx[:, ::-1]

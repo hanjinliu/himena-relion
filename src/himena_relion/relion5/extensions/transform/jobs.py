@@ -46,6 +46,9 @@ NEW_CENTER = Annotated[
 class ShiftMapJob(RelionExternalJob):
     """Shift a density map and the corresponding particles."""
 
+    OUTPUT_PARTICLES = _c.OUTPUT_PARTICLES
+    OUTPUT_MAP = _c.OUTPUT_MAP
+
     def output_nodes(self):
         return [
             (_c.OUTPUT_PARTICLES, "ParticleGroupMetadata.star"),
@@ -93,13 +96,13 @@ class ShiftMapJob(RelionExternalJob):
         _shift_image(in_3dref, out_job_dir.path / _c.OUTPUT_MAP, new_center_pix)
         self.console.log(f"Write shifted map to {out_job_dir.path / _c.OUTPUT_MAP}")
         if in_mask:
-            _shift_image(in_mask, out_job_dir.path / _c.OUTPUT_MASK, new_center_ang)
+            _shift_image(in_mask, out_job_dir.path / _c.OUTPUT_MASK, new_center_pix)
             self.console.log(
                 f"Write shifted mask to {out_job_dir.path / _c.OUTPUT_MASK}"
             )
         if in_parts:
             _shift_star(
-                in_parts, out_job_dir.path / _c.OUTPUT_PARTICLES, new_center_pix
+                in_parts, out_job_dir.path / _c.OUTPUT_PARTICLES, new_center_ang
             )
             self.console.log(
                 f"Write shifted partiles to {out_job_dir.path / _c.OUTPUT_PARTICLES}"
@@ -129,10 +132,10 @@ def _center_by_com(
     return out_pix, out_angst
 
 
-def _shift_image(path_in, path_out, shift):
-    """Shift image using `relion_image_handler`"""
+def _shift_image(path_in, path_out, shift_pix):
+    """Shift image using scipy."""
     img, pixel_size = _read_image(path_in)
-    shift_zyx = (shift[2], shift[1], shift[0])
+    shift_zyx = (shift_pix[2], shift_pix[1], shift_pix[0])
     img = img.astype(np.float32)
     cval = np.min(img)
     shifted = ndi.shift(img, shift=shift_zyx, order=3, mode="constant", cval=cval)

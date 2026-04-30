@@ -22,7 +22,7 @@ from pathlib import Path
 from magicgui.widgets.bases import ValueWidget
 
 from himena.types import AnyContext, WidgetDataModel
-from himena.workflow import WorkflowStep
+from himena.workflow import WorkflowStep, LocalReaderMethod
 from himena.widgets import MainWindow
 from himena.plugins import when_reader_used, register_function
 import numpy as np
@@ -664,12 +664,16 @@ def _node_mapping_to_context(
     value_mapping = value_mapping or {}
 
     def _func(ui: MainWindow, step: WorkflowStep) -> dict[str, Any]:
-        win = ui.window_for_id(step.id)
-        if win is None:
-            return {}
-        val = win.value
-        if not isinstance(val, _job_dir.JobDirectory):
-            return {}
+        if isinstance(step, LocalReaderMethod) and isinstance(path := step.path, Path):
+            if path.is_dir():
+                path = path / "job.star"
+            val = _job_dir.JobDirectory.from_job_star(path)
+        else:
+            win = ui.window_for_id(step.id)
+            if win is None:
+                return {}
+            if not isinstance(val := win.value, _job_dir.JobDirectory):
+                return {}
         # NOTE: the from_ file does NOT have to exist at this point.
         out = {}
         for from_, to_ in node_mapping.items():

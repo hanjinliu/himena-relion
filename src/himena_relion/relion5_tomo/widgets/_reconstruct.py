@@ -113,8 +113,7 @@ class QReconstructViewer(QJobScrollArea):
         temp_dir = job_dir.path / "temp"
         if not temp_dir.exists():
             self._img_raw = None
-            self._viewer.set_image(None, update_now=False)
-            return
+            return self._clear_image()
         image_data: list[np.ndarray] = []
         ith_tomo = "0"
         for impath in temp_dir.glob("sum_*_data_half?.mrc"):
@@ -122,7 +121,7 @@ class QReconstructViewer(QJobScrollArea):
                 image_data.append(mrc.data)
             ith_tomo = impath.stem.split("_")[1]
         if len(image_data) == 0:
-            return
+            return self._clear_image()
         # Every sum_X_data_halfX.mrc is a (2N, N, N/2) float32 image for a (N, N, N)
         # reconstruction. The first N planes are the real part and the next N planes are
         # the imaginary part of the Fourier transform.
@@ -160,6 +159,10 @@ class QReconstructViewer(QJobScrollArea):
 
     def _on_lowpass_changed(self):
         self._viewer.set_image(self._get_image_filtered(), update_now=True)
+
+    def _clear_image(self):
+        self._img_raw = None
+        self._viewer.set_image(None, update_now=False)
 
     def _get_image_filtered(self):
         if (img := self._img_raw) is None:

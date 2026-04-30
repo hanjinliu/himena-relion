@@ -12,3 +12,31 @@ __all__ = [
     "EraseGold",
     "InspectParticles",
 ]
+
+
+def _connect_jobs():
+    from himena_relion._job_class import connect_jobs
+    from himena_relion.relion5.extensions import ShiftMapJob
+    from himena_relion.relion5_tomo._builtins import (
+        ReconstructParticlesJob,
+        ExtractParticlesTomoJob,
+    )
+
+    connect_jobs(
+        ShiftMapJob,
+        ReconstructParticlesJob,
+        node_mapping={
+            ShiftMapJob.OUTPUT_PARTICLES: "in_optim.in_particles",
+        },
+    )
+    connect_jobs(
+        ShiftMapJob,
+        ExtractParticlesTomoJob,
+        node_mapping={
+            ShiftMapJob.OUTPUT_PARTICLES: "in_optim.in_particles",
+        },
+    )
+
+
+_connect_jobs()
+del _connect_jobs

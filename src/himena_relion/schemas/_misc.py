@@ -53,6 +53,7 @@ class ParticlesModel(schema.LoopDataModel):
     class_number: schema.Series[int] = schema.Field("rlnClassNumber", default=None)
     angle_rot: schema.Series[float] = schema.Field("rlnAngleRot", default=None)
     angle_tilt: schema.Series[float] = schema.Field("rlnAngleTilt", default=None)
+    angle_psi: schema.Series[float] = schema.Field("rlnAnglePsi", default=None)
 
     @classmethod
     def example(cls, size: int) -> "ParticleMetaModel":
@@ -69,6 +70,7 @@ class ParticlesModel(schema.LoopDataModel):
             class_number=pl.Series([1] * size, dtype=pl.Int64),
             angle_rot=pl.Series([5.0] * size, dtype=pl.Float64),
             angle_tilt=pl.Series([8.0] * size, dtype=pl.Float64),
+            angle_psi=pl.Series([10.0] * size, dtype=pl.Float64),
         )
 
 
