@@ -14,6 +14,7 @@ from himena_relion._widgets import (
     Q3DViewer,
     register_job,
     QNumParticlesLabel,
+    QSymmetryLabel,
 )
 from himena_relion import _job_dir
 from himena_relion._utils import lowpass_filter
@@ -31,6 +32,7 @@ class QReconstructViewer(QJobScrollArea):
         self._lowpass_widget.value_changed.connect(self._on_lowpass_changed)
         self._viewer = Q3DViewer()
         self._viewer.setMaximumWidth(400)
+        self._sym_label = QSymmetryLabel()
         self._num_particles_label = QNumParticlesLabel()
         self._num_particles_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
         self._num_particles_label.setMaximumWidth(self._viewer.maximumWidth())
@@ -38,7 +40,12 @@ class QReconstructViewer(QJobScrollArea):
         self._layout.addWidget(self._file_name_label)
         self._layout.addWidget(self._lowpass_widget)
         self._layout.addWidget(self._viewer)
-        self._layout.addWidget(self._num_particles_label)
+
+        hlayout = QtW.QHBoxLayout()
+        hlayout.setContentsMargins(0, 0, 0, 0)
+        hlayout.addWidget(self._sym_label)
+        hlayout.addWidget(self._num_particles_label)
+        self._layout.addLayout(hlayout)
 
         self._img_raw = None
         self._img_raw_scale = 1.0
@@ -57,7 +64,7 @@ class QReconstructViewer(QJobScrollArea):
 
     def initialize(self, job_dir: _job_dir.JobDirectory):
         """Initialize the viewer with the job directory."""
-        merged_mrc_path = merged_mrc(job_dir)
+        merged_mrc_path = job_dir.path / "merged.mrc"
         if not merged_mrc_path.exists():
             return self._open_intermediate_result(job_dir)
         with mrcfile.open(merged_mrc_path, permissive=True) as mrc:
@@ -95,6 +102,8 @@ class QReconstructViewer(QJobScrollArea):
                 "Failed to read particles star file to get number of particles",
                 exc_info=True,
             )
+        sym_name = job_dir.get_job_param("sym_name")
+        self._sym_label.set_symmetry(sym_name)
         self._num_particles_label.set_number(n_particles)
 
     def _open_intermediate_result(self, job_dir: _job_dir.JobDirectory):
@@ -156,11 +165,6 @@ class QReconstructViewer(QJobScrollArea):
         cutoff_rel = self._img_raw_scale / cutoff_a
         img_filt = lowpass_filter(img, cutoff_rel)
         return img_filt
-
-
-def merged_mrc(job_dir: _job_dir.JobDirectory) -> Path:
-    """Return the path to the merged MRC file if exists."""
-    return job_dir.path / "merged.mrc"
 
 
 class QLowpassParamWidget(QtW.QWidget):
