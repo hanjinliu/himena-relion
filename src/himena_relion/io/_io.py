@@ -30,7 +30,7 @@ def read_density_map(path: Path) -> WidgetDataModel:
 
 @read_density_map.define_matcher
 def _(path: Path):
-    if path.suffix.rstrip("~") in (".mrc", ".map", ".ctf"):
+    if path.suffix.rstrip("~") in (".mrc", ".map") or path.suffixes == [".map", ".gz"]:
         return StandardType.IMAGE
 
 
@@ -39,14 +39,9 @@ def read_mrcs(path: Path) -> WidgetDataModel:
     with mrcfile.open(path) as mrc:
         arr = np.asarray(mrc.data)
         voxel_size = mrc.voxel_size
-    axes = [
-        DimAxis(name="index", size=arr.shape[0]),
-        DimAxis(name="y", scale=voxel_size.y, unit="Å"),
-        DimAxis(name="x", scale=voxel_size.x, unit="Å"),
-    ]
     return create_image_model(
         arr,
-        axes=axes,
+        axes=_prep_3d_axes(voxel_size),
         extension_default=".mrcs",
     )
 
@@ -54,6 +49,37 @@ def read_mrcs(path: Path) -> WidgetDataModel:
 @read_mrcs.define_matcher
 def _(path: Path):
     if path.suffix.rstrip("~") == ".mrcs":
+        return StandardType.IMAGE
+
+
+@register_reader_plugin(priority=20, module="himena_relion.io")
+def read_mrc(path: Path) -> WidgetDataModel:
+    """A convenient reader for MRC files."""
+    with mrcfile.open(path, header_only=True) as mrc:
+        nz, ny, nx = mrc.header.nx, mrc.header.ny, mrc.header.nz
+    if (1 < nz <= 512) and (1 < ny <= 512) and (1 < nx <= 512):
+        # Likely a 3D map
+        return read_density_map(path)
+
+    with mrcfile.open(path) as mrc:
+        arr = np.asarray(mrc.data)
+        voxel_size = mrc.voxel_size
+    if arr.ndim == 4:
+        axes = [DimAxis(name="t")] + _prep_3d_axes(voxel_size)
+    elif arr.ndim == 3:
+        axes = _prep_3d_axes(voxel_size)
+    else:
+        axes = None
+    return create_image_model(
+        arr,
+        axes=axes,
+        extension_default=".mrc",
+    )
+
+
+@read_mrc.define_matcher
+def _(path: Path):
+    if path.suffix.rstrip("~") in (".mrc", ".map") or path.suffixes == [".map", ".gz"]:
         return StandardType.IMAGE
 
 
@@ -137,3 +163,11 @@ def _get_star(path: Path, name: str) -> Path | None:
         return star
     if path.is_file() and path.name == name:
         return path
+
+
+def _prep_3d_axes(voxel_size: np.recarray) -> list[DimAxis]:
+    return [
+        DimAxis(name="z", scale=voxel_size.z, unit="Å"),
+        DimAxis(name="y", scale=voxel_size.y, unit="Å"),
+        DimAxis(name="x", scale=voxel_size.x, unit="Å"),
+    ]
