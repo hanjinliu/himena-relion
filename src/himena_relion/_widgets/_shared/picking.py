@@ -108,6 +108,7 @@ class QMicrographParticleOverlay(QtW.QWidget):
             return
         is_match = self._current_particles.mic_name == mic_path
         scale = self._filter_widget.image_scale()
+        # TODO: orig need to be rotated.
         if self._current_particles.orig_x is not None:
             dx = self._current_particles.orig_x.filter(is_match) / scale
         else:
