@@ -332,7 +332,9 @@ class QRelionPipelineFlowChart(QtW.QWidget):
 
     def _open_trash(self):
         """Open a widget that shows the contents of the RELION Trash directory."""
-        self._ui().read_file(self._flow_chart._relion_project_dir / "Trash")
+        self._ui().read_file(
+            self._flow_chart._relion_project_dir / "Trash", append_history=False
+        )
 
     def _trash_job(self, item: RelionJobNodeItem):
         """Move a job to the RELION Trash directory."""
