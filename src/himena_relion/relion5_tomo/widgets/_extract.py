@@ -141,6 +141,7 @@ class QExtractJobViewer(QJobScrollArea):
                     angst = mrc.voxel_size.x
                     size = mrc.header.nx
                     msg = f"Image size: {size} pix ({size * angst:.1f} A)"
+                    cutoff_rel = angst / 15.0  # 15 A cutoff
                     yield self._on_text_ready, (msg + "\n\n", session)
                 if mrc.data.ndim != 3:
                     # this may happen if the subtomogram is being written right now
@@ -150,7 +151,7 @@ class QExtractJobViewer(QJobScrollArea):
                 else:
                     img_2d = np.max(np.asarray(mrc.data), axis=0)
                 img_2d = np.asarray(img_2d, dtype=np.float32)
-                img_str = self._text_edit.image_to_base64(img_2d, f"{ith}", 0.2)
+                img_str = self._text_edit.image_to_base64(img_2d, f"{ith}", cutoff_rel)
                 yield self._on_string_ready, (img_str, session)
         if self._plot_session_id == session:
             self._worker = None
