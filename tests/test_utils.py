@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Annotated
 
 import pytest
@@ -44,3 +45,30 @@ def test_get_relion_version_info(monkeypatch: pytest.MonkeyPatch):
     info = _version.relion_version_info()
     assert info.version == RelionVersion(5, 0, 0)
     assert info.commit == "85db73"
+
+def test_lock(tmpdir):
+    tmpdir = Path(tmpdir)
+    pipeline_star = tmpdir / "default_pipeline.star"
+    pipeline_star.write_text("pipeline_general\n_rlnPipeLineJobCounter 5\n")
+    with _utils.open_with_lock(pipeline_star) as f:
+        assert tmpdir.joinpath(".relion_lock").exists()
+        f.read()  # make sure the file is readable
+        f.seek(0)
+        f.write("pipeline_general\n_rlnPipeLineJobCounter 6\n")
+    assert not tmpdir.joinpath(".relion_lock").exists()
+
+    with _utils.open_with_lock(pipeline_star) as f:
+        assert tmpdir.joinpath(".relion_lock").exists()
+        with pytest.raises(_utils.RelionPipelineLockError):
+            with _utils.open_with_lock(pipeline_star):
+                pass
+        assert tmpdir.joinpath(".relion_lock").exists()
+        f.read()  # make sure the file is readable
+        f.seek(0)
+        f.write("pipeline_general\n_rlnPipeLineJobCounter 6\n")
+    assert not tmpdir.joinpath(".relion_lock").exists()
+
+    with pytest.raises(ValueError):
+        with _utils.open_with_lock(pipeline_star):
+            raise ValueError
+    assert not tmpdir.joinpath(".relion_lock").exists()
