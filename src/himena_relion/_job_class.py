@@ -32,6 +32,7 @@ from himena_relion._pipeline import is_all_inputs_ready
 from himena_relion.consts import Type, MenuId, JOB_ID_MAP
 from himena_relion._utils import (
     last_job_directory,
+    open_with_lock,
     unwrap_annotated,
     change_name_for_tomo,
     normalize_job_id,
@@ -183,15 +184,14 @@ class RelionJob(ABC):
         job_dir = self.output_job_dir
         job_star_model = self.prep_job_star(**kwargs)
         job_star_model.write(job_dir.job_star())
-        to_run = str(job_dir.path.relative_to(job_dir.relion_project_dir))
+        rln_dir = job_dir.relion_project_dir
+        to_run = str(job_dir.path.relative_to(rln_dir))
         if is_all_inputs_ready(to_run):
-            return execute_job(to_run, cwd=job_dir.relion_project_dir)
+            return execute_job(to_run, cwd=rln_dir)
         else:
-            default_pipeline_path = job_dir.relion_project_dir / "default_pipeline.star"
-            if not default_pipeline_path.exists():
-                return _LOGGER.warning("Project default_pipeline.star not found.")
             # Job state needs to be updated to "Scheduled"
-            update_default_pipeline(default_pipeline_path, to_run, state="Scheduled")
+            with open_with_lock(rln_dir / "default_pipeline.star") as f:
+                update_default_pipeline(f, to_run, state="Scheduled")
 
     @classmethod
     def _show_scheduler_widget(cls, ui: MainWindow, context: AnyContext, cwd=None):

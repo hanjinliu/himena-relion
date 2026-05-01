@@ -173,8 +173,8 @@ class QSelectInteractiveViewer(QSelectJobBase):
                 images_removed.append((img, str(ith)))
 
         for images, msg in [
-            (images_selected, "<h2>Selected Images</h2><br>"),
-            (images_removed, "<br><h2>Removed Images</h2><br>"),
+            (images_selected, "<h2>Selected Classes</h2><br>"),
+            (images_removed, "<br><h2>Removed Classes</h2><br>"),
         ]:
             yield msg
             for img, text in images:
@@ -203,6 +203,7 @@ class QSelectInteractiveViewer(QSelectJobBase):
 
         is_selected = get_is_selected(job_dir)
         if is_selected is None:
+            yield "Could not determine which particles are selected."
             return
 
         # print selected and removed HTML images in the text edit
@@ -222,8 +223,8 @@ class QSelectInteractiveViewer(QSelectJobBase):
                 images_removed.append((path_rel, array))
 
         for images, msg in [
-            (images_selected, "<h2>Selected Images</h2><br>"),
-            (images_removed, "<br><h2>Removed Images</h2><br>"),
+            (images_selected, "<h2>Selected Classes</h2><br>"),
+            (images_removed, "<br><h2>Removed Classes</h2><br>"),
         ]:
             yield msg
             for path, array in images:
