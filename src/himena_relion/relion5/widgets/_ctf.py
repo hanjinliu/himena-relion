@@ -349,7 +349,7 @@ class Q2DViewWithTitle(QtW.QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         label = QtW.QLabel(f"<b>{title}</b>")
         label.setAlignment(
-            QtCore.Qt.AlignmentFlag.AlignHCenter, QtCore.Qt.AlignmentFlag.AlignBottom
+            QtCore.Qt.AlignmentFlag.AlignHCenter | QtCore.Qt.AlignmentFlag.AlignBottom
         )
         layout.addWidget(label)
         self.view = Q2DSimpleViewer()

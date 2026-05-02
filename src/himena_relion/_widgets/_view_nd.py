@@ -303,14 +303,21 @@ class Q2DViewer(Q2DViewerBase):
                 np.zeros((2, 2), dtype=np.float32), (0.0, 1.0)
             )
 
-    def _get_image_slice(self, slider_value: int) -> SliceResult:
-        slice_image = np.asarray(self._array_view.get_slice(slider_value))
+    def _get_image_slice(self, slider_value: int) -> SliceResult | None:
+        try:
+            _sliced = self._array_view.get_slice(slider_value)
+        except Exception:
+            # This may happen if the image is being written in another thread so the
+            # header size and the actual data size are inconsistent.
+            return None
+        slice_image = np.asarray(_sliced)
         if self._last_clim is None:
             min_ = slice_image.min()
             max_ = slice_image.max()
             self._last_clim = (min_, max_)
         else:
             min_, max_ = self._last_clim
+
         point_size = self._point_size_normed()
         if self._dims_slider.isVisible():
             zs = self._points[:, 0]
@@ -331,11 +338,13 @@ class Q2DViewer(Q2DViewerBase):
         )
 
     @ensure_main_thread
-    def _on_calc_slice_done(self, future: Future[SliceResult]):
+    def _on_calc_slice_done(self, future: Future[SliceResult | None]):
         self._last_future = None
         if future.cancelled():
             return
         result = future.result()
+        if result is None:
+            return
         self._histogram_view.set_hist_for_array(result.image, result.clim)
         self._canvas.image = result.image
         self._canvas.contrast_limits = result.clim
