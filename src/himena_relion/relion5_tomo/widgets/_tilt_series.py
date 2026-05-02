@@ -15,6 +15,7 @@ from himena_relion._widgets import (
     QMicrographListWidget,
 )
 from himena_relion import _job_dir
+from himena_relion._widgets._shared.resizer import QResizer
 from himena_relion.schemas import TSModel, TSGroupModel
 
 _LOGGER = logging.getLogger(__name__)
@@ -32,17 +33,19 @@ class QMotionCorrViewer(QJobScrollArea):
     def __init__(self, job_dir: _job_dir.JobDirectory):
         super().__init__()
         self._job_dir = job_dir
-        layout = self._layout
 
         self._viewer = Q2DViewer(zlabel="Tilt index")
         self._viewer.setMinimumHeight(TILT_VIEW_MIN_HEIGHT)
+        self._resizer = QResizer(self._viewer)
         self._filter_widget = Q2DFilterWidget(bin_default=8, lowpass_default=30)
         self._ts_list = QMicrographListWidget(["Tilt Series", "Processed"])
         self._ts_list.current_changed.connect(self._ts_choice_changed)
-        layout.addWidget(QtW.QLabel("<b>Motion-corrected tilt series</b>"))
-        layout.addWidget(self._ts_list)
-        layout.addWidget(self._filter_widget)
-        layout.addWidget(self._viewer)
+        self._layout.setSpacing(0)
+        self._layout.addWidget(QtW.QLabel("<b>Motion-corrected tilt series</b>"))
+        self._layout.addWidget(self._ts_list)
+        self._layout.addWidget(self._filter_widget)
+        self._layout.addWidget(self._viewer)
+        self._layout.addWidget(self._resizer)
         self._filter_widget.value_changed.connect(self._param_changed)
         self._binsize_old = -1
 
@@ -158,17 +161,20 @@ class QExcludeTiltViewer(QJobScrollArea):
     def __init__(self, job_dir: _job_dir.JobDirectory):
         super().__init__()
         self._job_dir = job_dir
-        layout = self._layout
 
+        self._filter_widget = Q2DFilterWidget(bin_default=8, lowpass_default=30)
         self._viewer = Q2DViewer(zlabel="Tilt index")
         self._viewer.setMinimumHeight(TILT_VIEW_MIN_HEIGHT)
-        self._filter_widget = Q2DFilterWidget(bin_default=8, lowpass_default=30)
+        self._resizer = QResizer(self._viewer)
         self._ts_choice = QMicrographListWidget(["Tilt Series", "Number of Tilts"])
         self._ts_choice.current_changed.connect(self._ts_choice_changed)
-        layout.addWidget(QtW.QLabel("<b>Selected tilt series</b>"))
-        layout.addWidget(self._ts_choice)
-        layout.addWidget(self._filter_widget)
-        layout.addWidget(self._viewer)
+
+        self._layout.setSpacing(0)
+        self._layout.addWidget(QtW.QLabel("<b>Selected tilt series</b>"))
+        self._layout.addWidget(self._ts_choice)
+        self._layout.addWidget(self._filter_widget)
+        self._layout.addWidget(self._viewer)
+        self._layout.addWidget(self._resizer)
         self._filter_widget.value_changed.connect(self._viewer.redraw)
         self._binsize_old = -1
 

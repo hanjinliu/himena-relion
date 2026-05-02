@@ -9,6 +9,7 @@ import mrcfile
 from superqt.utils import thread_worker
 from himena_relion.schemas import ModelGroups
 from himena_relion._utils import wait_for_file
+from himena_relion._widgets._shared.resizer import QResizer
 from himena_relion._widgets import (
     QJobScrollArea,
     Q3DViewer,
@@ -28,8 +29,8 @@ _LOGGER = logging.getLogger(__name__)
 class QRefine3DViewer(QJobScrollArea):
     def __init__(self, job_dir: _job_dir.JobDirectory):
         super().__init__()
-        layout = self._layout
         self._viewer = Q3DViewer()
+        self._resizer = QResizer(self._viewer)
         _arrow_visible_default = False
         self._arrow_visible = QToggleSwitch("Show angle distribution")
         self._arrow_visible.setChecked(_arrow_visible_default)
@@ -47,13 +48,16 @@ class QRefine3DViewer(QJobScrollArea):
         self._iter_choice = QIntWidget("Iteration", label_width=60)
         self._iter_choice.setMinimum(0)
         self._num_particles_label = QNumParticlesLabel()
-        layout.addWidget(QtW.QLabel("<b>Refined Map</b>"))
+        self._layout.addWidget(QtW.QLabel("<b>Refined Map</b>"))
+        self._layout.setSpacing(0)
         hor_layout = QtW.QHBoxLayout()
         hor_layout.setContentsMargins(0, 0, 0, 0)
         hor_layout.addWidget(self._arrow_visible)
         hor_layout.addWidget(self._symmetry_label)
-        layout.addLayout(hor_layout)
-        layout.addWidget(self._viewer)
+
+        self._layout.addLayout(hor_layout)
+        self._layout.addWidget(self._viewer)
+        self._layout.addWidget(self._resizer)
         _hor = QtW.QWidget()
         _hor.setMaximumWidth(max_width)
         hor_layout = QtW.QHBoxLayout(_hor)
@@ -62,9 +66,9 @@ class QRefine3DViewer(QJobScrollArea):
         hor_layout.setSpacing(14)
         hor_layout.addWidget(self._iter_choice)
         hor_layout.addWidget(self._num_particles_label)
-        layout.addWidget(_hor)
-        layout.addWidget(QtW.QLabel("<b>Fourier Shell Correlation</b>"))
-        layout.addWidget(self._fsc_plot)
+        self._layout.addWidget(_hor)
+        self._layout.addWidget(QtW.QLabel("<b>Fourier Shell Correlation</b>"))
+        self._layout.addWidget(self._fsc_plot)
         self._index_start = 1
         self._job_dir = _job_dir.Refine3DJobDirectory(job_dir.path)
 

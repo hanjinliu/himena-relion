@@ -303,14 +303,21 @@ class Q2DViewer(Q2DViewerBase):
                 np.zeros((2, 2), dtype=np.float32), (0.0, 1.0)
             )
 
-    def _get_image_slice(self, slider_value: int) -> SliceResult:
-        slice_image = np.asarray(self._array_view.get_slice(slider_value))
+    def _get_image_slice(self, slider_value: int) -> SliceResult | None:
+        try:
+            _sliced = self._array_view.get_slice(slider_value)
+        except Exception:
+            # This may happen if the image is being written in another thread so the
+            # header size and the actual data size are inconsistent.
+            return None
+        slice_image = np.asarray(_sliced)
         if self._last_clim is None:
             min_ = slice_image.min()
             max_ = slice_image.max()
             self._last_clim = (min_, max_)
         else:
             min_, max_ = self._last_clim
+
         point_size = self._point_size_normed()
         if self._dims_slider.isVisible():
             zs = self._points[:, 0]
@@ -331,11 +338,13 @@ class Q2DViewer(Q2DViewerBase):
         )
 
     @ensure_main_thread
-    def _on_calc_slice_done(self, future: Future[SliceResult]):
+    def _on_calc_slice_done(self, future: Future[SliceResult | None]):
         self._last_future = None
         if future.cancelled():
             return
         result = future.result()
+        if result is None:
+            return
         self._histogram_view.set_hist_for_array(result.image, result.clim)
         self._canvas.image = result.image
         self._canvas.contrast_limits = result.clim
@@ -430,6 +439,7 @@ class Q3DViewer(Q3DViewerBase):
             ),
         )
         self._rendering_mgui.changed.connect(self.set_rendering_mode)
+        self._rendering_mgui.max_height = 24
 
         self._hist_view = QHistogramView(mode="thresh")
         self._hist_view.set_hist_scale("log")
@@ -443,7 +453,7 @@ class Q3DViewer(Q3DViewerBase):
         self._auto_thresh_btn.clicked.connect(lambda: self.auto_threshold())
         self._auto_thresh_btn.setToolTip("Automatically set the iso-surface threshold")
         self._has_image = False
-        _thresh = QtW.QWidget()
+        self._footer = _thresh = QtW.QWidget()
         _thresh.setSizePolicy(
             QtW.QSizePolicy.Policy.MinimumExpanding,
             QtW.QSizePolicy.Policy.Fixed,
@@ -455,11 +465,18 @@ class Q3DViewer(Q3DViewerBase):
         _thresh_layout.addWidget(self._auto_thresh_btn)
         _thresh.setMaximumWidth(400)
         _thresh.setMinimumWidth(300)
+        _thresh.setMinimumHeight(36)
 
         layout = QtW.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self._canvas.native)
         layout.addWidget(_thresh)
+
+        self.setMinimumHeight(
+            _thresh.minimumHeight()
+            + self._canvas.native.minimumHeight()
+            + layout.spacing()
+        )
 
     @property
     def has_image(self) -> bool:

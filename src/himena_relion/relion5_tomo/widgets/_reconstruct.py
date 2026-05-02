@@ -16,6 +16,7 @@ from himena_relion._widgets import (
     QNumParticlesLabel,
     QSymmetryLabel,
 )
+from himena_relion._widgets._shared.resizer import QResizer
 from himena_relion import _job_dir
 from himena_relion._utils import lowpass_filter
 from himena_relion.schemas import OptimisationSetModel, TomogramsGroupModel
@@ -32,6 +33,7 @@ class QReconstructViewer(QJobScrollArea):
         self._lowpass_widget.value_changed.connect(self._on_lowpass_changed)
         self._viewer = Q3DViewer()
         self._viewer.setMaximumWidth(400)
+        self._resizer = QResizer(self._viewer)
         self._sym_label = QSymmetryLabel()
         self._sym_label.setAlignment(
             QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter
@@ -40,9 +42,11 @@ class QReconstructViewer(QJobScrollArea):
         self._num_particles_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
         self._num_particles_label.setMaximumWidth(self._viewer.maximumWidth())
 
+        self._layout.setSpacing(0)
         self._layout.addWidget(self._file_name_label)
         self._layout.addWidget(self._lowpass_widget)
         self._layout.addWidget(self._viewer)
+        self._layout.addWidget(self._resizer)
 
         hlayout = QtW.QHBoxLayout()
         hlayout.setContentsMargins(0, 0, 0, 0)

@@ -17,6 +17,7 @@ from himena_relion._widgets import (
     QNumParticlesLabel,
 )
 from himena_relion import _job_dir
+from himena_relion._widgets._shared.resizer import QResizer
 from himena_relion.schemas import TSModel, TSGroupModel
 
 _LOGGER = logging.getLogger(__name__)
@@ -40,6 +41,7 @@ class QImportTiltSeriesViewer(QJobScrollArea):
 
         self._viewer = Q2DViewer(zlabel="Tilt index")
         self._viewer.setMinimumHeight(420)
+        self._resizer = QResizer(self._viewer)
         self._filter_widget = Q2DFilterWidget(bin_default=8, lowpass_default=30)
         self._ts_list = QMicrographListWidget(
             ["Movie Name", "Voltage", "Cs", "Pixel Size", "Optics Group", "Tomo Hand"]
@@ -48,9 +50,11 @@ class QImportTiltSeriesViewer(QJobScrollArea):
         self._layout.addWidget(
             QtW.QLabel("<b>Imported tilt series (movie projection)</b>")
         )
+        self._layout.setSpacing(0)
         self._layout.addWidget(self._ts_list)
         self._layout.addWidget(self._filter_widget)
         self._layout.addWidget(self._viewer)
+        self._layout.addWidget(self._resizer)
         self._filter_widget.value_changed.connect(self._filter_param_changed)
         self._binsize_old = -1
         self._is_micrograph = _is_import_micrographs(job_dir)

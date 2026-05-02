@@ -16,6 +16,7 @@ from himena_relion._widgets import (
 from himena_relion import _job_dir
 from himena_relion._image_readers import ArrayFilteredView
 from himena_relion._widgets._plot import QPlotCanvas
+from himena_relion._widgets._shared.resizer import QResizer
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -28,18 +29,21 @@ class QTomogramViewer(QJobScrollArea):
     def __init__(self, job_dir: _job_dir.JobDirectory):
         super().__init__()
         self._job_dir = job_dir
-        layout = self._layout
 
-        self._viewer = Q2DViewer()
-        self._viewer.setMinimumHeight(TOMO_VIEW_MIN_HEIGHT)
         self._filter_widget = Q2DFilterWidget()
         self._filter_widget._bin_factor.setText("1")
+        self._viewer = Q2DViewer()
+        self._viewer.setMinimumHeight(TOMO_VIEW_MIN_HEIGHT)
+        self._resizer = QResizer(self._viewer)
         self._tomo_list = QMicrographListWidget(["Tomogram", "Type"])
         self._tomo_list.current_changed.connect(self._on_tomo_changed)
-        layout.addWidget(QtW.QLabel("<b>Tomogram Z slice</b>"))
-        layout.addWidget(self._tomo_list)
-        layout.addWidget(self._filter_widget)
-        layout.addWidget(self._viewer)
+
+        self._layout.setSpacing(0)
+        self._layout.addWidget(QtW.QLabel("<b>Tomogram Z slice</b>"))
+        self._layout.addWidget(self._tomo_list)
+        self._layout.addWidget(self._filter_widget)
+        self._layout.addWidget(self._viewer)
+        self._layout.addWidget(self._resizer)
         self._filter_widget.value_changed.connect(self._viewer.redraw)
         self._is_split = False
 
@@ -162,15 +166,17 @@ class QDenoiseTomogramViewer(QJobScrollArea):
     def __init__(self, job_dir: _job_dir.JobDirectory):
         super().__init__()
         self._job_dir = job_dir
-        layout = self._layout
 
         self._viewer = Q2DViewer()
         self._viewer.setMinimumHeight(TOMO_VIEW_MIN_HEIGHT)
+        self._resizer = QResizer(self._viewer)
         self._tomo_list = QMicrographListWidget(["Tomogram", "Type"])
         self._tomo_list.current_changed.connect(self._on_tomo_changed)
-        layout.addWidget(QtW.QLabel("<b>Denoised tomogram Z slice</b>"))
-        layout.addWidget(self._tomo_list)
-        layout.addWidget(self._viewer)
+        self._layout.setSpacing(0)
+        self._layout.addWidget(QtW.QLabel("<b>Denoised tomogram Z slice</b>"))
+        self._layout.addWidget(self._tomo_list)
+        self._layout.addWidget(self._viewer)
+        self._layout.addWidget(self._resizer)
 
     def on_job_updated(self, job_dir: _job_dir.JobDirectory, path: str):
         """Handle changes to the job directory."""
@@ -208,21 +214,22 @@ class QPickViewer(QJobScrollArea):
     def __init__(self, job_dir: _job_dir.PickJobDirectory):
         super().__init__()
         self._job_dir = job_dir
-        layout = self._layout
 
         self._viewer = Q3DTomogramViewer()
         self._viewer.setMinimumHeight(TOMO_VIEW_MIN_HEIGHT)
+        self._resizer = QResizer(self._viewer)
         self._worker = None
         self._current_info: _job_dir.TomogramInfo | None = None
         self._filter_widget = Q2DFilterWidget()
         self._filter_widget._bin_factor.setText("1")
         self._tomo_list = QMicrographListWidget(["Tomogram", "Annotations"])
         self._tomo_list.current_changed.connect(self._on_tomo_changed)
-        layout.addWidget(QtW.QLabel("<b>Picked particles with XY slice</b>"))
-        layout.addWidget(self._filter_widget)
-        layout.addWidget(self._tomo_list)
-        layout.addWidget(self._viewer)
-        # self._filter_widget.value_changed.connect(self._viewer.redraw)
+        self._layout.setSpacing(0)
+        self._layout.addWidget(QtW.QLabel("<b>Picked particles with XY slice</b>"))
+        self._layout.addWidget(self._filter_widget)
+        self._layout.addWidget(self._tomo_list)
+        self._layout.addWidget(self._viewer)
+        self._layout.addWidget(self._resizer)
 
     def on_job_updated(self, job_dir: _job_dir.PickJobDirectory, path: str):
         """Handle changes to the job directory."""
