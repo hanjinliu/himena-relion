@@ -10,6 +10,7 @@ from himena_relion._widgets import (
     register_job,
 )
 from himena_relion import _job_dir, _utils
+from himena_relion._widgets._shared.resizer import QResizer
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -20,8 +21,10 @@ class QLocalResViewer(QJobScrollArea):
         super().__init__()
         layout = self._layout
         self._viewer = Q3DLocalResViewer()
+        self._resizer = QResizer(self._viewer)
         layout.addWidget(QtW.QLabel("<b>Local Resolution Map</b>"))
         layout.addWidget(self._viewer)
+        layout.addWidget(self._resizer)
         self._job_dir = job_dir
 
     def on_job_updated(self, job_dir: _job_dir.JobDirectory, path: str):

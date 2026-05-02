@@ -430,6 +430,7 @@ class Q3DViewer(Q3DViewerBase):
             ),
         )
         self._rendering_mgui.changed.connect(self.set_rendering_mode)
+        self._rendering_mgui.max_height = 24
 
         self._hist_view = QHistogramView(mode="thresh")
         self._hist_view.set_hist_scale("log")
@@ -443,7 +444,7 @@ class Q3DViewer(Q3DViewerBase):
         self._auto_thresh_btn.clicked.connect(lambda: self.auto_threshold())
         self._auto_thresh_btn.setToolTip("Automatically set the iso-surface threshold")
         self._has_image = False
-        _thresh = QtW.QWidget()
+        self._footer = _thresh = QtW.QWidget()
         _thresh.setSizePolicy(
             QtW.QSizePolicy.Policy.MinimumExpanding,
             QtW.QSizePolicy.Policy.Fixed,
@@ -455,11 +456,18 @@ class Q3DViewer(Q3DViewerBase):
         _thresh_layout.addWidget(self._auto_thresh_btn)
         _thresh.setMaximumWidth(400)
         _thresh.setMinimumWidth(300)
+        _thresh.setMinimumHeight(36)
 
         layout = QtW.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self._canvas.native)
         layout.addWidget(_thresh)
+
+        self.setMinimumHeight(
+            _thresh.minimumHeight()
+            + self._canvas.native.minimumHeight()
+            + layout.spacing()
+        )
 
     @property
     def has_image(self) -> bool:

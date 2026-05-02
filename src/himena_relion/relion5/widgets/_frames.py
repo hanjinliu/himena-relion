@@ -12,6 +12,7 @@ from himena_relion._widgets import (
     register_job,
     QMicrographListWidget,
 )
+from himena_relion._widgets._shared.resizer import QResizer
 from himena_relion.schemas import MoviesStarModel, MicrographsStarModel
 from himena_relion import _job_dir
 
@@ -27,15 +28,18 @@ class QImportMoviesViewer(QJobScrollArea):
 
         self._viewer = Q2DViewer(zlabel="")
         self._viewer.setMinimumHeight(480)
+        self._resizer = QResizer(self._viewer)
         self._mic_list = QMicrographListWidget(
             ["Movie Name", "Optics Group", "Pixel Size (A)"]
         )
         self._mic_list.setFixedHeight(130)
         self._mic_list.current_changed.connect(self._mic_changed)
         self._filter_widget = Q2DFilterWidget(bin_default=8, lowpass_default=30)
+        layout.setSpacing(0)
         layout.addWidget(QtW.QLabel("<b>Imported movies (piece-wise projection)</b>"))
         layout.addWidget(self._filter_widget)
         layout.addWidget(self._viewer)
+        layout.addWidget(self._resizer)
         layout.addWidget(self._mic_list)
         self._filter_widget.value_changed.connect(self._filter_param_changed)
         self._binsize_old = -1
@@ -129,14 +133,17 @@ class QMotionCorrViewer(QJobScrollArea):
 
         self._viewer = Q2DViewer(zlabel="")
         self._viewer.setMinimumHeight(480)
+        self._resizer = QResizer(self._viewer)
         self._mic_list = QMicrographListWidget(["Micrograph", "Path"])
         self._mic_list.setFixedHeight(130)
         self._mic_list.current_changed.connect(self._mic_changed)
         self._filter_widget = Q2DFilterWidget(bin_default=8, lowpass_default=30)
+        layout.setSpacing(0)
         layout.addWidget(QtW.QLabel("<b>Motion-corrected micrographs</b>"))
         layout.addWidget(self._mic_list)
         layout.addWidget(self._filter_widget)
         layout.addWidget(self._viewer)
+        layout.addWidget(self._resizer)
         self._filter_widget.value_changed.connect(self._filter_param_changed)
         self._binsize_old = -1
 

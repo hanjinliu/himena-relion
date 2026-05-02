@@ -5,6 +5,7 @@ import logging
 from qtpy import QtWidgets as QtW
 from superqt import QToggleSwitch
 from superqt.utils import thread_worker
+from himena_relion._widgets._shared.resizer import QResizer
 from himena_relion._widgets import (
     QJobScrollArea,
     Q3DViewer,
@@ -45,31 +46,35 @@ class QClass3DViewer(QJobScrollArea):
             "The _angdist.bild output file of the selected iteration and class index \n"
             "is used to generate the arrows."
         )
+        self._resizer = QResizer(self._viewer)
         self._symmetry_label = QSymmetryLabel()
         self._list_widget.setMinimumWidth(300)
         self._list_widget.setMaximumWidth(400)
         self._iter_choice = QIntWidget("Iteration", label_width=60)
         self._iter_choice.setMinimum(0)
         self._num_particles_label = QNumParticlesLabel()
-        self._layout.addWidget(self._list_widget)
-        hor = QtW.QWidget()
-        hor.setMaximumWidth(400)
-        hor.setFixedHeight(26)
-        hor_layout = QtW.QHBoxLayout(hor)
+        hor1 = QtW.QWidget()
+        hor1.setMaximumWidth(400)
+        hor1.setFixedHeight(26)
+        hor_layout = QtW.QHBoxLayout(hor1)
         hor_layout.setContentsMargins(0, 0, 0, 0)
         hor_layout.addWidget(self._arrow_visible)
         hor_layout.addWidget(self._symmetry_label)
-        self._layout.addWidget(hor)
-        self._layout.addWidget(self._viewer)
-        hor = QtW.QWidget()
-        hor.setMaximumWidth(400)
-        hor_layout = QtW.QHBoxLayout(hor)
+        hor2 = QtW.QWidget()
+        hor2.setMaximumWidth(400)
+        hor_layout = QtW.QHBoxLayout(hor2)
         hor_layout.setContentsMargins(0, 0, 0, 0)
         hor_layout.addWidget(self._iter_choice)
         hor_layout.addWidget(self._num_particles_label)
-        self._layout.addWidget(hor)
         self._index_start = 1
         self._job_dir = job_dir
+
+        self._layout.setSpacing(0)
+        self._layout.addWidget(self._list_widget)
+        self._layout.addWidget(hor1)
+        self._layout.addWidget(self._viewer)
+        self._layout.addWidget(self._resizer)
+        self._layout.addWidget(hor2)
 
         self._iter_choice.valueChanged.connect(self._on_iter_changed)
         self._list_widget.current_changed.connect(self._on_class_changed)

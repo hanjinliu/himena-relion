@@ -165,7 +165,6 @@ class QCtfRefineAnisoMagViewer(QJobScrollArea):
     def __init__(self, job_dir: _job_dir.JobDirectory):
         super().__init__()
         self._job_dir = job_dir
-        layout = self._layout
         self._optics_group_list = QMicrographListWidget(["Optics Group", "Index"])
         self._optics_group_list.current_changed.connect(self._process_update)
 
@@ -186,9 +185,9 @@ class QCtfRefineAnisoMagViewer(QJobScrollArea):
         layout_fit.addWidget(self._view_x_fit)
         layout_fit.addWidget(self._view_y_fit)
 
-        layout.addWidget(self._optics_group_list)
-        layout.addLayout(layout_obs)
-        layout.addLayout(layout_fit)
+        self._layout.addWidget(self._optics_group_list)
+        self._layout.addLayout(layout_obs)
+        self._layout.addLayout(layout_fit)
 
     def initialize(self, job_dir):
         # update optics group list
@@ -349,7 +348,9 @@ class Q2DViewWithTitle(QtW.QWidget):
         layout = QtW.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         label = QtW.QLabel(f"<b>{title}</b>")
-        label.setAlignment(QtCore.Qt.AlignmentFlag.AlignHCenter)
+        label.setAlignment(
+            QtCore.Qt.AlignmentFlag.AlignHCenter, QtCore.Qt.AlignmentFlag.AlignBottom
+        )
         layout.addWidget(label)
         self.view = Q2DSimpleViewer()
         self.view.setFixedSize(260, 260)

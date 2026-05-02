@@ -15,6 +15,7 @@ from himena_relion._widgets import (
     QMicrographListWidget,
 )
 from himena_relion import _job_dir
+from himena_relion._widgets._shared.resizer import QResizer
 from himena_relion.schemas import OptimisationSetModel, ParticleMetaModel
 from himena_relion._image_readers import ArrayFilteredView
 
@@ -26,17 +27,21 @@ class QFrameAlignTomoViewer(QJobScrollArea):
     def __init__(self, job_dir: _job_dir.JobDirectory):
         super().__init__()
         self._job_dir = job_dir
-        layout = self._layout
 
         self._viewer = Q3DTomogramViewer()
         self._viewer.setMinimumHeight(480)
+        self._resizer = QResizer(self._viewer)
         self._worker = None
         self._current_info: _job_dir.TomogramInfo | None = None
         self._tomo_list = QMicrographListWidget(["Tomogram"])
         self._tomo_list.current_changed.connect(self._on_tomo_changed)
-        layout.addWidget(QtW.QLabel("<b>Bayesian Polish Tracks (scaled by 8)</b>"))
-        layout.addWidget(self._tomo_list)
-        layout.addWidget(self._viewer)
+        self._layout.setSpacing(0)
+        self._layout.addWidget(
+            QtW.QLabel("<b>Bayesian Polish Tracks (scaled by 8)</b>")
+        )
+        self._layout.addWidget(self._tomo_list)
+        self._layout.addWidget(self._viewer)
+        self._layout.addWidget(self._resizer)
 
     def on_job_updated(self, job_dir: _job_dir.JobDirectory, path: str):
         """Handle changes to the job directory."""
