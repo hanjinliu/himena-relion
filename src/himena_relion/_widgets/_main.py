@@ -100,6 +100,7 @@ class QRelionJobWidget(QRelionJobWidgetBase):
         self._watcher: GeneratorWorker | None = None
         self.job_updated.connect(self._on_job_updated)
         self._instances.add(self)
+        self._pending_updated_files: list[Path] = []
 
     @validate_protocol
     def update_model(self, model: WidgetDataModel):
@@ -174,14 +175,18 @@ class QRelionJobWidget(QRelionJobWidgetBase):
             if self._watcher is None:
                 return  # stopped
             updated_files: list[Path] = []
-            for change, fp in changes:
+            for _, fp in changes:
                 path = Path(fp)
                 if path not in updated_files:
                     updated_files.append(path)
             yield
-            for updated_file in updated_files:
-                self.job_updated.emit(updated_file)
+            if updated_files and not self.isVisible():
+                self._pending_updated_files = updated_files
                 yield
+            else:
+                for updated_file in updated_files:
+                    self.job_updated.emit(updated_file)
+                    yield
 
     def _on_job_updated(self, path: Path):
         """Handle changes to the job directory."""
@@ -198,10 +203,17 @@ class QRelionJobWidget(QRelionJobWidgetBase):
             wdt.on_job_updated(self._job_dir, Path(path))
             if isinstance(wdt, QRunOutErrLog):
                 msg = wdt.last_lines()
-        if self._job_dir.state() is RelionJobState.RUNNING:
+        if self._job_dir.state() in _STATES_TO_SHOW_MSG:
             self._control_widget.set_msg(msg)
         else:
             self._control_widget.set_msg("")
+
+    def showEvent(self, a0):
+        if self._pending_updated_files:
+            for path in self._pending_updated_files:
+                self._on_job_updated(path)
+            self._pending_updated_files = []
+        return super().showEvent(a0)
 
 
 class RelionJobViewRegistry:
@@ -290,11 +302,7 @@ class QRelionJobWidgetControl(QtW.QWidget):
             btn.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
 
         # initialize the message
-        if parent._job_dir.state() in (
-            RelionJobState.RUNNING,
-            RelionJobState.ABORT_NOW,
-            RelionJobState.EXIT_ABORTED,
-        ):
+        if parent._job_dir.state() in _STATES_TO_SHOW_MSG:
             if wdt := self.find_child_widget(QRunOutErrLog):
                 msg = wdt.last_lines()
                 self.set_msg(msg)
@@ -330,3 +338,10 @@ class QRelionJobWidgetControl(QtW.QWidget):
             self._oneline_msg.setToolTip("The last two lines of run.out")
         else:
             self._oneline_msg.setToolTip("")
+
+
+_STATES_TO_SHOW_MSG = (
+    RelionJobState.RUNNING,
+    RelionJobState.ABORT_NOW,
+    RelionJobState.EXIT_ABORTED,
+)
