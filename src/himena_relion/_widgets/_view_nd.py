@@ -10,6 +10,7 @@ from vispy.color import ColorArray
 from vispy.scene.visuals import Rectangle
 from himena.widgets import current_instance
 from himena.qt._qlineedit import QIntLineEdit, QDoubleLineEdit
+from himena.qt.magicgui import ToggleButtons
 from himena.plugins import validate_protocol
 from himena._utils import doc_to_whats_this
 from himena_builtins.qt.widgets._shared import labeled
@@ -417,10 +418,19 @@ class Q3DViewer(Q3DViewerBase):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._control_widget: Q3DViewerControl | None = None  # delayed
-        self._rendering = QtW.QComboBox()
-        self._rendering.addItems(["Surface", "Maximum", "Average"])
-        self._rendering.setCurrentIndex(0)
-        self._rendering.currentTextChanged.connect(self.set_rendering_mode)
+        self._rendering_mgui = ToggleButtons(
+            value="Surface",
+            choices=[("Srf", "Surface"), ("Max", "Maximum"), ("Avg", "Average")],
+            orientation="horizontal",
+            tooltip=(
+                "3D rendering mode.\n"
+                " * 'Srf': Iso-surface rendering.)\n"
+                " * 'Max': Maximum intensity projection.\n"
+                " * 'Avg': Average intensity projection."
+            ),
+        )
+        self._rendering_mgui.changed.connect(self.set_rendering_mode)
+
         self._hist_view = QHistogramView(mode="thresh")
         self._hist_view.set_hist_scale("log")
         self._hist_view.setFixedHeight(32)
@@ -429,6 +439,7 @@ class Q3DViewer(Q3DViewerBase):
         self._hist_view.clim_changed.connect(self._on_clim_changed)
         self._auto_thresh_btn = QtW.QPushButton("Auto")
         self._auto_thresh_btn.setFixedWidth(40)
+        self._auto_thresh_btn.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
         self._auto_thresh_btn.clicked.connect(lambda: self.auto_threshold())
         self._auto_thresh_btn.setToolTip("Automatically set the iso-surface threshold")
         self._has_image = False
@@ -439,7 +450,7 @@ class Q3DViewer(Q3DViewerBase):
         )
         _thresh_layout = QtW.QHBoxLayout(_thresh)
         _thresh_layout.setContentsMargins(0, 0, 0, 0)
-        _thresh_layout.addWidget(self._rendering)
+        _thresh_layout.addWidget(self._rendering_mgui.native)
         _thresh_layout.addWidget(self._hist_view)
         _thresh_layout.addWidget(self._auto_thresh_btn)
         _thresh.setMaximumWidth(400)
@@ -494,8 +505,6 @@ class Q3DViewer(Q3DViewerBase):
         """Set the rendering mode of the 3D viewer."""
         if mode not in ["Surface", "Maximum", "Average"]:
             raise ValueError("mode must be 'Surface' or 'Maximum'.")
-        if self._rendering.currentText() != mode:
-            self._rendering.setCurrentText(mode)
         self._canvas.set_rendering_mode(mode)
         self._hist_view.set_mode("thresh" if mode == "Surface" else "clim")
         self._canvas.update_canvas()
