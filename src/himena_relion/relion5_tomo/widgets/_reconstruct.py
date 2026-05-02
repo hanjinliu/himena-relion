@@ -115,11 +115,15 @@ class QReconstructViewer(QJobScrollArea):
             self._img_raw = None
             return self._clear_image()
         image_data: list[np.ndarray] = []
+        ctf_data: list[np.ndarray] = []
         ith_tomo = "0"
         for impath in temp_dir.glob("sum_*_data_half?.mrc"):
             with mrcfile.open(impath, mode="r") as mrc:
                 image_data.append(mrc.data)
             ith_tomo = impath.stem.split("_")[1]
+        for ctfpath in temp_dir.glob("sum_*_ctf_half?.mrc"):
+            with mrcfile.open(ctfpath, mode="r") as mrc:
+                ctf_data.append(mrc.data)
         if len(image_data) == 0:
             return self._clear_image()
         # Every sum_X_data_halfX.mrc is a (2N, N, N/2) float32 image for a (N, N, N)
@@ -128,6 +132,17 @@ class QReconstructViewer(QJobScrollArea):
         merged_c = sum(image_data)
         nz = merged_c.shape[0]
         merged_ft = merged_c[: nz // 2] + merged_c[nz // 2 :] * 1j
+
+        # Every sum_X_ctf_halfX.mrc is a (N, N, N/2) float32 image containing the CTF.
+        if ctf_data and len(image_data) >= 2:
+            ctf_c = sum(ctf_data)
+            # Wiener filter deconvolution
+            # Estimate noise power from image_data half set
+            diff = image_data[0] - image_data[1]
+            noise_power = np.var(diff) / 4
+            wiener_filter = np.conj(ctf_c) / (np.abs(ctf_c) ** 2 + noise_power)
+            merged_ft = merged_ft * wiener_filter
+
         self._img_raw = np.fft.ifftshift(np.fft.irfftn(merged_ft))
 
         # Try to get the pixel size. Pixel size is not set in the sum_X_data_halfX.mrc
@@ -153,9 +168,11 @@ class QReconstructViewer(QJobScrollArea):
         self._file_name_label.setText(
             f"Intermediate reconstruction ({int(ith_tomo) + 1})"
         )
-        self._viewer.set_image(self._get_image_filtered(), update_now=False)
-        self._viewer.auto_threshold(update_now=False)
-        self._viewer.auto_fit()
+        was_empty = not self._viewer.has_image
+        self._viewer.set_image(self._get_image_filtered(), update_now=was_empty)
+        if was_empty:
+            self._viewer.auto_threshold(update_now=False)
+            self._viewer.auto_fit()
 
     def _on_lowpass_changed(self):
         self._viewer.set_image(self._get_image_filtered(), update_now=True)

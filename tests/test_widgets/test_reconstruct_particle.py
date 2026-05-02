@@ -41,5 +41,7 @@ def test_reconstruct_particle_widget_intermediate(
     assert not tester.widget._viewer.has_image
     tester.mkdir("temp")
     tester.write_random_mrc("temp/sum_2_data_half1.mrc", (64, 32, 17))
+    tester.write_random_mrc("temp/sum_2_ctf_half1.mrc", (32, 32, 17))
+    tester.write_random_mrc("temp/sum_2_ctf_half0.mrc", (32, 32, 17))
     tester.write_random_mrc("temp/sum_2_data_half0.mrc", (64, 32, 17))
     assert tester.widget._viewer.has_image
