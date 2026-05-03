@@ -100,7 +100,6 @@ class QRelionJobWidget(QRelionJobWidgetBase):
         self._watcher: GeneratorWorker | None = None
         self.job_updated.connect(self._on_job_updated)
         self._instances.add(self)
-        self._pending_updated_files: list[Path] = []
 
     @validate_protocol
     def update_model(self, model: WidgetDataModel):
@@ -180,13 +179,9 @@ class QRelionJobWidget(QRelionJobWidgetBase):
                 if path not in updated_files:
                     updated_files.append(path)
             yield
-            if updated_files and not self.isVisible():
-                self._pending_updated_files = updated_files
+            for updated_file in updated_files:
+                self.job_updated.emit(updated_file)
                 yield
-            else:
-                for updated_file in updated_files:
-                    self.job_updated.emit(updated_file)
-                    yield
 
     def _on_job_updated(self, path: Path):
         """Handle changes to the job directory."""
@@ -195,8 +190,8 @@ class QRelionJobWidget(QRelionJobWidgetBase):
         if not self._job_dir.path.exists():
             self.widget_closed_callback()
             raise RuntimeError(
-                "Job directory has been deleted externally. This widget will no longer "
-                "respond to changes. Please close this job widget."
+                f"Job directory {self._job_dir.path} has been deleted externally. This "
+                "widget will no longer respond to changes. Please close this widget."
             )
         msg = ""
         for wdt in self._iter_job_widgets():
@@ -207,13 +202,6 @@ class QRelionJobWidget(QRelionJobWidgetBase):
             self._control_widget.set_msg(msg)
         else:
             self._control_widget.set_msg("")
-
-    def showEvent(self, a0):
-        if self._pending_updated_files:
-            for path in self._pending_updated_files:
-                self._on_job_updated(path)
-            self._pending_updated_files = []
-        return super().showEvent(a0)
 
 
 class RelionJobViewRegistry:
