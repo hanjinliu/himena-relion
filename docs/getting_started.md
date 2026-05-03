@@ -84,7 +84,7 @@ automatically updated (in reasonable time intervals).
 The top-left corner has useful actions.
 
 The tool button 1 contains actions that are related to RELION job windows (no matter
-what job it is), such as "Overwrite" and "Mark As Finished".
+what job it is), such as "Overwrite" and "Abort".
 
 The tool button 2 contains hints for the next actions. For example, in a 2D
 classification job window, you will see "Select Class". These action hints are very
