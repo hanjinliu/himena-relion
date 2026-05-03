@@ -2,7 +2,7 @@
 
 ## 1. Install RELION
 
-Currently `himena-relion` only supports RELION 5.0.x. Please follow the instructions in
+Currently `himena-relion` only supports RELION 5.x.x. Please follow the instructions in
 the [RELION documentation](https://relion.readthedocs.io/en/latest/Installation.html).
 
 ## 2. Create a Python environment

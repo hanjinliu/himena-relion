@@ -8,7 +8,7 @@ IN_MOVIES = Annotated[
         "label": "Input movies",
         "widget_type": PathDrop,
         "type_label": ["MicrographMoviesData", "MicrographMovieGroupMetadata"],
-        "allowed_extensions": [".mrc", ".mrcs", ".tif", ".tiff"],
+        "allowed_extensions": [".star"],
         "group": "I/O",
     },
 ]
@@ -18,7 +18,7 @@ IN_MICROGRAPHS = Annotated[
         "label": "Input micrographs",
         "widget_type": PathDrop,
         "type_label": ["MicrographsData", "MicrographGroupMetadata"],
-        "allowed_extensions": [".mrc", ".mrcs", ".tif", ".tiff"],
+        "allowed_extensions": [".star"],
         "group": "I/O",
     },
 ]
