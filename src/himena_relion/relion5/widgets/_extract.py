@@ -108,8 +108,9 @@ class QExtractViewer(QJobScrollArea):
         self._slider_display_range.setText(
             f"{start + 1} - {min(start + self._num_page, self._current_num_extracts)}"
         )
-        self._worker = self.plot_extracts(start, self._plot_session_id)
-        self._start_worker()
+        if self.isVisible():
+            self._worker = self.plot_extracts(start, self._plot_session_id)
+            self._start_worker()
 
     @thread_worker
     def plot_extracts(self, start_index: int, session: uuid.UUID):
@@ -143,3 +144,7 @@ class QExtractViewer(QJobScrollArea):
         if my_uuid != self._plot_session_id or self._worker is None:
             return
         self._text_edit.insert_base64_image(img_str)
+
+    def showEvent(self, a0):
+        self._slider_value_changed(self._slider.value(), udpate_slider=False)
+        return super().showEvent(a0)

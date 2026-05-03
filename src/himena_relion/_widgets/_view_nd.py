@@ -574,7 +574,7 @@ class Q3DViewer(Q3DViewerBase):
 
     @validate_protocol
     def size_hint(self):
-        return 330, 350
+        return (330, 360)
 
     @validate_protocol
     def control_widget(self) -> Q3DViewerControl:
