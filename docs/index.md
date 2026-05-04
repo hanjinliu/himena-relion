@@ -1,7 +1,8 @@
 # himena-relion
 
 `himena-relion` is a modern RELION GUI implemented as a
-[himena](https://github.com/hanjinliu/himena) plugin.
+[himena](https://github.com/hanjinliu/himena) plugin. It provides a more intuitive and
+efficient interface, while maintaining the compatibility with the original RELION GUI.
 
 ![](images/main.png){ width=800px loading=lazy }
 

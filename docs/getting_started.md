@@ -123,3 +123,13 @@ To run the next job, you can:
     This feature is currently integrated with the file watcher for default_pipeline.star
     so that the scheduled jobs will not automatically start if you quit the `himena`
     process.
+
+## Tagging Jobs
+
+:sparkles: *New in v0.0.4*
+
+![](images/01_tags.png){ width=200px loading=lazy }
+
+From right-click > Tag, you can add tags to each job. Tagging is useful for categorizing jobs, especially when you have different branches of jobs focusing on different
+structures. You can also use tags to quickly find jobs in the search palette. For
+example, you can type "#ribosome" to filter the results to only show the jobs tagged with "ribosome".
