@@ -280,6 +280,16 @@ class QRelionPipelineFlowChartView(QFlowChartView):
         # action.setEnabled(status is not NodeStatus.FAILED)
         self._prep_tag_menu(submenu_tag, item)
 
+        menu.addSeparator()
+
+        # Prepare next actions
+        action_hints = _create_action_hint_menu(self._ui, path)
+        if action_hints:
+            action_hint_menu = menu.addMenu("Next Action ...")
+            for action in action_hints:
+                action.setParent(action_hint_menu)
+                action_hint_menu.addAction(action)
+
         # Abort
         action = menu.addAction(
             "Abort", lambda: _ignore_cancel(_impl.abort_relion_job, self._ui, get_job())
@@ -355,7 +365,7 @@ class QRelionPipelineFlowChartView(QFlowChartView):
 
         tag_menu.addSeparator()
         action = tag_menu.addAction("Manage Tags ...", self._manage_tags)
-        action.setToolTip("Add, remove or edit tags.")
+        action.setToolTip("Edit tag names")
 
     def _manage_tags(self):
         current_all_tags = self.tags()
