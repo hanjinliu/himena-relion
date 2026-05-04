@@ -46,6 +46,13 @@ if TYPE_CHECKING:
 _LOGGER = logging.getLogger(__name__)
 
 
+@dataclass
+class RelionJobCommand:
+    command_id: str
+    title: str
+    tooltip: str | None = None
+
+
 class RelionJob(ABC):
     """Class that describes a RELION job.
 
@@ -55,6 +62,8 @@ class RelionJob(ABC):
     Running a job is defined by the `run` method, although it does not necesarrily
     implement the actual running of the job (because RELION runs jobs externally).
     """
+
+    __relion_job_commands__: list[RelionJobCommand] = []
 
     def __init__(self, output_job_dir: _job_dir.JobDirectory):
         self._output_job_dir = output_job_dir
@@ -133,13 +142,19 @@ class RelionJob(ABC):
             cls.job_title(),
             command_id,
         )
+        cmd = RelionJobCommand(
+            command_id=command_id,
+            title=f"{cls.command_palette_title_prefix()} {cls.job_title()}",
+            tooltip=getattr(cls, "__doc__", None),
+        )
         register_function(
             cls._show_scheduler_widget,
             menus=[cls.menu_id()],
-            title=f"{cls.command_palette_title_prefix()} {cls.job_title()}",
-            command_id=command_id,
-            tooltip=getattr(cls, "__doc__", None),
+            title=cmd.title,
+            command_id=cmd.command_id,
+            tooltip=cmd.tooltip,
         )
+        RelionJob.__relion_job_commands__.append(cmd)
 
     @classmethod
     def menu_id(cls) -> str:

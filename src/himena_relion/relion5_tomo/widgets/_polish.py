@@ -35,7 +35,7 @@ class QFrameAlignTomoViewer(QJobScrollArea):
         self._current_info: _job_dir.TomogramInfo | None = None
         self._tomo_list = QMicrographListWidget(["Tomogram"])
         self._tomo_list.current_changed.connect(self._on_tomo_changed)
-        self._layout.setSpacing(0)
+        self._layout.setSpacing(2)
         self._layout.addWidget(
             QtW.QLabel("<b>Bayesian Polish Tracks (scaled by 8)</b>")
         )

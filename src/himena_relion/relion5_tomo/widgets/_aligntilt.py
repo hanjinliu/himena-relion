@@ -48,7 +48,7 @@ class QAlignTiltSeriesViewer(QJobScrollArea):
         self._resizer = QResizer(self._viewer)
         self._ts_list = QMicrographListWidget(["Tilt Series"])
         self._ts_list.current_changed.connect(self._ts_choice_changed)
-        self._layout.setSpacing(0)
+        self._layout.setSpacing(2)
         self._layout.addWidget(self._ts_list)
         hlayout = QtW.QHBoxLayout()
         hlayout.setContentsMargins(0, 0, 0, 0)
