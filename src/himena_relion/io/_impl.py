@@ -383,6 +383,21 @@ def restore_trashed_jobs(relion_project_dir: Path, job_ids: list[str]):
                     file_in_node.touch()
 
 
+def new_job(ui: MainWindow, ignore_cancelled: bool = False):
+    from himena_relion._job_class import RelionJob
+
+    choices = [(cmd.title, cmd.command_id) for cmd in RelionJob.__relion_job_commands__]
+    if resp := ui.exec_choose_one_dialog(
+        title="New RELION Job",
+        message="Choose a RELION job to create ...",
+        choices=choices,
+        how="palette",
+    ):
+        ui.exec_action(resp)
+    elif not ignore_cancelled:
+        raise Cancelled
+
+
 def _trash_dir(relion_job_dir: Path) -> Path:
     return relion_job_dir / "Trash"
 

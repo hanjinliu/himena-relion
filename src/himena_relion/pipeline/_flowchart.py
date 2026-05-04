@@ -1,19 +1,22 @@
 from __future__ import annotations
 from contextlib import suppress
 from pathlib import Path
+from typing import Annotated
+import warnings
 from qtpy import QtGui, QtCore, QtWidgets as QtW
 from cmap import Color
 
 from himena import MainWindow
 from himena.exceptions import Cancelled
-from himena.qt._qflowchart import QFlowChartView, BaseNodeItem
+from himena.qt._qflowchart import QFlowChartView, BaseNodeItem, TagItem
 from himena.workflow import LocalReaderMethod
 from himena_relion.consts import JOB_ID_MAP
-from himena_relion._utils import read_or_show_job
+from himena_relion._utils import normalize_job_id, read_or_show_job
 from himena_relion._pipeline import RelionDefaultPipeline, RelionJobInfo, NodeStatus
 from himena_relion._job_dir import ExternalJobDirectory, JobDirectory
 from himena_relion._job_class import execute_job
 from himena_relion.io import _impl
+from himena_relion.pipeline._gui_state import HimenaRelionGuiState, JobState, TagState
 
 
 class QRelionPipelineFlowChartView(QFlowChartView):
@@ -91,6 +94,58 @@ class QRelionPipelineFlowChartView(QFlowChartView):
         for new_item in self._node_map.values():
             if pos := old_positions.get(new_item.item().id()):
                 new_item.setPos(pos)
+
+        self.read_gui_state()
+
+    def read_gui_state(self):
+        project_dir = self._pipeline.project_dir
+        try:
+            gui_state = HimenaRelionGuiState.from_project_directory(project_dir)
+
+            tags = [
+                TagItem(name=tag.name, color=tag.color, id=tag.id)
+                for tag in gui_state.tag_choices
+            ]
+
+            self.reset_tags(tags)
+
+            for job_id, job_state in gui_state.jobs.items():
+                my_tags = [tags[tag_index] for tag_index in job_state.tags]
+                self.set_item_tags(Path(job_id), my_tags)
+        except Exception as e:
+            warnings.warn(
+                f"Failed to read GUI state: {e}",
+                RuntimeWarning,
+                stacklevel=1,
+            )
+
+    def save_gui_state(self):
+        project_dir = self._pipeline.project_dir
+        jobs = {}
+        existing_tags = self.tags()
+        tag_id_to_index = {tag.id: idx for idx, tag in enumerate(existing_tags)}
+        try:
+            for job_id in self._node_map.keys():
+                tags = []
+                for tag in self.item_tags(job_id):
+                    if (index := tag_id_to_index.get(tag.id)) is not None:
+                        tags.append(index)
+                jobs[normalize_job_id(job_id)] = JobState(tags=tags)
+
+            gui_state = HimenaRelionGuiState(
+                jobs=jobs,
+                tag_choices=[
+                    TagState(name=tag.name, color=tag.color.hex, id=tag.id)
+                    for tag in existing_tags
+                ],
+            )
+            gui_state.dump_to_project_directory(project_dir)
+        except Exception as e:
+            warnings.warn(
+                f"Failed to save GUI state: {e}",
+                RuntimeWarning,
+                stacklevel=1,
+            )
 
     def set_root_job(self, root_job_info: RelionJobInfo | None):
         self._root_job_info = root_job_info
@@ -171,6 +226,7 @@ class QRelionPipelineFlowChartView(QFlowChartView):
         menu.exec(QtGui.QCursor.pos())
 
     def _prep_right_click_menu(self, item: RelionJobNodeItem):
+        self.read_gui_state()
         if node := self._node_map.get(item.id()):
             node.setSelected(True)
         path = self._relion_project_dir / item.id() / "job.star"
@@ -183,6 +239,7 @@ class QRelionPipelineFlowChartView(QFlowChartView):
         menu.setToolTipsVisible(True)
         submenu_file = menu.addMenu("File")
         submenu_cleanup = menu.addMenu("Cleanup")
+        submenu_tag = menu.addMenu("Tag")
         # submenu_mark = menu.addMenu("Mark As")
         submenu_file.addAction(
             "Open 'job.star' As Text",
@@ -221,15 +278,7 @@ class QRelionPipelineFlowChartView(QFlowChartView):
         #     "Mark As Failed", lambda: _impl.mark_as_failed(get_job())
         # )
         # action.setEnabled(status is not NodeStatus.FAILED)
-        menu.addSeparator()
-
-        # Prepare next actions
-        action_hints = _create_action_hint_menu(self._ui, path)
-        if action_hints:
-            action_hint_menu = menu.addMenu("Next Action ...")
-            for action in action_hints:
-                action.setParent(action_hint_menu)
-                action_hint_menu.addAction(action)
+        self._prep_tag_menu(submenu_tag, item)
 
         # Abort
         action = menu.addAction(
@@ -282,6 +331,63 @@ class QRelionPipelineFlowChartView(QFlowChartView):
         action.setToolTip("Unset the root job and show all jobs in the flowchart.")
         action.setEnabled(item._job is self._root_job_info)
         return menu
+
+    def _prep_tag_menu(self, tag_menu: QtW.QMenu, item: RelionJobNodeItem):
+        current_item_tags = self.item_tags(item.id())
+        current_all_tags = self.tags()
+        actions = []
+
+        def _set_tag():
+            tags: list[TagItem] = []
+            for ac, tag in zip(actions, current_all_tags, strict=True):
+                if ac.isChecked():
+                    tags.append(tag)
+            self.set_item_tags(item.id(), tags)
+            self.save_gui_state()
+
+        for tag in current_all_tags:
+            action = tag_menu.addAction(tag.name, _set_tag)
+            action.setCheckable(True)  # This is needed for _set_tag()
+            checked = tag in current_item_tags
+            action.setChecked(checked)
+            action.setIcon(_make_tag_icon(tag.color, checked=checked))
+            actions.append(action)
+
+        tag_menu.addSeparator()
+        action = tag_menu.addAction("Manage Tags ...", self._manage_tags)
+        action.setToolTip("Add, remove or edit tags.")
+
+    def _manage_tags(self):
+        current_all_tags = self.tags()
+        sig = {}
+        for ith, tag in enumerate(current_all_tags):
+            sig[f"x{ith}"] = Annotated[
+                str, {"label": f"({ith + 1})", "value": tag.name}
+            ]
+        if out := self._ui.exec_user_input_dialog(sig, title="Manage Tags"):
+            for ith, tag_name in enumerate(out.values()):
+                self.edit_tag(ith, tag_name, tooltip=tag_name)
+            self.save_gui_state()
+
+
+def _make_tag_icon(color: Color, checked: bool = False) -> QtGui.QIcon:
+    pixmap = QtGui.QPixmap(32, 32)
+    bg = QtGui.QColor.fromRgbF(*color.rgba)
+    pixmap.fill(bg)
+    if checked:
+        painter = QtGui.QPainter(pixmap)
+        if bg.lightnessF() < 0.5:
+            pen_color = QtGui.QColor("white")
+        else:
+            pen_color = QtGui.QColor("black")
+        pen = QtGui.QPen(pen_color, 4)
+        pen.setJoinStyle(QtCore.Qt.PenJoinStyle.RoundJoin)
+        painter.setPen(pen)
+        painter.drawPolyline(
+            [QtCore.QPoint(7, 17), QtCore.QPoint(13, 23), QtCore.QPoint(25, 11)]
+        )
+        painter.end()
+    return QtGui.QIcon(pixmap)
 
 
 class RelionJobNodeItem(BaseNodeItem):

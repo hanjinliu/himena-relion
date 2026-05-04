@@ -23,6 +23,8 @@ class QResizer(QtW.QFrame):
 
     def mouseMoveEvent(self, event: QtGui.QMouseEvent):
         if self._dragging:
+            parent = self._widget.parentWidget()
+            parent_size = parent.size()
             delta = event.globalPos() - self._drag_start
             self._drag_start = event.globalPos()
             new_size = self._widget.size() + QtCore.QSize(0, delta.y())
@@ -31,8 +33,7 @@ class QResizer(QtW.QFrame):
                 return
             self._widget.resize(new_size)
 
-            parent = self._widget.parentWidget()
-            new_size = parent.size() + QtCore.QSize(0, delta.y())
+            new_size = parent_size + QtCore.QSize(0, delta.y())
             parent.resize(new_size)
 
     def mouseReleaseEvent(self, event: QtGui.QMouseEvent):

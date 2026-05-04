@@ -40,7 +40,7 @@ class QMotionCorrViewer(QJobScrollArea):
         self._filter_widget = Q2DFilterWidget(bin_default=8, lowpass_default=30)
         self._ts_list = QMicrographListWidget(["Tilt Series", "Processed"])
         self._ts_list.current_changed.connect(self._ts_choice_changed)
-        self._layout.setSpacing(0)
+        self._layout.setSpacing(2)
         self._layout.addWidget(QtW.QLabel("<b>Motion-corrected tilt series</b>"))
         self._layout.addWidget(self._ts_list)
         self._layout.addWidget(self._filter_widget)
@@ -169,7 +169,7 @@ class QExcludeTiltViewer(QJobScrollArea):
         self._ts_choice = QMicrographListWidget(["Tilt Series", "Number of Tilts"])
         self._ts_choice.current_changed.connect(self._ts_choice_changed)
 
-        self._layout.setSpacing(0)
+        self._layout.setSpacing(2)
         self._layout.addWidget(QtW.QLabel("<b>Selected tilt series</b>"))
         self._layout.addWidget(self._ts_choice)
         self._layout.addWidget(self._filter_widget)

@@ -50,7 +50,7 @@ class QImportTiltSeriesViewer(QJobScrollArea):
         self._layout.addWidget(
             QtW.QLabel("<b>Imported tilt series (movie projection)</b>")
         )
-        self._layout.setSpacing(0)
+        self._layout.setSpacing(2)
         self._layout.addWidget(self._ts_list)
         self._layout.addWidget(self._filter_widget)
         self._layout.addWidget(self._viewer)

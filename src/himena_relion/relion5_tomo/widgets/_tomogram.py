@@ -38,7 +38,7 @@ class QTomogramViewer(QJobScrollArea):
         self._tomo_list = QMicrographListWidget(["Tomogram", "Type"])
         self._tomo_list.current_changed.connect(self._on_tomo_changed)
 
-        self._layout.setSpacing(0)
+        self._layout.setSpacing(2)
         self._layout.addWidget(QtW.QLabel("<b>Tomogram Z slice</b>"))
         self._layout.addWidget(self._tomo_list)
         self._layout.addWidget(self._filter_widget)
@@ -172,7 +172,7 @@ class QDenoiseTomogramViewer(QJobScrollArea):
         self._resizer = QResizer(self._viewer)
         self._tomo_list = QMicrographListWidget(["Tomogram", "Type"])
         self._tomo_list.current_changed.connect(self._on_tomo_changed)
-        self._layout.setSpacing(0)
+        self._layout.setSpacing(2)
         self._layout.addWidget(QtW.QLabel("<b>Denoised tomogram Z slice</b>"))
         self._layout.addWidget(self._tomo_list)
         self._layout.addWidget(self._viewer)

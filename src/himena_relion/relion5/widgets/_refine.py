@@ -50,8 +50,12 @@ class QRefine3DViewer(QJobScrollArea):
         self._iter_choice.setSizePolicy(
             QtW.QSizePolicy.Policy.Minimum, QtW.QSizePolicy.Policy.Fixed
         )
-        self._show_run_class001_btn = QToggleSwitch(text="run_class001.mrc")
+        self._show_run_class001_btn = QToggleSwitch(text="Show run_class001.mrc")
         self._show_run_class001_btn.toggled.connect(self._on_show_run_class001_toggled)
+        self._show_run_class001_btn.setToolTip(
+            "Instead of showing the map and the FSC curve from the selected,\n"
+            "iteration show the data from the final output."
+        )
 
         self._num_particles_label = QNumParticlesLabel()
         self._layout.addWidget(QtW.QLabel("<b>Refined Map</b>"))
@@ -72,9 +76,9 @@ class QRefine3DViewer(QJobScrollArea):
         hor_layout2.setContentsMargins(0, 0, 0, 0)
         hor_layout2.setSpacing(14)
         hor_layout2.addWidget(self._iter_choice)
-        hor_layout2.addWidget(self._show_run_class001_btn)
         hor_layout2.addWidget(self._num_particles_label)
         self._layout.addWidget(_hor)
+        self._layout.addWidget(self._show_run_class001_btn)
         self._layout.addWidget(QtW.QLabel("<b>Fourier Shell Correlation</b>"))
         self._layout.addWidget(self._fsc_plot)
         self._index_start = 1

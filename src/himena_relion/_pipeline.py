@@ -17,6 +17,11 @@ class RelionDefaultPipeline(Sequence["RelionJobInfo"]):
         self._nodes = nodes
         self._project_dir = Path(project_dir)
 
+    @property
+    def project_dir(self) -> Path:
+        """Return the RELION project directory"""
+        return self._project_dir
+
     def __len__(self) -> int:
         return len(self._nodes)
 

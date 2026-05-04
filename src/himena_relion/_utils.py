@@ -12,7 +12,6 @@ from functools import lru_cache
 
 from starfile_rs import read_star
 from himena.types import is_subtype
-from himena.consts import MonospaceFontFamily
 from himena_relion.consts import Type
 from himena_relion.schemas import RelionPipelineModel, ParticleMetaModel
 
@@ -261,11 +260,6 @@ def wait_for_file(path, num_retry: int = 5, delay: float = 0.1) -> bool:
             return True
         time.sleep(delay)
     return False
-
-
-def monospace_font_family() -> str:
-    """Get the system monospace font family."""
-    return MonospaceFontFamily
 
 
 def get_pipeline_widgets(
