@@ -464,9 +464,9 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         if len(succeeded_jobs) > 0:
             last_job = max(succeeded_jobs, key=lambda job: _exit_success_time(job))
             self._center_on_item(last_job.path)
-            _utils.read_or_show_job(self._ui(), last_job.path)
-        else:
-            self._ui().show_notification("No completed jobs to open.")
+            if (path := self._relion_project_dir / last_job.path).exists():
+                return _utils.read_or_show_job(self._ui(), path)
+        self._ui().show_notification("No completed jobs to open.")
 
     def _node_id_to_tags_map(self) -> dict[str, list[str]]:
         id_to_tags_map = {}

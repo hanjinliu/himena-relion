@@ -1,6 +1,5 @@
 from pathlib import Path
 from himena import MainWindow
-from himena.testing import choose_one_dialog_response
 
 from himena_relion.pipeline.widgets import QRelionPipelineFlowChart, _list_jobs_for_palette
 from ._utils import DEFAULT_PIPELINES_DIR
@@ -37,10 +36,9 @@ def test_reading_default_pipeline_during_filtering(himena_ui: MainWindow, tmpdir
     txt = (DEFAULT_PIPELINES_DIR / "full.star").read_text()
     path.write_text(txt)
     himena_ui.read_file(path)
-    flowchart = get_pipeline_widget(himena_ui)
+    pipeline_widget = get_pipeline_widget(himena_ui)
 
-    choices = _list_jobs_for_palette(flowchart._flow_chart._pipeline)
-    with choose_one_dialog_response(himena_ui, choices[1][1]):
-        flowchart._set_root_job()
-    flowchart._refresh_flowchart()
-    flowchart._unset_root_job()
+    _list_jobs_for_palette(pipeline_widget._flow_chart._pipeline)
+    pipeline_widget._refresh_flowchart()
+    pipeline_widget._open_all_running_jobs()
+    pipeline_widget._open_last_completed_job()
