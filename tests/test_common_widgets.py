@@ -50,8 +50,7 @@ def test_pipeline_viewer(qtbot: QtBot, tmpdir):
     viewer._tree_view._make_drag(viewer._tree_view.model().index(0, 0))
 
 def test_flowchart(himena_ui: MainWindow, qtbot: QtBot, tmpdir):
-    from himena_relion.pipeline.widgets import QRelionPipelineFlowChart
-    from himena_relion.pipeline._flowchart import _make_tag_icon
+    from himena_relion.pipeline.widgets import QRelionPipelineFlowChart, _make_tag_icon
 
     _proj_dir = Path(tmpdir)
     shutil.copytree(JOBS_DIR_SPA / "Import", _proj_dir / "Import")
@@ -86,13 +85,14 @@ def test_flowchart(himena_ui: MainWindow, qtbot: QtBot, tmpdir):
     assert isinstance(flow_chart := dock.widget, QRelionPipelineFlowChart)
     assert len(flow_chart._flow_chart._node_map) == 1
     qitem = list(flow_chart._flow_chart._node_map.values())[0]
-    flow_chart._flow_chart._prep_right_click_menu(qitem.item())
+    flow_chart._prep_right_click_menu(qitem.item())
 
     # tags
     _make_tag_icon(Color("red"), checked=False)
     _make_tag_icon(Color("red"), checked=True)
-    flow_chart._flow_chart.read_gui_state()
-    flow_chart._flow_chart.save_gui_state()
+    pipeline = flow_chart._pipeline()
+    flow_chart._flow_chart.read_gui_state(pipeline)
+    flow_chart._flow_chart.save_gui_state(pipeline)
 
 def test_path_input(himena_ui: MainWindow, qtbot: QtBot, monkeypatch: pytest.MonkeyPatch):
     from himena_relion._widgets._path_input import QPathDropWidget, PathDrop

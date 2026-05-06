@@ -187,7 +187,7 @@ def open_relion_docs():
 def open_trash_directory(ui: MainWindow):
     """Open the trash directory of the current RELION project."""
     if cur_widget := get_pipeline_widgets(ui):
-        relion_project_dir = cur_widget._flow_chart._relion_project_dir
+        relion_project_dir = cur_widget._relion_project_dir
         ui.read_file(relion_project_dir / "Trash", append_history=False)
     else:
         ui.show_notification("No RELION project is currently open.")

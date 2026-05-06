@@ -1,8 +1,10 @@
 from __future__ import annotations
 from collections import defaultdict
+from contextlib import suppress
 from pathlib import Path
 
 import logging
+from typing import Annotated, Iterable
 from qtpy import QtGui, QtWidgets as QtW, QtCore
 from cmap import Color
 from superqt import QElidingLabel
@@ -14,10 +16,15 @@ from himena.plugins import validate_protocol
 from himena.style import Theme
 from himena.types import is_subtype
 from himena.qt import QColoredToolButton
+from himena.qt._qflowchart import TagItem, QFlowChartNode
+from himena.exceptions import Cancelled
 from himena.consts import MonospaceFontFamily
+from himena.workflow import LocalReaderMethod
 from himena_relion._job_class import execute_job
+from himena_relion._job_dir import JobDirectory
 from himena_relion._widgets._job_widgets import QJobPipelineViewer
 from himena_relion._widgets._misc import QMoreActionButton
+from himena_relion._widgets._content_info import QJobContentInfo
 from himena_relion.consts import Type, JOB_ID_MAP
 from himena_relion._pipeline import (
     NodeStatus,
@@ -30,8 +37,9 @@ from himena_relion.pipeline._flowchart import (
     QRelionPipelineFlowChartView,
     RelionJobNodeItem,
 )
-from himena_relion._widgets._content_info import QJobContentInfo
+from himena_relion.pipeline._table_view import QRelionPipelineTableView
 from himena_relion.pipeline._startscreen import QRelionPipelineStartScreen
+from himena_relion.io import _impl
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -46,6 +54,7 @@ class QRelionPipelineFlowChart(QtW.QWidget):
 
     def __init__(self, ui: MainWindow):
         super().__init__()
+        self._relion_project_dir = Path.cwd()
         self._directory_label = QElidingLabel("???", self)
         self._directory_label.setFont(QtGui.QFont(MonospaceFontFamily, 10))
         self._directory_label.setElideMode(QtCore.Qt.TextElideMode.ElideLeft)
@@ -55,7 +64,6 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         self._directory_label.setTextInteractionFlags(
             QtCore.Qt.TextInteractionFlag.TextSelectableByMouse
         )
-        self._scene = QtW.QGraphicsScene()
 
         # Create the "more" button with a menu for additional actions
         btn = QMoreActionButton(self)
@@ -68,8 +76,6 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         btn.add_separator()
         btn.add_action("Find Job ...", self._find_job, shortcut="Ctrl+F")
         btn.add_action("New Job ...", self._new_job_palette, shortcut="Ctrl+Shift+J")
-        btn.add_action("Set Root Job ...", self._set_root_job)
-        btn.add_action("Unset Root Job", self._unset_root_job)
         # TODO: add these actions
         # btn.add_action("Gentle clean all", self._gentle_clean_all)
         # btn.add_action("Harsh clean all", self._harsh_clean_all)
@@ -81,14 +87,17 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         self._more_action_btn = btn
 
         self._stacked_widget = QtW.QStackedWidget()
-        self._flow_chart = QRelionPipelineFlowChartView(ui, self._scene)
+        self._flow_chart = QRelionPipelineFlowChartView()
+        self._table_view = QRelionPipelineTableView(self)
         self._start_screen = QRelionPipelineStartScreen(ui)
         self._stacked_widget.addWidget(self._flow_chart)
+        self._stacked_widget.addWidget(self._table_view)
         self._stacked_widget.addWidget(self._start_screen)
         self._stacked_widget.setCurrentWidget(self._flow_chart)
         self._tool_buttons = [
             QColoredToolButton(self._new_job_palette, _utils.path_icon_svg("plus")),
             QColoredToolButton(self._find_job, _utils.path_icon_svg("find")),
+            QColoredToolButton(self._switch_mode, _utils.path_icon_svg("switch_mode")),
         ]
         self._content_info = QJobContentInfo()
         self._inout = QJobPipelineViewer()
@@ -123,16 +132,25 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         _header_layout.addWidget(self._directory_label)
         _header_layout.addWidget(btn, alignment=QtCore.Qt.AlignmentFlag.AlignRight)
         layout.addLayout(_header_layout)
+        layout.addSpacing(2)
         layout.addWidget(splitter)
 
+        # connect signals
         self._flow_chart.item_left_pressed.connect(self._on_item_left_pressed)
         self._flow_chart.item_right_pressed.connect(self._on_item_left_pressed)
+        self._flow_chart.item_right_clicked.connect(self._on_right_clicked)
+        self._flow_chart.item_left_double_clicked.connect(self._on_item_double_clicked)
         self._flow_chart.background_left_clicked.connect(
             self._on_background_left_clicked
         )
         self._flow_chart.background_right_clicked.connect(
             self._on_background_right_clicked
         )
+
+        self._table_view.item_left_pressed.connect(self._on_item_left_pressed)
+        self._table_view.item_right_pressed.connect(self._on_item_left_pressed)
+        self._table_view.item_right_clicked.connect(self._on_right_clicked)
+        self._table_view.item_left_double_clicked.connect(self._on_item_double_clicked)
 
         self._state_to_job_map = defaultdict[NodeStatus, dict[str, RelionJobInfo]](dict)
         self.update_required.connect(self._on_pipeline_updated)
@@ -142,7 +160,7 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         return QtCore.QSize(350, 600)
 
     def _on_item_left_pressed(self, item: RelionJobNodeItem):
-        if job_dir := item.job_dir(self._flow_chart._relion_project_dir):
+        if job_dir := item.job_dir(self._relion_project_dir):
             self._inout.initialize(job_dir)
             self._inout.update_item_colors(job_dir)
             self._content_info.count_directory_content(job_dir.path)
@@ -151,12 +169,22 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         self._inout.clear_in_out()
         self._content_info.clear_content_info()
 
+    def _on_item_double_clicked(self, item: RelionJobNodeItem):
+        path = self._relion_project_dir / item.id()
+        if path.exists():
+            _utils.read_or_show_job(self._ui(), path)
+        else:
+            raise FileNotFoundError(f"File {path} does not exist.")
+
     def _ui(self):
-        return self._flow_chart._ui
+        return self._start_screen._ui
+
+    def _pipeline(self) -> RelionDefaultPipeline:
+        return self._flow_chart._pipeline
 
     def _open_as_raw_text(self):
         """Open the default_pipeline.star file as a raw text file."""
-        path = self._flow_chart._relion_project_dir / "default_pipeline.star"
+        path = self._relion_project_dir / "default_pipeline.star"
         if not path.exists():
             _LOGGER.warning("default_pipeline.star not found at %s.", path.as_posix())
             return
@@ -168,41 +196,18 @@ class QRelionPipelineFlowChart(QtW.QWidget):
 
     def _open_project_note(self):
         """Open and edit the project note file."""
-        path = self._flow_chart._relion_project_dir / "project_note.txt"
+        path = self._relion_project_dir / "project_note.txt"
         if not path.exists():
             path.touch()  # create an empty project_note.txt if it doesn't exist
         self._ui().read_file(path, append_history=False)
 
-    def _set_root_job(self):
-        """Set a job as the root of the flowchart.
-
-        Only the descendants jobs of the root job will be shown in the flowchart. This
-        operation is just a filtering and does not modify the underlying pipeline star
-        file.
-        """
-        choices = _list_jobs_for_palette(
-            self._flow_chart._pipeline,
-            self._node_id_to_tags_map(),
-        )
-        if resp := self._ui().exec_choose_one_dialog(
-            title="Select the root job.",
-            message="Search by name, @state, #tag",
-            choices=choices,
-            how="palette",
-        ):
-            self._flow_chart.set_root_job(resp)
-
-    def _unset_root_job(self):
-        """Restore the full flowchart by clearing the root job."""
-        self._flow_chart.set_root_job(None)
-
     def _refresh_flowchart(self):
         """Manually trigger a refresh of the pipeline data."""
-        self._on_pipeline_updated(self._flow_chart._pipeline)
+        self._on_pipeline_updated(self._pipeline())
 
     def _copy_project_path(self):
         """Copy the RELION project path to clipboard."""
-        path = self._flow_chart._relion_project_dir.as_posix()
+        path = self._relion_project_dir.as_posix()
         self._ui().set_clipboard(text=path)
         self._ui().show_notification(f"Copied project path {path!r} to clipboard.")
 
@@ -223,7 +228,7 @@ class QRelionPipelineFlowChart(QtW.QWidget):
             raise TypeError("RELION default_pipeline.star source file not found.")
         assert isinstance(model.value, RelionDefaultPipeline)
         _LOGGER.info("Started watching RELION pipeline at %s.", src.parent.as_posix())
-        self._flow_chart._relion_project_dir = src.parent
+        self._relion_project_dir = src.parent
         self._init_watcher()
         self._on_pipeline_updated(model.value)
         parts = src.parts
@@ -239,9 +244,13 @@ class QRelionPipelineFlowChart(QtW.QWidget):
 
     def _on_pipeline_updated(self, pipeline: RelionDefaultPipeline) -> None:
         self._flow_chart.set_pipeline(pipeline)
+        self._table_view.set_pipeline(pipeline)
+        self._flow_chart.read_gui_state(pipeline)
+        self._table_view.read_gui_state(pipeline)
+        cur_widget = self._stacked_widget.currentWidget()
         if len(pipeline) == 0:
             self._stacked_widget.setCurrentWidget(self._start_screen)
-        else:
+        elif cur_widget == self._start_screen:
             self._stacked_widget.setCurrentWidget(self._flow_chart)
 
     @validate_protocol
@@ -327,10 +336,9 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         key = a0.key()
         mod = a0.modifiers()
         if key == QtCore.Qt.Key.Key_Return:
-            for item in self._flow_chart.scene().selectedItems():
-                if isinstance(item, RelionJobNodeItem):
-                    self._flow_chart._on_item_double_clicked(item)
-                    return
+            for item in self._iter_selected_items():
+                self._on_item_double_clicked(item)
+                return
         elif (
             key == QtCore.Qt.Key.Key_F
             and mod & QtCore.Qt.KeyboardModifier.ControlModifier
@@ -348,16 +356,26 @@ class QRelionPipelineFlowChart(QtW.QWidget):
             self._refresh_flowchart()
             return
         elif key == QtCore.Qt.Key.Key_Delete:
-            for item in self._flow_chart.scene().selectedItems():
-                if isinstance(item, RelionJobNodeItem):
-                    self._trash_job(item)
+            for item in self._iter_selected_items():
+                self._trash_job(item)
             return
         return super().keyPressEvent(a0)
+
+    def _iter_selected_items(self) -> Iterable[RelionJobNodeItem]:
+        if self._stacked_widget.currentWidget() == self._flow_chart:
+            for qitem in self._flow_chart.scene().selectedItems():
+                if isinstance(qitem, QFlowChartNode) and isinstance(
+                    item := qitem.item(), RelionJobNodeItem
+                ):
+                    yield item
+        elif self._stacked_widget.currentWidget() == self._table_view:
+            if item := self._table_view.current_item():
+                yield item
 
     def _find_job(self):
         """Find a job in the flowchart by its name, ID or state."""
         choices = _list_jobs_for_palette(
-            self._flow_chart._pipeline,
+            self._pipeline(),
             self._node_id_to_tags_map(),
         )
         if resp := self._ui().exec_choose_one_dialog(
@@ -366,8 +384,26 @@ class QRelionPipelineFlowChart(QtW.QWidget):
             choices=choices,
             how="palette",
         ):
-            if node := self._flow_chart._node_map.get(resp.path):
-                self._flow_chart.center_on_item(node.item())
+            if self._stacked_widget.currentWidget() is self._flow_chart:
+                if node := self._flow_chart._node_map.get(resp.path):
+                    self._flow_chart.center_on_item(node.item())
+            elif self._stacked_widget.currentWidget() is self._table_view:
+                self._table_view.center_on_item(resp.path)
+
+    def _switch_mode(self):
+        """Switch between flowchart view and table view."""
+        if self._stacked_widget.currentWidget() == self._start_screen:
+            pass
+        elif self._stacked_widget.currentWidget() == self._flow_chart:
+            self._stacked_widget.setCurrentWidget(self._table_view)
+            if item := self._flow_chart.current_item():
+                self._table_view.center_on_item(item.id())
+            self._table_view.read_gui_state(self._pipeline())
+        else:
+            self._stacked_widget.setCurrentWidget(self._flow_chart)
+            self._flow_chart.read_gui_state(self._pipeline())
+            if item := self._table_view.current_item():
+                self._flow_chart.center_on_item(item)
 
     def _on_background_right_clicked(self):
         btn = self._more_action_btn
@@ -375,15 +411,13 @@ class QRelionPipelineFlowChart(QtW.QWidget):
 
     def _open_trash(self):
         """Open a widget that shows the contents of the RELION Trash directory."""
-        self._ui().read_file(
-            self._flow_chart._relion_project_dir / "Trash", append_history=False
-        )
+        self._ui().read_file(self._relion_project_dir / "Trash", append_history=False)
 
     def _trash_job(self, item: RelionJobNodeItem):
         """Move a job to the RELION Trash directory."""
         from himena_relion.io import _impl
 
-        if job_dir := item.job_dir(self._flow_chart._relion_project_dir):
+        if job_dir := item.job_dir(self._relion_project_dir):
             _impl.trash_job(self._ui(), job_dir)
 
     def _new_job_palette(self):
@@ -410,6 +444,176 @@ class QRelionPipelineFlowChart(QtW.QWidget):
             ]
         return id_to_tags_map
 
+    def _on_right_clicked(self, item: RelionJobNodeItem):
+        menu = self._prep_right_click_menu(item)
+        menu.exec(QtGui.QCursor.pos())
+
+    def _prep_right_click_menu(self, item: RelionJobNodeItem):
+        self._flow_chart.read_gui_state(self._pipeline())
+        self._table_view.read_gui_state(self._pipeline())
+        path = self._relion_project_dir / item.id() / "job.star"
+        ui = self._ui()
+
+        def get_job():
+            return JobDirectory.from_job_star(path)
+
+        status = item._job.status
+        menu = QtW.QMenu(self)
+        menu.setToolTipsVisible(True)
+        submenu_file = menu.addMenu("File")
+        submenu_cleanup = menu.addMenu("Cleanup")
+        submenu_tag = menu.addMenu("Tag")
+        # submenu_mark = menu.addMenu("Mark As")
+        submenu_file.addAction(
+            "Open 'job.star' As Text",
+            lambda: _impl.open_relion_job_star(ui, get_job()),
+        )
+        submenu_file.addAction(
+            "Open 'job_pipeline.star' As Text",
+            lambda: _impl.open_relion_job_pipeline_star(ui, get_job()),
+        )
+        submenu_file.addAction(
+            "Open Job Parameters",
+            lambda: _impl.open_job_parameters(ui, get_job()),
+        )
+        submenu_file.addSeparator()
+        submenu_file.addAction(
+            "Copy Directory Path",
+            lambda: ui.set_clipboard(text=str(path.parent)),
+        )
+        submenu_file.addAction(
+            "Copy Directory Relative Path",
+            lambda: ui.set_clipboard(text=str(item.id())),
+        )
+        action = submenu_cleanup.addAction(
+            "Gentle Clean", lambda: _impl.gentle_clean_relion_job(ui, get_job())
+        )
+        action.setEnabled(status not in [NodeStatus.RUNNING, NodeStatus.SCHEDULED])
+        action = submenu_cleanup.addAction(
+            "Harsh Clean", lambda: _impl.harsh_clean_relion_job(ui, get_job())
+        )
+        action.setEnabled(status not in [NodeStatus.RUNNING, NodeStatus.SCHEDULED])
+        # action = submenu_mark.addAction(
+        #     "Mark As Finished", lambda: _impl.mark_as_finished(get_job())
+        # )
+        # action.setEnabled(status is not NodeStatus.SUCCEEDED)
+        # action = submenu_mark.addAction(
+        #     "Mark As Failed", lambda: _impl.mark_as_failed(get_job())
+        # )
+        # action.setEnabled(status is not NodeStatus.FAILED)
+        self._prep_tag_menu(submenu_tag, item)
+
+        menu.addSeparator()
+
+        # Prepare next actions
+        action_hints = _create_action_hint_menu(ui, path)
+        if action_hints:
+            action_hint_menu = menu.addMenu("Next Action ...")
+            for action in action_hints:
+                action.setParent(action_hint_menu)
+                action_hint_menu.addAction(action)
+
+        # Abort
+        action = menu.addAction(
+            "Abort", lambda: _ignore_cancel(_impl.abort_relion_job, ui, get_job())
+        )
+        action.setEnabled(status is NodeStatus.RUNNING)
+        action.setToolTip("Notify the job to be aborted.")
+        # Run now
+        action = menu.addAction(
+            "Run This Scheduled Job Now",
+            lambda: execute_job(item.id(), cwd=self._relion_project_dir),
+        )
+        action.setToolTip(
+            "Run this scheduled job immediately, regardless of whether all the parent\n"
+            "jobs have finished or not."
+        )
+        action.setEnabled(status is NodeStatus.SCHEDULED)
+        # Overwrite
+        action = menu.addAction(
+            "Overwrite ...", lambda: _impl.overwrite_relion_job(ui, get_job())
+        )
+        action.setToolTip(
+            "Overwrite this job by re-running it with a new set of parameters."
+        )
+        # Clone
+        action = menu.addAction(
+            "Clone ...", lambda: _impl.clone_relion_job(ui, get_job())
+        )
+        action.setToolTip("Create a same type of job with a new set of parameters.")
+
+        menu.addAction(
+            "Set Alias ...",
+            lambda: _ignore_cancel(_impl.set_job_alias, ui, get_job()),
+        )
+        menu.addSeparator()
+        action = menu.addAction(
+            "Trash", lambda: _ignore_cancel(_impl.trash_job, ui, get_job())
+        )
+        action.setEnabled(status is not NodeStatus.RUNNING)
+        menu.addSeparator()
+        return menu
+
+    def _prep_tag_menu(self, tag_menu: QtW.QMenu, item: RelionJobNodeItem):
+        fc = self._flow_chart
+        current_item_tags = fc.item_tags(item.id())
+        current_all_tags = fc.tags()
+        actions = []
+
+        def _set_tag():
+            tags: list[TagItem] = []
+            for ac, tag in zip(actions, current_all_tags, strict=True):
+                if ac.isChecked():
+                    tags.append(tag)
+            fc.set_item_tags(item.id(), tags)
+            fc.save_gui_state(self._pipeline())
+            self._table_view.save_gui_state(self._pipeline())
+
+        for tag in current_all_tags:
+            action = tag_menu.addAction(tag.name, _set_tag)
+            action.setCheckable(True)  # This is needed for _set_tag()
+            checked = tag in current_item_tags
+            action.setChecked(checked)
+            action.setIcon(_make_tag_icon(tag.color, checked=checked))
+            actions.append(action)
+
+        tag_menu.addSeparator()
+        action = tag_menu.addAction("Manage Tags ...", self._manage_tags)
+        action.setToolTip("Edit tag names")
+
+    def _manage_tags(self):
+        current_all_tags = self._flow_chart.tags()
+        sig = {}
+        for ith, tag in enumerate(current_all_tags):
+            sig[f"x{ith}"] = Annotated[
+                str, {"label": f"({ith + 1})", "value": tag.name}
+            ]
+        if out := self._ui().exec_user_input_dialog(sig, title="Manage Tags"):
+            for ith, tag_name in enumerate(out.values()):
+                self._flow_chart.edit_tag(ith, tag_name, tooltip=tag_name)
+            self._flow_chart.save_gui_state(self._pipeline())
+            self._table_view.save_gui_state(self._pipeline())
+
+
+def _make_tag_icon(color: Color, checked: bool = False) -> QtGui.QIcon:
+    pixmap = QtGui.QPixmap(32, 32)
+    bg = QtGui.QColor.fromRgbF(*color.rgba)
+    pixmap.fill(bg)
+    if checked:
+        painter = QtGui.QPainter(pixmap)
+        if bg.lightnessF() < 0.5:
+            pen_color = QtGui.QColor("white")
+        else:
+            pen_color = QtGui.QColor("black")
+        pen = QtGui.QPen(pen_color, 4)
+        pen.setJoinStyle(QtCore.Qt.PenJoinStyle.RoundJoin)
+        painter.setPen(pen)
+        painter.drawPolyline(
+            [QtCore.QPoint(7, 17), QtCore.QPoint(13, 23), QtCore.QPoint(25, 11)]
+        )
+        painter.end()
+    return QtGui.QIcon(pixmap)
+
 
 def _list_jobs_for_palette(
     pipeline: RelionDefaultPipeline,
@@ -428,3 +632,28 @@ def _list_jobs_for_palette(
         display_text = f"{jobxxx}: {title} @{state} {tags_str}"
         out.append((display_text, info))
     return out
+
+
+def _create_action_hint_menu(ui: MainWindow, job_star_path: Path) -> list[QtW.QAction]:
+    actions = []
+    try:
+        model_type = JobDirectory.from_job_star(job_star_path).himena_model_type()
+        method = LocalReaderMethod(
+            path=job_star_path,
+            plugin="himena_relion.io.read_relion_job",
+            output_model_type=model_type,
+        )
+        for attr, exe in ui.action_hint_registry.iter_executors(ui, model_type, method):
+            action = QtW.QAction(attr.title)
+            action.triggered.connect(exe)
+            action.setToolTip(attr.tooltip)
+            actions.append(action)
+    except Exception as e:
+        ui.show_notification(f"Failed to create action hint menu: {e}", title="Warning")
+    return actions
+
+
+def _ignore_cancel(func, *args, **kwargs):
+    """Decorator to ignore Cancelled exception."""
+    with suppress(Cancelled):
+        return func(*args, **kwargs)
