@@ -270,7 +270,7 @@ def get_pipeline_widgets(
 
     for dock in ui.dock_widgets:
         if isinstance(flowchart := dock.widget, QRelionPipelineFlowChart):
-            dir_for_this = flowchart._flow_chart._relion_project_dir
+            dir_for_this = flowchart._relion_project_dir
             if dir_for_this == relion_project_dir or relion_project_dir is None:
                 return dock.widget
 

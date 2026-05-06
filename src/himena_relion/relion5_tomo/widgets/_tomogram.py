@@ -224,7 +224,7 @@ class QPickViewer(QJobScrollArea):
         self._filter_widget._bin_factor.setText("1")
         self._tomo_list = QMicrographListWidget(["Tomogram", "Annotations"])
         self._tomo_list.current_changed.connect(self._on_tomo_changed)
-        self._layout.setSpacing(0)
+        self._layout.setSpacing(2)
         self._layout.addWidget(QtW.QLabel("<b>Picked particles with XY slice</b>"))
         self._layout.addWidget(self._filter_widget)
         self._layout.addWidget(self._tomo_list)
