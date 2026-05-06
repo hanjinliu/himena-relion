@@ -301,7 +301,7 @@ class SortByTimeProxy(TableProxy):
     def __init__(self, pipeline: RelionDefaultPipeline):
         self._sorted_indices = sorted(
             range(len(pipeline)),
-            key=lambda i: pipeline[i].path.stat().st_mtime,
+            key=lambda i: _get_mtime(pipeline[i].path),
         )
 
     def map(self, index: int) -> int:
@@ -309,3 +309,10 @@ class SortByTimeProxy(TableProxy):
 
     def count(self) -> int:
         return len(self._sorted_indices)
+
+
+def _get_mtime(path: Path) -> float:
+    try:
+        return path.stat().st_mtime
+    except Exception:
+        return 0

@@ -42,3 +42,9 @@ def test_reading_default_pipeline_during_filtering(himena_ui: MainWindow, tmpdir
     pipeline_widget._refresh_flowchart()
     pipeline_widget._open_all_running_jobs()
     pipeline_widget._open_last_completed_job()
+
+    pipeline_widget._center_on_item(Path("MotionCorr/job002/"))
+    pipeline_widget._switch_mode()
+    pipeline_widget._center_on_item(Path("MotionCorr/job002/"))
+    pipeline_widget._table_view._sort_by_widget_mgui.value = "Time"
+    pipeline_widget._table_view._sort_ascending_btn.click()
