@@ -1,6 +1,7 @@
 from __future__ import annotations
 from collections import defaultdict
 from contextlib import suppress
+import datetime
 from pathlib import Path
 
 import logging
@@ -25,7 +26,7 @@ from himena_relion._job_dir import JobDirectory
 from himena_relion._widgets._job_widgets import QJobPipelineViewer
 from himena_relion._widgets._misc import QMoreActionButton
 from himena_relion._widgets._content_info import QJobContentInfo
-from himena_relion.consts import Type, JOB_ID_MAP
+from himena_relion.consts import Type, JOB_ID_MAP, FileNames
 from himena_relion._pipeline import (
     NodeStatus,
     RelionDefaultPipeline,
@@ -33,6 +34,7 @@ from himena_relion._pipeline import (
     is_all_inputs_ready,
 )
 from himena_relion import _utils
+from himena_relion.pipeline._gui_state import HimenaRelionGuiState
 from himena_relion.pipeline._flowchart import (
     QRelionPipelineFlowChartView,
     RelionJobNodeItem,
@@ -45,12 +47,14 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class QRelionPipelineFlowChart(QtW.QWidget):
-    """Widget to display RELION pipeline flow chart and manage scheduling.
+    """Widget to display RELION pipeline and manage job scheduling.
 
+    You can switch between flowchart view and table view.
     Right click to show more actions.
     """
 
     update_required = QtCore.Signal(RelionDefaultPipeline)
+    gui_state_reload_required = QtCore.Signal()
 
     def __init__(self, ui: MainWindow):
         super().__init__()
@@ -83,6 +87,7 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         btn.add_action("Copy Project Path", self._copy_project_path)
         btn.add_separator()
         btn.add_action("Open Running Jobs", self._open_all_running_jobs)
+        btn.add_action("Open Last Completed Job", self._open_last_completed_job)
         btn.add_action("Close All Tabs", self._close_all_tabs)
         self._more_action_btn = btn
 
@@ -119,6 +124,8 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         _footer_layout.addWidget(self._inout)
 
         self._watcher: GeneratorWorker | None = None
+        self._gui_state_last_update_time = datetime.datetime.fromtimestamp(0)
+
         layout = QtW.QVBoxLayout(self)
         layout.setSpacing(0)
         splitter = QtW.QSplitter(QtCore.Qt.Orientation.Vertical)
@@ -155,6 +162,7 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         self._state_to_job_map = defaultdict[NodeStatus, dict[str, RelionJobInfo]](dict)
         self.update_required.connect(self._on_pipeline_updated)
         self.update_required.connect(self._on_job_state_changed)
+        self.gui_state_reload_required.connect(self._on_gui_state_updated)
 
     def sizeHint(self):
         return QtCore.QSize(350, 600)
@@ -253,6 +261,10 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         elif cur_widget == self._start_screen:
             self._stacked_widget.setCurrentWidget(self._flow_chart)
 
+    def _on_gui_state_updated(self) -> None:
+        self._flow_chart.read_gui_state(self._pipeline())
+        self._table_view.read_gui_state(self._pipeline())
+
     @validate_protocol
     def model_type(self) -> str:
         return Type.RELION_PIPELINE
@@ -267,6 +279,7 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         self._flow_chart.setBackgroundBrush(QtGui.QColor(Color(theme.background).hex))
         for btn in self._tool_buttons:
             btn.update_color(theme.foreground)
+        self._table_view._sort_ascending_btn.update_color(theme.foreground)
 
     def _init_watcher(self):
         if self._watcher:
@@ -302,6 +315,13 @@ class QRelionPipelineFlowChart(QtW.QWidget):
                     # Update the internal data (thus, the flow chart)
                     self.update_required.emit(pipeline)
             yield
+            # read GUI state if updated
+            if state := HimenaRelionGuiState.try_from_project_directory(path.parent):
+                written_time = state._write_time
+                if self._gui_state_last_update_time < written_time:
+                    self._gui_state_last_update_time = written_time
+                    self.gui_state_reload_required.emit()
+                    yield
 
     def _on_job_state_changed(self, pipeline: RelionDefaultPipeline):
         success_old = set(self._state_to_job_map[NodeStatus.SUCCEEDED].keys())
@@ -384,11 +404,14 @@ class QRelionPipelineFlowChart(QtW.QWidget):
             choices=choices,
             how="palette",
         ):
-            if self._stacked_widget.currentWidget() is self._flow_chart:
-                if node := self._flow_chart._node_map.get(resp.path):
-                    self._flow_chart.center_on_item(node.item())
-            elif self._stacked_widget.currentWidget() is self._table_view:
-                self._table_view.center_on_item(resp.path)
+            self._center_on_item(resp.path)
+
+    def _center_on_item(self, path: Path):
+        if self._stacked_widget.currentWidget() is self._flow_chart:
+            if node := self._flow_chart._node_map.get(path):
+                self._flow_chart.center_on_item(node.item())
+        elif self._stacked_widget.currentWidget() is self._table_view:
+            self._table_view.center_on_item(path)
 
     def _switch_mode(self):
         """Switch between flowchart view and table view."""
@@ -431,9 +454,19 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         running_jobs = list(self._state_to_job_map[NodeStatus.RUNNING].values())
         if len(running_jobs) > 0:
             for job in self._state_to_job_map[NodeStatus.RUNNING].values():
-                self._ui().read_file(job.path, append_history=False)
+                _utils.read_or_show_job(self._ui(), job.path)
         else:
             self._ui().show_notification("No running jobs to open.")
+
+    def _open_last_completed_job(self):
+        """Open the last completed job in this pipeline."""
+        succeeded_jobs = list(self._state_to_job_map[NodeStatus.SUCCEEDED].values())
+        if len(succeeded_jobs) > 0:
+            last_job = max(succeeded_jobs, key=lambda job: _exit_success_time(job))
+            self._center_on_item(last_job.path)
+            _utils.read_or_show_job(self._ui(), last_job.path)
+        else:
+            self._ui().show_notification("No completed jobs to open.")
 
     def _node_id_to_tags_map(self) -> dict[str, list[str]]:
         id_to_tags_map = {}
@@ -546,12 +579,36 @@ class QRelionPipelineFlowChart(QtW.QWidget):
             "Set Alias ...",
             lambda: _ignore_cancel(_impl.set_job_alias, ui, get_job()),
         )
-        menu.addSeparator()
         action = menu.addAction(
-            "Trash", lambda: _ignore_cancel(_impl.trash_job, ui, get_job())
+            "Trash This Job", lambda: _ignore_cancel(_impl.trash_job, ui, get_job())
+        )
+        action.setToolTip(
+            "Move this job to the Trash directory under this project (will pop up a\n"
+            "confirmation dialog)."
         )
         action.setEnabled(status is not NodeStatus.RUNNING)
         menu.addSeparator()
+
+        # parent/child jobs
+        parent_menu = menu.addMenu("Parent Jobs")
+        child_menu = menu.addMenu("Child Jobs")
+
+        for parent in item._job.parents:
+            action = parent_menu.addAction(
+                _utils.normalize_job_id(parent.node.path),
+                lambda p=parent.node.path: self._center_on_item(p),
+            )
+        if len(item._job.parents) == 0:
+            parent_menu.setEnabled(False)
+
+        for child in item._job.children:
+            action = child_menu.addAction(
+                _utils.normalize_job_id(child.node.path),
+                lambda c=child.node.path: self._center_on_item(c),
+            )
+        if len(item._job.children) == 0:
+            child_menu.setEnabled(False)
+
         return menu
 
     def _prep_tag_menu(self, tag_menu: QtW.QMenu, item: RelionJobNodeItem):
@@ -567,7 +624,6 @@ class QRelionPipelineFlowChart(QtW.QWidget):
                     tags.append(tag)
             fc.set_item_tags(item.id(), tags)
             fc.save_gui_state(self._pipeline())
-            self._table_view.save_gui_state(self._pipeline())
 
         for tag in current_all_tags:
             action = tag_menu.addAction(tag.name, _set_tag)
@@ -592,7 +648,6 @@ class QRelionPipelineFlowChart(QtW.QWidget):
             for ith, tag_name in enumerate(out.values()):
                 self._flow_chart.edit_tag(ith, tag_name, tooltip=tag_name)
             self._flow_chart.save_gui_state(self._pipeline())
-            self._table_view.save_gui_state(self._pipeline())
 
 
 def _make_tag_icon(color: Color, checked: bool = False) -> QtGui.QIcon:
@@ -613,6 +668,13 @@ def _make_tag_icon(color: Color, checked: bool = False) -> QtGui.QIcon:
         )
         painter.end()
     return QtGui.QIcon(pixmap)
+
+
+def _exit_success_time(job: RelionJobInfo) -> float:
+    try:
+        return job.path.joinpath(FileNames.EXIT_SUCCESS).stat().st_mtime
+    except FileNotFoundError:
+        return 0.0
 
 
 def _list_jobs_for_palette(

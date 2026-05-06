@@ -5,9 +5,12 @@ import warnings
 from datetime import datetime
 from qtpy import QtGui, QtCore, QtWidgets as QtW
 
+from himena.qt import QColoredToolButton
+from himena.qt.magicgui import ToggleButtons
 from himena_relion._utils import normalize_job_id
 from himena_relion._pipeline import RelionDefaultPipeline
 from himena_relion.pipeline._gui_state import HimenaRelionGuiState
+from himena_relion._utils import path_icon_svg
 from ._utils import split_job_info, RelionJobNodeItem
 
 
@@ -22,11 +25,30 @@ class QRelionPipelineTableView(QtW.QWidget):
         super().__init__(parent)
         layout = QtW.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        self._header_widget = QtW.QLabel("TODO")
+        self._header_widget = QtW.QWidget()
         self._table_view = _QRelionPipelineTableView(self)
         layout.addWidget(self._header_widget)
         layout.addWidget(self._table_view)
 
+        # prepare header
+        self._sort_by_widget_mgui = ToggleButtons(["Job ID", "Time"])
+        self._sort_by_widget_mgui.changed.connect(self._on_sort_by_changed)
+        self._sort_ascending_btn = QColoredToolButton(
+            self._switch_sort_order,
+            path_icon_svg("switch_up_down"),
+        )
+        self._sort_ascending_btn.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
+        self._sort_ascending_btn.setToolTip("Switch sort order")
+        self._sort_is_ascending = True
+
+        header_layout = QtW.QHBoxLayout(self._header_widget)
+        header_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
+        header_layout.setContentsMargins(0, 0, 0, 0)
+        header_layout.addWidget(QtW.QLabel("Sort by:", self._header_widget))
+        header_layout.addWidget(self._sort_by_widget_mgui.native)
+        header_layout.addWidget(self._sort_ascending_btn)
+
+        # connect signals
         self._table_view.item_left_pressed.connect(self.item_left_pressed)
         self._table_view.item_right_pressed.connect(self.item_right_pressed)
         self._table_view.item_left_clicked.connect(self.item_left_clicked)
@@ -67,9 +89,6 @@ class QRelionPipelineTableView(QtW.QWidget):
                 stacklevel=1,
             )
 
-    def save_gui_state(self, pipeline: RelionDefaultPipeline):
-        pass  # TODO
-
     def center_on_item(self, path: Path):
         _model = self._table_view._model
         for row in range(_model.rowCount()):
@@ -79,6 +98,24 @@ class QRelionPipelineTableView(QtW.QWidget):
                     index, QtW.QAbstractItemView.ScrollHint.PositionAtCenter
                 )
                 self._table_view.setCurrentIndex(index)
+
+    def _on_sort_by_changed(self, value: str):
+        if self._table_view._model is None:
+            return
+        if value == "Job ID":
+            new_proxy = IdentityProxy(self._table_view._model._pipeline)
+        elif value == "Time":
+            new_proxy = SortByTimeProxy(self._table_view._model._pipeline)
+        else:  # pragma: no cover
+            raise ValueError("Invalid sort index")
+        self._table_view._model.set_proxy(new_proxy, ascending=self._sort_is_ascending)
+
+    def _switch_sort_order(self):
+        if self._table_view._model is None:
+            return
+        self._sort_is_ascending = not self._sort_is_ascending
+        proxy = self._table_view._model._proxy
+        self._table_view._model.set_proxy(proxy, ascending=self._sort_is_ascending)
 
 
 class _QRelionPipelineTableView(QtW.QTableView):
@@ -145,10 +182,20 @@ class QRelionPipelineTableViewModel(QtCore.QAbstractTableModel):
         self._pipeline = pipeline
         self._gui_state = gui_state
         self._proxy = IdentityProxy(pipeline)
+        self._is_ascending = True
 
     def relion_job_node_item(self, index: int) -> RelionJobNodeItem:
+        if not self._is_ascending:
+            # If descending, map the index to the end of the list
+            index = self._proxy.count() - 1 - index
         job_info = self._pipeline[self._proxy.map(index)]
         return RelionJobNodeItem(job_info)
+
+    def set_proxy(self, proxy: TableProxy, ascending: bool = True):
+        self.beginResetModel()
+        self._proxy = proxy
+        self._is_ascending = ascending
+        self.endResetModel()
 
     def rowCount(self, parent: QtCore.QModelIndex = None) -> int:
         return self._proxy.count()
@@ -189,7 +236,7 @@ class QRelionPipelineTableViewModel(QtCore.QAbstractTableModel):
                 return "<Job directory does not exist>"
             job, title = split_job_info(job_info)
             if job_info.alias:
-                first_line = f"{job_info.alias} ({title})"
+                first_line = f"{job}: {job_info.alias} ({title})"
             else:
                 first_line = f"{job}: {title}"
             dt = datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M:%S")
@@ -248,27 +295,6 @@ class IdentityProxy(TableProxy):
 
     def count(self) -> int:
         return self._count
-
-
-class TagFilterProxy(TableProxy):
-    def __init__(
-        self,
-        pipeline: RelionDefaultPipeline,
-        gui_state: HimenaRelionGuiState,
-        tag_index: int,
-    ):
-        self._pipeline = pipeline
-        self._filtered_indices: list[int] = []
-        for i, job in enumerate(pipeline):
-            if job_id := gui_state.jobs.get(normalize_job_id(job.path), None):
-                if tag_index in job_id.tags:
-                    self._filtered_indices.append(i)
-
-    def map(self, index: int) -> int:
-        return self._filtered_indices[index]
-
-    def count(self) -> int:
-        return len(self._filtered_indices)
 
 
 class SortByTimeProxy(TableProxy):
