@@ -226,15 +226,12 @@ class Q2DViewer(Q2DViewerBase):
             raise TypeError("image must be a numpy array or ArrayFilteredView.")
         self._last_clim = clim
         num_slices = self._array_view.num_slices()
-        self._dims_slider.blockSignals(True)
-        self._dims_slider_widget.setVisible(bool(num_slices > 1))
-        try:
+        with QtCore.QSignalBlocker(self._dims_slider):
+            self._dims_slider_widget.setVisible(bool(num_slices > 1))
             self._dims_slider.setRange(0, num_slices - 1)
             self._dims_slider.setValue(num_slices // 2)
             self._zpos_box.setRange(0, num_slices - 1)
             self.redraw()
-        finally:
-            self._dims_slider.blockSignals(False)
         if not had_image:
             self._auto_contrast(force_update_view_range=True)
             self.auto_fit()
@@ -277,11 +274,8 @@ class Q2DViewer(Q2DViewerBase):
 
     def _on_zpos_box_changed(self, value: int):
         """Update the slider when the z position box changes."""
-        self._zpos_box.blockSignals(True)
-        try:
+        with QtCore.QSignalBlocker(self._zpos_box):
             self._dims_slider.setValue(value)
-        finally:
-            self._zpos_box.blockSignals(False)
 
     def _on_slider_changed(self, value: int, *, force_sync: bool = False):
         """Update the displayed slice based on the slider value."""
@@ -433,7 +427,7 @@ class Q3DViewer(Q3DViewerBase):
             orientation="horizontal",
             tooltip=(
                 "3D rendering mode.\n"
-                " * 'Srf': Iso-surface rendering.)\n"
+                " * 'Srf': Iso-surface rendering.\n"
                 " * 'Max': Maximum intensity projection.\n"
                 " * 'Avg': Average intensity projection."
             ),
@@ -852,11 +846,8 @@ class Q3DLocalResViewer(Q3DViewerBase):
         locres_masked = locres_masked[locres_masked > 0.001]
         self._surface.set_data(image, mask, clim=None, color_array=locres)
         self._surface.init_surface()
-        self._clim_slider.blockSignals(True)
-        try:
+        with QtCore.QSignalBlocker(self._clim_slider):
             self._clim_slider.set_clim(self._surface.clim)
-        finally:
-            self._clim_slider.blockSignals(False)
         self._on_shading_changed(self._shading.currentText())
         self._iso_slider.set_hist_for_array(image, (im_min0, im_max0))
         self._iso_slider.set_view_range(im_min0, im_max0)

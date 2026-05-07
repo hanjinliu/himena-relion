@@ -32,7 +32,7 @@ class QRefine3DViewer(QJobScrollArea):
         self._viewer = Q3DViewer()
         self._resizer = QResizer(self._viewer)
         _arrow_visible_default = False
-        self._arrow_visible = QToggleSwitch("Show angle distribution")
+        self._arrow_visible = QToggleSwitch("Angle distribution")
         self._arrow_visible.setChecked(_arrow_visible_default)
         self._arrow_visible.toggled.connect(self._on_arrow_visible_toggled)
         self._arrow_visible.setToolTip(
@@ -58,7 +58,7 @@ class QRefine3DViewer(QJobScrollArea):
         )
 
         self._num_particles_label = QNumParticlesLabel()
-        self._layout.addWidget(QtW.QLabel("<b>Refined Map</b>"))
+        self._layout.addWidget(QtW.QLabel("<b>&#9679; Refined Map</b>"))
         self._layout.setSpacing(0)
         hor_layout = QtW.QHBoxLayout()
         hor_layout.setContentsMargins(0, 0, 0, 0)
@@ -79,7 +79,8 @@ class QRefine3DViewer(QJobScrollArea):
         hor_layout2.addWidget(self._num_particles_label)
         self._layout.addWidget(_hor)
         self._layout.addWidget(self._show_run_class001_btn)
-        self._layout.addWidget(QtW.QLabel("<b>Fourier Shell Correlation</b>"))
+        self._layout.addSpacing(5)
+        self._layout.addWidget(QtW.QLabel("<b>&#9679; Fourier Shell Correlation</b>"))
         self._layout.addWidget(self._fsc_plot)
         self._index_start = 1
         self._job_dir = _job_dir.Refine3DJobDirectory(job_dir.path)

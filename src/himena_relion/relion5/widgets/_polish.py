@@ -79,14 +79,18 @@ class QPolishViewer(QJobScrollArea):
         self._mic_list.setColumnHidden(1, True)
         self._filter_widget = Q2DFilterWidget(bin_default=8, lowpass_default=30)
         layout.setSpacing(0)
-        layout.addWidget(QtW.QLabel("<b>Bayesian Polish Tracks (scaled by 8)</b>"))
+        layout.addWidget(
+            QtW.QLabel("<b>&#9679; Bayesian Polish Tracks (scaled by 8)</b>")
+        )
         layout.addWidget(self._mic_list)
         layout.addWidget(self._filter_widget)
         layout.addWidget(self._viewer)
         layout.addWidget(self._resizer)
-        layout.addWidget(QtW.QLabel("<b>Per-frame B-factor Used for Sharpening</b>"))
+        layout.addWidget(
+            QtW.QLabel("<b>&#9679; Per-frame B-factor Used for Sharpening</b>")
+        )
         layout.addWidget(self._bfactor_plot)
-        layout.addWidget(QtW.QLabel("<b>Per-frame Scale Factor</b>"))
+        layout.addWidget(QtW.QLabel("<b>&#9679; Per-frame Scale Factor</b>"))
         layout.addWidget(self._scalefactor_plot)
         self._filter_widget.value_changed.connect(self._filter_param_changed)
         self._binsize_old = -1

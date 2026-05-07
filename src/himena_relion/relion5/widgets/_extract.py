@@ -37,7 +37,7 @@ class QExtractViewer(QJobScrollArea):
         self._mic_list = QMicrographListWidget(["Micrograph", "Extracted", "Full Path"])
         self._mic_list.setFixedHeight(130)
         self._mic_list.current_changed.connect(self._mic_changed)
-        layout.addWidget(QtW.QLabel("<b>Extracted Micrographs</b>"))
+        layout.addWidget(QtW.QLabel("<b>&#9679; Extracted Micrographs</b>"))
         hlayout = QtW.QHBoxLayout()
         hlayout.setContentsMargins(0, 0, 0, 0)
         hlayout.addWidget(QtW.QLabel("Display Range:"))

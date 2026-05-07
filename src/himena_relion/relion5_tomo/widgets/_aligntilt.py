@@ -52,7 +52,7 @@ class QAlignTiltSeriesViewer(QJobScrollArea):
         self._layout.addWidget(self._ts_list)
         hlayout = QtW.QHBoxLayout()
         hlayout.setContentsMargins(0, 0, 0, 0)
-        hlayout.addWidget(QtW.QLabel("<b>Aligned tilt series</b>"))
+        hlayout.addWidget(QtW.QLabel("<b>&#9679; Aligned tilt series</b>"))
         if self._is_imod_fid or self._is_imod_patchtrack:
             etomo_btn = QtW.QPushButton("Open in Etomo")
             etomo_btn.setToolTip("Open the etomo project for this tilt series")
@@ -66,9 +66,9 @@ class QAlignTiltSeriesViewer(QJobScrollArea):
 
         self._align_log = QAlignJobLog()
         if self._is_imod_fid or self._is_imod_patchtrack:
-            self._layout.addWidget(QtW.QLabel("<b>Batchruntomo Log</b>"))
+            self._layout.addWidget(QtW.QLabel("<b>&#9679; Batchruntomo Log</b>"))
         else:
-            self._layout.addWidget(QtW.QLabel("<b>AreTomo2 Log</b>"))
+            self._layout.addWidget(QtW.QLabel("<b>&#9679; AreTomo2 Log</b>"))
         self._layout.addWidget(self._align_log)
 
     def on_job_updated(self, job_dir, path: str):
