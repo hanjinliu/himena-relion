@@ -22,7 +22,7 @@ class QLocalResViewer(QJobScrollArea):
         layout = self._layout
         self._viewer = Q3DLocalResViewer()
         self._resizer = QResizer(self._viewer)
-        layout.addWidget(QtW.QLabel("<b>Local Resolution Map</b>"))
+        layout.addWidget(QtW.QLabel("<b>&#9679; Local Resolution Map</b>"))
         layout.addWidget(self._viewer)
         layout.addWidget(self._resizer)
         self._job_dir = job_dir

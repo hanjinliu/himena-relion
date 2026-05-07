@@ -284,7 +284,7 @@ class QTemplatePick3DViewer(QAutopickViewerBase):
         super().__init__(job_dir)
         self._text_edit = QImageViewTextEdit(image_size_pixel=64)
         self._text_edit.setMinimumHeight(120)
-        self._layout.insertWidget(0, QtW.QLabel("<b>Reference Projections</b>"))
+        self._layout.insertWidget(0, QtW.QLabel("<b>&#9679; Reference Projections</b>"))
         self._layout.insertWidget(1, self._text_edit)
         self._last_ref_proj_mtime: float = 0.0
 
@@ -332,12 +332,11 @@ class QTopazTrainPickViewer(QJobScrollArea):
         self._canvas0 = QPlotCanvas(self)
         self._canvas1 = QPlotCanvas(self)
         self._canvas2 = QPlotCanvas(self)
-        self._layout.addWidget(QtW.QLabel("<b>Topaz Model Training Metrics</b>"))
-        self._layout.addWidget(QtW.QLabel("<b>Loss</b>"))
+        self._layout.addWidget(QtW.QLabel("<b>&#9679; Loss</b>"))
         self._layout.addWidget(self._canvas0)
-        self._layout.addWidget(QtW.QLabel("<b>True Positive</b>"))
+        self._layout.addWidget(QtW.QLabel("<b>&#9679; True Positive</b>"))
         self._layout.addWidget(self._canvas1)
-        self._layout.addWidget(QtW.QLabel("<b>False Positive</b>"))
+        self._layout.addWidget(QtW.QLabel("<b>&#9679; False Positive</b>"))
         self._layout.addWidget(self._canvas2)
 
     def on_job_updated(self, job_dir: _job_dir.JobDirectory, path: str):

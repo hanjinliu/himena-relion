@@ -64,6 +64,7 @@ def gentle_clean_relion_job(ui: MainWindow, job_dir: JobDirectory):
         [get_relion_pipeliner_exe(), "--gentle_clean", str(job_num)],
         check=True,
         cwd=job_dir.relion_project_dir,
+        stdout=subprocess.PIPE,
     )
     ui.show_notification(f"Gentle cleaned job {job_dir.job_normal_id()}.")
 
@@ -77,6 +78,7 @@ def harsh_clean_relion_job(ui: MainWindow, job_dir: JobDirectory):
         [get_relion_pipeliner_exe(), "--harsh_clean", str(job_num)],
         check=True,
         cwd=job_dir.relion_project_dir,
+        stdout=subprocess.PIPE,
     )
     ui.show_notification(f"Harsh cleaned job {job_dir.job_normal_id()}.")
 

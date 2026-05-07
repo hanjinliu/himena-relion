@@ -433,7 +433,7 @@ class Q3DViewer(Q3DViewerBase):
             orientation="horizontal",
             tooltip=(
                 "3D rendering mode.\n"
-                " * 'Srf': Iso-surface rendering.)\n"
+                " * 'Srf': Iso-surface rendering.\n"
                 " * 'Max': Maximum intensity projection.\n"
                 " * 'Avg': Average intensity projection."
             ),

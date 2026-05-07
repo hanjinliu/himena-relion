@@ -299,9 +299,10 @@ class IdentityProxy(TableProxy):
 
 class SortByTimeProxy(TableProxy):
     def __init__(self, pipeline: RelionDefaultPipeline):
+        pdir = pipeline.project_dir
         self._sorted_indices = sorted(
             range(len(pipeline)),
-            key=lambda i: _get_mtime(pipeline[i].path),
+            key=lambda i: _get_mtime(pdir / pipeline[i].path / "run.out"),
         )
 
     def map(self, index: int) -> int:

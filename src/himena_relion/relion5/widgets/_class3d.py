@@ -38,7 +38,7 @@ class QClass3DViewer(QJobScrollArea):
         self._viewer = Q3DViewer()
         _arrow_visible_default = False
         self._viewer._canvas.arrow_visual.visible = _arrow_visible_default
-        self._arrow_visible = QToggleSwitch("Show angle distribution")
+        self._arrow_visible = QToggleSwitch("Angle distribution")
         self._arrow_visible.setChecked(_arrow_visible_default)
         self._arrow_visible.toggled.connect(self._on_arrow_visible_toggled)
         self._arrow_visible.setToolTip(

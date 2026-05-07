@@ -593,19 +593,27 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         parent_menu = menu.addMenu("Parent Jobs")
         child_menu = menu.addMenu("Child Jobs")
 
+        existing_ids = set()
         for parent in item._job.parents:
-            action = parent_menu.addAction(
-                _utils.normalize_job_id(parent.node.path),
-                lambda p=parent.node.path: self._center_on_item(p),
-            )
+            if (
+                job_id := _utils.normalize_job_id(parent.node.path)
+            ) not in existing_ids:
+                action = parent_menu.addAction(
+                    job_id,
+                    lambda p=parent.node.path: self._center_on_item(p),
+                )
+                existing_ids.add(job_id)
         if len(item._job.parents) == 0:
             parent_menu.setEnabled(False)
 
+        existing_ids = set()
         for child in item._job.children:
-            action = child_menu.addAction(
-                _utils.normalize_job_id(child.node.path),
-                lambda c=child.node.path: self._center_on_item(c),
-            )
+            if (job_id := _utils.normalize_job_id(child.node.path)) not in existing_ids:
+                action = child_menu.addAction(
+                    job_id,
+                    lambda c=child.node.path: self._center_on_item(c),
+                )
+                existing_ids.add(job_id)
         if len(item._job.children) == 0:
             child_menu.setEnabled(False)
 

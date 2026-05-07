@@ -38,7 +38,7 @@ class QInitialModelViewer(QJobScrollArea):
         header = QtW.QWidget()
         header_layout = QtW.QHBoxLayout(header)
         header_layout.setContentsMargins(1, 0, 1, 0)
-        header_layout.addWidget(QtW.QLabel("<b>Initial Model Map</b>"))
+        header_layout.addWidget(QtW.QLabel("<b>&#9679; Initial Model Map</b>"))
         header_layout.addWidget(self._symmetry_label)
         header.setMaximumWidth(400)
 
