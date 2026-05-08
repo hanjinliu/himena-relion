@@ -4,6 +4,7 @@ from collections import defaultdict
 from functools import cache
 import logging
 from pathlib import Path
+import time
 from typing import Any, Union
 
 from himena import MainWindow
@@ -17,6 +18,7 @@ from himena_relion._job_class import (
     parse_string,
     _Relion5BuiltinContinue,
 )
+from starfile_rs.schema import ValidationError
 from himena_relion._widgets._misc import QMoreActionButton
 from magicgui.widgets.bases import ValueWidget
 from magicgui.signature import MagicParameter
@@ -279,8 +281,13 @@ class ScheduleMode(Mode):
         if isinstance(proc, RelionJobExecution):
             # job.star may not be ready yet.
             job_star = proc.job_directory.path / "job.star"
-            if _utils.wait_for_file(job_star, num_retry=10, delay=0.05):
-                widget._ui.read_file(job_star, append_history=False)
+            for _ in range(3):
+                # ensure job.star is ready and valid
+                try:
+                    JobStarModel.validate_file(job_star)
+                except ValidationError:
+                    time.sleep(0.05)
+            widget._ui.read_file(job_star, append_history=False)
             widget._ui.show_notification(f"Job '{job_cls.job_title()}' started.")
         else:
             widget._ui.show_notification(f"Job '{job_cls.job_title()}' scheduled.")

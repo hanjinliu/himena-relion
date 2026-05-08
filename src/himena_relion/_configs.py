@@ -58,6 +58,14 @@ class RelionConfig:
             "Path to the ResMap executable. Use 'ResMap' if it's already in your PATH."
         ),
     )
+    chimera: str = config_field(
+        default="chimerax",
+        label="UCSF <code>ChimeraX</code> or <code>Chimera</code> Executable",
+        tooltip=(
+            "Path to the ChimeraX or Chimera executable. Use 'chimerax' or 'chimera' "
+            "if it's already in your PATH."
+        ),
+    )
     scratch_dir: str = config_field(
         default="",
         label="Scratch Directory",
@@ -120,6 +128,10 @@ def get_modelangelo_exe() -> str:
 
 def get_cryocare_dir() -> str:
     return _may_expand_user(_get_himena_relion_config().cryocare)
+
+
+def get_chimera_exe() -> str:
+    return _may_expand_user(_get_himena_relion_config().chimera)
 
 
 def get_qsubscript() -> str:

@@ -423,11 +423,11 @@ class Q3DViewer(Q3DViewerBase):
         self._control_widget: Q3DViewerControl | None = None  # delayed
         self._rendering_mgui = ToggleButtons(
             value="Surface",
-            choices=[("Srf", "Surface"), ("Max", "Maximum"), ("Avg", "Average")],
+            choices=[("Surf", "Surface"), ("Max", "Maximum"), ("Avg", "Average")],
             orientation="horizontal",
             tooltip=(
                 "3D rendering mode.\n"
-                " * 'Srf': Iso-surface rendering.\n"
+                " * 'Surf': Iso-surface rendering.\n"
                 " * 'Max': Maximum intensity projection.\n"
                 " * 'Avg': Average intensity projection."
             ),

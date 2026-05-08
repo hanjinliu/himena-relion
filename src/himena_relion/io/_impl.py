@@ -400,6 +400,36 @@ def new_job(ui: MainWindow, ignore_cancelled: bool = False):
         raise Cancelled
 
 
+def mark_as_finished(job_dir: JobDirectory):
+    """Mark this RELION job as finished."""
+    with open_with_lock(job_dir.relion_project_dir / "default_pipeline.star") as f:
+        update_default_pipeline(f, normalize_job_id(job_dir.path), status="Succeeded")
+        job_dir.path.joinpath(FileNames.EXIT_SUCCESS).touch(mode=775, exist_ok=True)
+        for fname in [
+            FileNames.EXIT_ABORTED,
+            FileNames.EXIT_FAILURE,
+            FileNames.ABORT_NOW,
+        ]:
+            path = job_dir.path / fname
+            if path.exists():
+                path.unlink()
+
+
+def mark_as_failed(job_dir: JobDirectory):
+    """Mark this RELION job as failed."""
+    with open_with_lock(job_dir.relion_project_dir / "default_pipeline.star") as f:
+        update_default_pipeline(f, normalize_job_id(job_dir.path), status="Failed")
+        job_dir.path.joinpath(FileNames.EXIT_FAILURE).touch(mode=775, exist_ok=True)
+        for fname in [
+            FileNames.EXIT_ABORTED,
+            FileNames.EXIT_SUCCESS,
+            FileNames.ABORT_NOW,
+        ]:
+            path = job_dir.path / fname
+            if path.exists():
+                path.unlink()
+
+
 def _trash_dir(relion_job_dir: Path) -> Path:
     return relion_job_dir / "Trash"
 

@@ -4,6 +4,7 @@ from himena_relion.relion5.extensions import (
     HelicalSymmetryExpansionJob,
     ShiftMapJob,
     InspectParticlesSPA,
+    ManualMaskCreation,
 )
 
 del widgets, _builtins, _connections, _continues
@@ -13,4 +14,5 @@ __all__ = [
     "HelicalSymmetryExpansionJob",
     "ShiftMapJob",
     "InspectParticlesSPA",
+    "ManualMaskCreation",
 ]
