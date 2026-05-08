@@ -79,12 +79,12 @@ class QMaskCreateViewer(QtW.QWidget):
             )
             self._mesh_layer.set_mode(self._mask_mode.value)
         elif job_dir.state() is RelionJobState.RUNNING:
-            mask_base_path = job_dir.path / "mask_base.mrc"
-            mask_path = job_dir.path / "mask.mrc"
+            mask_base_path = _make_relative_path(job_dir.path, "mask_base.mrc")
+            mask_path = _make_relative_path(job_dir.path, "mask.mrc")
             self._message.setText(
                 "Mask file is not ready. \n"
-                f"Please create and save a binary mask {job_dir.make_relative_path(mask_base_path)}\n"
-                f"or a blurred mask {job_dir.make_relative_path(mask_path)}."
+                f"Please create and save a binary mask {mask_base_path}\n"
+                f"or a blurred mask {mask_path}."
             )
         else:
             self._message.setText("Mask file not available.")
@@ -121,3 +121,7 @@ def mask_mrc(job_dir: _job_dir.JobDirectory) -> NDArray[np.floating] | None:
             return np.array(mrc.data)
     except Exception:
         return None
+
+
+def _make_relative_path(base: Path, filename: str):
+    return f"{base.parent.parent.name}/{base.parent.name}/{filename}"

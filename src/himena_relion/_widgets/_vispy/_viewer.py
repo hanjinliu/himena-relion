@@ -231,10 +231,13 @@ class _Vispy3DDensityBase(_Vispy3DBase):
         mode = mode.title()
         if mode == "Surface":
             self._volume_visual.method = "iso"
+            self._volume_visual.set_gl_state(preset="opaque")
         elif mode == "Maximum":
             self._volume_visual.method = "mip"
+            self._volume_visual.set_gl_state(preset="translucent")
         elif mode == "Average":
             self._volume_visual.method = "average"
+            self._volume_visual.set_gl_state(preset="translucent")
         else:  # pragma: no cover
             raise ValueError(f"Unknown rendering mode: {mode}")
 
