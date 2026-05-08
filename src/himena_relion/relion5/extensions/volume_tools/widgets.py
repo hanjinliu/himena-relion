@@ -48,6 +48,7 @@ class QMaskCreateViewer(QtW.QWidget):
         _layout.setSpacing(0)
         _layout.addWidget(self._message)
         _layout.addWidget(self._viewer)
+        _layout.addWidget(mask_slider)
         _layout.addWidget(self._resizer)
         self._mesh_layer = MaskMesh(parent=self._viewer._canvas._viewbox.scene)
         self._mask_level_slider.changed.connect(self._on_mask_level_changed)

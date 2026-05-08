@@ -339,6 +339,7 @@ def test_manually_create_mask(
     jobs_dir_spa,
 ):
     from himena_relion.relion5.extensions.volume_tools import ManualMaskCreation
+    from himena_relion.relion5.extensions.volume_tools.widgets import QMaskCreateViewer
 
     tmpdir = Path(tmpdir)
     template_path = tmpdir / "in_3dref.mrc"
@@ -351,7 +352,7 @@ def test_manually_create_mask(
     tester = ExternalJobTester(ManualMaskCreation)
     ManualMaskCreation._max_wait_time_sec = 5
     tester.prep_job_star(ext_dir, in_3dref=str(template_path))
-    widget = tester.provide_widget(ext_dir)
+    widget: QMaskCreateViewer = tester.provide_widget(ext_dir)
     qtbot.addWidget(widget)
 
     mask_path = ext_dir / "mask_base.mrc"
@@ -365,3 +366,8 @@ def test_manually_create_mask(
     thread.start()
 
     tester.test_run(ext_dir, widget=widget)
+
+    widget._mask_level_slider.value = 0.4
+    widget._step_size.setValue(2)
+    widget._mask_mode.value = "wireframe"
+    widget._mask_level_slider.value = 0.44
