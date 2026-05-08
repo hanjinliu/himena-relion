@@ -2,28 +2,22 @@ from __future__ import annotations
 from pathlib import Path
 import logging
 import numpy as np
-from qtpy import QtWidgets as QtW, QtCore
-from magicgui.widgets import FloatSlider
 import mrcfile
+from magicgui.widgets import FloatSlider
+from qtpy import QtWidgets as QtW, QtCore
 from numpy.typing import NDArray
-from himena_relion._widgets import (
-    QJobScrollArea,
-    Q3DViewer,
-    register_job,
-    spacer_widget,
-)
 from himena.qt.magicgui import ToggleButtons
+from himena_relion._widgets._vispy import MaskMesh
+from himena_relion._widgets import Q3DViewer
 from himena_relion import _job_dir
 from himena_relion._widgets._shared.resizer import QResizer
+from himena_relion.consts import RelionJobState
 
 _LOGGER = logging.getLogger(__name__)
 
 
-@register_job("relion.maskcreate")
-class QMaskCreateViewer(QJobScrollArea):
+class QMaskCreateViewer(QtW.QWidget):
     def __init__(self, job_dir: _job_dir.JobDirectory):
-        from himena_relion._widgets._vispy import MaskMesh
-
         super().__init__()
         self._viewer = Q3DViewer()
         self._resizer = QResizer(self._viewer)
@@ -46,15 +40,20 @@ class QMaskCreateViewer(QJobScrollArea):
         hlayout.addWidget(self._step_size)
         hlayout.addWidget(self._mask_level_slider.native)
         mask_slider.setMaximumWidth(400)
-        self._layout.setSpacing(0)
-        self._layout.addWidget(self._viewer)
-        self._layout.addWidget(mask_slider)
-        self._layout.addWidget(self._resizer)
-        self._layout.addWidget(spacer_widget())
+        self._message = QtW.QLabel("")
+        self._message.setTextInteractionFlags(
+            QtCore.Qt.TextInteractionFlag.TextSelectableByMouse
+        )
+        _layout = QtW.QVBoxLayout(self)
+        _layout.setSpacing(0)
+        _layout.addWidget(self._message)
+        _layout.addWidget(self._viewer)
+        _layout.addWidget(self._resizer)
         self._mesh_layer = MaskMesh(parent=self._viewer._canvas._viewbox.scene)
         self._mask_level_slider.changed.connect(self._on_mask_level_changed)
         self._step_size.valueChanged.connect(self._on_mask_step_changed)
         self._mask_mode.changed.connect(self._on_mask_mode_changed)
+        self.initialize(job_dir)
 
     def on_job_updated(self, job_dir: _job_dir.JobDirectory, path: str):
         """Handle changes to the job directory."""
@@ -71,13 +70,18 @@ class QMaskCreateViewer(QJobScrollArea):
 
         mask = mask_mrc(job_dir)
         if mask is not None:
-            step_size = min(max(int(mask.shape[0] / 128), 1), 8)
-            with QtCore.QSignalBlocker(self._step_size):
-                self._step_size.setValue(step_size)
-            self._mesh_layer.set_data(
-                mask, level=self._mask_level_slider.value, step=step_size
+            self._message.setText("mask.mrc")
+            self._mesh_layer.set_data(mask, level=0.4)
+        elif job_dir.state() is RelionJobState.RUNNING:
+            mask_base_path = job_dir.path / "mask_base.mrc"
+            mask_path = job_dir.path / "mask.mrc"
+            self._message.setText(
+                "Mask file is not ready. \n"
+                f"Please create and save a binary mask {mask_base_path}\n"
+                f"or a blurred mask {mask_path}."
             )
-            self._mesh_layer.set_mode(self._mask_mode.value)
+        else:
+            self._message.setText("Mask file not available.")
         self._viewer.auto_fit()
 
     def _on_mask_level_changed(self, value):
@@ -92,17 +96,19 @@ class QMaskCreateViewer(QJobScrollArea):
 
 def template_mrc(job_dir: _job_dir.JobDirectory) -> NDArray[np.floating] | None:
     """Return the template MRC file."""
-    return _read_mrc(job_dir.get_job_param("fn_in"))
+    template_path = job_dir.get_job_param("fn_in")
+    try:
+        with mrcfile.open(template_path, mode="r") as mrc:
+            return mrc.data
+    except Exception:
+        return None
 
 
 def mask_mrc(job_dir: _job_dir.JobDirectory) -> NDArray[np.floating] | None:
     """Return the mask MRC file."""
-    return _read_mrc(job_dir.path / "mask.mrc")
-
-
-def _read_mrc(path: Path) -> NDArray[np.floating] | None:
+    mask_path = job_dir.path / "mask.mrc"
     try:
-        with mrcfile.open(path, mode="r") as mrc:
+        with mrcfile.open(mask_path, mode="r") as mrc:
             return np.array(mrc.data)
     except Exception:
         return None

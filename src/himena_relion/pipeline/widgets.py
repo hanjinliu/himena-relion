@@ -494,9 +494,8 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         menu = QtW.QMenu(self)
         menu.setToolTipsVisible(True)
         submenu_file = menu.addMenu("File")
-        submenu_cleanup = menu.addMenu("Cleanup")
+        submenu_job = menu.addMenu("Job")
         submenu_tag = menu.addMenu("Tag")
-        # submenu_mark = menu.addMenu("Mark As")
         submenu_file.addAction(
             "Open 'job.star' As Text",
             lambda: _impl.open_relion_job_star(ui, get_job()),
@@ -518,22 +517,23 @@ class QRelionPipelineFlowChart(QtW.QWidget):
             "Copy Directory Relative Path",
             lambda: ui.set_clipboard(text=str(item.id())),
         )
-        action = submenu_cleanup.addAction(
+        action = submenu_job.addAction(
             "Gentle Clean", lambda: _impl.gentle_clean_relion_job(ui, get_job())
         )
-        action.setEnabled(status not in [NodeStatus.RUNNING, NodeStatus.SCHEDULED])
-        action = submenu_cleanup.addAction(
+        action.setEnabled(status is NodeStatus.SUCCEEDED)
+        action = submenu_job.addAction(
             "Harsh Clean", lambda: _impl.harsh_clean_relion_job(ui, get_job())
         )
-        action.setEnabled(status not in [NodeStatus.RUNNING, NodeStatus.SCHEDULED])
-        # action = submenu_mark.addAction(
-        #     "Mark As Finished", lambda: _impl.mark_as_finished(get_job())
-        # )
-        # action.setEnabled(status is not NodeStatus.SUCCEEDED)
-        # action = submenu_mark.addAction(
-        #     "Mark As Failed", lambda: _impl.mark_as_failed(get_job())
-        # )
-        # action.setEnabled(status is not NodeStatus.FAILED)
+        submenu_job.addSeparator()
+        action.setEnabled(status is NodeStatus.SUCCEEDED)
+        action = submenu_job.addAction(
+            "Mark As Finished", lambda: _impl.mark_as_finished(get_job())
+        )
+        action.setEnabled(status is not NodeStatus.SUCCEEDED)
+        action = submenu_job.addAction(
+            "Mark As Failed", lambda: _impl.mark_as_failed(get_job())
+        )
+        action.setEnabled(status is not NodeStatus.FAILED)
         self._prep_tag_menu(submenu_tag, item)
 
         menu.addSeparator()

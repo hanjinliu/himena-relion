@@ -61,6 +61,30 @@ def harsh_clean_relion_job(ui: MainWindow, model: WidgetDataModel):
 
 
 @register_function(
+    menus=[MenuId.RELION_UTILS, "/model_menu/cleanup"],
+    types=[Type.RELION_JOB],
+    title="Mark As Finished",
+    command_id="himena-relion:mark-as-finished",
+)
+def mark_as_finished_relion_job(model: WidgetDataModel):
+    """Mark this RELION job as finished."""
+    job_dir = assert_job(model)
+    return _impl.mark_as_finished(job_dir)
+
+
+@register_function(
+    menus=[MenuId.RELION_UTILS, "/model_menu/cleanup"],
+    types=[Type.RELION_JOB],
+    title="Mark As Not Finished",
+    command_id="himena-relion:mark-as-failed",
+)
+def mark_as_failed_relion_job(model: WidgetDataModel):
+    """Mark this RELION job as failed."""
+    job_dir = assert_job(model)
+    return _impl.mark_as_failed(job_dir)
+
+
+@register_function(
     menus=[MenuId.RELION_UTILS],
     types=[Type.RELION_JOB],
     title="Abort",
@@ -120,7 +144,7 @@ def set_job_alias(ui: MainWindow, model: WidgetDataModel):
 @register_function(
     menus=[MenuId.RELION_UTILS],
     types=[Type.RELION_JOB],
-    title="Trash RELION job",
+    title="Trash This job",
     command_id="himena-relion:trash-job",
     group="07-job-operation",
 )

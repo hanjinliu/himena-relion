@@ -1,6 +1,8 @@
+import time
 from typing import Callable
 from pathlib import Path
 
+import threading
 import mrcfile
 import numpy as np
 import polars as pl
@@ -329,4 +331,36 @@ def test_take_zerotilts(
     tester.prep_job_star(ext_dir, in_mics="some_dir/tomograms.star", in_parts="some_dir/particles.star")
     widget = tester.provide_widget(ext_dir)
     qtbot.addWidget(widget)
+    tester.test_run(ext_dir, widget=widget)
+
+def test_manually_create_mask(
+    qtbot,
+    tmpdir,
+    jobs_dir_spa,
+):
+    from himena_relion.relion5.extensions.volume_tools import ManualMaskCreation
+
+    tmpdir = Path(tmpdir)
+    template_path = tmpdir / "in_3dref.mrc"
+    with mrcfile.new(template_path) as mrc:
+        mrc.set_data(np.random.normal(size=(8, 8, 8)).astype(np.float32))
+        mrc.voxel_size = (0.78, 0.78, 0.78)
+    ext_dir = tmpdir / "External/job010"
+    ext_dir.mkdir(parents=True, exist_ok=True)
+
+    tester = ExternalJobTester(ManualMaskCreation)
+    tester.prep_job_star(ext_dir, in_3dref=str(template_path))
+    widget = tester.provide_widget(ext_dir)
+    qtbot.addWidget(widget)
+
+    mask_path = ext_dir / "mask_base.mrc"
+    def create_mask():
+        time.sleep(0.5)
+        with mrcfile.new(mask_path) as mrc:
+            mrc.set_data(np.random.normal(size=(8, 8, 8)).astype(np.float32))
+            mrc.voxel_size = (0.78, 0.78, 0.78)
+
+    thread = threading.Thread(target=create_mask, daemon=True)
+    thread.start()
+
     tester.test_run(ext_dir, widget=widget)
