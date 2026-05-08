@@ -349,6 +349,7 @@ def test_manually_create_mask(
     ext_dir.mkdir(parents=True, exist_ok=True)
 
     tester = ExternalJobTester(ManualMaskCreation)
+    ManualMaskCreation._max_wait_time_sec = 5
     tester.prep_job_star(ext_dir, in_3dref=str(template_path))
     widget = tester.provide_widget(ext_dir)
     qtbot.addWidget(widget)
