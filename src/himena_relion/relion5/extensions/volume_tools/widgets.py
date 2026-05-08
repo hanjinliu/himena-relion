@@ -8,7 +8,7 @@ from qtpy import QtWidgets as QtW, QtCore
 from numpy.typing import NDArray
 from himena.qt.magicgui import ToggleButtons
 from himena_relion._widgets._vispy import MaskMesh
-from himena_relion._widgets import Q3DViewer
+from himena_relion._widgets import Q3DViewer, spacer_widget
 from himena_relion import _job_dir
 from himena_relion._widgets._shared.resizer import QResizer
 from himena_relion.consts import RelionJobState
@@ -50,6 +50,7 @@ class QMaskCreateViewer(QtW.QWidget):
         _layout.addWidget(self._viewer)
         _layout.addWidget(mask_slider)
         _layout.addWidget(self._resizer)
+        _layout.addWidget(spacer_widget())
         self._mesh_layer = MaskMesh(parent=self._viewer._canvas._viewbox.scene)
         self._mask_level_slider.changed.connect(self._on_mask_level_changed)
         self._step_size.valueChanged.connect(self._on_mask_step_changed)
@@ -70,16 +71,20 @@ class QMaskCreateViewer(QtW.QWidget):
             self._viewer.auto_threshold(update_now=False)
 
         mask = mask_mrc(job_dir)
+        step_size = self._step_size.value()
         if mask is not None:
             self._message.setText("mask.mrc")
-            self._mesh_layer.set_data(mask, level=0.4)
+            self._mesh_layer.set_data(
+                mask, level=self._mask_level_slider.value, step=step_size
+            )
+            self._mesh_layer.set_mode(self._mask_mode.value)
         elif job_dir.state() is RelionJobState.RUNNING:
             mask_base_path = job_dir.path / "mask_base.mrc"
             mask_path = job_dir.path / "mask.mrc"
             self._message.setText(
                 "Mask file is not ready. \n"
-                f"Please create and save a binary mask {mask_base_path}\n"
-                f"or a blurred mask {mask_path}."
+                f"Please create and save a binary mask {job_dir.make_relative_path(mask_base_path)}\n"
+                f"or a blurred mask {job_dir.make_relative_path(mask_path)}."
             )
         else:
             self._message.setText("Mask file not available.")
@@ -87,17 +92,20 @@ class QMaskCreateViewer(QtW.QWidget):
 
     def _on_mask_level_changed(self, value):
         self._mesh_layer.level = value
+        self._viewer._canvas.update_canvas()
 
     def _on_mask_step_changed(self, value):
         self._mesh_layer.step_size = value
+        self._viewer._canvas.update_canvas()
 
     def _on_mask_mode_changed(self, mode):
         self._mesh_layer.set_mode(mode)
+        self._viewer._canvas.update_canvas()
 
 
 def template_mrc(job_dir: _job_dir.JobDirectory) -> NDArray[np.floating] | None:
     """Return the template MRC file."""
-    template_path = job_dir.get_job_param("fn_in")
+    template_path = job_dir.get_job_param("in_3dref")
     try:
         with mrcfile.open(template_path, mode="r") as mrc:
             return mrc.data

@@ -82,12 +82,15 @@ class QMaskCreateViewer(QJobScrollArea):
 
     def _on_mask_level_changed(self, value):
         self._mesh_layer.level = value
+        self._viewer._canvas.update_canvas()
 
     def _on_mask_step_changed(self, value):
         self._mesh_layer.step_size = value
+        self._viewer._canvas.update_canvas()
 
     def _on_mask_mode_changed(self, mode):
         self._mesh_layer.set_mode(mode)
+        self._viewer._canvas.update_canvas()
 
 
 def template_mrc(job_dir: _job_dir.JobDirectory) -> NDArray[np.floating] | None:
