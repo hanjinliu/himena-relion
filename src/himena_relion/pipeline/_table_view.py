@@ -33,7 +33,13 @@ class QRelionPipelineTableView(QtW.QWidget):
         layout.addWidget(self._table_view)
 
         # prepare header
-        self._sort_by_widget_mgui = ToggleButtons(["Job ID", "Time"])
+        self._sort_by_widget_mgui = ToggleButtons(
+            choices=["Job ID", "Time"],
+            value="Job ID",
+            tooltip="Specify how to sort the jobs in the table. 'Job ID' sorts by the "
+            "numbering (e.g. job001, job002, ...), while 'Time' sorts by the last "
+            "modified time by checking the mtime of 'run.out' file",
+        )
         self._sort_by_widget_mgui.changed.connect(self._on_sort_by_changed)
         self._sort_ascending_btn = QColoredToolButton(
             self._switch_sort_order,

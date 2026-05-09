@@ -70,6 +70,11 @@ If your RELION project has jobs, the job flowchart will automatically created.
 In this flowchart, you can double-click nodes to open the job window, ++ctrl+f++ to open
 the search palette, and many other actions in the right-click context menu.
 
+:sparkles: *New in v0.0.4*: A table view is added to list all the jobs in a simple
+format.
+
+![](images/01_tableview.png){ width=300px loading=lazy }
+
 ## Job Window
 
 A job window displays the content of the job directory. For most of the cases, the first

@@ -1,6 +1,7 @@
 from pathlib import Path
 from himena import MainWindow
 
+from qtpy import QtCore
 from himena_relion.pipeline.widgets import QRelionPipelineFlowChart, _list_jobs_for_palette
 from ._utils import DEFAULT_PIPELINES_DIR
 
@@ -46,5 +47,14 @@ def test_reading_default_pipeline_during_filtering(himena_ui: MainWindow, tmpdir
     pipeline_widget._center_on_item(Path("MotionCorr/job002/"))
     pipeline_widget._switch_mode()
     pipeline_widget._center_on_item(Path("MotionCorr/job002/"))
-    pipeline_widget._table_view._sort_by_widget_mgui.value = "Time"
-    pipeline_widget._table_view._sort_ascending_btn.click()
+
+    table_view = pipeline_widget._table_view
+    table_view._sort_by_widget_mgui.value = "Time"
+    table_view._sort_ascending_btn.click()
+
+    index00 = table_view._table_view._model.index(0, 0)
+    index02 = table_view._table_view._model.index(0, 2)
+    table_view._table_view._model.data(index00, QtCore.Qt.ItemDataRole.DisplayRole)
+    table_view._table_view._model.data(index00, QtCore.Qt.ItemDataRole.ToolTipRole)
+    table_view._table_view._model.data(index00, QtCore.Qt.ItemDataRole.DecorationRole)
+    table_view._table_view._model.data(index02, QtCore.Qt.ItemDataRole.DecorationRole)
