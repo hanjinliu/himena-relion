@@ -1,8 +1,10 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from pathlib import Path
+from typing import TYPE_CHECKING
 import warnings
 from datetime import datetime
+from cmap import Color
 from qtpy import QtGui, QtCore, QtWidgets as QtW
 
 from himena.qt import QColoredToolButton
@@ -31,7 +33,13 @@ class QRelionPipelineTableView(QtW.QWidget):
         layout.addWidget(self._table_view)
 
         # prepare header
-        self._sort_by_widget_mgui = ToggleButtons(["Job ID", "Time"])
+        self._sort_by_widget_mgui = ToggleButtons(
+            choices=["Job ID", "Time"],
+            value="Job ID",
+            tooltip="Specify how to sort the jobs in the table. 'Job ID' sorts by the "
+            "numbering (e.g. job001, job002, ...), while 'Time' sorts by the last "
+            "modified time by checking the mtime of 'run.out' file",
+        )
         self._sort_by_widget_mgui.changed.connect(self._on_sort_by_changed)
         self._sort_ascending_btn = QColoredToolButton(
             self._switch_sort_order,
@@ -65,7 +73,8 @@ class QRelionPipelineTableView(QtW.QWidget):
         )
         self._table_view.setModel(self._table_view._model)
         self._table_view.setColumnWidth(0, 60)
-        self._table_view.setColumnWidth(1, 180)
+        self._table_view.setColumnWidth(1, 200)
+        self._table_view.setColumnWidth(2, 65)
 
     def item_from_index(self, index: QtCore.QModelIndex) -> RelionJobNodeItem | None:
         if not index.isValid():
@@ -174,7 +183,7 @@ class _QRelionPipelineTableView(QtW.QTableView):
 class QRelionPipelineTableViewModel(QtCore.QAbstractTableModel):
     def __init__(
         self,
-        parent: QtW.QWidget,
+        parent: QRelionPipelineTableView,
         pipeline: RelionDefaultPipeline,
         gui_state: HimenaRelionGuiState,
     ):
@@ -220,15 +229,6 @@ class QRelionPipelineTableViewModel(QtCore.QAbstractTableModel):
                 if job_info.alias:
                     return f"{job_info.alias} ({title})"
                 return title
-            elif column == 2:
-                if job_state := self._gui_state.jobs.get(
-                    normalize_job_id(job_info.path)
-                ):
-                    tags = self._gui_state.tag_choices
-                    return ", ".join(
-                        f"#{tags[tag_index].name}" for tag_index in job_state.tags
-                    )
-                return ""
         elif role == QtCore.Qt.ItemDataRole.ToolTipRole:
             try:
                 stat = job_info.path.resolve().stat()
@@ -240,17 +240,43 @@ class QRelionPipelineTableViewModel(QtCore.QAbstractTableModel):
             else:
                 first_line = f"{job}: {title}"
             dt = datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M:%S")
+            # also add tag info if exists
+            if job_state := self._gui_state.jobs.get(normalize_job_id(job_info.path)):
+                tags = self._gui_state.tag_choices
+                tag_str = [f"#{tags[tag_index].name}" for tag_index in job_state.tags]
+            else:
+                tag_str = []
+            if tag_str:
+                tags_tooltip = ", ".join(tag_str)
+            else:
+                tags_tooltip = "No tags"
+
             return (
                 f"{first_line}\n"
                 f"Status: {job_info.status.value.capitalize()}\n"
-                f"Last modified: {dt}"
+                f"Last modified: {dt}\n"
+                f"Tags: {tags_tooltip}"
             )
-        elif role == QtCore.Qt.ItemDataRole.DecorationRole and column == 0:
-            relion_job_node_item = self.relion_job_node_item(index.row())
-            qcolor = QtGui.QColor.fromRgbF(*relion_job_node_item.color().rgba)
-            pixmap = QtGui.QPixmap(16, 16)
-            pixmap.fill(qcolor)
-            return QtGui.QIcon(pixmap)
+        elif role == QtCore.Qt.ItemDataRole.DecorationRole:
+            if column == 0:  # show color for the job state
+                relion_job_node_item = self.relion_job_node_item(index.row())
+                qcolor = QtGui.QColor.fromRgbF(*relion_job_node_item.color().rgba)
+                pixmap = QtGui.QPixmap(16, 16)
+                pixmap.fill(qcolor)
+                return QtGui.QIcon(pixmap)
+            elif column == 2:  # tags
+                if job_state := self._gui_state.jobs.get(
+                    normalize_job_id(job_info.path)
+                ):
+                    tags = self._gui_state.tag_choices
+                    qcolors = [
+                        QtGui.QColor.fromRgbF(*Color(tags[tag_index].color).rgba)
+                        for tag_index in job_state.tags
+                    ]
+                    if qcolors:
+                        return _draw_tag_pixmaps(
+                            qcolors, self.parent().devicePixelRatio()
+                        )
         return None
 
     def headerData(
@@ -274,6 +300,29 @@ class QRelionPipelineTableViewModel(QtCore.QAbstractTableModel):
             self.index(self.rowCount() - 1, self.columnCount() - 1),
             [QtCore.Qt.ItemDataRole.DisplayRole],
         )
+
+    if TYPE_CHECKING:
+
+        def parent(self) -> QRelionPipelineTableView: ...
+
+
+class QTagItemDelegate(QtW.QStyledItemDelegate):
+    def paint(
+        self,
+        painter: QtGui.QPainter,
+        option: QtW.QStyleOptionViewItem,
+        index: QtCore.QModelIndex,
+    ):
+        super().paint(painter, option, index)
+        if index.column() == 2:  # Tags column
+            if index.data(QtCore.Qt.ItemDataRole.DecorationRole) is not None:
+                icon = index.data(QtCore.Qt.ItemDataRole.DecorationRole)
+                icon.paint(
+                    painter,
+                    option.rect,
+                    QtCore.Qt.AlignmentFlag.AlignLeft
+                    | QtCore.Qt.AlignmentFlag.AlignVCenter,
+                )
 
 
 class TableProxy(ABC):
@@ -317,3 +366,36 @@ def _get_mtime(path: Path) -> float:
         return path.stat().st_mtime
     except Exception:
         return 0
+
+
+def _draw_tag_pixmaps(
+    qcolors: list[QtGui.QColor],
+    device_pixel_ratio: float = 1,
+    *,
+    tag_size: int = 20,
+) -> QtGui.QPixmap:
+    pixmap = QtGui.QPixmap((tag_size + 4) * len(qcolors), tag_size + 4)
+    pixmap.fill(QtCore.Qt.GlobalColor.transparent)
+    painter = QtGui.QPainter(pixmap)
+    polygon = QtGui.QPolygonF(
+        [
+            QtCore.QPointF(2, 2 + tag_size),
+            QtCore.QPointF(2, 2 + tag_size / 2),
+            QtCore.QPointF(2 + tag_size / 2, 2),
+            QtCore.QPointF(2 + tag_size, 2 + tag_size / 2),
+            QtCore.QPointF(2 + tag_size / 2, 2 + tag_size),
+        ]
+    )
+
+    painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
+
+    for ith, qcolor in enumerate(qcolors):
+        transform = QtGui.QTransform().translate(tag_size * ith, 0)
+        transformed_polygon = transform.map(polygon)
+        painter.setPen(QtGui.QPen(qcolor, 2))
+        qcolor.setAlphaF(0.6)
+        painter.setBrush(qcolor)
+        painter.drawPolygon(transformed_polygon)
+    painter.end()
+    pixmap.setDevicePixelRatio(device_pixel_ratio)
+    return pixmap

@@ -19,6 +19,7 @@ class QJobContentInfo(QtW.QLabel):
             QtCore.Qt.TextInteractionFlag.TextSelectableByMouse
         )
         self._worker: GeneratorWorker | None = None
+        self.clear_content_info()
 
     @overload
     def set_content_info(self, num_files: tuple[int, int]): ...
