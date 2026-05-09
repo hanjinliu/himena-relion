@@ -68,6 +68,8 @@ class QMaskCreateViewer(QJobScrollArea):
         if in_map is not None:
             self._viewer.set_image(in_map, update_now=False)
             self._viewer.auto_threshold(update_now=False)
+        else:
+            self._viewer.set_image(None, update_now=False)
 
         mask = mask_mrc(job_dir)
         if mask is not None:

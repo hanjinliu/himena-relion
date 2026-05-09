@@ -6,11 +6,14 @@ import mrcfile
 import numpy as np
 
 from himena.qt.magicgui import ToggleButtons
+from himena_relion._job_class import connect_jobs
 from himena_relion.consts import MenuId
 from himena_relion.external import RelionExternalJob
 from himena_relion._configs import get_chimera_exe
 from himena_relion._annotated.io import MAP_TYPE
 from himena_relion.relion5.extensions.volume_tools.widgets import QMaskCreateViewer
+from himena_relion.relion5._connections import mask_create_search_halfmap
+from himena_relion.relion5 import _builtins as _spa
 
 
 class ManualMaskCreation(RelionExternalJob):
@@ -42,6 +45,12 @@ class ManualMaskCreation(RelionExternalJob):
                 "label": "Application to use",
                 "choices": ["Chimera/ChimeraX", "None"],
                 "widget_type": ToggleButtons,
+                "tooltip": (
+                    "Application to use for manual mask creation. If 'None' is "
+                    "selected, user has to create a 'mask_base.mrc' file under the job "
+                    "directory by themselves using external applications, scp, etc."
+                ),
+                "group": "I/O",
             },
         ] = "None",
         dilate_pixels: Annotated[
@@ -59,15 +68,23 @@ class ManualMaskCreation(RelionExternalJob):
             float,
             {
                 "label": "Soft edge scale (A)",
+                "tooltip": (
+                    "Scale of the soft edge in Angstrom. Mask density will be 0.5 at "
+                    "this distance from the mask boundary."
+                ),
                 "group": "Blurring",
             },
-        ] = 20,  # A
+        ] = 8,  # A
         blur_method: Annotated[
             str,
             {
                 "label": "Soft edge method",
                 "choices": ["Cosine", "Gaussian"],
                 "widget_type": ToggleButtons,
+                "tooltip": (
+                    "Method to apply the soft edge. 'Cosine' will apply a cosine-"
+                    "shaped edge. 'Gaussian' will apply a Gaussian-shaped edge."
+                ),
                 "group": "Blurring",
             },
         ] = "Cosine",
@@ -82,14 +99,21 @@ class ManualMaskCreation(RelionExternalJob):
     ):
         from scipy import ndimage as ndi
 
+        out_job_dir = self.output_job_dir
+        mask_path = out_job_dir.path / "mask.mrc"
+        mask_base_path = out_job_dir.path / "mask_base.mrc"
         if blur_method == "Cosine":
             fn_blur = _blur_cos
         elif blur_method == "Gaussian":
             fn_blur = _blur_gaussian
         else:
             raise ValueError(f"Unknown blur method: {blur_method}")
+
+        # Delete existing mask files
+        for path in [mask_path, mask_base_path]:
+            path.unlink(missing_ok=True)
+
         # volume onesmask #1.1 on_grid #1
-        out_job_dir = self.output_job_dir
         input_path = out_job_dir.resolve_path(in_3dref).as_posix()
         if use_app == "Chimera/ChimeraX":
             chimerax = get_chimera_exe()
@@ -98,8 +122,6 @@ class ManualMaskCreation(RelionExternalJob):
                 cwd=out_job_dir.path,
                 start_new_session=True,
             )
-        mask_path = out_job_dir.path / "mask.mrc"
-        mask_base_path = out_job_dir.path / "mask_base.mrc"
 
         time_0 = time.time()
         self.console.log("Waiting for user to create mask.")
@@ -147,4 +169,23 @@ def _blur_cos(dist_scaled):
 
 
 def _blur_gaussian(dist_scaled):
-    return np.exp(-(dist_scaled**2) / 2, dtype=np.float32)
+    sigma = 1.0 / np.sqrt(2 * np.log(2))
+    return np.exp(-(dist_scaled**2) / (2 * sigma**2), dtype=np.float32).astype(
+        np.float32
+    )
+
+
+connect_jobs(
+    _spa.Refine3DJob,
+    ManualMaskCreation,
+    node_mapping={"run_class001.mrc": "in_3dref"},
+)
+
+connect_jobs(
+    ManualMaskCreation,
+    _spa.PostProcessJob,
+    node_mapping={
+        mask_create_search_halfmap: "fn_in",
+        "mask.mrc": "fn_mask",
+    },
+)
