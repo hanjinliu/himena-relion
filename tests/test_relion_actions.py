@@ -21,3 +21,9 @@ def test_updating_job(himena_ui: MainWindow, tmpdir):
     with pytest.raises(ValueError):
         with user_string_input_response(himena_ui, "a*+b"):
             _impl.set_job_alias(himena_ui, job_dir)
+
+def test_mark_as(tmpdir):
+    rln_dir = prep_relion_project(tmpdir)
+    job_dir = _job_dir.JobDirectory.from_job_star(rln_dir / "MotionCorr/job002/job.star")
+    _impl.mark_as_failed(job_dir)
+    _impl.mark_as_finished(job_dir)
