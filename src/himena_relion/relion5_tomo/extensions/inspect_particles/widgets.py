@@ -15,6 +15,8 @@ from himena_relion._widgets import (
     QMicrographListWidget,
 )
 from himena_relion import _job_dir
+from himena_relion._widgets._misc import spacer_widget
+from himena_relion._widgets._shared.resizer import QResizer
 from himena_relion.schemas import OptimisationSetModel, ParticleMetaModel
 
 _LOGGER = logging.getLogger(__name__)
@@ -34,11 +36,14 @@ class QInspectViewer(QtW.QWidget):
         self._filter_widget._bin_factor.setText("1")
         self._tomo_choice = QMicrographListWidget(["Tomogram"])
         self._tomo_choice.current_changed.connect(self._on_tomo_changed)
+        self._resizer = QResizer(self._viewer)
         layout.addWidget(QtW.QLabel("<b>Picked tomogram Z slice</b>"))
         layout.addWidget(self._tomo_choice)
         layout.addWidget(self._filter_widget)
         layout.addWidget(self._viewer)
+        layout.addWidget(self._resizer)
         # self._filter_widget.value_changed.connect(self._viewer.redraw)
+        layout.addWidget(spacer_widget())
         self.initialize(job_dir)
 
     def on_job_updated(self, job_dir: _job_dir.ExternalJobDirectory, path: str):

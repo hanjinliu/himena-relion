@@ -13,6 +13,7 @@ from himena_relion._widgets import (
     QMicrographListWidget,
 )
 from himena_relion._widgets._misc import spacer_widget
+from himena_relion._widgets._shared.resizer import QResizer
 from himena_relion.schemas import CoordsModel, MicrographsStarModel
 
 
@@ -23,6 +24,7 @@ class QMicrographParticleOverlay(QtW.QWidget):
 
         self._viewer = Q2DViewer(zlabel="")
         self._viewer.setMinimumHeight(480)
+        self._resizer = QResizer(self._viewer)
         self._mic_list = QMicrographListWidget(["Micrograph", "Micrograph Full Path"])
         self._mic_list.setFixedHeight(130)
         self._mic_list.setColumnHidden(2, True)
@@ -41,6 +43,7 @@ class QMicrographParticleOverlay(QtW.QWidget):
         header.addWidget(self._show_points_switch.native)
         layout.addLayout(header)
         layout.addWidget(self._viewer)
+        layout.addWidget(self._resizer)
         layout.addWidget(self._mic_list)
         layout.addWidget(spacer_widget())
         self.initialize(job_dir)
