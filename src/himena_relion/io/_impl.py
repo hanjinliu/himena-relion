@@ -403,8 +403,8 @@ def new_job(ui: MainWindow, ignore_cancelled: bool = False):
 def mark_as_finished(job_dir: JobDirectory):
     """Mark this RELION job as finished."""
     with open_with_lock(job_dir.relion_project_dir / "default_pipeline.star") as f:
-        update_default_pipeline(f, normalize_job_id(job_dir.path), status="Succeeded")
-        job_dir.path.joinpath(FileNames.EXIT_SUCCESS).touch(mode=775, exist_ok=True)
+        update_default_pipeline(f, normalize_job_id(job_dir.path), state="Succeeded")
+        job_dir.path.joinpath(FileNames.EXIT_SUCCESS).touch(exist_ok=True)
         for fname in [
             FileNames.EXIT_ABORTED,
             FileNames.EXIT_FAILURE,
@@ -418,8 +418,8 @@ def mark_as_finished(job_dir: JobDirectory):
 def mark_as_failed(job_dir: JobDirectory):
     """Mark this RELION job as failed."""
     with open_with_lock(job_dir.relion_project_dir / "default_pipeline.star") as f:
-        update_default_pipeline(f, normalize_job_id(job_dir.path), status="Failed")
-        job_dir.path.joinpath(FileNames.EXIT_FAILURE).touch(mode=775, exist_ok=True)
+        update_default_pipeline(f, normalize_job_id(job_dir.path), state="Failed")
+        job_dir.path.joinpath(FileNames.EXIT_FAILURE).touch(exist_ok=True)
         for fname in [
             FileNames.EXIT_ABORTED,
             FileNames.EXIT_SUCCESS,
