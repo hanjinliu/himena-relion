@@ -12,6 +12,7 @@ from himena_relion._widgets import (
     Q2DFilterWidget,
     QMicrographListWidget,
 )
+from himena_relion._widgets._misc import spacer_widget
 from himena_relion.schemas import CoordsModel, MicrographsStarModel
 
 
@@ -41,6 +42,7 @@ class QMicrographParticleOverlay(QtW.QWidget):
         layout.addLayout(header)
         layout.addWidget(self._viewer)
         layout.addWidget(self._mic_list)
+        layout.addWidget(spacer_widget())
         self.initialize(job_dir)
 
     def initialize(self, job_dir: _job_dir.JobDirectory):

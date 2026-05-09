@@ -372,8 +372,9 @@ def _draw_tag_pixmaps(
     qcolors: list[QtGui.QColor],
     device_pixel_ratio: float = 1,
     *,
-    tag_size: int = 20,
+    tag_size: int = 12,
 ) -> QtGui.QPixmap:
+    tag_size = int(tag_size * device_pixel_ratio)
     pixmap = QtGui.QPixmap((tag_size + 4) * len(qcolors), tag_size + 4)
     pixmap.fill(QtCore.Qt.GlobalColor.transparent)
     painter = QtGui.QPainter(pixmap)
