@@ -93,7 +93,7 @@ class QClass3DViewer(QJobScrollArea):
         if nclasses == 0:
             return
         niters = job_dir.num_iters()
-        self._iter_choice.setMaximum(max(niters - 1, 0))
+        self._iter_choice.setMaximum(max(niters, 0))
         self._iter_choice.setValue(self._iter_choice.maximum())
         self._on_iter_changed(self._iter_choice.value())
         sym_name = self._job_dir.get_job_param("sym_name")

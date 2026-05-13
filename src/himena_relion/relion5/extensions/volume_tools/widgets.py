@@ -126,4 +126,5 @@ def mask_mrc(job_dir: _job_dir.JobDirectory) -> NDArray[np.floating] | None:
 
 
 def _make_relative_path(base: Path, filename: str):
-    return f"{base.parent.parent.name}/{base.parent.name}/{filename}"
+    """`base` is the job directory path."""
+    return f"{base.parent.name}/{base.name}/{filename}"
