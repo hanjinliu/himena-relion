@@ -1,4 +1,5 @@
 from __future__ import annotations
+from contextlib import suppress
 from pathlib import Path
 import logging
 import numpy as np
@@ -108,21 +109,17 @@ class QMaskCreateViewer(QtW.QWidget):
 def template_mrc(job_dir: _job_dir.JobDirectory) -> NDArray[np.floating] | None:
     """Return the template MRC file."""
     template_path = job_dir.get_job_param("in_3dref")
-    try:
+    with suppress(Exception):
         with mrcfile.open(template_path, mode="r") as mrc:
             return mrc.data
-    except Exception:
-        return None
 
 
 def mask_mrc(job_dir: _job_dir.JobDirectory) -> NDArray[np.floating] | None:
     """Return the mask MRC file."""
     mask_path = job_dir.path / "mask.mrc"
-    try:
+    with suppress(Exception):
         with mrcfile.open(mask_path, mode="r") as mrc:
             return np.array(mrc.data)
-    except Exception:
-        return None
 
 
 def _make_relative_path(base: Path, filename: str):

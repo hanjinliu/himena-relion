@@ -1,4 +1,5 @@
 from __future__ import annotations
+from contextlib import suppress
 from pathlib import Path
 import logging
 import numpy as np
@@ -106,8 +107,6 @@ def mask_mrc(job_dir: _job_dir.JobDirectory) -> NDArray[np.floating] | None:
 
 
 def _read_mrc(path: Path) -> NDArray[np.floating] | None:
-    try:
+    with suppress(Exception):
         with mrcfile.open(path, mode="r") as mrc:
             return np.array(mrc.data)
-    except Exception:
-        return None
