@@ -672,7 +672,7 @@ class Refine3DJobDirectory(JobDirectory):
         num_it = -1
         for path in self.path.glob("run_it*_data.star"):
             num_it = max(num_it, int(path.stem[6:-5]))
-        return num_it + 1
+        return num_it
 
 
 class Class3DResults(_3DResultsBase):
@@ -726,7 +726,7 @@ class Class3DJobDirectory(JobDirectory):
         num_it = -1
         for path in self.path.glob("run_it*_model.star"):
             num_it = max(num_it, int(path.stem[6:-6]))
-        return num_it + 1
+        return num_it
 
 
 class SelectInteractiveJobDirectory(JobDirectory):

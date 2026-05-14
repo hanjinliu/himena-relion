@@ -97,7 +97,7 @@ class QRefine3DViewer(QJobScrollArea):
     def initialize(self, job_dir: _job_dir.JobDirectory):
         """Initialize the viewer with the job directory."""
         niters = self._job_dir.num_iters()
-        self._iter_choice.setMaximum(max(niters - 1, 0))
+        self._iter_choice.setMaximum(max(niters, 0))
         self._iter_choice.setValue(self._iter_choice.maximum())
         has_final_map = job_dir.path.joinpath("run_class001.mrc").exists()
         self._show_run_class001_btn.setEnabled(has_final_map)
@@ -155,18 +155,31 @@ class QRefine3DViewer(QJobScrollArea):
             model_star = self._job_dir.path / "run_model.star"
         else:
             model_star = self._job_dir.path / f"run{res.it_str}_half1_model.star"
+
+        _fsc_plotted = False
         if wait_for_file(model_star):
             _LOGGER.debug("%s found, read FSC data.", model_star)
             star = read_star(model_star)
-            df_fsc = star["model_class_1"].to_polars()
-            groups = ModelGroups.validate_block(star["model_groups"])
-            reso = float(
-                star["model_general"].trust_single().to_dict()["rlnCurrentResolution"]
-            )
-            yield self._set_fsc, (df_fsc, reso)
-            # NOTE: multiply by 2 to account for half-sets
-            yield self._num_particles_label.set_number, groups.num_particles.sum() * 2
-        else:
+            if (
+                "model_class_1" in star
+                and "model_groups" in star
+                and "model_general" in star
+            ):
+                df_fsc = star["model_class_1"].to_polars()
+                groups = ModelGroups.validate_block(star["model_groups"])
+                reso = float(
+                    star["model_general"]
+                    .trust_single()
+                    .to_dict()["rlnCurrentResolution"]
+                )
+                yield self._set_fsc, (df_fsc, reso)
+                # NOTE: multiply by 2 to account for half-sets
+                yield (
+                    self._num_particles_label.set_number,
+                    groups.num_particles.sum() * 2,
+                )
+                _fsc_plotted = True
+        if not _fsc_plotted:
             _LOGGER.debug("Model STAR file was not found after waiting.")
             yield self._set_fsc, None
             yield self._num_particles_label.set_number, -1

@@ -431,17 +431,17 @@ class _Relion5BuiltinContinue(_Relion5BuiltinJob):
     def _show_scheduler_widget_for_continue(
         cls,
         ui: MainWindow,
-        model: WidgetDataModel,
+        model: WidgetDataModel,  # FIXME: don't use this arg
         context: AnyContext,
     ):
         scheduler = scheduler_widget(ui)
+        job_dir = model.value
+        if not isinstance(job_dir, _job_dir.JobDirectory):
+            raise RuntimeError("Widget model does not contain a job directory.")
+        scheduler.update_by_job(cls, cwd=job_dir.relion_project_dir)
+        orig_params_raw = job_dir.get_job_params_as_dict()
+        orig_params = cls.original_class.normalize_kwargs_inv(**orig_params_raw)
         try:
-            job_dir = model.value
-            if not isinstance(job_dir, _job_dir.JobDirectory):
-                raise RuntimeError("Widget model does not contain a job directory.")
-            scheduler.update_by_job(cls, cwd=job_dir.relion_project_dir)
-            orig_params_raw = job_dir.get_job_params_as_dict()
-            orig_params = cls.original_class.normalize_kwargs_inv(**orig_params_raw)
             sig = cls._signature()
             for orig_key, orig_val in orig_params.items():
                 if orig_key in sig.parameters:
@@ -449,7 +449,7 @@ class _Relion5BuiltinContinue(_Relion5BuiltinJob):
             if context:
                 scheduler.set_parameters(context)
         finally:
-            scheduler.set_continue_mode(job_dir, orig_params_raw)
+            scheduler.set_continue_mode(job_dir, orig_params)
         return scheduler
 
     def make_job_star(self, **kwargs) -> JobStarModel:
