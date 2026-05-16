@@ -59,7 +59,7 @@ class ManualMaskCreation(RelionExternalJob):
                 "label": "Dilate mask by (pixels)",
                 "tooltip": (
                     "Number of pixels to dilate the mask_base.mrc before applying the "
-                    "soft edge."
+                    "soft edge. Set to a negative value to erode the mask instead."
                 ),
                 "group": "Blurring",
             },
@@ -110,8 +110,11 @@ class ManualMaskCreation(RelionExternalJob):
             raise ValueError(f"Unknown blur method: {blur_method}")
 
         # Delete existing mask files
-        for path in [mask_path, mask_base_path]:
-            path.unlink(missing_ok=True)
+        mask_path.unlink(missing_ok=True)
+        if mask_base_path.exists():
+            mask_base_backup_path = mask_base_path.with_name("mask_base_backup.mrc")
+            mask_base_backup_path.unlink(missing_ok=True)
+            mask_base_path.rename(mask_base_backup_path)
 
         # volume onesmask #1.1 on_grid #1
         input_path = out_job_dir.resolve_path(in_3dref).as_posix()
@@ -136,7 +139,14 @@ class ManualMaskCreation(RelionExternalJob):
                 mask_data = mrc.data
                 scale = mrc.voxel_size.x
             mask_data = mask_data > threshold
-            mask_data = ndi.binary_dilation(mask_data, _make_footprint(dilate_pixels))
+            if dilate_pixels > 0:
+                mask_data = ndi.binary_dilation(
+                    mask_data, _make_footprint(dilate_pixels)
+                )
+            elif dilate_pixels < 0:
+                mask_data = ndi.binary_erosion(
+                    mask_data, _make_footprint(-dilate_pixels)
+                )
             dist = ndi.distance_transform_edt(~mask_data)
             dist_scaled = dist / (soft_edge / scale)
 

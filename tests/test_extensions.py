@@ -371,3 +371,14 @@ def test_manually_create_mask(
     widget._step_size.setValue(2)
     widget._mask_mode.value = "wireframe"
     widget._mask_level_slider.value = 0.44
+    assert (ext_dir / "mask.mrc").exists()
+    assert (ext_dir / "mask_base.mrc").exists()
+
+    # overwrite
+    thread = threading.Thread(target=create_mask, daemon=True)
+    thread.start()
+
+    tester.test_run(ext_dir, widget=widget)
+    assert (ext_dir / "mask.mrc").exists()
+    assert (ext_dir / "mask_base.mrc").exists()
+    assert (ext_dir / "mask_base_backup.mrc").exists()
