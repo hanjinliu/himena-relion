@@ -13,6 +13,7 @@ from himena_relion.relion5.widgets import (
     _class3d,
     _localres,
     _polish,
+    _modelangelo,
 )
 
 del (
@@ -30,4 +31,5 @@ del (
     _class3d,
     _localres,
     _polish,
+    _modelangelo,
 )
