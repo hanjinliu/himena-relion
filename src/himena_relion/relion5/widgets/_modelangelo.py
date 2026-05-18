@@ -45,16 +45,16 @@ class QModelAngeloViewer(QJobScrollArea):
     def initialize(self, job_dir: _job_dir.JobDirectory):
         """Initialize the viewer with the job directory."""
         # show map
+        scale = 1.0
         if mrc_path := job_dir.get_job_param("fn_map"):
             mrc_path = job_dir.resolve_path(mrc_path)
-            with mrcfile.open(mrc_path, mode="r") as mrc:
-                img = mrc.data
-                scale = mrc.voxel_size.x
-            self._viewer.set_image(img, update_now=False)
-            self._viewer.auto_threshold(update_now=False)
-            self._viewer.auto_fit()
-        else:
-            scale = 1.0
+            if mrc_path.exists():
+                with mrcfile.open(mrc_path, mode="r") as mrc:
+                    img = mrc.data
+                    scale = mrc.voxel_size.x
+                self._viewer.set_image(img, update_now=False)
+                self._viewer.auto_threshold(update_now=False)
+                self._viewer.auto_fit()
         for line in self._line_visuals:
             line.parent = None
         self._line_visuals.clear()

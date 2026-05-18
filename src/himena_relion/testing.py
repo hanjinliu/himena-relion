@@ -33,6 +33,7 @@ class JobWidgetTester(Generic[_T]):
         fp = self.job_dir.path / path
         with mrcfile.new(fp) as mrc:
             mrc.set_data(data)
+            mrc.voxel_size = (1.0, 1.0, 1.0)
         self.widget.on_job_updated(self.job_dir, str(fp))
 
     def write_random_mrc(self, path: str, shape: tuple[int, ...], dtype=np.float32):
