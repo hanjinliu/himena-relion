@@ -231,7 +231,7 @@ class RelionJobViewRegistry:
         # split by `.` and try each part
         for reg in registries:
             num_substrings = label.count(".") + 1
-            for i in range(label.count(".")):
+            for i in range(max(label.count("."), 1)):
                 label_sub = ".".join(label.split(".")[: num_substrings - i])
                 if factory := reg.get(label_sub, None):
                     return factory
