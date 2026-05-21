@@ -91,6 +91,9 @@ class QRefine3DViewer(QJobScrollArea):
         """Handle changes to the job directory."""
         fp = Path(path)
         if fp.name.startswith("RELION_JOB_") or fp.name.endswith("_data.star"):
+            if fp.name == "run_data.star":
+                # the final update, wait for mrc
+                wait_for_file(self._job_dir.path / "run_class001.mrc")
             self.initialize(job_dir)
             _LOGGER.debug("%s Updated", job_dir.job_number)
 
