@@ -46,7 +46,6 @@ class QMicrographParticleOverlay(QtW.QWidget):
         layout.addWidget(self._resizer)
         layout.addWidget(self._mic_list)
         layout.addWidget(spacer_widget())
-        self.initialize(job_dir)
 
     def initialize(self, job_dir: _job_dir.JobDirectory):
         """Initialize the viewer with the job directory."""

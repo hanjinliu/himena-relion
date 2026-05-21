@@ -21,7 +21,6 @@ class QShiftMapViewer(QtW.QWidget):
         self._viewer = Q3DViewer()
         layout.addWidget(self._viewer)
         layout.addWidget(spacer_widget())
-        self.initialize(job_dir)
 
     def on_job_updated(self, job_dir: _job_dir.JobDirectory, path: str):
         """Handle changes to the job directory."""
