@@ -27,7 +27,6 @@ class QAutoExcludeTiltsViewer(QtW.QWidget):
         layout.addWidget(QtW.QLabel("<b>Tomogram Z slice with fiducials</b>"))
         layout.addWidget(self._mic_choice)
         layout.addWidget(self._viewer)
-        self.initialize(job_dir)
 
     def on_job_updated(self, job_dir: _job_dir.ExternalJobDirectory, path: str):
         """Handle changes to the job directory."""

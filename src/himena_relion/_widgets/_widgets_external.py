@@ -27,6 +27,8 @@ class QExternalJobView(QtW.QScrollArea, JobWidgetBase):
                 widget = external_job.provide_widget(job_dir)
                 if widget is not NotImplemented:
                     self.setWidget(widget)
+                    if hasattr(widget, "initialize"):
+                        widget.initialize(job_dir)
                     return
         widget = QtW.QPlainTextEdit()
         widget.setReadOnly(True)

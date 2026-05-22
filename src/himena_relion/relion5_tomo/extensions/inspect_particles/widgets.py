@@ -44,7 +44,6 @@ class QInspectViewer(QtW.QWidget):
         layout.addWidget(self._resizer)
         # self._filter_widget.value_changed.connect(self._viewer.redraw)
         layout.addWidget(spacer_widget())
-        self.initialize(job_dir)
 
     def on_job_updated(self, job_dir: _job_dir.ExternalJobDirectory, path: str):
         """Handle changes to the job directory."""

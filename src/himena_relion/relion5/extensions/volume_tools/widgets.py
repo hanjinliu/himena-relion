@@ -56,7 +56,6 @@ class QMaskCreateViewer(QtW.QWidget):
         self._mask_level_slider.changed.connect(self._on_mask_level_changed)
         self._step_size.valueChanged.connect(self._on_mask_step_changed)
         self._mask_mode.changed.connect(self._on_mask_mode_changed)
-        self.initialize(job_dir)
 
     def on_job_updated(self, job_dir: _job_dir.JobDirectory, path: str):
         """Handle changes to the job directory."""
