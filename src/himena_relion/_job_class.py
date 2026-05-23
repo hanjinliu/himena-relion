@@ -10,6 +10,7 @@ import tempfile
 from types import NoneType, UnionType
 from typing import (
     Any,
+    ClassVar,
     Callable,
     Generator,
     Literal,
@@ -496,6 +497,11 @@ class _Relion5BuiltinContinue(_Relion5BuiltinJob):
 class RelionJobExecution:
     process: subprocess.Popen
     job_directory: _job_dir.JobDirectory
+
+    _last_execution: ClassVar[RelionJobExecution | None] = None
+
+    def __post_init__(self):
+        RelionJobExecution._last_execution = self
 
 
 def iter_relion_jobs() -> Generator[type[RelionJob], None, None]:

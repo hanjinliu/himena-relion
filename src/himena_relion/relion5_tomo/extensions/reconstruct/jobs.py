@@ -24,6 +24,25 @@ _GPU_ID_TO_USE = Annotated[
         ),
     },
 ]
+_OUTBIN = Annotated[
+    int,
+    {
+        "label": "Tomogram binning",
+        "tooltip": (
+            "Binning factor for the output tomogram. Binning is performed by IMOD's "
+            "<code>binvol</code> command."
+        ),
+    },
+]
+_THICKNESS = Annotated[
+    int,
+    {
+        "label": "Tomogram thickness (unbinned pix)",
+        "min": 50,
+        "max": 5000,
+        "tooltip": ("Thickness of the reconstructed tomogram in unbinned pixels."),
+    },
+]
 
 
 class ReconstructTomoIMOD(RelionExternalJob):
@@ -52,8 +71,8 @@ class ReconstructTomoIMOD(RelionExternalJob):
     def run(
         self,
         in_mics: IN_TILT,  # path,
-        outbin: Annotated[int, {"label": "Tomogram binning"}] = 1,
-        thickness: Annotated[int, {"label": "Tomogram thickness (unbinned pix)"}] = 600,
+        outbin: _OUTBIN = 1,
+        thickness: _THICKNESS = 600,
         filter_cutoff: float = 0.35,
         filter_falloff: float = 0.035,
         do_float16: DO_F16 = True,
@@ -156,8 +175,8 @@ class ReconstructHalfTomoIMOD(RelionExternalJob):
     def run(
         self,
         in_mics: IN_TILT,  # path,
-        outbin: Annotated[int, {"label": "Tomogram binning"}] = 1,
-        thickness: Annotated[int, {"label": "Tomogram thickness (unbinned pix)"}] = 600,
+        outbin: _OUTBIN = 1,
+        thickness: _THICKNESS = 600,
         filter_cutoff: float = 0.35,
         filter_falloff: float = 0.035,
         do_float16: DO_F16 = True,
