@@ -161,7 +161,7 @@ class ArrayFromMrcSplits(ArrayViewBase):
 
     @lru_cache(maxsize=1)
     def num_slices(self) -> int:
-        with mrcfile.open(self._paths[0], mode="r") as mrc:
+        with mrcfile.open(self._paths[0], mode="r", header_only=True) as mrc:
             return mrc.header.nz
 
     def _iter_images(self, index: int) -> Iterator[Arr]:
