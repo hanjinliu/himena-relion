@@ -228,13 +228,17 @@ class _Vispy3DDensityBase(_Vispy3DBase):
         return self._arrow_visual
 
     def set_rendering_mode(self, mode: str):
+        mode = mode.title()
         if mode == "Surface":
             self._volume_visual.method = "iso"
+            self._volume_visual.set_gl_state(preset="opaque")
         elif mode == "Maximum":
             self._volume_visual.method = "mip"
+            self._volume_visual.set_gl_state(preset="translucent")
         elif mode == "Average":
             self._volume_visual.method = "average"
-        else:
+            self._volume_visual.set_gl_state(preset="translucent")
+        else:  # pragma: no cover
             raise ValueError(f"Unknown rendering mode: {mode}")
 
     def set_iso_threshold(self, value):
@@ -246,19 +250,20 @@ class _Vispy3DDensityBase(_Vispy3DBase):
         colors = []
         arrow_colors = []
         arrows = []
-        pos = []
+        positions = []
         for tube in tubes:
-            arrows.append(np.concatenate([tube.start[::-1], tube.end[::-1]]))
+            # NOTE: Vispy Arrow is in xyz order.
+            arrows.append(np.concatenate([tube.start, tube.end]))
             arrow_colors.append(tube.color)
-            pos.append(tube.start[::-1])
-            pos.append(tube.end[::-1])
+            positions.append(tube.start)
+            positions.append(tube.end)
             colors.append(tube.color)
             colors.append(tube.color)
         if colors:
             colors = np.stack(colors, axis=0)
             arrow_colors = np.stack(arrow_colors, axis=0)
             arrows = np.stack(arrows, axis=0)
-            pos = np.stack(pos, axis=0)
+            pos = np.stack(positions, axis=0)
         else:
             colors = np.zeros((0, 4), dtype=np.float32)
             arrow_colors = np.zeros((0, 4), dtype=np.float32)

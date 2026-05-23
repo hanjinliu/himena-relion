@@ -38,7 +38,7 @@ class QClass2DViewer(QJobScrollArea):
 
         self._iter_choice.current_changed.connect(self._iter_changed)
         self._sort_by.currentIndexChanged.connect(self._sort_by_changed)
-        layout.addWidget(QtW.QLabel("<b>2D Classes</b>"))
+        layout.addWidget(QtW.QLabel("<b>&#9679; 2D Classes</b>"))
         hlayout = QtW.QHBoxLayout()
         hlayout.setContentsMargins(0, 0, 0, 0)
         label = QtW.QLabel("Sort by:")

@@ -7,58 +7,69 @@ from himena.plugins import register_config, config_field, get_config
 class RelionConfig:
     relion_pipeliner: str = config_field(
         default="relion_pipeliner",
-        label="relion_pipeliner executable",
-        tooltip="Path to the relion_pipeliner executable, usually is relion-directory/build/bin/relion_pipeliner",
+        label="<code>relion_pipeliner</code> executable",
+        tooltip=(
+            "Path to the relion_pipeliner executable, usually is\n"
+            "/path/to/relion-directory/build/bin/relion_pipeliner. Use\n"
+            "'relion_pipeliner' if it's already in your PATH."
+        ),
     )
     motioncor2: str = config_field(
         default="MotionCor2",
-        label="MotionCor2 Executable",
-        tooltip="Path to the MotionCor2 executable",
+        label="<code>MotionCor2</code> Executable",
+        tooltip=(
+            "Path to the MotionCor2 executable. Use 'MotionCor2' if it's already in\n"
+            "your PATH."
+        ),
     )
     ctffind4: str = config_field(
         default="ctffind4",
-        label="CTFFIND4 Executable",
-        tooltip="Path to the CTFFIND4 executable",
-    )
-    fn_topaz_exe: str = config_field(
-        default="relion_python_topaz",
-        label="Topaz Executable",
-        tooltip="Path to the Topaz executable",
+        label="<code>CTFFIND4</code> Executable",
+        tooltip=(
+            "Path to the CTFFIND4 executable. Use 'ctffind4' if it's already in\n"
+            "your PATH."
+        ),
     )
     batchruntomo: str = config_field(
         default="batchruntomo",
-        label="Batchruntomo Executable",
-        tooltip="Path to the IMOD batchruntomo executable",
+        label="<code>Batchruntomo</code> Executable",
+        tooltip=(
+            "Path to the IMOD batchruntomo executable. Use 'batchruntomo' if it's\n"
+            "already in your PATH."
+        ),
     )
     aretomo2: str = config_field(
         default="AreTomo2",
-        label="AreTomo2 Executable",
-        tooltip="Path to the AreTomo2 executable",
+        label="<code>AreTomo2</code> Executable",
+        tooltip=(
+            "Path to the AreTomo2 executable. Use 'AreTomo2' if it's already in your\n"
+            "PATH."
+        ),
     )
     cryocare: str = config_field(
         default="/public/EM/cryoCARE",
-        label="cryoCARE Directory",
+        label="<code>cryoCARE</code> Directory",
         tooltip="Path to the cryoCARE directory",
     )
     resmap: str = config_field(
         default="ResMap",
-        label="ResMap Executable",
-        tooltip="Path to the ResMap executable",
+        label="<code>ResMap</code> Executable",
+        tooltip=(
+            "Path to the ResMap executable. Use 'ResMap' if it's already in your PATH."
+        ),
     )
-    dynamight: str = config_field(
-        default="relion_python_dynamight",
-        label="DynaMight Executable",
-        tooltip="Path to the DynaMight executable",
-    )
-    modelangelo: str = config_field(
-        default="relion_python_modelangelo",
-        label="ModelAngelo Executable",
-        tooltip="Path to the ModelAngelo executable",
+    chimera: str = config_field(
+        default="chimerax",
+        label="UCSF <code>ChimeraX</code> or <code>Chimera</code> Executable",
+        tooltip=(
+            "Path to the ChimeraX or Chimera executable. Use 'chimerax' or 'chimera' "
+            "if it's already in your PATH."
+        ),
     )
     scratch_dir: str = config_field(
         default="",
         label="Scratch Directory",
-        tooltip="Path to the scratch directory",
+        tooltip="Path to the scratch directory.",
     )
     queuename: str = config_field(
         default="openmpi",
@@ -92,7 +103,7 @@ def get_ctffind4_exe() -> str:
 
 
 def get_topaz_exe() -> str:
-    return _may_expand_user(_get_himena_relion_config().fn_topaz_exe)
+    return _pipeliner_path().with_name("relion_python_topaz")
 
 
 def get_batchruntomo_exe() -> str:
@@ -108,15 +119,19 @@ def get_resmap_exe() -> str:
 
 
 def get_dynamight_exe() -> str:
-    return _may_expand_user(_get_himena_relion_config().dynamight)
+    return _pipeliner_path().with_name("relion_python_dynamight")
 
 
 def get_modelangelo_exe() -> str:
-    return _may_expand_user(_get_himena_relion_config().modelangelo)
+    return _pipeliner_path().with_name("relion_python_modelangelo")
 
 
 def get_cryocare_dir() -> str:
     return _may_expand_user(_get_himena_relion_config().cryocare)
+
+
+def get_chimera_exe() -> str:
+    return _may_expand_user(_get_himena_relion_config().chimera)
 
 
 def get_qsubscript() -> str:
@@ -147,3 +162,7 @@ def _may_expand_user(path: str) -> str:
     if path.startswith("~/"):
         return str(Path(path).expanduser())
     return path
+
+
+def _pipeliner_path() -> Path:
+    return Path(_may_expand_user(get_relion_pipeliner_exe())).resolve()

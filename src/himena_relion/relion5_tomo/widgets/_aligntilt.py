@@ -10,6 +10,7 @@ from qtpy import QtWidgets as QtW, QtGui, QtCore
 import scipy.ndimage as ndi
 from himena.consts import MonospaceFontFamily
 from himena_relion._image_readers._array import ArrayFilteredView
+from himena_relion._widgets._shared.resizer import QResizer
 from himena_relion.relion5_tomo.widgets._tomogram import QTomogramViewer
 from himena_relion._widgets import (
     QJobScrollArea,
@@ -36,7 +37,6 @@ class QAlignTiltSeriesViewer(QJobScrollArea):
     def __init__(self, job_dir: _job_dir.JobDirectory):
         super().__init__()
         self._job_dir = job_dir
-        layout = self._layout
 
         job_params = job_dir.get_job_params_as_dict()
         self._is_imod_fid = job_params.get("do_imod_fiducials", "No") == "Yes"
@@ -45,12 +45,14 @@ class QAlignTiltSeriesViewer(QJobScrollArea):
 
         self._viewer = Q2DViewer(zlabel="Tilt index")
         self._viewer.setMinimumHeight(420)
+        self._resizer = QResizer(self._viewer)
         self._ts_list = QMicrographListWidget(["Tilt Series"])
         self._ts_list.current_changed.connect(self._ts_choice_changed)
-        layout.addWidget(self._ts_list)
+        self._layout.setSpacing(2)
+        self._layout.addWidget(self._ts_list)
         hlayout = QtW.QHBoxLayout()
         hlayout.setContentsMargins(0, 0, 0, 0)
-        hlayout.addWidget(QtW.QLabel("<b>Aligned tilt series</b>"))
+        hlayout.addWidget(QtW.QLabel("<b>&#9679; Aligned tilt series</b>"))
         if self._is_imod_fid or self._is_imod_patchtrack:
             etomo_btn = QtW.QPushButton("Open in Etomo")
             etomo_btn.setToolTip("Open the etomo project for this tilt series")
@@ -58,15 +60,16 @@ class QAlignTiltSeriesViewer(QJobScrollArea):
             etomo_btn.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
             etomo_btn.clicked.connect(self._open_in_etomo)
             hlayout.addWidget(etomo_btn, alignment=QtCore.Qt.AlignmentFlag.AlignRight)
-        layout.addLayout(hlayout)
-        layout.addWidget(self._viewer)
+        self._layout.addLayout(hlayout)
+        self._layout.addWidget(self._viewer)
+        self._layout.addWidget(self._resizer)
 
         self._align_log = QAlignJobLog()
         if self._is_imod_fid or self._is_imod_patchtrack:
-            layout.addWidget(QtW.QLabel("<b>Batchruntomo Log</b>"))
+            self._layout.addWidget(QtW.QLabel("<b>&#9679; Batchruntomo Log</b>"))
         else:
-            layout.addWidget(QtW.QLabel("<b>AreTomo2 Log</b>"))
-        layout.addWidget(self._align_log)
+            self._layout.addWidget(QtW.QLabel("<b>&#9679; AreTomo2 Log</b>"))
+        self._layout.addWidget(self._align_log)
 
     def on_job_updated(self, job_dir, path: str):
         """Handle changes to the job directory."""

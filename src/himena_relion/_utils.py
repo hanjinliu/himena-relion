@@ -1,17 +1,17 @@
 from __future__ import annotations
 
+from contextlib import contextmanager, suppress
 import os
 from pathlib import Path
 import logging
 import time
-from typing import Annotated, Any, get_args, get_origin, TYPE_CHECKING
+from typing import Annotated, Any, TextIO, get_args, get_origin, TYPE_CHECKING
 
 import numpy as np
 from functools import lru_cache
 
 from starfile_rs import read_star
 from himena.types import is_subtype
-from himena.consts import MonospaceFontFamily
 from himena_relion.consts import Type
 from himena_relion.schemas import RelionPipelineModel, ParticleMetaModel
 
@@ -185,30 +185,28 @@ def normalize_job_id(d: str | Path) -> str:
 
 
 def update_default_pipeline(
-    default_pipeline_path: Path,
+    f: TextIO,
     job_id: str,
     state: str | None = None,
     alias: str | None = None,
 ):
-    with default_pipeline_path.open("r+") as f:  # use open to acquire lock
-        try:
-            pipeline_star = RelionPipelineModel.validate_text(f.read())
-            pos_sl = pipeline_star.processes.process_name == normalize_job_id(job_id)
-            if len(true_ids := np.where(pos_sl)) == 1:
-                true_id = int(true_ids[0][0])
-                df = pipeline_star.processes.dataframe
-                if state is not None:
-                    ic = df.columns.index("rlnPipeLineProcessStatusLabel")
-                    df[true_id, ic] = state
-                if alias is not None:
-                    ic = df.columns.index("rlnPipeLineProcessAlias")
-                    df[true_id, ic] = alias
-                pipeline_star.processes = df
-                f.seek(0)
-                f.write(pipeline_star.to_string())
-        except Exception:
-            _LOGGER.warning("Failed to update job state for %s", job_id, exc_info=True)
-    default_pipeline_path.touch()  # update modification time
+    try:
+        pipeline_star = RelionPipelineModel.validate_text(f.read())
+        pos_sl = pipeline_star.processes.process_name == normalize_job_id(job_id)
+        if len(true_ids := np.where(pos_sl)) == 1:
+            true_id = int(true_ids[0][0])
+            df = pipeline_star.processes.dataframe
+            if state is not None:
+                ic = df.columns.index("rlnPipeLineProcessStatusLabel")
+                df[true_id, ic] = state
+            if alias is not None:
+                ic = df.columns.index("rlnPipeLineProcessAlias")
+                df[true_id, ic] = alias
+            pipeline_star.processes = df
+            f.seek(0)
+            f.write(pipeline_star.to_string())
+    except Exception:
+        _LOGGER.warning("Failed to update job state for %s", job_id, exc_info=True)
 
 
 def read_or_show_job(ui: MainWindow, path: Path):
@@ -255,18 +253,21 @@ def get_subset_sizes(path_optimiser: Path) -> tuple[int, int]:
 
 
 def wait_for_file(path, num_retry: int = 5, delay: float = 0.1) -> bool:
-    """Wait for a file to be created, return False if failed."""
+    """Wait for a file to be created, return False if failed.
+
+    Examples
+    --------
+    ```python
+    if wait_for_file(path, num_retry=100, delay=0.3):
+        # do something
+    ```
+    """
     path = Path(path)
     for _ in range(num_retry):
         if path.exists():
             return True
         time.sleep(delay)
     return False
-
-
-def monospace_font_family() -> str:
-    """Get the system monospace font family."""
-    return MonospaceFontFamily
 
 
 def get_pipeline_widgets(
@@ -277,7 +278,7 @@ def get_pipeline_widgets(
 
     for dock in ui.dock_widgets:
         if isinstance(flowchart := dock.widget, QRelionPipelineFlowChart):
-            dir_for_this = flowchart._flow_chart._relion_project_dir
+            dir_for_this = flowchart._relion_project_dir
             if dir_for_this == relion_project_dir or relion_project_dir is None:
                 return dock.widget
 
@@ -313,3 +314,54 @@ def command_not_found_err_msg(first_sentense: str):
         "See https://hanjinliu.github.io/himena-relion/getting_started/ for more "
         "details."
     )
+
+
+def bytes_to_size_str(num_bytes: int) -> str:
+    if num_bytes < 1024:
+        size_str = f"{num_bytes} B"
+    elif num_bytes < 1024 * 1024:
+        size_str = f"{num_bytes / 1024:.1f} KB"
+    elif num_bytes < 1024 * 1024 * 1024:
+        size_str = f"{num_bytes / 1024**2:.1f} MB"
+    else:
+        size_str = f"{num_bytes / 1024**3:.1f} GB"
+    return size_str
+
+
+@contextmanager
+def open_with_lock(
+    pipeline_path: str | Path,
+    mode: str = "r+",
+    wait_sec: float = 1.5,
+):
+    """Open a file with a lock to prevent concurrent access."""
+    pipeline_path = Path(pipeline_path)
+    lock_dir = pipeline_path.parent / ".relion_lock"
+    each_wait = 0.05
+    num_trial = int(wait_sec / each_wait) + 1
+    for _ in range(num_trial):
+        try:
+            lock_dir.mkdir(exist_ok=False)
+        except FileNotFoundError:
+            raise  # FileNotFoundError is a subclass of OSError.
+        except OSError:
+            time.sleep(each_wait)
+        else:
+            break
+    else:
+        raise RelionPipelineLockError(
+            f"Failed to acquire lock for {pipeline_path}. Another instance may be "
+            "editing the pipeline, or the previous run may have crashed. "
+        )
+    try:
+        with pipeline_path.open(mode) as f:
+            yield f
+    finally:
+        pipeline_path.touch()
+        # remove the lock
+        with suppress(Exception):
+            lock_dir.rmdir()
+
+
+class RelionPipelineLockError(RuntimeError):
+    """Raised when failed to acquire lock for RELION default_pipeline.star file."""

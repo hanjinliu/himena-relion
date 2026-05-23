@@ -66,3 +66,28 @@ def test_refine3d_widget(
     QApplication.processEvents()
     tester.widget._iter_choice.setValue(1)
     QApplication.processEvents()
+
+def test_refine3d_widget_final_data(
+    qtbot,
+    make_job_directory: Callable[[str, str], JobDirectory],
+    jobs_dir_spa,
+):
+    star_text = Path(jobs_dir_spa / "Refine3D" / "job001" / "job.star").read_text()
+    job_dir = make_job_directory(star_text, "Refine3D")
+
+    tester = JobWidgetTester(QRefine3DViewer(job_dir), job_dir)
+    qtbot.addWidget(tester.widget)
+    tester.widget._show_run_class001_btn.setChecked(True)
+    assert not tester.widget._viewer.has_image
+
+    tester.write_random_mrc("run_class001.mrc", (6, 6, 6))
+    tester.write_text(
+        "run_data.star",
+        ParticleMetaModel.example(size=4).to_string()
+    )
+
+    tester.write_text("run_class001_angdist.bild", _BILD_TEXT)
+    tester.widget._arrow_visible.setChecked(True)
+    QApplication.processEvents()
+
+    assert tester.widget._viewer.has_image

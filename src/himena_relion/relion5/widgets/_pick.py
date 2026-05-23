@@ -21,6 +21,7 @@ from himena_relion._widgets import (
     QPlotCanvas,
 )
 from himena_relion import _job_dir
+from himena_relion._widgets._shared.resizer import QResizer
 from himena_relion.relion5._connections import _get_template_for_pick
 from himena_relion.schemas import CoordsModel, MicrographsStarModel
 
@@ -75,6 +76,7 @@ class QManualPickViewer(QJobScrollArea):
         layout = self._layout
 
         self._viewer = Q2DViewer(zlabel="")
+        self._resizer = QResizer(self._viewer)
         self._last_update: dict[str, tuple[float, int]] = {}  # path -> (mtime, npoints)
         self._viewer.setMinimumHeight(480)
         self._mic_list = QMicrographListWidget(
@@ -89,10 +91,12 @@ class QManualPickViewer(QJobScrollArea):
         self._filter_widget = Q2DFilterWidget(bin_default=8, lowpass_default=20)
         self._marker_widget = QMarkerFilterWidget()
         self._marker_widget.value_changed.connect(self._update_points)
+        layout.setSpacing(0)
         layout.addWidget(QtW.QLabel("<b>Micrographs with picked particles</b>"))
         layout.addWidget(self._marker_widget)
         layout.addWidget(self._filter_widget)
         layout.addWidget(self._viewer)
+        layout.addWidget(self._resizer)
         layout.addWidget(self._num_picked_label)
         layout.addWidget(self._mic_list)
         self._filter_widget.value_changed.connect(self._filter_param_changed)
@@ -280,7 +284,7 @@ class QTemplatePick3DViewer(QAutopickViewerBase):
         super().__init__(job_dir)
         self._text_edit = QImageViewTextEdit(image_size_pixel=64)
         self._text_edit.setMinimumHeight(120)
-        self._layout.insertWidget(0, QtW.QLabel("<b>Reference Projections</b>"))
+        self._layout.insertWidget(0, QtW.QLabel("<b>&#9679; Reference Projections</b>"))
         self._layout.insertWidget(1, self._text_edit)
         self._last_ref_proj_mtime: float = 0.0
 
@@ -328,12 +332,11 @@ class QTopazTrainPickViewer(QJobScrollArea):
         self._canvas0 = QPlotCanvas(self)
         self._canvas1 = QPlotCanvas(self)
         self._canvas2 = QPlotCanvas(self)
-        self._layout.addWidget(QtW.QLabel("<b>Topaz Model Training Metrics</b>"))
-        self._layout.addWidget(QtW.QLabel("<b>Loss</b>"))
+        self._layout.addWidget(QtW.QLabel("<b>&#9679; Loss</b>"))
         self._layout.addWidget(self._canvas0)
-        self._layout.addWidget(QtW.QLabel("<b>True Positive</b>"))
+        self._layout.addWidget(QtW.QLabel("<b>&#9679; True Positive</b>"))
         self._layout.addWidget(self._canvas1)
-        self._layout.addWidget(QtW.QLabel("<b>False Positive</b>"))
+        self._layout.addWidget(QtW.QLabel("<b>&#9679; False Positive</b>"))
         self._layout.addWidget(self._canvas2)
 
     def on_job_updated(self, job_dir: _job_dir.JobDirectory, path: str):

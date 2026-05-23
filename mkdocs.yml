@@ -36,7 +36,7 @@ nav:
   - Installation: installation.md
   - Getting Started: getting_started.md
   - External Jobs:
-    - Index: external_jobs/index.md
+    - External Jobs: external_jobs/index.md
     - Built-in External Jobs: external_jobs/builtin.md
     - Create External Jobs: external_jobs/dev.md
 

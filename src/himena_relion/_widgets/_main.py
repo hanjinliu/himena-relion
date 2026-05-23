@@ -174,7 +174,7 @@ class QRelionJobWidget(QRelionJobWidgetBase):
             if self._watcher is None:
                 return  # stopped
             updated_files: list[Path] = []
-            for change, fp in changes:
+            for _, fp in changes:
                 path = Path(fp)
                 if path not in updated_files:
                     updated_files.append(path)
@@ -190,15 +190,15 @@ class QRelionJobWidget(QRelionJobWidgetBase):
         if not self._job_dir.path.exists():
             self.widget_closed_callback()
             raise RuntimeError(
-                "Job directory has been deleted externally. This widget will no longer "
-                "respond to changes. Please close this job widget."
+                f"Job directory {self._job_dir.path} has been deleted externally. This "
+                "widget will no longer respond to changes. Please close this widget."
             )
         msg = ""
         for wdt in self._iter_job_widgets():
             wdt.on_job_updated(self._job_dir, Path(path))
             if isinstance(wdt, QRunOutErrLog):
                 msg = wdt.last_lines()
-        if self._job_dir.state() is RelionJobState.RUNNING:
+        if self._job_dir.state() in _STATES_TO_SHOW_MSG:
             self._control_widget.set_msg(msg)
         else:
             self._control_widget.set_msg("")
@@ -231,7 +231,7 @@ class RelionJobViewRegistry:
         # split by `.` and try each part
         for reg in registries:
             num_substrings = label.count(".") + 1
-            for i in range(label.count(".")):
+            for i in range(max(label.count("."), 1)):
                 label_sub = ".".join(label.split(".")[: num_substrings - i])
                 if factory := reg.get(label_sub, None):
                     return factory
@@ -290,11 +290,7 @@ class QRelionJobWidgetControl(QtW.QWidget):
             btn.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
 
         # initialize the message
-        if parent._job_dir.state() in (
-            RelionJobState.RUNNING,
-            RelionJobState.ABORT_NOW,
-            RelionJobState.EXIT_ABORTED,
-        ):
+        if parent._job_dir.state() in _STATES_TO_SHOW_MSG:
             if wdt := self.find_child_widget(QRunOutErrLog):
                 msg = wdt.last_lines()
                 self.set_msg(msg)
@@ -330,3 +326,10 @@ class QRelionJobWidgetControl(QtW.QWidget):
             self._oneline_msg.setToolTip("The last two lines of run.out")
         else:
             self._oneline_msg.setToolTip("")
+
+
+_STATES_TO_SHOW_MSG = (
+    RelionJobState.RUNNING,
+    RelionJobState.ABORT_NOW,
+    RelionJobState.EXIT_ABORTED,
+)

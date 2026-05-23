@@ -5,6 +5,7 @@ import logging
 from qtpy import QtWidgets as QtW
 from superqt import QToggleSwitch
 from superqt.utils import thread_worker
+from himena_relion._widgets._shared.resizer import QResizer
 from himena_relion._widgets import (
     QJobScrollArea,
     Q3DViewer,
@@ -37,7 +38,7 @@ class QClass3DViewer(QJobScrollArea):
         self._viewer = Q3DViewer()
         _arrow_visible_default = False
         self._viewer._canvas.arrow_visual.visible = _arrow_visible_default
-        self._arrow_visible = QToggleSwitch("Show angle distribution")
+        self._arrow_visible = QToggleSwitch("Angle distribution")
         self._arrow_visible.setChecked(_arrow_visible_default)
         self._arrow_visible.toggled.connect(self._on_arrow_visible_toggled)
         self._arrow_visible.setToolTip(
@@ -45,31 +46,35 @@ class QClass3DViewer(QJobScrollArea):
             "The _angdist.bild output file of the selected iteration and class index \n"
             "is used to generate the arrows."
         )
+        self._resizer = QResizer(self._viewer)
         self._symmetry_label = QSymmetryLabel()
         self._list_widget.setMinimumWidth(300)
         self._list_widget.setMaximumWidth(400)
         self._iter_choice = QIntWidget("Iteration", label_width=60)
         self._iter_choice.setMinimum(0)
         self._num_particles_label = QNumParticlesLabel()
-        self._layout.addWidget(self._list_widget)
-        hor = QtW.QWidget()
-        hor.setMaximumWidth(400)
-        hor.setFixedHeight(26)
-        hor_layout = QtW.QHBoxLayout(hor)
+        hor1 = QtW.QWidget()
+        hor1.setMaximumWidth(400)
+        hor1.setFixedHeight(26)
+        hor_layout = QtW.QHBoxLayout(hor1)
         hor_layout.setContentsMargins(0, 0, 0, 0)
         hor_layout.addWidget(self._arrow_visible)
         hor_layout.addWidget(self._symmetry_label)
-        self._layout.addWidget(hor)
-        self._layout.addWidget(self._viewer)
-        hor = QtW.QWidget()
-        hor.setMaximumWidth(400)
-        hor_layout = QtW.QHBoxLayout(hor)
+        hor2 = QtW.QWidget()
+        hor2.setMaximumWidth(400)
+        hor_layout = QtW.QHBoxLayout(hor2)
         hor_layout.setContentsMargins(0, 0, 0, 0)
         hor_layout.addWidget(self._iter_choice)
         hor_layout.addWidget(self._num_particles_label)
-        self._layout.addWidget(hor)
         self._index_start = 1
         self._job_dir = job_dir
+
+        self._layout.setSpacing(0)
+        self._layout.addWidget(self._list_widget)
+        self._layout.addWidget(hor1)
+        self._layout.addWidget(self._viewer)
+        self._layout.addWidget(self._resizer)
+        self._layout.addWidget(hor2)
 
         self._iter_choice.valueChanged.connect(self._on_iter_changed)
         self._list_widget.current_changed.connect(self._on_class_changed)
@@ -88,7 +93,7 @@ class QClass3DViewer(QJobScrollArea):
         if nclasses == 0:
             return
         niters = job_dir.num_iters()
-        self._iter_choice.setMaximum(max(niters - 1, 0))
+        self._iter_choice.setMaximum(max(niters, 0))
         self._iter_choice.setValue(self._iter_choice.maximum())
         self._on_iter_changed(self._iter_choice.value())
         sym_name = self._job_dir.get_job_param("sym_name")
@@ -142,9 +147,14 @@ class QClass3DViewer(QJobScrollArea):
         tubes = res.angdist(class_id, scale)
         yield self._viewer._canvas.set_arrows, tubes
         if wait_for_file(res._data_star(), num_retry=100, delay=0.3):
-            part = res.particles()
-            num_particles = len(part.particles.block)
-            yield self._num_particles_label.set_number_for_class3d, num_particles
+            try:
+                part = res.particles()
+            except Exception:
+                # STAR file may not be ready when the number of particles is large.
+                pass
+            else:
+                num_particles = len(part.particles.block)
+                yield self._num_particles_label.set_number_for_class3d, num_particles
         self._worker = None
 
     def _auto_threshold_and_fit(self, *_):

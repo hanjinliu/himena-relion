@@ -85,7 +85,9 @@ class TSModel(schema.LoopDataModel):
     movie_name: schema.Series[str] = schema.Field(
         "rlnMicrographMovieName", default=None
     )
-    frame_count: schema.Series[int] = schema.Field("rlnTomoTiltMovieFrameCount")
+    frame_count: schema.Series[int] = schema.Field(
+        "rlnTomoTiltMovieFrameCount", default=None
+    )
     nominal_stage_tilt_angle: schema.Series[float] = schema.Field(
         "rlnTomoNominalStageTiltAngle"
     )

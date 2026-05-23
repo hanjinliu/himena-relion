@@ -4,6 +4,7 @@ import logging
 from pathlib import Path
 from qtpy import QtWidgets as QtW
 from superqt.utils import thread_worker
+from himena_relion._widgets._shared.resizer import QResizer
 from himena_relion._widgets import (
     QJobScrollArea,
     Q3DViewer,
@@ -25,6 +26,7 @@ class QInitialModelViewer(QJobScrollArea):
     def __init__(self, job_dir: _job_dir.InitialModel3DJobDirectory):
         super().__init__()
         self._viewer = Q3DViewer()
+        self._resizer = QResizer(self._viewer)
 
         self._class_choice = QIntWidget("Class", label_width=50)
         self._iter_choice = QIntChoiceWidget("Iteration", label_width=60)
@@ -36,11 +38,14 @@ class QInitialModelViewer(QJobScrollArea):
         header = QtW.QWidget()
         header_layout = QtW.QHBoxLayout(header)
         header_layout.setContentsMargins(1, 0, 1, 0)
-        header_layout.addWidget(QtW.QLabel("<b>Initial Model Map</b>"))
+        header_layout.addWidget(QtW.QLabel("<b>&#9679; Initial Model Map</b>"))
         header_layout.addWidget(self._symmetry_label)
         header.setMaximumWidth(400)
+
+        self._layout.setSpacing(0)
         self._layout.addWidget(header)
         self._layout.addWidget(self._viewer)
+        self._layout.addWidget(self._resizer)
         self._layout.addWidget(self._num_particles_label)
         _container = QtW.QWidget()
         _container.setMaximumWidth(400)

@@ -669,7 +669,10 @@ class Refine3DJobDirectory(JobDirectory):
 
     def num_iters(self) -> int:
         """Return the number of iterations in the refine 3D job."""
-        return len(list(self.path.glob("run_it*_data.star")))
+        num_it = -1
+        for path in self.path.glob("run_it*_data.star"):
+            num_it = max(num_it, int(path.stem[6:-5]))
+        return num_it
 
 
 class Class3DResults(_3DResultsBase):
@@ -716,11 +719,19 @@ class Class3DJobDirectory(JobDirectory):
 
     def num_classes(self) -> int:
         """Return the current number of classes in the class 3D job."""
-        return len(list(self.path.glob("run_it000_class*.mrc")))
+        num_classes = 0
+        for path in self.path.glob("run_it???_class???.mrc"):
+            with suppress(Exception):
+                num_classes = max(num_classes, int(path.stem[-3:]))
+        return num_classes
 
     def num_iters(self) -> int:
         """Return the number of iterations in the class 3D job."""
-        return len(list(self.path.glob("run_it*_model.star")))
+        num_it = -1
+        for path in self.path.glob("run_it*_model.star"):
+            with suppress(Exception):
+                num_it = max(num_it, int(path.stem[6:-6]))
+        return num_it
 
 
 class SelectInteractiveJobDirectory(JobDirectory):

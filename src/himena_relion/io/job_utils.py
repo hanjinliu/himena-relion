@@ -61,29 +61,27 @@ def harsh_clean_relion_job(ui: MainWindow, model: WidgetDataModel):
 
 
 @register_function(
-    menus=[MenuId.RELION_UTILS],
+    menus=[MenuId.RELION_UTILS, "/model_menu/cleanup"],
     types=[Type.RELION_JOB],
     title="Mark As Finished",
-    command_id="himena-relion:mark-finished",
-    group="03-job-mark",
+    command_id="himena-relion:mark-as-finished",
 )
-def mark_as_finished(model: WidgetDataModel):
-    """Mark this job as 'finished'"""
+def mark_as_finished_relion_job(model: WidgetDataModel):
+    """Mark this RELION job as finished."""
     job_dir = assert_job(model)
-    _impl.mark_as_finished(job_dir)
+    return _impl.mark_as_finished(job_dir)
 
 
 @register_function(
-    menus=[MenuId.RELION_UTILS],
+    menus=[MenuId.RELION_UTILS, "/model_menu/cleanup"],
     types=[Type.RELION_JOB],
-    title="Mark As Failed",
-    command_id="himena-relion:mark-failed",
-    group="03-job-mark",
+    title="Mark As Not Finished",
+    command_id="himena-relion:mark-as-failed",
 )
-def mark_as_failed(model: WidgetDataModel):
-    """Mark this job as 'failed'"""
+def mark_as_failed_relion_job(model: WidgetDataModel):
+    """Mark this RELION job as failed."""
     job_dir = assert_job(model)
-    _impl.mark_as_failed(job_dir)
+    return _impl.mark_as_failed(job_dir)
 
 
 @register_function(
@@ -146,7 +144,7 @@ def set_job_alias(ui: MainWindow, model: WidgetDataModel):
 @register_function(
     menus=[MenuId.RELION_UTILS],
     types=[Type.RELION_JOB],
-    title="Trash RELION job",
+    title="Trash This job",
     command_id="himena-relion:trash-job",
     group="07-job-operation",
 )
@@ -213,7 +211,7 @@ def open_relion_docs():
 def open_trash_directory(ui: MainWindow):
     """Open the trash directory of the current RELION project."""
     if cur_widget := get_pipeline_widgets(ui):
-        relion_project_dir = cur_widget._flow_chart._relion_project_dir
+        relion_project_dir = cur_widget._relion_project_dir
         ui.read_file(relion_project_dir / "Trash", append_history=False)
     else:
         ui.show_notification("No RELION project is currently open.")

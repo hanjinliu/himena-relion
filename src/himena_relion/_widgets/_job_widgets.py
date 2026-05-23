@@ -12,6 +12,7 @@ import numpy as np
 from qtpy import QtWidgets as QtW, QtGui, QtCore
 from superqt import QToggleSwitch
 from superqt.utils import qthrottled, GeneratorWorker
+from himena import create_text_model
 from himena.consts import MonospaceFontFamily
 from himena.widgets import current_instance, set_status_tip
 from himena.qt import drag_files, QColoredSVGIcon, QColoredToolButton
@@ -110,6 +111,13 @@ class QTextEditBase(QtW.QWidget, JobWidgetBase):
         self._filename_label.setStyleSheet("padding: 2px; border-radius: 4px;")
         self._filename_label.setToolTip("Click to open this file in another window.")
         self._filename_label.clicked.connect(self._on_filename_label_clicked)
+        self._popup_btn = QColoredToolButton(self._popup_this, path_icon_svg("popup"))
+        self._popup_btn.update_color("gray")
+        self._popup_btn.setFixedSize(18, 18)
+        self._popup_btn.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
+        self._popup_btn.setToolTip(
+            "Popup this content to see the content in a larger window."
+        )
         self._text_edit = QtW.QPlainTextEdit()
         self._text_edit.setFont(QtGui.QFont(MonospaceFontFamily, 8))
         self._text_edit.setReadOnly(True)
@@ -118,6 +126,12 @@ class QTextEditBase(QtW.QWidget, JobWidgetBase):
         header_layout = QtW.QHBoxLayout()
         header_layout.setContentsMargins(0, 0, 0, 0)
         header_layout.addWidget(self._wordwrap_checkbox)
+        spacer = spacer_widget()
+        spacer.setFixedHeight(10)
+        header_layout.addWidget(spacer)
+        header_layout.addWidget(
+            self._popup_btn, alignment=QtCore.Qt.AlignmentFlag.AlignRight
+        )
         header_layout.addWidget(
             self._filename_label, alignment=QtCore.Qt.AlignmentFlag.AlignRight
         )
@@ -139,6 +153,19 @@ class QTextEditBase(QtW.QWidget, JobWidgetBase):
                 append_history=False,
             )
 
+    def _popup_this(self):
+        """Popup the content of this text edit to a new window."""
+        if self._filename_label_open_target is not None:
+            path = self._filename_label_open_target
+            current_instance().add_data_model_as_popup(
+                create_text_model(
+                    path.read_text(encoding="utf-8"),
+                    title=path.name,
+                    font_family=MonospaceFontFamily,
+                    editable=False,
+                )
+            )
+
     def set_label_file(self, fp: Path):
         self._filename_label.setText(fp.name)
         self._filename_label_open_target = fp
@@ -152,8 +179,9 @@ class QTextEditBase(QtW.QWidget, JobWidgetBase):
         vval_old = vbar.value()
         hval_old = hbar.value()
         is_bottom = vval_old > vbar.maximum() - 5
-        sel0 = self._text_edit.textCursor().selectionStart()
-        sel1 = self._text_edit.textCursor().selectionEnd()
+        cursor = self._text_edit.textCursor()
+        sel0 = cursor.selectionStart()
+        sel1 = cursor.selectionEnd()
         self._text_edit.setPlainText(text)
 
         # if the vertical scrollbar was at the bottom, keep it at the bottom, otherwise
@@ -183,8 +211,6 @@ class QRunOutErrLog(QtW.QSplitter, JobWidgetBase):
         self._out_log = QRunOutLog()
         self._err_log = QRunErrLog()
         self.addWidget(self._out_log)
-        self._out_log._filename_label.setText("run.out")
-        self._err_log._filename_label.setText("run.err")
         self.addWidget(self._err_log)
         self.setSizes([600, 300])
 
@@ -215,6 +241,7 @@ class QRunOutLog(QTextEditBase):
         self._last_line = ""
         self._second_last_line = ""
         self._job_dir: _job_dir.JobDirectory | None = None
+        self._filename_label.setText("run.out")
 
     def initialize(self, job_dir: _job_dir.JobDirectory):
         lines: list[str] = []
@@ -238,6 +265,10 @@ class QRunOutLog(QTextEditBase):
 
 
 class QRunErrLog(QTextEditBase):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._filename_label.setText("run.err")
+
     def initialize(self, job_dir: _job_dir.JobDirectory):
         self.set_label_file(job_dir.path / "run.err")
         with suppress(Exception):
@@ -569,6 +600,7 @@ class QRelionNodeItem(QtW.QWidget):
         current_instance().read_file(
             path,
             plugin=plugin_for_filetype(self.file_type_category()),
+            append_history=False,
         )
 
 
@@ -766,6 +798,7 @@ class QFileLabel(QtW.QWidget):
         current_instance().read_file(
             path,
             plugin=plugin_for_filetype(self._relion_node_item.file_type_category()),
+            append_history=False,
         )
 
     def _copy_path_to_clipboard(self):

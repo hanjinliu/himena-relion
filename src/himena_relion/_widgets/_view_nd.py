@@ -10,6 +10,7 @@ from vispy.color import ColorArray
 from vispy.scene.visuals import Rectangle
 from himena.widgets import current_instance
 from himena.qt._qlineedit import QIntLineEdit, QDoubleLineEdit
+from himena.qt.magicgui import ToggleButtons
 from himena.plugins import validate_protocol
 from himena._utils import doc_to_whats_this
 from himena_builtins.qt.widgets._shared import labeled
@@ -225,15 +226,12 @@ class Q2DViewer(Q2DViewerBase):
             raise TypeError("image must be a numpy array or ArrayFilteredView.")
         self._last_clim = clim
         num_slices = self._array_view.num_slices()
-        self._dims_slider.blockSignals(True)
-        self._dims_slider_widget.setVisible(bool(num_slices > 1))
-        try:
+        with QtCore.QSignalBlocker(self._dims_slider):
+            self._dims_slider_widget.setVisible(bool(num_slices > 1))
             self._dims_slider.setRange(0, num_slices - 1)
             self._dims_slider.setValue(num_slices // 2)
             self._zpos_box.setRange(0, num_slices - 1)
             self.redraw()
-        finally:
-            self._dims_slider.blockSignals(False)
         if not had_image:
             self._auto_contrast(force_update_view_range=True)
             self.auto_fit()
@@ -276,11 +274,8 @@ class Q2DViewer(Q2DViewerBase):
 
     def _on_zpos_box_changed(self, value: int):
         """Update the slider when the z position box changes."""
-        self._zpos_box.blockSignals(True)
-        try:
+        with QtCore.QSignalBlocker(self._zpos_box):
             self._dims_slider.setValue(value)
-        finally:
-            self._zpos_box.blockSignals(False)
 
     def _on_slider_changed(self, value: int, *, force_sync: bool = False):
         """Update the displayed slice based on the slider value."""
@@ -302,14 +297,21 @@ class Q2DViewer(Q2DViewerBase):
                 np.zeros((2, 2), dtype=np.float32), (0.0, 1.0)
             )
 
-    def _get_image_slice(self, slider_value: int) -> SliceResult:
-        slice_image = np.asarray(self._array_view.get_slice(slider_value))
+    def _get_image_slice(self, slider_value: int) -> SliceResult | None:
+        try:
+            _sliced = self._array_view.get_slice(slider_value)
+        except Exception:
+            # This may happen if the image is being written in another thread so the
+            # header size and the actual data size are inconsistent.
+            return None
+        slice_image = np.asarray(_sliced)
         if self._last_clim is None:
             min_ = slice_image.min()
             max_ = slice_image.max()
             self._last_clim = (min_, max_)
         else:
             min_, max_ = self._last_clim
+
         point_size = self._point_size_normed()
         if self._dims_slider.isVisible():
             zs = self._points[:, 0]
@@ -330,11 +332,13 @@ class Q2DViewer(Q2DViewerBase):
         )
 
     @ensure_main_thread
-    def _on_calc_slice_done(self, future: Future[SliceResult]):
+    def _on_calc_slice_done(self, future: Future[SliceResult | None]):
         self._last_future = None
         if future.cancelled():
             return
         result = future.result()
+        if result is None:
+            return
         self._histogram_view.set_hist_for_array(result.image, result.clim)
         self._canvas.image = result.image
         self._canvas.contrast_limits = result.clim
@@ -416,10 +420,21 @@ class Q3DViewer(Q3DViewerBase):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._rendering = QtW.QComboBox()
-        self._rendering.addItems(["Surface", "Maximum", "Average"])
-        self._rendering.setCurrentIndex(0)
-        self._rendering.currentTextChanged.connect(self.set_rendering_mode)
+        self._control_widget: Q3DViewerControl | None = None  # delayed
+        self._rendering_mgui = ToggleButtons(
+            value="Surface",
+            choices=[("Surf", "Surface"), ("Max", "Maximum"), ("Avg", "Average")],
+            orientation="horizontal",
+            tooltip=(
+                "3D rendering mode.\n"
+                " * 'Surf': Iso-surface rendering.\n"
+                " * 'Max': Maximum intensity projection.\n"
+                " * 'Avg': Average intensity projection."
+            ),
+        )
+        self._rendering_mgui.changed.connect(self.set_rendering_mode)
+        self._rendering_mgui.max_height = 24
+
         self._hist_view = QHistogramView(mode="thresh")
         self._hist_view.set_hist_scale("log")
         self._hist_view.setFixedHeight(32)
@@ -428,22 +443,34 @@ class Q3DViewer(Q3DViewerBase):
         self._hist_view.clim_changed.connect(self._on_clim_changed)
         self._auto_thresh_btn = QtW.QPushButton("Auto")
         self._auto_thresh_btn.setFixedWidth(40)
+        self._auto_thresh_btn.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
         self._auto_thresh_btn.clicked.connect(lambda: self.auto_threshold())
         self._auto_thresh_btn.setToolTip("Automatically set the iso-surface threshold")
         self._has_image = False
-        _thresh = QtW.QWidget()
+        self._footer = _thresh = QtW.QWidget()
+        _thresh.setSizePolicy(
+            QtW.QSizePolicy.Policy.MinimumExpanding,
+            QtW.QSizePolicy.Policy.Fixed,
+        )
         _thresh_layout = QtW.QHBoxLayout(_thresh)
         _thresh_layout.setContentsMargins(0, 0, 0, 0)
-        _thresh_layout.addWidget(self._rendering)
+        _thresh_layout.addWidget(self._rendering_mgui.native)
         _thresh_layout.addWidget(self._hist_view)
         _thresh_layout.addWidget(self._auto_thresh_btn)
         _thresh.setMaximumWidth(400)
         _thresh.setMinimumWidth(300)
+        _thresh.setMinimumHeight(36)
 
         layout = QtW.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self._canvas.native)
         layout.addWidget(_thresh)
+
+        self.setMinimumHeight(
+            _thresh.minimumHeight()
+            + self._canvas.native.minimumHeight()
+            + layout.spacing()
+        )
 
     @property
     def has_image(self) -> bool:
@@ -480,6 +507,8 @@ class Q3DViewer(Q3DViewerBase):
         self._hist_view.set_minmax((th_min, th_max))
 
         self._canvas.set_iso_threshold(self._hist_view.threshold())
+        if self._control_widget is not None:
+            self._control_widget.set_info(image)
         if update_now:
             self._canvas.update_canvas()
 
@@ -487,8 +516,6 @@ class Q3DViewer(Q3DViewerBase):
         """Set the rendering mode of the 3D viewer."""
         if mode not in ["Surface", "Maximum", "Average"]:
             raise ValueError("mode must be 'Surface' or 'Maximum'.")
-        if self._rendering.currentText() != mode:
-            self._rendering.setCurrentText(mode)
         self._canvas.set_rendering_mode(mode)
         self._hist_view.set_mode("thresh" if mode == "Surface" else "clim")
         self._canvas.update_canvas()
@@ -541,7 +568,32 @@ class Q3DViewer(Q3DViewerBase):
 
     @validate_protocol
     def size_hint(self):
-        return 330, 350
+        return (330, 360)
+
+    @validate_protocol
+    def control_widget(self) -> Q3DViewerControl:
+        if self._control_widget is None:
+            self._control_widget = Q3DViewerControl()
+            if self.has_image:
+                self._control_widget.set_info(self._canvas.image)
+        return self._control_widget
+
+    @validate_protocol
+    def widget_added_callback(self):
+        # if this widget is added as a subwindow in a himena tab, user may want to
+        # expand the canvas. Allow this widget to expand.
+        self._canvas.native.setMaximumSize(6000, 6000)
+
+
+class Q3DViewerControl(QtW.QWidget):
+    def __init__(self):
+        super().__init__()
+        self._image_info_label = QtW.QLabel("")
+
+    def set_info(self, img: np.ndarray):
+        size_str = _utils.bytes_to_size_str(img.nbytes)
+        txt = f"{img.shape}, {img.dtype}, {size_str}"
+        self._image_info_label.setText(txt)
 
 
 class Q3DTomogramViewer(QViewer):
@@ -701,6 +753,7 @@ class Q3DLocalResViewer(Q3DViewerBase):
         self._iso_slider.threshold_changed.connect(self._on_iso_changed)
         self._iso_slider.set_hist_scale("log")
         self._auto_threshold_btn = QtW.QPushButton("Auto")
+        self._auto_threshold_btn.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
         self._auto_threshold_btn.setFixedWidth(40)
         self._auto_threshold_btn.clicked.connect(lambda: self.auto_threshold())
         self._clim_slider = QHistogramView(mode="clim")
@@ -793,11 +846,8 @@ class Q3DLocalResViewer(Q3DViewerBase):
         locres_masked = locres_masked[locres_masked > 0.001]
         self._surface.set_data(image, mask, clim=None, color_array=locres)
         self._surface.init_surface()
-        self._clim_slider.blockSignals(True)
-        try:
+        with QtCore.QSignalBlocker(self._clim_slider):
             self._clim_slider.set_clim(self._surface.clim)
-        finally:
-            self._clim_slider.blockSignals(False)
         self._on_shading_changed(self._shading.currentText())
         self._iso_slider.set_hist_for_array(image, (im_min0, im_max0))
         self._iso_slider.set_view_range(im_min0, im_max0)

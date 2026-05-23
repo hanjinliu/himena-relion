@@ -13,6 +13,7 @@ from himena_relion._widgets import (
     spacer_widget,
 )
 from himena_relion import _job_dir
+from himena_relion._widgets._shared.resizer import QResizer
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -22,10 +23,13 @@ class QPostProcessViewer(QJobScrollArea):
     def __init__(self, job_dir: _job_dir.JobDirectory):
         super().__init__()
         self._viewer = Q3DViewer()
+        self._resizer = QResizer(self._viewer)
         self._use_mask = QToggleSwitch("Show masked map")
         self._use_mask.setChecked(False)
         self._canvas = QPlotCanvas(self)
+        self._layout.setSpacing(0)
         self._layout.addWidget(self._viewer)
+        self._layout.addWidget(self._resizer)
         self._layout.addWidget(self._use_mask)
         self._layout.addWidget(self._canvas)
         self._layout.addWidget(spacer_widget())

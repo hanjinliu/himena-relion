@@ -37,7 +37,7 @@ class QExtractViewer(QJobScrollArea):
         self._mic_list = QMicrographListWidget(["Micrograph", "Extracted", "Full Path"])
         self._mic_list.setFixedHeight(130)
         self._mic_list.current_changed.connect(self._mic_changed)
-        layout.addWidget(QtW.QLabel("<b>Extracted Micrographs</b>"))
+        layout.addWidget(QtW.QLabel("<b>&#9679; Extracted Micrographs</b>"))
         hlayout = QtW.QHBoxLayout()
         hlayout.setContentsMargins(0, 0, 0, 0)
         hlayout.addWidget(QtW.QLabel("Display Range:"))
@@ -108,8 +108,9 @@ class QExtractViewer(QJobScrollArea):
         self._slider_display_range.setText(
             f"{start + 1} - {min(start + self._num_page, self._current_num_extracts)}"
         )
-        self._worker = self.plot_extracts(start, self._plot_session_id)
-        self._start_worker()
+        if self.isVisible():
+            self._worker = self.plot_extracts(start, self._plot_session_id)
+            self._start_worker()
 
     @thread_worker
     def plot_extracts(self, start_index: int, session: uuid.UUID):
@@ -123,10 +124,13 @@ class QExtractViewer(QJobScrollArea):
                     angst = mrc.voxel_size.x
                     size = mrc.header.nx
                     msg = f"Image size: {size} pix ({size * angst:.1f} A)"
+                    cutoff_rel = angst / 15.0  # 15 A cutoff
                     yield self._on_text_ready, (msg + "\n\n", session)
 
                 img_data = np.asarray(mrc_data[ith - 1], dtype=np.float32)
-                img_str = self._text_edit.image_to_base64(img_data, f"{ith}", 0.2)
+                img_str = self._text_edit.image_to_base64(
+                    img_data, f"{ith}", cutoff_rel
+                )
                 yield self._on_string_ready, (img_str, session)
 
     def _on_text_ready(self, value: tuple[str, uuid.UUID]):
@@ -140,3 +144,7 @@ class QExtractViewer(QJobScrollArea):
         if my_uuid != self._plot_session_id or self._worker is None:
             return
         self._text_edit.insert_base64_image(img_str)
+
+    def showEvent(self, a0):
+        self._slider_value_changed(self._slider.value(), udpate_slider=False)
+        return super().showEvent(a0)

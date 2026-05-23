@@ -79,6 +79,8 @@ def run_function(argv: list[str] | None = None) -> None:
 
     if args.get("o", None) is None:
         raise ValueError("Output directory (--o) is required but not given.")
+    if job_cls is None:
+        raise ValueError(f"External job not found for class_id: {class_id}")
     o_dir = Path(args["o"])
 
     job = job_cls(ExternalJobDirectory(o_dir))

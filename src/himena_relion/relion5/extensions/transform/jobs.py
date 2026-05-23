@@ -25,7 +25,8 @@ CENTER_BY = Annotated[
         "tooltip": (
             "Unit of the shift value.\n"
             "<ul>"
-            "<li><b>Pixel</b>: Shift by the specified number of pixels.</li>"
+            "<li><b>Pixel</b>: Shift by the specified number of pixels <b>in the input "
+            "3D map</b>.</li>"
             "<li><b>Angstrom</b>: Shift by the specified number of angstroms.</li>"
             "<li><b>Map center of mass</b>: Shift the center of mass of the map.</li>"
             "<li><b>Mask center of mass</b>: Shift the center of mass of the mask.</li>"
@@ -44,6 +45,9 @@ NEW_CENTER = Annotated[
 
 class ShiftMapJob(RelionExternalJob):
     """Shift a density map and the corresponding particles."""
+
+    OUTPUT_PARTICLES = _c.OUTPUT_PARTICLES
+    OUTPUT_MAP = _c.OUTPUT_MAP
 
     def output_nodes(self):
         return [
@@ -73,16 +77,22 @@ class ShiftMapJob(RelionExternalJob):
     ):
         out_job_dir = self.output_job_dir
         if center_by == "pixel":
+            _, scale = _read_image(in_3dref)
             new_center_pix = new_center
+            new_center_ang = tuple(s * scale for s in new_center_pix)
         elif center_by == "angstrom":
             _, scale = _read_image(in_3dref)
             new_center_pix = tuple(s / scale for s in new_center)
+            new_center_ang = new_center
         elif center_by == "map-com":
-            new_center_pix = self._center_by_com(in_3dref)
+            new_center_pix, new_center_ang = _center_by_com(in_3dref)
         elif center_by == "mask-com":
-            new_center_pix = self._center_by_com(in_mask)
+            new_center_pix, new_center_ang = _center_by_com(in_mask)
         else:
             raise ValueError(f"Invalid value for center_by: {center_by}")
+
+        self.console.log(f"Shift in pixels: {new_center_pix}")
+        self.console.log(f"Shift in angstroms: {new_center_ang}")
         _shift_image(in_3dref, out_job_dir.path / _c.OUTPUT_MAP, new_center_pix)
         self.console.log(f"Write shifted map to {out_job_dir.path / _c.OUTPUT_MAP}")
         if in_mask:
@@ -92,7 +102,7 @@ class ShiftMapJob(RelionExternalJob):
             )
         if in_parts:
             _shift_star(
-                in_parts, out_job_dir.path / _c.OUTPUT_PARTICLES, new_center_pix
+                in_parts, out_job_dir.path / _c.OUTPUT_PARTICLES, new_center_ang
             )
             self.console.log(
                 f"Write shifted partiles to {out_job_dir.path / _c.OUTPUT_PARTICLES}"
@@ -110,18 +120,22 @@ class ShiftMapJob(RelionExternalJob):
 
         _on_center_by_changed(widgets["center_by"].value)
 
-    def _center_by_com(self, path):
-        img, _ = _read_image(path)
-        com = _img_center_of_mass(img)
-        self.console.log(f"Center of mass of image {path}: {com}")
-        center = tuple((s - 1) / 2 for s in img.shape)
-        return tuple(float(cm - c) for c, cm in zip(center, com))
+
+def _center_by_com(
+    path,
+) -> tuple[tuple[float, float, float], tuple[float, float, float]]:
+    img, img_scale = _read_image(path)
+    com = _img_center_of_mass(img)
+    center = tuple((s - 1) / 2 for s in img.shape)
+    out_pix = tuple(float(cm - c) for c, cm in zip(center, com))
+    out_angst = tuple(d * img_scale for d in out_pix)
+    return out_pix, out_angst
 
 
-def _shift_image(path_in, path_out, shift):
-    """Shift image using `relion_image_handler`"""
+def _shift_image(path_in, path_out, shift_pix):
+    """Shift image using scipy."""
     img, pixel_size = _read_image(path_in)
-    shift_zyx = (shift[2], shift[1], shift[0])
+    shift_zyx = (shift_pix[2], shift_pix[1], shift_pix[0])
     img = img.astype(np.float32)
     cval = np.min(img)
     shifted = ndi.shift(img, shift=shift_zyx, order=3, mode="constant", cval=cval)
@@ -130,7 +144,15 @@ def _shift_image(path_in, path_out, shift):
         mrc.voxel_size = pixel_size
 
 
-def _shift_star(path_in, path_out, shift):
+def _shift_star(path_in, path_out, shift_ang):
+    """Use relion_star_handler to shift the particle coordinates.
+
+    Note that relion_star_handler uses the optics block in the input star file to
+    determine the pixel size, but this causes confusion when the scale of particle
+    images and the input map are different. Therefore, we set the pixel size to 1 and
+    directly specify the shift in angstroms, along with the `--ignore_optics` option to
+    ignore the optics block.
+    """
     args_star = [
         _c.RELION_STAR_HANDLER,
         "--i",
@@ -139,11 +161,14 @@ def _shift_star(path_in, path_out, shift):
         str(path_out),
         "--center",
         "--center_X",
-        str(-shift[0]),
+        str(-shift_ang[0]),
         "--center_Y",
-        str(-shift[1]),
+        str(-shift_ang[1]),
         "--center_Z",
-        str(-shift[2]),
+        str(-shift_ang[2]),
+        "--angpix",
+        "1",
+        "--ignore_optics",
     ]
     subprocess.run(args_star, check=True)
 
@@ -165,7 +190,7 @@ def _read_image(path) -> tuple[np.ndarray, float]:
     with mrcfile.open(path, mode="r") as mrc:
         img = mrc.data
         pixel_size = mrc.voxel_size.x  # assuming isotropic voxels
-    return img, pixel_size
+    return img, float(pixel_size)
 
 
 connect_jobs(

@@ -70,6 +70,11 @@ If your RELION project has jobs, the job flowchart will automatically created.
 In this flowchart, you can double-click nodes to open the job window, ++ctrl+f++ to open
 the search palette, and many other actions in the right-click context menu.
 
+:sparkles: *New in v0.0.5*: A table view is added to list all the jobs in a simple
+format.
+
+![](images/01_tableview.png){ width=300px loading=lazy }
+
 ## Job Window
 
 A job window displays the content of the job directory. For most of the cases, the first
@@ -84,7 +89,7 @@ automatically updated (in reasonable time intervals).
 The top-left corner has useful actions.
 
 The tool button 1 contains actions that are related to RELION job windows (no matter
-what job it is), such as "Overwrite" and "Mark As Finished".
+what job it is), such as "Overwrite" and "Abort".
 
 The tool button 2 contains hints for the next actions. For example, in a 2D
 classification job window, you will see "Select Class". These action hints are very
@@ -123,3 +128,13 @@ To run the next job, you can:
     This feature is currently integrated with the file watcher for default_pipeline.star
     so that the scheduled jobs will not automatically start if you quit the `himena`
     process.
+
+## Tagging Jobs
+
+:sparkles: *New in v0.0.4*
+
+![](images/01_tags.png){ width=200px loading=lazy }
+
+From right-click > Tag, you can add tags to each job. Tagging is useful for categorizing jobs, especially when you have different branches of jobs focusing on different
+structures. You can also use tags to quickly find jobs in the search palette. For
+example, you can type "#ribosome" to filter the results to only show the jobs tagged with "ribosome".

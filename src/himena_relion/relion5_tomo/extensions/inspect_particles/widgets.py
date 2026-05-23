@@ -15,6 +15,8 @@ from himena_relion._widgets import (
     QMicrographListWidget,
 )
 from himena_relion import _job_dir
+from himena_relion._widgets._misc import spacer_widget
+from himena_relion._widgets._shared.resizer import QResizer
 from himena_relion.schemas import OptimisationSetModel, ParticleMetaModel
 
 _LOGGER = logging.getLogger(__name__)
@@ -34,12 +36,14 @@ class QInspectViewer(QtW.QWidget):
         self._filter_widget._bin_factor.setText("1")
         self._tomo_choice = QMicrographListWidget(["Tomogram"])
         self._tomo_choice.current_changed.connect(self._on_tomo_changed)
+        self._resizer = QResizer(self._viewer)
         layout.addWidget(QtW.QLabel("<b>Picked tomogram Z slice</b>"))
         layout.addWidget(self._tomo_choice)
         layout.addWidget(self._filter_widget)
         layout.addWidget(self._viewer)
+        layout.addWidget(self._resizer)
         # self._filter_widget.value_changed.connect(self._viewer.redraw)
-        self.initialize(job_dir)
+        layout.addWidget(spacer_widget())
 
     def on_job_updated(self, job_dir: _job_dir.ExternalJobDirectory, path: str):
         """Handle changes to the job directory."""
@@ -83,13 +87,15 @@ class QInspectViewer(QtW.QWidget):
         if getter := info.get_particles:
             point_df = getter()
             cols = [f"rlnCenteredCoordinate{x}Angst" for x in "ZYX"]
-            cols_orig = [f"rlnOrigin{x}Angst" for x in "ZYX"]
             points_arr = point_df.select(cols).to_numpy()
+
+            # Shift particles by origin (transformed by rotation operator)
+            cols_orig = [f"rlnOrigin{x}Angst" for x in "ZYX"]
             if all(c in point_df.columns for c in cols_orig):
                 points_arr = points_arr + point_df.select(cols_orig).to_numpy()
             points = points_arr / info.tomo_pixel_size
             sizes = np.array(info.tomo_shape, dtype=np.float32) / info.tomogram_binning
-            center = (sizes - 1) / 2
+            center = sizes / 2
             bin_factor = int(self._filter_widget._bin_factor.text() or "1")
             points_processed = (points + center[np.newaxis]) / bin_factor
             yield self._viewer.set_points, points_processed

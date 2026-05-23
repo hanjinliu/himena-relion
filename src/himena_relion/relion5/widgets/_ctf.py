@@ -61,15 +61,15 @@ class QCtfFindViewer(QJobScrollArea):
         self._mic_list.current_changed.connect(self._mic_changed)
 
         self._viewer = Q2DViewer()
-        layout.addWidget(QtW.QLabel("<b>Defocus U/V</b>"))
+        layout.addWidget(QtW.QLabel("<b>&#9679; Defocus U/V</b>"))
         layout.addWidget(self._defocus_canvas)
-        layout.addWidget(QtW.QLabel("<b>Astigmatism</b>"))
+        layout.addWidget(QtW.QLabel("<b>&#9679; Astigmatism</b>"))
         layout.addWidget(self._astigmatism_canvas)
-        layout.addWidget(QtW.QLabel("<b>Defocus angle</b>"))
+        layout.addWidget(QtW.QLabel("<b>&#9679; Defocus angle</b>"))
         layout.addWidget(self._defocus_angle_canvas)
-        layout.addWidget(QtW.QLabel("<b>Max resolution</b>"))
+        layout.addWidget(QtW.QLabel("<b>&#9679; Max resolution</b>"))
         layout.addWidget(self._max_resolution_canvas)
-        layout.addWidget(QtW.QLabel("<b>CTF spectra</b>"))
+        layout.addWidget(QtW.QLabel("<b>&#9679; CTF spectra</b>"))
         layout.addWidget(self._viewer)
         layout.addWidget(self._mic_list)
         self._last_update = -1.0
@@ -165,7 +165,6 @@ class QCtfRefineAnisoMagViewer(QJobScrollArea):
     def __init__(self, job_dir: _job_dir.JobDirectory):
         super().__init__()
         self._job_dir = job_dir
-        layout = self._layout
         self._optics_group_list = QMicrographListWidget(["Optics Group", "Index"])
         self._optics_group_list.current_changed.connect(self._process_update)
 
@@ -186,9 +185,9 @@ class QCtfRefineAnisoMagViewer(QJobScrollArea):
         layout_fit.addWidget(self._view_x_fit)
         layout_fit.addWidget(self._view_y_fit)
 
-        layout.addWidget(self._optics_group_list)
-        layout.addLayout(layout_obs)
-        layout.addLayout(layout_fit)
+        self._layout.addWidget(self._optics_group_list)
+        self._layout.addLayout(layout_obs)
+        self._layout.addLayout(layout_fit)
 
     def initialize(self, job_dir):
         # update optics group list
@@ -349,7 +348,9 @@ class Q2DViewWithTitle(QtW.QWidget):
         layout = QtW.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         label = QtW.QLabel(f"<b>{title}</b>")
-        label.setAlignment(QtCore.Qt.AlignmentFlag.AlignHCenter)
+        label.setAlignment(
+            QtCore.Qt.AlignmentFlag.AlignHCenter | QtCore.Qt.AlignmentFlag.AlignBottom
+        )
         layout.addWidget(label)
         self.view = Q2DSimpleViewer()
         self.view.setFixedSize(260, 260)

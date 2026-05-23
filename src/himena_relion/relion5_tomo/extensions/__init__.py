@@ -18,3 +18,60 @@ __all__ = [
     "ReconstructTomoIMOD",
     "ReconstructHalfTomoIMOD",
 ]
+
+
+def _connect_jobs():
+    from himena_relion._job_class import connect_jobs
+    from himena_relion.relion5.extensions import ShiftMapJob, ManualMaskCreation
+    from himena_relion.relion5_tomo._connections import mask_create_search_halfmap
+    from himena_relion.relion5_tomo._builtins import (
+        ReconstructParticlesJob,
+        ExtractParticlesTomoJob,
+        InitialModelTomoJob,
+        Refine3DTomoJob,
+        PostProcessTomoJob,
+    )
+
+    connect_jobs(
+        ShiftMapJob,
+        ReconstructParticlesJob,
+        node_mapping={
+            ShiftMapJob.OUTPUT_PARTICLES: "in_optim.in_particles",
+        },
+    )
+    connect_jobs(
+        ShiftMapJob,
+        ExtractParticlesTomoJob,
+        node_mapping={
+            ShiftMapJob.OUTPUT_PARTICLES: "in_optim.in_particles",
+        },
+    )
+
+    connect_jobs(
+        InitialModelTomoJob,
+        ManualMaskCreation,
+        node_mapping={"initial_model.mrc": "in_3dref"},
+    )
+    connect_jobs(
+        Refine3DTomoJob,
+        ManualMaskCreation,
+        node_mapping={"run_class001.mrc": "in_3dref"},
+    )
+    connect_jobs(
+        ReconstructParticlesJob,
+        ManualMaskCreation,
+        node_mapping={"merged.mrc": "in_3dref"},
+    )
+
+    connect_jobs(
+        ManualMaskCreation,
+        PostProcessTomoJob,
+        node_mapping={
+            mask_create_search_halfmap: "fn_in",
+            "mask.mrc": "fn_mask",
+        },
+    )
+
+
+_connect_jobs()
+del _connect_jobs

@@ -22,7 +22,7 @@ from pathlib import Path
 from magicgui.widgets.bases import ValueWidget
 
 from himena.types import AnyContext, WidgetDataModel
-from himena.workflow import WorkflowStep
+from himena.workflow import WorkflowStep, LocalReaderMethod
 from himena.widgets import MainWindow
 from himena.plugins import when_reader_used, register_function
 import numpy as np
@@ -32,6 +32,7 @@ from himena_relion._pipeline import is_all_inputs_ready
 from himena_relion.consts import Type, MenuId, JOB_ID_MAP
 from himena_relion._utils import (
     last_job_directory,
+    open_with_lock,
     unwrap_annotated,
     change_name_for_tomo,
     normalize_job_id,
@@ -45,6 +46,13 @@ if TYPE_CHECKING:
 _LOGGER = logging.getLogger(__name__)
 
 
+@dataclass
+class RelionJobCommand:
+    command_id: str
+    title: str
+    tooltip: str | None = None
+
+
 class RelionJob(ABC):
     """Class that describes a RELION job.
 
@@ -54,6 +62,8 @@ class RelionJob(ABC):
     Running a job is defined by the `run` method, although it does not necesarrily
     implement the actual running of the job (because RELION runs jobs externally).
     """
+
+    __relion_job_commands__: list[RelionJobCommand] = []
 
     def __init__(self, output_job_dir: _job_dir.JobDirectory):
         self._output_job_dir = output_job_dir
@@ -132,13 +142,19 @@ class RelionJob(ABC):
             cls.job_title(),
             command_id,
         )
+        cmd = RelionJobCommand(
+            command_id=command_id,
+            title=f"{cls.command_palette_title_prefix()} {cls.job_title()}",
+            tooltip=getattr(cls, "__doc__", None),
+        )
         register_function(
             cls._show_scheduler_widget,
             menus=[cls.menu_id()],
-            title=f"{cls.command_palette_title_prefix()} {cls.job_title()}",
-            command_id=command_id,
-            tooltip=getattr(cls, "__doc__", None),
+            title=cmd.title,
+            command_id=cmd.command_id,
+            tooltip=cmd.tooltip,
         )
+        RelionJob.__relion_job_commands__.append(cmd)
 
     @classmethod
     def menu_id(cls) -> str:
@@ -183,15 +199,14 @@ class RelionJob(ABC):
         job_dir = self.output_job_dir
         job_star_model = self.prep_job_star(**kwargs)
         job_star_model.write(job_dir.job_star())
-        to_run = str(job_dir.path.relative_to(job_dir.relion_project_dir))
+        rln_dir = job_dir.relion_project_dir
+        to_run = str(job_dir.path.relative_to(rln_dir))
         if is_all_inputs_ready(to_run):
-            return execute_job(to_run, cwd=job_dir.relion_project_dir)
+            return execute_job(to_run, cwd=rln_dir)
         else:
-            default_pipeline_path = job_dir.relion_project_dir / "default_pipeline.star"
-            if not default_pipeline_path.exists():
-                return _LOGGER.warning("Project default_pipeline.star not found.")
             # Job state needs to be updated to "Scheduled"
-            update_default_pipeline(default_pipeline_path, to_run, state="Scheduled")
+            with open_with_lock(rln_dir / "default_pipeline.star") as f:
+                update_default_pipeline(f, to_run, state="Scheduled")
 
     @classmethod
     def _show_scheduler_widget(cls, ui: MainWindow, context: AnyContext, cwd=None):
@@ -416,17 +431,17 @@ class _Relion5BuiltinContinue(_Relion5BuiltinJob):
     def _show_scheduler_widget_for_continue(
         cls,
         ui: MainWindow,
-        model: WidgetDataModel,
+        model: WidgetDataModel,  # FIXME: don't use this arg
         context: AnyContext,
     ):
         scheduler = scheduler_widget(ui)
+        job_dir = model.value
+        if not isinstance(job_dir, _job_dir.JobDirectory):
+            raise RuntimeError("Widget model does not contain a job directory.")
+        scheduler.update_by_job(cls, cwd=job_dir.relion_project_dir)
+        orig_params_raw = job_dir.get_job_params_as_dict()
+        orig_params = cls.original_class.normalize_kwargs_inv(**orig_params_raw)
         try:
-            job_dir = model.value
-            if not isinstance(job_dir, _job_dir.JobDirectory):
-                raise RuntimeError("Widget model does not contain a job directory.")
-            scheduler.update_by_job(cls, cwd=job_dir.relion_project_dir)
-            orig_params_raw = job_dir.get_job_params_as_dict()
-            orig_params = cls.original_class.normalize_kwargs_inv(**orig_params_raw)
             sig = cls._signature()
             for orig_key, orig_val in orig_params.items():
                 if orig_key in sig.parameters:
@@ -434,7 +449,7 @@ class _Relion5BuiltinContinue(_Relion5BuiltinJob):
             if context:
                 scheduler.set_parameters(context)
         finally:
-            scheduler.set_continue_mode(job_dir, orig_params_raw)
+            scheduler.set_continue_mode(job_dir, orig_params)
         return scheduler
 
     def make_job_star(self, **kwargs) -> JobStarModel:
@@ -664,12 +679,16 @@ def _node_mapping_to_context(
     value_mapping = value_mapping or {}
 
     def _func(ui: MainWindow, step: WorkflowStep) -> dict[str, Any]:
-        win = ui.window_for_id(step.id)
-        if win is None:
-            return {}
-        val = win.value
-        if not isinstance(val, _job_dir.JobDirectory):
-            return {}
+        if isinstance(step, LocalReaderMethod) and isinstance(path := step.path, Path):
+            if path.is_dir():
+                path = path / "job.star"
+            val = _job_dir.JobDirectory.from_job_star(path)
+        else:
+            win = ui.window_for_id(step.id)
+            if win is None:
+                return {}
+            if not isinstance(val := win.value, _job_dir.JobDirectory):
+                return {}
         # NOTE: the from_ file does NOT have to exist at this point.
         out = {}
         for from_, to_ in node_mapping.items():

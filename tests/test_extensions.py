@@ -1,6 +1,8 @@
+import time
 from typing import Callable
 from pathlib import Path
 
+import threading
 import mrcfile
 import numpy as np
 import polars as pl
@@ -330,3 +332,53 @@ def test_take_zerotilts(
     widget = tester.provide_widget(ext_dir)
     qtbot.addWidget(widget)
     tester.test_run(ext_dir, widget=widget)
+
+def test_manually_create_mask(
+    qtbot,
+    tmpdir,
+    jobs_dir_spa,
+):
+    from himena_relion.relion5.extensions.volume_tools import ManualMaskCreation
+    from himena_relion.relion5.extensions.volume_tools.widgets import QMaskCreateViewer
+
+    tmpdir = Path(tmpdir)
+    template_path = tmpdir / "in_3dref.mrc"
+    with mrcfile.new(template_path) as mrc:
+        mrc.set_data(np.random.normal(size=(8, 8, 8)).astype(np.float32))
+        mrc.voxel_size = (0.78, 0.78, 0.78)
+    ext_dir = tmpdir / "External/job010"
+    ext_dir.mkdir(parents=True, exist_ok=True)
+
+    tester = ExternalJobTester(ManualMaskCreation)
+    ManualMaskCreation._max_wait_time_sec = 5
+    tester.prep_job_star(ext_dir, in_3dref=str(template_path))
+    widget: QMaskCreateViewer = tester.provide_widget(ext_dir)
+    qtbot.addWidget(widget)
+
+    mask_path = ext_dir / "mask_base.mrc"
+    def create_mask():
+        time.sleep(0.5)
+        with mrcfile.new(mask_path) as mrc:
+            mrc.set_data(np.random.normal(size=(8, 8, 8)).astype(np.float32))
+            mrc.voxel_size = (0.78, 0.78, 0.78)
+
+    thread = threading.Thread(target=create_mask, daemon=True)
+    thread.start()
+
+    tester.test_run(ext_dir, widget=widget)
+
+    widget._mask_level_slider.value = 0.4
+    widget._step_size.setValue(2)
+    widget._mask_mode.value = "wireframe"
+    widget._mask_level_slider.value = 0.44
+    assert (ext_dir / "mask.mrc").exists()
+    assert (ext_dir / "mask_base.mrc").exists()
+
+    # overwrite
+    thread = threading.Thread(target=create_mask, daemon=True)
+    thread.start()
+
+    tester.test_run(ext_dir, widget=widget)
+    assert (ext_dir / "mask.mrc").exists()
+    assert (ext_dir / "mask_base.mrc").exists()
+    assert (ext_dir / "mask_base_backup.mrc").exists()

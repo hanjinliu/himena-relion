@@ -1,8 +1,10 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections import defaultdict
+from functools import cache
 import logging
 from pathlib import Path
+import time
 from typing import Any, Union
 
 from himena import MainWindow
@@ -16,6 +18,7 @@ from himena_relion._job_class import (
     parse_string,
     _Relion5BuiltinContinue,
 )
+from starfile_rs.schema import ValidationError
 from himena_relion._widgets._misc import QMoreActionButton
 from magicgui.widgets.bases import ValueWidget
 from magicgui.signature import MagicParameter
@@ -276,7 +279,15 @@ class ScheduleMode(Mode):
         proc = job_cls.create_and_run_job(**params, _cwd=widget._cwd)
         widget.clear_content()
         if isinstance(proc, RelionJobExecution):
-            widget._ui.read_file(proc.job_directory.path, append_history=False)
+            # job.star may not be ready yet.
+            job_star = proc.job_directory.path / "job.star"
+            for _ in range(3):
+                # ensure job.star is ready and valid
+                try:
+                    JobStarModel.validate_file(job_star)
+                except ValidationError:
+                    time.sleep(0.05)
+            widget._ui.read_file(job_star, append_history=False)
             widget._ui.show_notification(f"Job '{job_cls.job_title()}' started.")
         else:
             widget._ui.show_notification(f"Job '{job_cls.job_title()}' scheduled.")
@@ -345,10 +356,7 @@ class QParameterNameLabel(QtW.QWidget):
         )
 
         if tooltip:
-            svg = _utils.read_icon_svg("info")
-            icon = QColoredSVGIcon(svg, color="gray")
             info_icon_widget = QParameterInfoIcon()
-            info_icon_widget.setPixmap(icon.pixmap(12, 12))
             layout.addWidget(
                 info_icon_widget, alignment=QtCore.Qt.AlignmentFlag.AlignRight
             )
@@ -372,9 +380,7 @@ class QParameterInfoIcon(QtW.QLabel):
 
     def __init__(self):
         super().__init__()
-        svg = _utils.read_icon_svg("info")
-        icon = QColoredSVGIcon(svg, color="gray")
-        self.setPixmap(icon.pixmap(12, 12))
+        self.setPixmap(_make_info_icon_pixmap())
         self.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
         self._last_press_pos = QtCore.QPoint()
         self.setToolTip("Click to show more information about this parameter.")
@@ -389,6 +395,13 @@ class QParameterInfoIcon(QtW.QLabel):
             max_dist_to_consider_as_click = 6  # pixels
             if dist < max_dist_to_consider_as_click:
                 self.clicked.emit(event.globalPos())
+
+
+@cache
+def _make_info_icon_pixmap() -> QtGui.QPixmap:
+    svg = _utils.read_icon_svg("info")
+    icon = QColoredSVGIcon(svg, color="gray")
+    return icon.pixmap(12, 12)
 
 
 class QHTMLTextEdit(QtW.QTextEdit):

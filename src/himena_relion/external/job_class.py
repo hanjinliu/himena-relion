@@ -13,7 +13,7 @@ from himena_relion.external.writers import prep_job_star_external
 from himena_relion.schemas import JobStarModel
 
 
-def pick_job_class(class_id: str) -> "type[RelionExternalJob]":
+def pick_job_class(class_id: str) -> "type[RelionExternalJob] | None":
     """Pick the function to execute based on class_id."""
 
     if class_id.count(":") != 1:
@@ -23,10 +23,14 @@ def pick_job_class(class_id: str) -> "type[RelionExternalJob]":
     class_file_path, class_name = class_id.split(":", 1)
     if class_file_path.endswith(".py"):
         ns = run_path(class_file_path)
-        job_cls = ns[class_name]
+        job_cls = ns.get(class_name, None)
     else:
         module = import_module(class_file_path)
-        job_cls = getattr(module, class_name)
+        job_cls = getattr(module, class_name, None)
+    if job_cls is None:
+        # this case can happen when an himena-relion external job was installed and
+        # executed, but later the plugin was uninstalled.
+        return
     if not issubclass(job_cls, RelionExternalJob):
         raise TypeError(f"Function {class_id} is not callable")
     return job_cls

@@ -116,8 +116,10 @@ class QExtractJobViewer(QJobScrollArea):
         self._slider_display_range.setText(f"{start + 1} - {self._end_index(start)}")
         self._plot_session_id = self._text_edit.prep_uuid()
         self.window_closed_callback()
-        self._worker = self.plot_extracts(start, self._plot_session_id)
-        self._start_worker()
+        if self.isVisible():
+            # Showing subtomograms is a very frequent operation and is usually heavy.
+            self._worker = self.plot_extracts(start, self._plot_session_id)
+            self._start_worker()
 
     @thread_worker
     def scan_subtomos(self, tomo_name: str):
@@ -141,6 +143,7 @@ class QExtractJobViewer(QJobScrollArea):
                     angst = mrc.voxel_size.x
                     size = mrc.header.nx
                     msg = f"Image size: {size} pix ({size * angst:.1f} A)"
+                    cutoff_rel = angst / 15.0  # 15 A cutoff
                     yield self._on_text_ready, (msg + "\n\n", session)
                 if mrc.data.ndim != 3:
                     # this may happen if the subtomogram is being written right now
@@ -150,7 +153,7 @@ class QExtractJobViewer(QJobScrollArea):
                 else:
                     img_2d = np.max(np.asarray(mrc.data), axis=0)
                 img_2d = np.asarray(img_2d, dtype=np.float32)
-                img_str = self._text_edit.image_to_base64(img_2d, f"{ith}", 0.2)
+                img_str = self._text_edit.image_to_base64(img_2d, f"{ith}", cutoff_rel)
                 yield self._on_string_ready, (img_str, session)
         if self._plot_session_id == session:
             self._worker = None
@@ -177,6 +180,10 @@ class QExtractJobViewer(QJobScrollArea):
         self._slider.setRange(0, max_num // self._num_page)
         current_pos = min(current_pos, self._slider.maximum())
         self._slider_value_changed(current_pos, udpate_slider=True)
+
+    def showEvent(self, a0):
+        self._on_tomo_changed(self._tomo_list.current_row_texts())
+        return super().showEvent(a0)
 
 
 def _list_subtomo_names(job_dir: _job_dir.JobDirectory, tomoname: str) -> list[str]:
