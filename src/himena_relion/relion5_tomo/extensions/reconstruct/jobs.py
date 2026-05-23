@@ -147,6 +147,7 @@ class ReconstructTomoIMOD(RelionExternalJob):
             outbin=outbin,
             out_size=out_size,
             dir_tilt_series=_dir_tilt_series,
+            is_half=False,
         )
         shutil.rmtree(_dir_fileinlists)  # clean up temporary fileinlists directory
 
@@ -258,6 +259,7 @@ class ReconstructHalfTomoIMOD(RelionExternalJob):
             outbin=outbin,
             out_size=out_size,
             dir_tilt_series=_dir_tilt_series,
+            is_half=True,
         )
         shutil.rmtree(_dir_fileinlists)  # clean up temporary fileinlists directory
 
@@ -475,6 +477,7 @@ def _finalize_star_files(
     outbin: int,
     out_size: tuple[int, int, int],
     dir_tilt_series: Path,
+    is_half: bool = False,
 ):
     tomo_star_path = output_job_dir.path.joinpath("tomograms.star")
 
@@ -488,15 +491,37 @@ def _finalize_star_files(
             str(path_new.relative_to(output_job_dir.relion_project_dir))
         )
 
-    df_out = tsgroup.dataframe.with_columns(
-        pl.lit(outbin).cast(pl.Float32).alias("rlnTomoTomogramBinning"),
-        pl.Series("rlnTomoTiltSeriesStarFile", tilt_series_paths),
-    ).with_columns(
-        pl.DataFrame(
-            out_size,
-            schema=["rlnTomoSizeX", "rlnTomoSizeY", "rlnTomoSizeZ"],
-            orient="row",
-        ),
+    if is_half:
+        tomo_columns = [
+            pl.Series(
+                "rlnTomoReconstructedTomogramHalf1",
+                [f"rec_{name}_half1.mrc" for name in tsgroup.tomo_name],
+            ),
+            pl.Series(
+                "rlnTomoReconstructedTomogramHalf2",
+                [f"rec_{name}_half2.mrc" for name in tsgroup.tomo_name],
+            ),
+        ]
+    else:
+        tomo_columns = [
+            pl.Series(
+                "rlnTomoReconstructedTomogram",
+                [f"rec_{name}.mrc" for name in tsgroup.tomo_name],
+            )
+        ]
+    df_out = (
+        tsgroup.dataframe.with_columns(
+            pl.lit(outbin).cast(pl.Float32).alias("rlnTomoTomogramBinning"),
+            pl.Series("rlnTomoTiltSeriesStarFile", tilt_series_paths),
+        )
+        .with_columns(
+            pl.DataFrame(
+                out_size,
+                schema=["rlnTomoSizeX", "rlnTomoSizeY", "rlnTomoSizeZ"],
+                orient="row",
+            ),
+        )
+        .with_columns(*tomo_columns)
     )
     as_star({"global": df_out}).write(tomo_star_path)
 
