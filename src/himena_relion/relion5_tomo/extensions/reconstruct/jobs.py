@@ -1,14 +1,29 @@
 from pathlib import Path
+import shutil
 import subprocess
 from typing import Annotated
 
 import polars as pl
 import mrcfile
 from starfile_rs import as_star
+from himena_relion._job_class import connect_jobs
+from himena_relion._job_dir import JobDirectory
 from himena_relion.consts import MenuId
 from himena_relion.external import RelionExternalJob
 from himena_relion._annotated.io import IN_TILT, DO_F16
 from himena_relion.schemas import TSGroupModel, TSModel
+import himena_relion.relion5_tomo._builtins as _tomo
+
+_GPU_ID_TO_USE = Annotated[
+    str,
+    {
+        "label": "GPU ID to use",
+        "tooltip": (
+            "GPU to use for tomogram reconstruction (the <code>tilt</code> command). "
+            "Leave empty to let IMOD decide automatically."
+        ),
+    },
+]
 
 
 class ReconstructTomoIMOD(RelionExternalJob):
@@ -42,7 +57,7 @@ class ReconstructTomoIMOD(RelionExternalJob):
         filter_cutoff: float = 0.35,
         filter_falloff: float = 0.035,
         do_float16: DO_F16 = True,
-        gpu_id_to_use: str = "",
+        gpu_id_to_use: _GPU_ID_TO_USE = "",
     ):
         # IMOD's GPU IDs are 1-based, and 0 means "auto"
         gpu_id_imod = 0 if gpu_id_to_use == "" else int(gpu_id_to_use) + 1
@@ -106,17 +121,15 @@ class ReconstructTomoIMOD(RelionExternalJob):
             yield
 
         self.console.log("Reconstruction finished successfully.")
-        tomo_star_path = self.output_job_dir.path.joinpath("tomograms.star")
-        df_out = tsgroup.dataframe.with_columns(
-            pl.lit(outbin).cast(pl.Float32).alias("rlnTomoTomogramBinning"),
-        ).with_columns(
-            pl.DataFrame(
-                out_size,
-                schema=["rlnTomoSizeX", "rlnTomoSizeY", "rlnTomoSizeZ"],
-                orient="row",
-            ),
+
+        _finalize_star_files(
+            output_job_dir=self.output_job_dir,
+            tsgroup=tsgroup,
+            outbin=outbin,
+            out_size=out_size,
+            dir_tilt_series=_dir_tilt_series,
         )
-        as_star({"global": df_out}).write(tomo_star_path)
+        shutil.rmtree(_dir_fileinlists)  # clean up temporary fileinlists directory
 
 
 class ReconstructHalfTomoIMOD(RelionExternalJob):
@@ -129,7 +142,7 @@ class ReconstructHalfTomoIMOD(RelionExternalJob):
 
     @classmethod
     def job_title(cls):
-        return "Reconstruct Tomos (IMOD)"
+        return "Reconstruct Tomos For Denoise (IMOD)"
 
     @classmethod
     def menu_id(cls):
@@ -148,7 +161,7 @@ class ReconstructHalfTomoIMOD(RelionExternalJob):
         filter_cutoff: float = 0.35,
         filter_falloff: float = 0.035,
         do_float16: DO_F16 = True,
-        gpu_id_to_use: str = "",
+        gpu_id_to_use: _GPU_ID_TO_USE = "",
     ):
         # IMOD's GPU IDs are 1-based, and 0 means "auto"
         gpu_id_imod = 0 if gpu_id_to_use == "" else int(gpu_id_to_use) + 1
@@ -219,17 +232,15 @@ class ReconstructHalfTomoIMOD(RelionExternalJob):
             yield
 
         self.console.log("Reconstruction finished successfully.")
-        tomo_star_path = self.output_job_dir.path.joinpath("tomograms.star")
-        df_out = tsgroup.dataframe.with_columns(
-            pl.lit(outbin).cast(pl.Float32).alias("rlnTomoTomogramBinning"),
-        ).with_columns(
-            pl.DataFrame(
-                out_size,
-                schema=["rlnTomoSizeX", "rlnTomoSizeY", "rlnTomoSizeZ"],
-                orient="row",
-            ),
+
+        _finalize_star_files(
+            output_job_dir=self.output_job_dir,
+            tsgroup=tsgroup,
+            outbin=outbin,
+            out_size=out_size,
+            dir_tilt_series=_dir_tilt_series,
         )
-        as_star({"global": df_out}).write(tomo_star_path)
+        shutil.rmtree(_dir_fileinlists)  # clean up temporary fileinlists directory
 
 
 def _run_impl(
@@ -420,3 +431,58 @@ def _run_rotx(
         str(output_path),
     ]
     return subprocess.run(args, stdout=subprocess.PIPE)
+
+
+def _finalize_star_files(
+    output_job_dir: JobDirectory,
+    tsgroup: TSGroupModel,
+    outbin: int,
+    out_size: tuple[int, int, int],
+    dir_tilt_series: Path,
+):
+    tomo_star_path = output_job_dir.path.joinpath("tomograms.star")
+
+    # copy tilt_series contents
+    tilt_series_paths = []
+    for ts_file in tsgroup.tomo_tilt_series_star_file:
+        path_old = Path(ts_file)
+        path_new = dir_tilt_series / path_old.name
+        path_new.write_bytes(path_old.read_bytes())
+        tilt_series_paths.append(
+            str(path_new.relative_to(output_job_dir.relion_project_dir))
+        )
+
+    df_out = tsgroup.dataframe.with_columns(
+        pl.lit(outbin).cast(pl.Float32).alias("rlnTomoTomogramBinning"),
+        pl.Series("rlnTomoTiltSeriesStarFile", tilt_series_paths),
+    ).with_columns(
+        pl.DataFrame(
+            out_size,
+            schema=["rlnTomoSizeX", "rlnTomoSizeY", "rlnTomoSizeZ"],
+            orient="row",
+        ),
+    )
+    as_star({"global": df_out}).write(tomo_star_path)
+
+
+connect_jobs(
+    _tomo.AlignTiltSeriesImodFiducial,
+    ReconstructTomoIMOD,
+    node_mapping={"aligned_tilt_series.star": "in_tiltseries"},
+)
+connect_jobs(
+    _tomo.AlignTiltSeriesImodFiducial,
+    ReconstructHalfTomoIMOD,
+    node_mapping={"aligned_tilt_series.star": "in_tiltseries"},
+)
+
+connect_jobs(
+    ReconstructTomoIMOD,
+    _tomo.PickJob,
+    node_mapping={"tomograms.star": "in_tomoset"},
+)
+connect_jobs(
+    ReconstructHalfTomoIMOD,
+    _tomo.DenoiseTrain,
+    node_mapping={"tomograms.star": "in_tomoset"},
+)
