@@ -141,6 +141,10 @@ class QMyJobWidget(QtW.QWidget):
         super().__init__()
         # build your custom widget here
 
+    def initialize(self, job_dir):
+        # this method will be called when the widget is shown for the first time.
+        ...
+
     def on_job_updated(self, job_dir, path):
         # this method will be called when the `path` file under the `job_dir` is
         # updated.
