@@ -136,7 +136,7 @@ class TSModel(schema.LoopDataModel):
         odd_paths = list(self.micrograph_name_odd)
         return (
             [str(rln_dir / even_paths[i]) for i in order],
-            [rln_dir / odd_paths[i] for i in order],
+            [str(rln_dir / odd_paths[i]) for i in order],
         )
 
     def need_rot90(self) -> bool:
