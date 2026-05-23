@@ -180,7 +180,6 @@ class ReconstructHalfTomoIMOD(RelionExternalJob):
         thickness: _THICKNESS = 600,
         filter_cutoff: float = 0.35,
         filter_falloff: float = 0.035,
-        do_float16: DO_F16 = True,
         gpu_id_to_use: _GPU_ID_TO_USE = "",
     ):
         # IMOD's GPU IDs are 1-based, and 0 means "auto"
@@ -238,7 +237,7 @@ class ReconstructHalfTomoIMOD(RelionExternalJob):
                     output_tomo_path=_dir_tomo / f"rec_{tomo_name}_half{half}.mrc",
                     tomo_size=tomo_size,
                     outbin=outbin,
-                    do_float16=do_float16,
+                    do_float16=False,  # CryoCARE does not support f16
                     filter_cutoff=filter_cutoff,
                     filter_falloff=filter_falloff,
                     gpu_id_imod=gpu_id_imod,
@@ -490,23 +489,23 @@ def _finalize_star_files(
         tilt_series_paths.append(
             str(path_new.relative_to(output_job_dir.relion_project_dir))
         )
-
+    tomo_dir_path = f"{output_job_dir.job_normal_id()}tomograms"
     if is_half:
         tomo_columns = [
             pl.Series(
                 "rlnTomoReconstructedTomogramHalf1",
-                [f"rec_{name}_half1.mrc" for name in tsgroup.tomo_name],
+                [f"{tomo_dir_path}/rec_{name}_half1.mrc" for name in tsgroup.tomo_name],
             ),
             pl.Series(
                 "rlnTomoReconstructedTomogramHalf2",
-                [f"rec_{name}_half2.mrc" for name in tsgroup.tomo_name],
+                [f"{tomo_dir_path}/rec_{name}_half2.mrc" for name in tsgroup.tomo_name],
             ),
         ]
     else:
         tomo_columns = [
             pl.Series(
                 "rlnTomoReconstructedTomogram",
-                [f"rec_{name}.mrc" for name in tsgroup.tomo_name],
+                [f"{tomo_dir_path}/rec_{name}.mrc" for name in tsgroup.tomo_name],
             )
         ]
     df_out = (
