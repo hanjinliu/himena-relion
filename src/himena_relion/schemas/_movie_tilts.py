@@ -141,7 +141,7 @@ class TSModel(schema.LoopDataModel):
 
     def need_rot90(self) -> bool:
         degree = self.nominal_tilt_axis_angle.mean()
-        return abs((float(degree) + 90) % 180 - 90)
+        return abs((float(degree) + 90) % 180 - 90) > 45
 
     def prep_matrix(
         self,

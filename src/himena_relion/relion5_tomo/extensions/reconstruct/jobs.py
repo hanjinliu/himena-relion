@@ -113,9 +113,9 @@ class ReconstructTomoIMOD(RelionExternalJob):
 
             with mrcfile.open(mic_names[0], header_only=True) as mrc:
                 if ts.need_rot90():
-                    tomo_size = int(mrc.header.nx), int(mrc.header.ny), thickness
-                else:
                     tomo_size = int(mrc.header.ny), int(mrc.header.nx), thickness
+                else:
+                    tomo_size = int(mrc.header.nx), int(mrc.header.ny), thickness
 
             success = yield from _run_impl(
                 edf_path=self.output_job_dir.resolve_path(
@@ -224,9 +224,9 @@ class ReconstructHalfTomoIMOD(RelionExternalJob):
 
             with mrcfile.open(even_names[0], header_only=True) as mrc:
                 if ts.need_rot90():
-                    tomo_size = int(mrc.header.nx), int(mrc.header.ny), thickness
-                else:
                     tomo_size = int(mrc.header.ny), int(mrc.header.nx), thickness
+                else:
+                    tomo_size = int(mrc.header.nx), int(mrc.header.ny), thickness
 
             for fpath, half in [(fileinlist_path_even, 1), (fileinlist_path_odd, 2)]:
                 success = yield from _run_impl(
