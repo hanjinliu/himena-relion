@@ -135,7 +135,7 @@ class ArrayFromMrc(ArrayViewBase):
             if mmap_data.ndim == 2:
                 data = np.asarray(mmap_data)
             else:
-                data = np.asarray(mrc.data[index])
+                data = np.asarray(mmap_data[index])
         return data
 
     def get_scale(self) -> float:

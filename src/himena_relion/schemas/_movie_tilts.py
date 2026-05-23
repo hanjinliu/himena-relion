@@ -99,6 +99,12 @@ class TSModel(schema.LoopDataModel):
     micrograph_name: schema.Series[str] = schema.Field(
         "rlnMicrographName", default=None
     )
+    micrograph_name_even: schema.Series[str] = schema.Field(
+        "rlnMicrographNameEven", default=None
+    )
+    micrograph_name_odd: schema.Series[str] = schema.Field(
+        "rlnMicrographNameOdd", default=None
+    )
     ctf_image: schema.Series[str] = schema.Field("rlnCtfImage", default=None)
 
     tomo_xtilt: schema.Series[float] = schema.Field("rlnTomoXTilt", default=None)
@@ -123,6 +129,19 @@ class TSModel(schema.LoopDataModel):
         order = self.nominal_stage_tilt_angle.arg_sort()
         paths = list(self.movie_name)
         return [paths[i] for i in order]
+
+    def ts_even_odd_paths_sorted(self, rln_dir: Path) -> tuple[list[str], list[str]]:
+        order = self.nominal_stage_tilt_angle.arg_sort()
+        even_paths = list(self.micrograph_name_even)
+        odd_paths = list(self.micrograph_name_odd)
+        return (
+            [str(rln_dir / even_paths[i]) for i in order],
+            [rln_dir / odd_paths[i] for i in order],
+        )
+
+    def need_rot90(self) -> bool:
+        degree = self.nominal_tilt_axis_angle.mean()
+        return abs((float(degree) + 90) % 180 - 90)
 
     def prep_matrix(
         self,
@@ -199,6 +218,9 @@ class TSGroupModel(schema.LoopDataModel):
     tomo_tilt_series_pixel_size: schema.Series[float] = schema.Field(
         "rlnTomoTiltSeriesPixelSize",
         default=None,
+    )
+    etomo_directive_file: schema.Series[str] = schema.Field(
+        "rlnEtomoDirectiveFile", default=None
     )
 
     def zip(self) -> Iterator["TSMeta"]:
