@@ -23,7 +23,7 @@ class _QTomogramViewerBase(QtW.QWidget):
         self._viewer = Q2DViewer()
         self._viewer.setMinimumHeight(TOMO_VIEW_MIN_HEIGHT)
         self._filter_widget = Q2DFilterWidget()
-        self._filter_widget._bin_factor.setText("1")
+        self._filter_widget._bin_factor.setText("4")
         self._tomo_list = QMicrographListWidget(["Tomogram", "Type"])
         self._tomo_list.current_changed.connect(self._on_tomo_changed)
         layout.addWidget(QtW.QLabel("<b>Tomogram Z slice</b>"))

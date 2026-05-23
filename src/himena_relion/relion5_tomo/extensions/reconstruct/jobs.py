@@ -328,6 +328,7 @@ def _run_impl(
     _run_rotx(
         temp_rec_path,
         output_path=output_tomo_path,
+        do_float16=do_float16,
     )
     temp_rec_path.unlink()
     return True
@@ -442,6 +443,7 @@ def _run_tilt(
 def _run_rotx(
     input_path: Path,
     output_path: Path,
+    do_float16: bool = True,
 ):
     args = [
         "clip",
@@ -449,7 +451,22 @@ def _run_rotx(
         str(input_path),
         str(output_path),
     ]
-    return subprocess.run(args, stdout=subprocess.PIPE)
+    out = subprocess.run(args, stdout=subprocess.PIPE)
+    if do_float16:
+        # clip rotx does not support float16 output.
+        output_path_temp = output_path.with_suffix(".temp.mrc")
+        args = [
+            "newstack",
+            str(output_path),
+            str(output_path_temp),
+            "-quiet",
+            "-mode",
+            "12",
+        ]
+        out = subprocess.run(args, stdout=subprocess.PIPE)
+        output_path.unlink(missing_ok=True)
+        output_path_temp.rename(output_path)
+    return out
 
 
 def _finalize_star_files(
