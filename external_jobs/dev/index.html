@@ -855,6 +855,10 @@ when the <code>path</code> file under the <code>job_dir</code> is updated.</p>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
         <span class="c1"># build your custom widget here</span>
 
+    <span class="k">def</span><span class="w"> </span><span class="nf">initialize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">job_dir</span><span class="p">):</span>
+        <span class="c1"># this method will be called when the widget is shown for the first time.</span>
+        <span class="o">...</span>
+
     <span class="k">def</span><span class="w"> </span><span class="nf">on_job_updated</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">job_dir</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
         <span class="c1"># this method will be called when the `path` file under the `job_dir` is</span>
         <span class="c1"># updated.</span>
