@@ -82,7 +82,8 @@ class QTomogramViewer(QJobScrollArea):
         self._tomo_list.set_choices(items)
         if len(items) == 0:
             self._viewer.clear()
-        self._viewer.auto_fit()
+        elif len(items) == 1:
+            self._viewer.auto_fit()
 
     def _on_tomo_changed(self, texts: tuple[str, ...]):
         """Update the viewer when the selected tomogram changes."""
@@ -196,6 +197,8 @@ class QDenoiseTomogramViewer(QJobScrollArea):
         self._tomo_list.set_choices(items)
         if len(items) == 0:
             self._viewer.clear()
+        elif len(items) == 1:
+            self._viewer.auto_fit()
 
     def _on_tomo_changed(self, texts: tuple[str, ...]):
         """Update the viewer when the selected tomogram changes."""

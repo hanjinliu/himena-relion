@@ -48,15 +48,21 @@ class _QTomogramViewerBase(QtW.QWidget):
         items: list[tuple[str, ...]] = []
         job_dir = self._job_dir
 
+        row_count_old = self._tomo_list.rowCount()
         self._filter_widget.set_image_scale(self._get_binned_angpix(job_dir))
         for p in job_dir.path.joinpath("tomograms").glob("*.mrc"):
             if item := self._prep_item(p):
                 items.append(item)
+        if len(items) == row_count_old:
+            # No need to update. Note that IMOD tilt command updates the mrc file many
+            # times during reconstruction.
+            return
         items.sort(key=lambda x: x[0])
         self._tomo_list.set_choices(items)
         if len(items) == 0:
             self._viewer.clear()
-        self._viewer.auto_fit()
+        elif len(items) == 1:
+            self._viewer.auto_fit()
 
     def _on_tomo_changed(self, texts: tuple[str, ...]):
         """Update the viewer when the selected tomogram changes."""
