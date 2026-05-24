@@ -5,15 +5,6 @@ from himena.plugins import register_config, config_field, get_config
 
 @dataclass
 class RelionConfig:
-    relion_pipeliner: str = config_field(
-        default="relion_pipeliner",
-        label="<code>relion_pipeliner</code> executable",
-        tooltip=(
-            "Path to the relion_pipeliner executable, usually is\n"
-            "/path/to/relion-directory/build/bin/relion_pipeliner. Use\n"
-            "'relion_pipeliner' if it's already in your PATH."
-        ),
-    )
     motioncor2: str = config_field(
         default="MotionCor2",
         label="<code>MotionCor2</code> Executable",
@@ -91,7 +82,9 @@ register_config("himena-relion", "RELION", RelionConfig())
 
 
 def get_relion_pipeliner_exe() -> str:
-    return _get_himena_relion_config().relion_pipeliner
+    # in the future, RELION may support using multiple executables from different
+    # versions. For now, we just return the command name itself
+    return "relion_pipeliner"
 
 
 def get_motioncor2_exe() -> str:

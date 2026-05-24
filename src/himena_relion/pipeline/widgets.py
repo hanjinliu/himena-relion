@@ -31,7 +31,6 @@ from himena_relion._pipeline import (
     NodeStatus,
     RelionDefaultPipeline,
     RelionJobInfo,
-    is_all_inputs_ready,
 )
 from himena_relion import _utils
 from himena_relion.pipeline._gui_state import HimenaRelionGuiState
@@ -327,30 +326,38 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         success_old = set(self._state_to_job_map[NodeStatus.SUCCEEDED].keys())
         failed_old = set(self._state_to_job_map[NodeStatus.FAILED].keys())
         running_old = set(self._state_to_job_map[NodeStatus.RUNNING].keys())
+        scheduled_old = set(self._state_to_job_map[NodeStatus.SCHEDULED].keys())
         self._state_to_job_map.clear()
         for job in pipeline.iter_nodes():
             _dict = self._state_to_job_map[job.status]
             _dict[job.path.as_posix()] = job
         success_new = set(self._state_to_job_map[NodeStatus.SUCCEEDED].keys())
         failed_new = set(self._state_to_job_map[NodeStatus.FAILED].keys())
+        running_new = set(self._state_to_job_map[NodeStatus.RUNNING].keys())
+        scheduled_new = set(self._state_to_job_map[NodeStatus.SCHEDULED].keys())
         ui = self._ui()
+
+        to_notify: list[str] = []
         # Notify newly succeeded jobs and run scheduled jobs
         if succeeded := (success_new - success_old) & running_old:
-            for job in self._state_to_job_map[NodeStatus.SCHEDULED].values():
-                # run all the scheduled jobs whose dependencies are met
-                if is_all_inputs_ready(job.path):
-                    execute_job(
-                        job.path.as_posix(),
-                        cwd=pipeline.project_dir,
-                    )
-                    ui.show_notification(f"Scheduled job {job.job_repr()} started.")
-            ui.show_notification(
-                "\n".join(f"Job {job}/ succeeded." for job in succeeded)
-            )
+            to_notify.append("\n".join(f"Job {job}/ succeeded." for job in succeeded))
 
         # Notify newly failed jobs
         if failed := failed_new - failed_old:
-            ui.show_notification("\n".join(f"Job {job}/ failed." for job in failed))
+            to_notify.append("\n".join(f"Job {job}/ failed." for job in failed))
+
+        # Notify newly started scheduled jobs
+        if started := (scheduled_old - scheduled_new) & running_new:
+            to_notify.append(
+                "\n".join(f"Scheduled job {job}/ started." for job in started)
+            )
+
+        # Notify newly running jobs
+        if running := running_new - running_old - started:
+            to_notify.append("\n".join(f"Job {job}/ started." for job in running))
+
+        if to_notify:
+            ui.show_notification("\n\n".join(to_notify), title="Pipeline Updates")
 
     def keyPressEvent(self, a0):
         key = a0.key()

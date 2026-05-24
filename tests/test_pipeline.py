@@ -1,8 +1,12 @@
 from pathlib import Path
 from himena import MainWindow
 
+import time
 from qtpy import QtCore
+import threading
 from himena_relion.pipeline.widgets import QRelionPipelineFlowChart, _list_jobs_for_palette
+from himena_relion.pipeline_watcher import run_watcher, _WATCHER_FILE_NAME
+from himena_relion._utils import update_default_pipeline
 from ._utils import DEFAULT_PIPELINES_DIR
 
 def test_reading_default_pipeline(himena_ui: MainWindow, tmpdir):
@@ -58,3 +62,19 @@ def test_reading_default_pipeline_during_filtering(himena_ui: MainWindow, tmpdir
     table_view._table_view._model.data(index00, QtCore.Qt.ItemDataRole.ToolTipRole)
     table_view._table_view._model.data(index00, QtCore.Qt.ItemDataRole.DecorationRole)
     table_view._table_view._model.data(index02, QtCore.Qt.ItemDataRole.DecorationRole)
+
+def test_pipeline_watcher(tmpdir):
+    rlndir = Path(tmpdir)
+    path = rlndir / "default_pipeline.star"
+    # NOTE: CtfFind/job003/ is scheduled
+    txt = (DEFAULT_PIPELINES_DIR / "full.star").read_text()
+    path.write_text(txt)
+
+    thread = threading.Thread(target=run_watcher, args=(str(rlndir),), daemon=True)
+    thread.start()
+    time.sleep(0.3)
+    assert rlndir.joinpath(_WATCHER_FILE_NAME).exists()
+    with path.open("r+") as f:
+        update_default_pipeline(f, "CtfFind/job003/", "Succeeded")
+    thread.join(timeout=0.5)
+    assert not rlndir.joinpath(_WATCHER_FILE_NAME).exists()

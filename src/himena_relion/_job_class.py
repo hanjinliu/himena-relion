@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 import inspect
@@ -10,7 +9,6 @@ import tempfile
 from types import NoneType, UnionType
 from typing import (
     Any,
-    ClassVar,
     Callable,
     Generator,
     Literal,
@@ -36,10 +34,14 @@ from himena_relion._utils import (
     open_with_lock,
     unwrap_annotated,
     change_name_for_tomo,
-    normalize_job_id,
     update_default_pipeline,
 )
 from himena_relion.schemas import JobStarModel
+from himena_relion.pipeline_watcher import (
+    run_watcher_new_process,
+    execute_job,
+    RelionJobExecution,
+)
 
 if TYPE_CHECKING:
     from himena_relion._widgets._job_edit import QJobScheduler
@@ -163,9 +165,14 @@ class RelionJob(ABC):
         return MenuId.RELION_OTHER_JOB
 
     @classmethod
-    def create_and_run_job(cls, _cwd, **kwargs) -> RelionJobExecution | None:
-        """Run or schedule job."""
+    def create_and_run_job(cls, _cwd: Path | None = None, **kwargs) -> Path | None:
+        """Run or schedule job.
+
+        Return job directory path if job is ready to run.
+        """
         cls.prerun_check(**kwargs)
+        if _cwd is None:
+            _cwd = Path.cwd()
         with tempfile.TemporaryDirectory() as tmpdir:
             tmpdir = Path(tmpdir)
             job_star_path = tmpdir / "job.star"
@@ -186,15 +193,16 @@ class RelionJob(ABC):
                 )
 
         d = last_job_directory()  # FIXME: not thread-safe
+        run_watcher_new_process(_cwd)
         if is_all_inputs_ready(d):
-            return execute_job(d, cwd=_cwd)
+            return _cwd / d
 
     @classmethod
     @abstractmethod
     def prep_job_star(cls, **kwargs) -> JobStarModel:
         """Prepare job star data with given parameters."""
 
-    def edit_and_run_job(self, **kwargs) -> RelionJobExecution | None:
+    def edit_and_run_job(self, **kwargs) -> None:
         """Edit the existing job directory and run it."""
         self.prerun_check(**kwargs)
         job_dir = self.output_job_dir
@@ -202,12 +210,9 @@ class RelionJob(ABC):
         job_star_model.write(job_dir.job_star())
         rln_dir = job_dir.relion_project_dir
         to_run = str(job_dir.path.relative_to(rln_dir))
-        if is_all_inputs_ready(to_run):
-            return execute_job(to_run, cwd=rln_dir)
-        else:
-            # Job state needs to be updated to "Scheduled"
-            with open_with_lock(rln_dir / "default_pipeline.star") as f:
-                update_default_pipeline(f, to_run, state="Scheduled")
+        with open_with_lock(rln_dir / "default_pipeline.star") as f:
+            update_default_pipeline(f, to_run, state="Scheduled")
+            run_watcher_new_process(rln_dir)
 
     @classmethod
     def _show_scheduler_widget(cls, ui: MainWindow, context: AnyContext, cwd=None):
@@ -493,17 +498,6 @@ class _Relion5BuiltinContinue(_Relion5BuiltinJob):
         return _exec
 
 
-@dataclass
-class RelionJobExecution:
-    process: subprocess.Popen
-    job_directory: _job_dir.JobDirectory
-
-    _last_execution: ClassVar[RelionJobExecution | None] = None
-
-    def __post_init__(self):
-        RelionJobExecution._last_execution = self
-
-
 def iter_relion_jobs() -> Generator[type[RelionJob], None, None]:
     # Used for finding the proper job class from existing job directories.
     yield from _iter_subclasses_recursive(RelionJob)
@@ -630,33 +624,6 @@ def _check_is_mapping(mapping: Any) -> None:
             raise TypeError(
                 f"Expected str or Callable for mapping key, got {type(key)}"
             )
-
-
-def execute_job(
-    job_name: str | Path,
-    ignore_error: bool = False,
-    *,
-    cwd=None,
-) -> RelionJobExecution:
-    """Execute a RELION job named `job_name` (such as "Class3D/job012/")."""
-    job_name = normalize_job_id(job_name)
-    try:
-        job_dir = _job_dir.JobDirectory(Path(job_name).resolve())
-    except FileNotFoundError as e:
-        if not ignore_error:
-            raise e
-        _LOGGER.warning("Error executing RELION job %s", job_name, exc_info=True)
-        return None
-    args = [get_relion_pipeliner_exe(), "--RunJobs", job_name]
-    # NOTE: Because himena also uses Qt, RELION jobs that depend on napari (such as
-    # ExcludeTiltSeries) may fail to start, saying no Qt bindings are available. This
-    # seems to be due to environment variable QT_API being set to incompatible value
-    # like "pyqt6".
-    env = os.environ.copy()
-    env.pop("QT_API", None)
-    proc = subprocess.Popen(args, start_new_session=True, env=env, cwd=cwd)
-    _LOGGER.info("Started RELION job %s with PID %d", job_name, proc.pid)
-    return RelionJobExecution(proc, job_dir)
 
 
 def scheduler_widget(ui: MainWindow) -> QJobScheduler:

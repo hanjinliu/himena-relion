@@ -108,9 +108,13 @@ To run the next job, you can:
 
 - By clicking the "Run" button, a job.star file will be created and passed to
   `relion_pipeliner`, which will organize the job pipeline and run the job.
-
 - You can drag-and-drop the items in the input/output panels to fill some of the job
   parameters (yellow line).
+- `himena-relion` automatically schedules the job instead of running it immediately,
+  when any of the input files are not ready or any of the parent job is not finished.
+
+  :sparkles: *New in v0.0.7*: Scheduled jobs will automatically start even after you
+  quit the application. A detached pipeline watcher will keep monitoring the project directory and run the scheduled jobs when the conditions are met, until all the jobs are finished.
 
 !!! note
 
@@ -120,14 +124,6 @@ To run the next job, you can:
     because many RELION built-in jobs have incompatible input parameters that could be
     confusing for beginners (e.g. "Write output in float16" is incompatible with "Use RELION's own implementation"). In `himena-relion`, parameter fields are
     re-categorized so that running jobs is more straightforward.
-
-!!! tip "Job scheduling"
-
-    `himena-relion` automatically schedules the job instead of running it immediately,
-    when any of the input files are not ready or any of the parent job is not finished.
-    This feature is currently integrated with the file watcher for default_pipeline.star
-    so that the scheduled jobs will not automatically start if you quit the `himena`
-    process.
 
 ## Tagging Jobs
 

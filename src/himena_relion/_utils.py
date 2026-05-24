@@ -69,7 +69,7 @@ def threshold_yen(image: np.ndarray, nbins=256, use_positive: bool = True) -> fl
         input_arr = image[image > 0].ravel()
     else:
         input_arr = image.ravel()
-    nbins = min(nbins, input_arr.size)
+    nbins = max(min(nbins, input_arr.size), 1)
     counts, edges = np.histogram(input_arr, nbins, density=False)
     bin_centers = (edges[:-1] + edges[1:]) / 2
 
@@ -189,11 +189,22 @@ def update_default_pipeline(
     job_id: str,
     state: str | None = None,
     alias: str | None = None,
+    *,
+    check_state: bool = True,
 ):
+    if (
+        check_state
+        and state is not None
+        and state not in ("Scheduled", "Running", "Failed", "Succeeded", "Aborted")
+    ):
+        raise ValueError(f"State {state!r} is not a valid RELION job state.")
     try:
         pipeline_star = RelionPipelineModel.validate_text(f.read())
         pos_sl = pipeline_star.processes.process_name == normalize_job_id(job_id)
         if len(true_ids := np.where(pos_sl)) == 1:
+            if len(true_ids[0]) == 0:
+                _LOGGER.warning("%s not found in pipeline", normalize_job_id(job_id))
+                return
             true_id = int(true_ids[0][0])
             df = pipeline_star.processes.dataframe
             if state is not None:
