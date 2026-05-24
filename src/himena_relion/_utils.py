@@ -189,7 +189,15 @@ def update_default_pipeline(
     job_id: str,
     state: str | None = None,
     alias: str | None = None,
+    *,
+    check_state: bool = True,
 ):
+    if (
+        check_state
+        and state is not None
+        and state not in ("Scheduled", "Running", "Failed", "Succeeded", "Aborted")
+    ):
+        raise ValueError(f"State {state!r} is not a valid RELION job state.")
     try:
         pipeline_star = RelionPipelineModel.validate_text(f.read())
         pos_sl = pipeline_star.processes.process_name == normalize_job_id(job_id)
