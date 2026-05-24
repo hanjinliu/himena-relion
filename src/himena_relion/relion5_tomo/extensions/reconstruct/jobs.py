@@ -275,6 +275,13 @@ def _run_impl(
     filter_falloff: float,
     gpu_id_imod: int | None,
 ):
+    # newstack -fileinlist fileinlist/tomo1.txt -output tomo1_stack.mrc
+    # newstack -input tomo1_stack.mrc -output tomo1_ali.mrc -xform xf/tomo1.xf -size 4096, 5760
+    # binvol -input tomo1_ali.mrc -output tomo1_ali.mrc -x 2 -y 2 -z 1
+    # tilt -input tomo1_ali.mrc -output tomo1_rec.mrc -TILTFILE tomo1.tlt
+    #   -XTILTFILE tomo1.xtilt -THICKNESS 600 -RADIAL 0.35,0.035 -FalloffIsTrueSigma 1
+    #   -XAXISTILT 0 -MODE 12 -FULLIMAGE 2048,2048 -IMAGEBINNED 2
+
     _dir_fileinlists = fileinlist_path.parent
     tomo_name = output_tomo_path.stem
     if tomo_name.startswith("rec_"):

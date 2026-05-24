@@ -90,6 +90,36 @@ class QRelionJobWidgetBase(QtW.QWidget):
 
 
 class QRelionJobWidget(QRelionJobWidgetBase):
+    """View content of RELION job directories.
+
+    This widget is split into several tabs.
+
+    ## Results
+
+    A tab specialized for showing each job type. For example, for a 3D refinement job,
+    this tab will show the 3D view of the refined maps and the corresponding FSC curve.
+
+    ## In/Out
+
+    Input and output nodes, and the directory tree. Each item can be opened in other
+    tabs by double-click, or can be drag-and-dropped to the job scheduler if the file
+    is of a proper type.
+
+    ## Parameters
+
+    All the job parameters. Note that parameters are not consistent with the built-in
+    RELION GUI, as himena-relion reorganized them to improve user experience.
+
+    ## Logs
+
+    The content of run.out and run.err, with live updates when the job is running.
+
+    ## Note
+
+    The content of note.txt, which can be edited by users and is automatically saved
+    when changed.
+    """
+
     job_updated = QtCore.Signal(Path)
     _instances = set["QRelionJobWidget"]()
 
