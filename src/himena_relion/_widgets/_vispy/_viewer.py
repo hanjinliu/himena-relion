@@ -191,7 +191,8 @@ class _Vispy3DBase(_VispyBase):
 
     @contrast_limits.setter
     def contrast_limits(self, clim: tuple[float, float]):
-        self._volume_visual.clim = clim
+        c0, c1 = clim
+        self._volume_visual.clim = float(c0), float(c1)
 
     def auto_fit(self):
         img = self._image_data
@@ -222,6 +223,7 @@ class _Vispy3DDensityBase(_Vispy3DBase):
             parent=self._viewbox.scene,
         )
         self._arrow_visual.set_gl_state(preset="translucent")
+        self._iso_threshold = 0.5
 
     @property
     def arrow_visual(self) -> VispyArrow:
@@ -242,6 +244,7 @@ class _Vispy3DDensityBase(_Vispy3DBase):
             raise ValueError(f"Unknown rendering mode: {mode}")
 
     def set_iso_threshold(self, value):
+        self._iso_threshold = value
         _min, _max = self._lims
         self._volume_visual.threshold = (value - _min) / (_max - _min)
         self._volume_visual.update()

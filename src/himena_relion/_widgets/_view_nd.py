@@ -506,6 +506,11 @@ class Q3DViewer(Q3DViewerBase):
         self._hist_view.set_hist_for_array(image, (view_min, view_max))
         self._hist_view.set_minmax((th_min, th_max))
 
+        if image:
+            # FIXME: clim for isosurface rendering is not updated correctly. This
+            # problem can be solved by updating the image visual twice.
+            self._canvas.image = image
+
         self._canvas.set_iso_threshold(self._hist_view.threshold())
         if self._control_widget is not None:
             self._control_widget.set_info(image)

@@ -536,12 +536,12 @@ def _finalize_star_files(
 connect_jobs(
     _tomo.AlignTiltSeriesImodFiducial,
     ReconstructTomoIMOD,
-    node_mapping={"aligned_tilt_series.star": "in_tiltseries"},
+    node_mapping={"aligned_tilt_series.star": "in_mics"},
 )
 connect_jobs(
     _tomo.AlignTiltSeriesImodFiducial,
     ReconstructHalfTomoIMOD,
-    node_mapping={"aligned_tilt_series.star": "in_tiltseries"},
+    node_mapping={"aligned_tilt_series.star": "in_mics"},
 )
 
 connect_jobs(
@@ -557,11 +557,11 @@ connect_jobs(
 connect_jobs(
     EraseGold,
     ReconstructTomoIMOD,
-    node_mapping={"tilt_series.star": "in_tiltseries"},
+    node_mapping={"tilt_series.star": "in_mics"},
 )
 
 connect_jobs(
     EraseGold,
     ReconstructHalfTomoIMOD,
-    node_mapping={"tilt_series.star": "in_tiltseries"},
+    node_mapping={"tilt_series.star": "in_mics"},
 )
