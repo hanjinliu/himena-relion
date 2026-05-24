@@ -795,15 +795,15 @@ filled.</p>
 - In the menubar, go to "Tools &gt; RELION" and find the job you want to run.</p>
 <p><img alt="" loading="lazy" src="../images/01_run_job.png" width="400px" /></p>
 <ul>
-<li>
-<p>By clicking the "Run" button, a job.star file will be created and passed to
-  <code>relion_pipeliner</code>, which will organize the job pipeline and run the job.</p>
-</li>
-<li>
-<p>You can drag-and-drop the items in the input/output panels to fill some of the job
-  parameters (yellow line).</p>
-</li>
+<li>By clicking the "Run" button, a job.star file will be created and passed to
+  <code>relion_pipeliner</code>, which will organize the job pipeline and run the job.</li>
+<li>You can drag-and-drop the items in the input/output panels to fill some of the job
+  parameters (yellow line).</li>
+<li><code>himena-relion</code> automatically schedules the job instead of running it immediately,
+  when any of the input files are not ready or any of the parent job is not finished.</li>
 </ul>
+<p><img alt="✨" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/2728.svg" title=":sparkles:" /> <em>New in v0.0.7</em>: Scheduled jobs will automatically start even after you
+  quit the application. A detached pipeline watcher will keep monitoring the project directory and run the scheduled jobs when the conditions are met, until all the jobs are finished.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>Some of the RELION built-in jobs are split into different job types in
@@ -812,14 +812,6 @@ job type when viewed in RELION GUI, but <em>look</em> different in <code>himena-
 because many RELION built-in jobs have incompatible input parameters that could be
 confusing for beginners (e.g. "Write output in float16" is incompatible with "Use RELION's own implementation"). In <code>himena-relion</code>, parameter fields are
 re-categorized so that running jobs is more straightforward.</p>
-</div>
-<div class="admonition tip">
-<p class="admonition-title">Job scheduling</p>
-<p><code>himena-relion</code> automatically schedules the job instead of running it immediately,
-when any of the input files are not ready or any of the parent job is not finished.
-This feature is currently integrated with the file watcher for default_pipeline.star
-so that the scheduled jobs will not automatically start if you quit the <code>himena</code>
-process.</p>
 </div>
 <h2 id="tagging-jobs">Tagging Jobs</h2>
 <p><img alt="✨" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/2728.svg" title=":sparkles:" /> <em>New in v0.0.4</em></p>
