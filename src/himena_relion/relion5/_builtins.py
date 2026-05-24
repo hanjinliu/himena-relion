@@ -2572,12 +2572,16 @@ class ParticleSubtractionJob(_Relion5SpaJob):
             kwargs["do_center_xyz"] = "No"
         if kwargs.get("new_box", None) is None:
             kwargs["new_box"] = -1
+        kwargs["do_fliplabel"] = False
+        kwargs["fn_fliplabel"] = ""
         return kwargs
 
     @classmethod
     def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
         kwargs = super().normalize_kwargs_inv(**kwargs)
-        kwargs.pop("do_data", None)
+        for name in ["do_data", "do_fliplabel", "fn_fliplabel"]:
+            kwargs.pop(name, None)
+
         center = (
             kwargs.pop("center_x", 0),
             kwargs.pop("center_y", 0),

@@ -103,6 +103,9 @@ class QTomogramViewer(QJobScrollArea):
                 tomo_view.with_filter(self._filter_widget.apply),
                 self._viewer._last_clim,
             )
+            shape = (tomo_view.num_slices(),) + tomo_view.get_shape()
+            scale = tomo_view.get_scale()
+            self._filter_widget.set_label_text(f"{shape} {scale:.2f} Å/pix")
 
 
 @register_job("relion.denoisetomo", is_tomo=True)
@@ -231,8 +234,8 @@ class QPickViewer(QJobScrollArea):
         self._layout.addWidget(
             QtW.QLabel("<b>&#9679; Picked particles with XY slice</b>")
         )
-        self._layout.addWidget(self._filter_widget)
         self._layout.addWidget(self._tomo_list)
+        self._layout.addWidget(self._filter_widget)
         self._layout.addWidget(self._viewer)
         self._layout.addWidget(self._resizer)
 
@@ -294,6 +297,9 @@ class QPickViewer(QJobScrollArea):
             bin_factor = int(self._filter_widget._bin_factor.text() or "1")
             points_processed = (points + center[np.newaxis]) / bin_factor
             yield self._viewer.set_points, points_processed
+            shape = info.tomo_shape
+            scale = info.tomo_pixel_size
+            yield self._filter_widget.set_label_text, f"{shape} {scale:.2f} Å/pix"
         self._worker = None
 
     def _set_tomo_view(self, tomo_view: ArrayFilteredView):

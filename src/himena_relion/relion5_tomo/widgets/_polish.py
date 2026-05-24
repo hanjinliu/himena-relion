@@ -37,7 +37,7 @@ class QFrameAlignTomoViewer(QJobScrollArea):
         self._tomo_list.current_changed.connect(self._on_tomo_changed)
         self._layout.setSpacing(2)
         self._layout.addWidget(
-            QtW.QLabel("<b>Bayesian Polish Tracks (scaled by 8)</b>")
+            QtW.QLabel("<b>&#9679; Bayesian Polish Tracks (scaled by 8)</b>")
         )
         self._layout.addWidget(self._tomo_list)
         self._layout.addWidget(self._viewer)

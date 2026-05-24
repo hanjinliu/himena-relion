@@ -117,7 +117,7 @@ class ArrayDirectView(ArrayViewBase):
         return self._array[index]
 
     def num_slices(self) -> int:
-        return self._array.shape[0]
+        return int(self._array.shape[0])
 
     def get_scale(self) -> float:
         return 1.0
@@ -162,7 +162,7 @@ class ArrayFromMrcSplits(ArrayViewBase):
     @lru_cache(maxsize=1)
     def num_slices(self) -> int:
         with mrcfile.open(self._paths[0], mode="r", header_only=True) as mrc:
-            return mrc.header.nz
+            return int(mrc.header.nz)
 
     def _iter_images(self, index: int) -> Iterator[Arr]:
         for path in self._paths:
@@ -223,7 +223,7 @@ class ArrayFromTif(ArrayViewBase):
 
     def num_slices(self) -> int:
         self._make_cache()
-        return self._arr.shape[0]
+        return int(self._arr.shape[0])
 
     def _make_cache(self):
         if self._arr is None:
