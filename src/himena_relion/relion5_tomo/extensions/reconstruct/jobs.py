@@ -13,6 +13,7 @@ from himena_relion.external import RelionExternalJob
 from himena_relion._annotated.io import IN_TILT, DO_F16
 from himena_relion.schemas import TSGroupModel, TSModel
 import himena_relion.relion5_tomo._builtins as _tomo
+from himena_relion.relion5_tomo.extensions.erase_gold import EraseGold
 
 _GPU_ID_TO_USE = Annotated[
     str,
@@ -552,4 +553,15 @@ connect_jobs(
     ReconstructHalfTomoIMOD,
     _tomo.DenoiseTrain,
     node_mapping={"tomograms.star": "in_tomoset"},
+)
+connect_jobs(
+    EraseGold,
+    ReconstructTomoIMOD,
+    node_mapping={"tilt_series.star": "in_tiltseries"},
+)
+
+connect_jobs(
+    EraseGold,
+    ReconstructHalfTomoIMOD,
+    node_mapping={"tilt_series.star": "in_tiltseries"},
 )

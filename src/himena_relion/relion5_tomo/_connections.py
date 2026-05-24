@@ -213,13 +213,6 @@ connect_jobs(
     },
 )
 connect_jobs(
-    _spa.SelectSplitJob,
-    _tomo.PickJob,
-    node_mapping={
-        "particles_split1.star": "fn_data",
-    },
-)
-connect_jobs(
     _spa.SelectRemoveDuplicatesJob,
     _tomo.ReconstructParticlesJob,
     node_mapping={"particles.star": "in_optim.in_particles"},

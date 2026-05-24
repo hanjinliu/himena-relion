@@ -227,7 +227,7 @@ class EraseGold(RelionExternalJob):
 def _tilt_center(rln_dir: Path, tilt_star_df: pl.DataFrame) -> np.ndarray:
     mic_paths = [rln_dir / p for p in tilt_star_df[MIC_NAME]]
     with mrcfile.open(mic_paths[0], header_only=True) as mrc:
-        tilt_shape = (mrc.header.ny, mrc.header.nx)
+        tilt_shape = (int(mrc.header.ny), int(mrc.header.nx))
     tilt_center = (np.array(tilt_shape, dtype=np.float32) - 1) / 2
     return tilt_center
 

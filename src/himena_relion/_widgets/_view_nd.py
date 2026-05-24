@@ -886,13 +886,13 @@ class Q2DFilterWidget(QtW.QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
         self._bin_factor = QIntLineEdit(str(bin_default))
-        self._bin_factor.setFixedWidth(60)
+        self._bin_factor.setFixedWidth(30)
         self._bin_factor.setMinimum(1)
         self._bin_factor.setMaximum(20)
         self._lowpass_cutoff = QDoubleLineEdit(str(lowpass_default))
         self._lowpass_cutoff.setMinimum(0.0)
         self._lowpass_cutoff.setMaximum(200.0)
-        self._lowpass_cutoff.setFixedWidth(80)
+        self._lowpass_cutoff.setFixedWidth(40)
         self._spacer = QtW.QLabel()
         self._spacer.setSizePolicy(
             QtW.QSizePolicy.Policy.Expanding, QtW.QSizePolicy.Policy.Expanding
@@ -900,9 +900,9 @@ class Q2DFilterWidget(QtW.QWidget):
         self._spacer.setAlignment(
             QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignVCenter
         )
-        layout.addWidget(labeled("Binning factor:", self._bin_factor))
+        layout.addWidget(labeled("Bin by:", self._bin_factor))
         layout.addWidget(labeled("Lowpass cutoff (Å):", self._lowpass_cutoff))
-        layout.addWidget(self._spacer)
+        layout.addWidget(self._spacer, stretch=10)
         self._image_scale = 1.0
         self._bin_factor.textChanged.connect(self.value_changed)
         self._lowpass_cutoff.textChanged.connect(self.value_changed)

@@ -131,9 +131,9 @@ class QCtfRefineTomoViewer(QJobScrollArea):
         self._ts_list = QMicrographListWidget(["Tilt Series"])
         self._ts_list.current_changed.connect(self._ts_choice_changed)
         layout.addWidget(self._ts_list)
-        layout.addWidget(QtW.QLabel("<b>Defocus</b>"))
+        layout.addWidget(QtW.QLabel("<b>&#9679; Defocus</b>"))
         layout.addWidget(self._defocus_canvas)
-        layout.addWidget(QtW.QLabel("<b>CTF Scale Factor</b>"))
+        layout.addWidget(QtW.QLabel("<b>&#9679; CTF Scale Factor</b>"))
         layout.addWidget(self._ctf_scale_canvas)
 
     def initialize(self, job_dir: _job_dir.JobDirectory):
