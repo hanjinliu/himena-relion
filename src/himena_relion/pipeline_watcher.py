@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import json
 from collections import defaultdict
 from contextlib import contextmanager
 from typing import ClassVar
@@ -92,7 +93,11 @@ class RelionPipelineWatcher:
                 f"Failed to acquire lock after {num_retry} retries. Another watcher "
                 "might be running."
             )
-        path.touch()
+        lock_info = {
+            "pid": os.getpid(),
+            "user": os.getlogin(),
+        }
+        path.write_text(json.dumps(lock_info, indent=2))
         try:
             yield
         finally:
@@ -103,7 +108,7 @@ class RelionPipelineWatcher:
 
 
 class WatcherAlreadyRunningError(RuntimeError):
-    pass
+    """Raised when the process failed to acquire a lock."""
 
 
 def run_watcher(relion_dir: str | Path, locked_ok: bool = True):
