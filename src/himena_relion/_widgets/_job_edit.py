@@ -276,11 +276,15 @@ class ScheduleMode(Mode):
         if (job_cls := widget._current_job_cls) is None:
             raise RuntimeError("No job class selected.")
         params = widget.get_parameters()
-        proc = job_cls.create_and_run_job(**params, _cwd=widget._cwd)
+        jobdirpath = job_cls.create_and_run_job(**params, _cwd=widget._cwd)
         widget.clear_content()
-        if isinstance(proc, RelionJobExecution):
+        if jobdirpath:
+            widget._ui.show_notification(
+                f"Job '{job_cls.job_title()}' scheduled at "
+                f"{_utils.normalize_job_id(jobdirpath)}."
+            )
             # job.star may not be ready yet.
-            job_star = proc.job_directory.path / "job.star"
+            job_star = jobdirpath / "job.star"
             for _ in range(3):
                 # ensure job.star is ready and valid
                 try:
@@ -288,9 +292,6 @@ class ScheduleMode(Mode):
                 except ValidationError:
                     time.sleep(0.05)
             widget._ui.read_file(job_star, append_history=False)
-            widget._ui.show_notification(f"Job '{job_cls.job_title()}' started.")
-        else:
-            widget._ui.show_notification(f"Job '{job_cls.job_title()}' scheduled.")
 
     def button_text(self) -> str:
         return "Run Job"

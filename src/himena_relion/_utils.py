@@ -194,6 +194,9 @@ def update_default_pipeline(
         pipeline_star = RelionPipelineModel.validate_text(f.read())
         pos_sl = pipeline_star.processes.process_name == normalize_job_id(job_id)
         if len(true_ids := np.where(pos_sl)) == 1:
+            if len(true_ids[0]) == 0:
+                _LOGGER.warning("%s not found in pipeline", normalize_job_id(job_id))
+                return
             true_id = int(true_ids[0][0])
             df = pipeline_star.processes.dataframe
             if state is not None:
