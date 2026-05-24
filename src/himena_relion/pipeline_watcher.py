@@ -95,7 +95,7 @@ class RelionPipelineWatcher:
             )
         lock_info = {
             "pid": os.getpid(),
-            "user": os.getlogin(),
+            "user": _get_user(),
         }
         path.write_text(json.dumps(lock_info, indent=2))
         try:
@@ -105,6 +105,15 @@ class RelionPipelineWatcher:
 
     def _remove_lock(self):
         self._lock_file_path().unlink(missing_ok=True)
+
+
+def _get_user() -> str:
+    try:
+        return os.getlogin()
+    except OSError:
+        # os.getlogin() may fail in some environments. In that case, fall back to the
+        # default value.
+        return "unknown"
 
 
 class WatcherAlreadyRunningError(RuntimeError):
