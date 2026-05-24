@@ -69,7 +69,7 @@ def threshold_yen(image: np.ndarray, nbins=256, use_positive: bool = True) -> fl
         input_arr = image[image > 0].ravel()
     else:
         input_arr = image.ravel()
-    nbins = min(nbins, input_arr.size)
+    nbins = max(min(nbins, input_arr.size), 1)
     counts, edges = np.histogram(input_arr, nbins, density=False)
     bin_centers = (edges[:-1] + edges[1:]) / 2
 

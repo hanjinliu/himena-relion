@@ -60,11 +60,7 @@ class RelionPipelineWatcher:
             _dict = self._state_to_job_map[job.status]
             _dict[job.path.as_posix()] = job
 
-        if (
-            len(self._state_to_job_map[NodeStatus.RUNNING])
-            + len(self._state_to_job_map[NodeStatus.SCHEDULED])
-            == 0
-        ):
+        if len(self._state_to_job_map[NodeStatus.SCHEDULED]) == 0:
             # No more jobs to run. Stop watching and remove the lock file.
             self._remove_lock()
             return
