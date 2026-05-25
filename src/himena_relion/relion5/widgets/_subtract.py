@@ -11,6 +11,8 @@ from qtpy import QtWidgets as QtW, QtCore
 import logging
 from starfile_rs import read_star
 from superqt.utils import thread_worker
+from himena.qt._qlineedit import QDoubleLineEdit
+from himena_builtins.qt.widgets._shared import labeled
 from himena_relion import _job_dir
 from himena_relion._widgets import (
     QJobScrollArea,
@@ -28,9 +30,13 @@ class QSubtractViewer(QJobScrollArea):
         self._job_dir = job_dir
         layout = self._layout
         self._num_page = 20
-        self._num_mic_part_label = QtW.QLabel()
+        self._num_part_label = QtW.QLabel()
         self._text_edit = QImageViewTextEdit(font_size=11)
         self._text_edit.setMinimumHeight(350)
+        self._lowpass_cutoff = QDoubleLineEdit("15.0")
+        self._lowpass_cutoff.setMinimum(0.0)
+        self._lowpass_cutoff.setMaximum(200.0)
+        self._lowpass_cutoff.setFixedWidth(40)
         self._slider = QtW.QSlider(QtCore.Qt.Orientation.Horizontal)
         self._slider_display_range = QtW.QLabel("?? - ??")
         layout.addWidget(QtW.QLabel("<b>&#9679; Subtracted particles</b>"))
@@ -42,8 +48,18 @@ class QSubtractViewer(QJobScrollArea):
 
         layout.addLayout(hlayout)
         layout.addWidget(self._text_edit)
-        layout.addWidget(self._num_mic_part_label)
+        hlayout2 = QtW.QHBoxLayout()
+        hlayout2.setContentsMargins(0, 0, 0, 0)
+        hlayout2.addWidget(labeled("Lowpass cutoff (A):", self._lowpass_cutoff))
+        hlayout2.addStretch()
+        hlayout2.addWidget(self._num_part_label)
+        layout.addLayout(hlayout2)
         self._slider.valueChanged.connect(self._slider_value_changed)
+        self._lowpass_cutoff.valueChanged.connect(
+            lambda: self._slider_value_changed(
+                self._slider.value(), update_slider=False
+            )
+        )
         self._plot_session_id = self._text_edit.prep_uuid()
         self._image_sub = pl.Series("rlnImageName", [], dtype=pl.String)
         self._image_orig = pl.Series("rlnImageOriginalName", [], dtype=pl.String)
@@ -69,15 +85,15 @@ class QSubtractViewer(QJobScrollArea):
             self._image_sub = df["rlnImageName"]
             self._image_orig = df["rlnImageOriginalName"]
 
-            self._slider_value_changed(0, udpate_slider=True)
+            self._slider_value_changed(0, update_slider=True)
 
         num_total = self._image_orig.len()
-        self._num_mic_part_label.setText(f"Total: <b>{num_total}</b> particles")
+        self._num_part_label.setText(f"Total: <b>{num_total}</b> particles")
 
-    def _slider_value_changed(self, value: int, *, udpate_slider: bool = False):
+    def _slider_value_changed(self, value: int, *, update_slider: bool = False):
         # value: 0-indexed
         self.window_closed_callback()
-        if udpate_slider:
+        if update_slider:
             self._slider.setValue(value)
         self._text_edit.clear()
         self._plot_session_id = self._text_edit.prep_uuid()
@@ -99,13 +115,13 @@ class QSubtractViewer(QJobScrollArea):
             read_mrc_slices(self._image_orig[sl], self._job_dir),
             read_mrc_slices(self._image_sub[sl], self._job_dir),
             range(start_index + 1, end_index + 1),
-            strict=True,
+            strict=False,
         ):
             if first:
                 angst = mrc_orig.voxel_size.x
                 size = mrc_orig.header.nx
-                msg = f"Image size: {size} pix ({size * angst:.1f} A); Cutoff for display: {angst:.1f} A\nBefore --> After subtraction"
-                cutoff_rel = angst / 15.0  # 15 A cutoff
+                msg = f"Image size: {size} pix ({size * angst:.1f} A)\nBefore --> After subtraction"
+                cutoff_rel = angst / float(self._lowpass_cutoff.text())
                 first = False
                 yield self._on_text_ready, (msg + "\n\n", session)
 
@@ -131,7 +147,7 @@ class QSubtractViewer(QJobScrollArea):
         self._text_edit.insert_base64_image(img_str)
 
     def showEvent(self, a0):
-        self._slider_value_changed(self._slider.value(), udpate_slider=False)
+        self._slider_value_changed(self._slider.value(), update_slider=False)
         return super().showEvent(a0)
 
 
