@@ -104,7 +104,7 @@ class QSubtractViewer(QJobScrollArea):
             if first:
                 angst = mrc_orig.voxel_size.x
                 size = mrc_orig.header.nx
-                msg = f"Image size: {size} pix ({size * angst:.1f} A)"
+                msg = f"Image size: {size} pix ({size * angst:.1f} A); Cutoff for display: {angst:.1f} A\nBefore --> After subtraction"
                 cutoff_rel = angst / 15.0  # 15 A cutoff
                 first = False
                 yield self._on_text_ready, (msg + "\n\n", session)
@@ -116,6 +116,7 @@ class QSubtractViewer(QJobScrollArea):
             yield self._on_text_ready, (" -> ", session)
             img_str_sub = self._text_edit.image_to_base64(img_sub, f"{ith}", cutoff_rel)
             yield self._on_string_ready, (img_str_sub, session)
+            yield self._on_text_ready, ("\n", session)
 
     def _on_text_ready(self, value: tuple[str, uuid.UUID]):
         text, my_uuid = value

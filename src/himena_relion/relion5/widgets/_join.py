@@ -34,7 +34,7 @@ class QJoinParticleViewer(QJobScrollArea):
         if self._initialized:
             return
         matched_files = list(job_dir.path.glob("join_*.star"))
-        if len(matched_files) == 0:
+        if len(matched_files) > 0:
             self._star_path = matched_files[0]
             star = read_star(self._star_path)
             self._combobox.addItems(list(star.keys()))
