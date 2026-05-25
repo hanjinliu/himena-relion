@@ -168,8 +168,8 @@ class QAlignTiltSeriesViewer(QJobScrollArea):
             (params := image_shape_params(job_dir, tomo_name))
             and (path_3dmod := _3dmod_file(job_dir, tomo_name)).exists()
             and (path_tlt := _tlt_file(job_dir, tomo_name)).exists()
+            and (preali_bin := _get_preali_bin(job_dir, tomo_name))
         ):
-            preali_bin = _get_preali_bin(job_dir, tomo_name)
             fid = (
                 _utils.read_mod(path_3dmod)
                 .select("z", "y", "x")
@@ -347,22 +347,22 @@ def image_shape_params(
         with path_tilt.open("r") as f:
             # FULLIMAGE 3838 3710
             for line in f:
-                if line.startswith("FULLIMAGE "):
+                if not line.startswith("#") and line.startswith("FULLIMAGE"):
                     nx, ny = map(int, line.split()[1:3])
         if ny > 0 and nx > 0:
             return (ny, nx)
 
 
-def _get_preali_bin(jobdir: _job_dir.JobDirectory, tomoname: str) -> int:
+def _get_preali_bin(jobdir: _job_dir.JobDirectory, tomoname: str) -> int | None:
     """Try to get pre-alignment binning from prenewst.com file."""
-    path_prenewst = etomo_project_dir(jobdir, tomoname) / "align.com"
+    path_align_com = etomo_project_dir(jobdir, tomoname) / "align.com"
     with suppress(Exception):
-        with path_prenewst.open("r") as f:
-            # PREALI_BIN 4
+        with path_align_com.open("r") as f:
+            # ImagesAreBinned 4
             for line in f:
-                if line.startswith("ImagesAreBinned "):
+                if not line.startswith("#") and line.startswith("ImagesAreBinned"):
                     return int(line.split()[1])
-    return 8
+    return None
 
 
 def _imod_output_align_file(subdir: Path) -> str:
