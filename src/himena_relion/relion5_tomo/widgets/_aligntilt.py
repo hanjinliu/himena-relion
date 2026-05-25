@@ -24,6 +24,7 @@ from himena_relion.relion5_tomo._tomo_utils import project_fiducials
 from himena_relion.schemas._movie_tilts import TSModel, TSGroupModel
 
 _LOGGER = logging.getLogger(__name__)
+_EXTERNAL = "external"
 
 
 @register_job("relion.aligntiltseries", is_tomo=True)
@@ -88,11 +89,13 @@ class QAlignTiltSeriesViewer(QJobScrollArea):
     def initialize(self, job_dir):
         """Initialize the viewer with the job directory."""
         choices: list[str] = []
-        for external_subdir in job_dir.path.joinpath("external").glob("*"):
+        for external_subdir in job_dir.path.joinpath(_EXTERNAL).glob("*"):
             if self._is_imod_fid or self._is_imod_patchtrack:
-                filename = _imod_output_align_file(external_subdir)
+                # IMOD output alignment file
+                filename = f"{external_subdir.name}.xf"
             elif self._is_aretomo2:
-                filename = _aretomo2_output_align_file(external_subdir)
+                # AreTomo2 output aligned tilt series
+                filename = f"{external_subdir.name}_aligned.mrc"
             else:
                 continue
             if external_subdir.joinpath(filename).exists():
@@ -133,19 +136,18 @@ class QAlignTiltSeriesViewer(QJobScrollArea):
             nbin = max(round(16 / ts_view.get_scale()), 1)
             aligner = ImodImageAligner.from_xf(xf, nbin, rot90=_rot_90)
             self._viewer.set_array_view(ts_view.with_filter(aligner.transform_image))
-            # TODO: not aligned well yet.
             self._update_fiducials(text, aligner)
         except Exception:
             _LOGGER.error("Failed to load tilt series", exc_info=True)
             self._viewer.clear()
 
         # update batchruntomo log
-        log_file = job_dir.path / "external" / text / "batchruntomo.log"
+        log_file = job_dir.path / _EXTERNAL / text / "batchruntomo.log"
         if log_file.exists():
             self._align_log.setPlainText(log_file.read_text())
 
     def _ts_choice_changed_aretomo2(self, job_dir: _job_dir.JobDirectory, text: str):
-        aligned_file = job_dir.path / "external" / text / f"{text}_aligned.mrc"
+        aligned_file = job_dir.path / _EXTERNAL / text / f"{text}_aligned.mrc"
         if not aligned_file.exists():
             return
         try:
@@ -157,7 +159,7 @@ class QAlignTiltSeriesViewer(QJobScrollArea):
             _LOGGER.error("Failed to load tilt series", exc_info=True)
             self._viewer.clear()
 
-        log_file = job_dir.path / "external" / text / f"{text}.log"
+        log_file = job_dir.path / _EXTERNAL / text / f"{text}.log"
         if log_file.exists():
             self._align_log.setPlainText(log_file.read_text())
 
@@ -328,7 +330,7 @@ def edf_file(jobdir: _job_dir.JobDirectory, tomoname: str) -> Path:
 
 def etomo_project_dir(jobdir: _job_dir.JobDirectory, tomoname: str) -> Path:
     """Return the path to the etomo project directory for a given tomogram name."""
-    return jobdir.path / "external" / tomoname
+    return jobdir.path / _EXTERNAL / tomoname
 
 
 def bin_image(img: np.ndarray, i: int, nbin: int) -> np.ndarray:
