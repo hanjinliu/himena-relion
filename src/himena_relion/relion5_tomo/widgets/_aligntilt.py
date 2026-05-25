@@ -19,7 +19,7 @@ from himena_relion._widgets import (
     QMicrographListWidget,
 )
 from himena_relion import _job_dir, _utils
-from himena_relion.relion5_tomo._tomo_utils import project_fiducials, read_xyz
+from himena_relion.relion5_tomo._tomo_utils import project_fiducials
 from himena_relion.schemas._movie_tilts import TSModel, TSGroupModel
 
 _LOGGER = logging.getLogger(__name__)
@@ -119,7 +119,7 @@ class QAlignTiltSeriesViewer(QJobScrollArea):
         # and can be deleted by users after this job finished.
         in_tilt = job_dir.get_job_param("in_tiltseries")
         try:
-            ts_group = TSGroupModel.validate_file(in_tilt)
+            ts_group = TSGroupModel.validate_file(job_dir.resolve_path(in_tilt))
             ts_file = ts_group.tomo_tilt_series_star_file.filter(
                 ts_group.tomo_name == text
             ).first()
@@ -133,7 +133,7 @@ class QAlignTiltSeriesViewer(QJobScrollArea):
             aligner = ImodImageAligner.from_xf(xf, nbin, rot90=_rot_90)
             self._viewer.set_array_view(ts_view.with_filter(aligner.transform_image))
             # TODO: not aligned well yet.
-            # self._udpate_fiducials(text, aligner)
+            # self._update_fiducials(text, aligner)
         except Exception:
             _LOGGER.error("Failed to load tilt series", exc_info=True)
             self._viewer.clear()
@@ -160,20 +160,26 @@ class QAlignTiltSeriesViewer(QJobScrollArea):
         if log_file.exists():
             self._align_log.setPlainText(log_file.read_text())
 
-    def _udpate_fiducials(self, text: str, aligner: ImodImageAligner):
+    def _update_fiducials(self, tomo_name: str, aligner: ImodImageAligner):
         # if tracked fiducials are available, display them
         job_dir = self._job_dir
-        if (fid_path := fid_file(job_dir, text)).exists() and (
-            params := image_shape_params(job_dir, text)
+        preali_bin = 8
+        if (fid_path := fid_file(job_dir, tomo_name)).exists() and (
+            params := image_shape_params(job_dir, tomo_name)
         ):
             _LOGGER.debug("Fiducial file %s found. Load it.", fid_path)
-            fid = read_xyz(fid_path)[:, ::-1]  # to zyx
+            fid = (
+                _utils.read_mod(_3dmod_file(job_dir, tomo_name))
+                .select("z", "y", "x")
+                .to_numpy()
+                .astype(np.float32)
+                * preali_bin
+            )
             ny, nx = params
-
             fid_proj = project_fiducials(
                 fid,
                 np.array([0, ny - 1, nx - 1]) / 2,
-                deg=np.loadtxt(fid_path.as_posix()[:-7] + "_fid.tlt"),
+                deg=np.loadtxt(fid_path.as_posix()[:-7] + ".tlt"),
                 xf=aligner._components,
                 tilt_center=np.array([ny - 1, nx - 1]) / 2,
             )
@@ -189,27 +195,30 @@ class QAlignTiltSeriesViewer(QJobScrollArea):
 
     def _open_in_etomo(self):
         edf = edf_file(self._job_dir, self._ts_list.current_text())
-        subprocess.Popen(["etomo", edf.as_posix()], start_new_session=True)
+        subprocess.Popen(
+            ["etomo", edf.as_posix()],
+            start_new_session=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
 
 
 class ImodImageAligner:
     def __init__(self, components, nbin: int = 4, rot90: bool = False):
-        self._components: list[np.ndarray] = components
+        self._components: np.ndarray = components
         self._nbin = nbin
         self._rot90 = rot90
 
     @classmethod
     def from_xf(cls, path, nbin: int = 4, rot90: bool = False) -> ImodImageAligner:
         """Create an ImodImageAligner from an IMOD .xf file."""
-        components = []
-        with open(path) as f:
-            for line in f:
-                vals = line.split()
-                if len(vals) != 6:
-                    raise ValueError("Invalid .xf file format.")
-                a11, a12, a21, a22, dx, dy = map(float, vals)
-                components.append(np.array([a11, a12, a21, a22, dx, dy]))
+        components = np.loadtxt(path)
         return cls(components, nbin=nbin, rot90=rot90)
+
+    @property
+    def components(self) -> np.ndarray:
+        """Return the alignment parameters as a numpy array."""
+        return self._components
 
     def transform_image(self, img: np.ndarray, i: int) -> np.ndarray:
         mat = self.matrix(i, img.shape)
@@ -256,7 +265,7 @@ class ImodImageAligner:
             t_inv = [[1, 0, nx // nbin / 2], [0, 1, ny // nbin / 2], [0, 0, 1]]
         else:
             t_inv = t
-        a11, a12, a21, a22, dx, dy = self._components[i]
+        a11, a12, a21, a22, dx, dy = self.components[i]
         mat = [[a22, a21, dy / nbin], [a12, a11, dx / nbin], [0, 0, 1]]
         return t @ np.linalg.inv(mat) @ np.linalg.inv(t_inv)
 
@@ -298,6 +307,11 @@ def xf_file(jobdir: _job_dir.JobDirectory, tomoname: str) -> Path:
     return etomo_project_dir(jobdir, tomoname) / f"{tomoname}.xf"
 
 
+def _3dmod_file(jobdir: _job_dir.JobDirectory, tomoname: str) -> Path:
+    """Return the path to the .prexf file for a given tomogram name."""
+    return etomo_project_dir(jobdir, tomoname) / f"{tomoname}.3dmod"
+
+
 def fid_file(jobdir: _job_dir.JobDirectory, tomoname: str) -> Path:
     """Return the path to the .fid file for a given tomogram name."""
     # this is the mod file of tracked fiducials
@@ -334,10 +348,6 @@ def image_shape_params(
     if ny > 0 and nx > 0:
         return (ny, nx)
     return None
-
-
-def _tilt_axis_angle(degree: float) -> float:
-    return abs((float(degree) + 90) % 180 - 90)
 
 
 def _imod_output_align_file(subdir: Path) -> str:

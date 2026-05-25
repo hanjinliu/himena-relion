@@ -2,7 +2,6 @@ from __future__ import annotations
 from pathlib import Path
 import logging
 from typing import Iterator
-import imodmodel
 import mrcfile
 import polars as pl
 from qtpy import QtWidgets as QtW, QtCore
@@ -10,6 +9,7 @@ from starfile_rs import read_star
 from himena_relion._image_readers import ArrayFilteredView
 from himena_relion._widgets import Q2DViewer, Q2DFilterWidget, QMicrographListWidget
 from himena_relion import _job_dir
+from himena_relion._utils import read_mod
 from himena_relion.schemas import TSModel
 
 _LOGGER = logging.getLogger(__name__)
@@ -96,7 +96,7 @@ class QFindBeads3DViewer(QtW.QWidget):
     def _read_mod(self, tomo_name: str) -> pl.DataFrame | None:
         mod_path = self._job_dir.path / "models" / f"{tomo_name}.mod"
         if mod_path.exists():
-            return pl.DataFrame(imodmodel.read(mod_path))
+            return read_mod(mod_path)
 
 
 class QEraseGoldViewer(QtW.QWidget):
