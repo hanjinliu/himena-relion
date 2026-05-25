@@ -5,6 +5,7 @@ from himena_relion.relion5.widgets import (
     _pick,
     _postprocess,
     _select,
+    _subtract,
     _ctf,
     _class2d,
     _extract,
@@ -13,6 +14,7 @@ from himena_relion.relion5.widgets import (
     _class3d,
     _localres,
     _polish,
+    _join,
     _modelangelo,
 )
 
@@ -21,6 +23,7 @@ del (
     _mask_create,
     _postprocess,
     _select,
+    _subtract,
     _frames,
     _ctf,
     _pick,
@@ -31,5 +34,6 @@ del (
     _class3d,
     _localres,
     _polish,
+    _join,
     _modelangelo,
 )

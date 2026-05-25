@@ -2561,10 +2561,11 @@ class ParticleSubtractionJob(_Relion5SpaJob):
             "center"
         )
         kwargs["do_data"] = kwargs["fn_data"].strip() != ""
-        if kwargs["center_method"] == "Mask center":
+        center_method = kwargs.pop("center_method", "")
+        if center_method == "Mask center":
             kwargs["do_center_mask"] = "Yes"
             kwargs["do_center_xyz"] = "No"
-        elif kwargs["center_method"] == "User-defined":
+        elif center_method == "User-defined":
             kwargs["do_center_mask"] = "No"
             kwargs["do_center_xyz"] = "Yes"
         else:
@@ -2591,11 +2592,13 @@ class ParticleSubtractionJob(_Relion5SpaJob):
         do_center_xyz = kwargs.pop("do_center_xyz", "No") == "Yes"
         if do_center_mask:
             kwargs["center_method"] = "Mask center"
+            kwargs["center"] = (0.0, 0.0, 0.0)
         elif do_center_xyz:
             kwargs["center_method"] = "User-defined"
             kwargs["center"] = center
         else:
             kwargs["center_method"] = "No"
+            kwargs["center"] = (0.0, 0.0, 0.0)
         if "new_box" in kwargs and float(kwargs["new_box"]) < 0:
             kwargs["new_box"] = None
         return kwargs

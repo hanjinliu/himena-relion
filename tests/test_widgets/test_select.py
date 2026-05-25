@@ -2,6 +2,7 @@ from typing import Callable
 from pathlib import Path
 from himena_relion._job_dir import JobDirectory
 from himena_relion.relion5.widgets._select import QRemoveDuplicatesViewer, QSplitParticlesViewer
+from himena_relion.relion5.widgets._join import QJoinParticleViewer
 from himena_relion.testing import JobWidgetTester
 from himena_relion.schemas import ParticleMetaModel, ParticlesModel
 
@@ -45,3 +46,21 @@ def test_split_widget(
     assert "50 particles" in plain_text
     assert "particles_split2.star" in plain_text
     assert "30 particles" in plain_text
+
+def test_join_widget(
+    qtbot,
+    make_job_directory: Callable[[str, str], JobDirectory],
+    himena_ui,
+    jobs_dir_spa,
+):
+    star_text = Path(jobs_dir_spa / "JoinStar" / "job001" / "job.star").read_text()
+    job_dir = make_job_directory(star_text, "JoinStar")
+
+    tester = JobWidgetTester(QJoinParticleViewer(job_dir), job_dir)
+    qtbot.addWidget(tester.widget)
+
+    tester.write_text("join_particles.star", ParticleMetaModel.example(40).to_string())
+    tester.write_exit_with_success()
+    # The combobox should have the block name as an item
+    assert tester.widget._combobox.count() == 1
+    assert tester.widget._combobox.itemText(0) == "particles"
