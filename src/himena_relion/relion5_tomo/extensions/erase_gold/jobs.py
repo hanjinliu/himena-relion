@@ -1,7 +1,6 @@
 from pathlib import Path
 from typing import Annotated
 
-import imodmodel
 import mrcfile
 import numpy as np
 import polars as pl
@@ -22,6 +21,7 @@ from himena_relion.relion5_tomo.extensions.erase_gold.widgets import (
 from himena_relion.relion5_tomo.extensions.erase_gold import _impl
 from himena_relion.relion5_tomo._tomo_utils import project_fiducials
 from himena_relion.consts import MenuId
+from himena_relion._utils import read_mod
 
 TILT_ANGLE = "rlnTomoNominalStageTiltAngle"
 TILT_STAR = "rlnTomoTiltSeriesStarFile"
@@ -146,7 +146,12 @@ class EraseGold(RelionExternalJob):
             rng = np.random.default_rng(seed)
             tilt_center = _tilt_center(rln_dir, tilt_star_df)
             if model_path.exists():
-                fid = imodmodel.read(model_path)[["z", "y", "x"]].to_numpy(np.float32)
+                fid = (
+                    read_mod(model_path)
+                    .select("z", "y", "x")
+                    .to_numpy()
+                    .astype(np.float32)
+                )
             else:
                 self.console.log(
                     f"Model file {model_path} not found for tomogram {info.tomo_name}, "

@@ -201,6 +201,7 @@ class Q2DViewer(Q2DViewerBase):
         layout.addLayout(hlayout)
         self._dims_slider.valueChanged.connect(self._on_slider_changed)
         self._out_of_slice = True
+        self._is_3d = True
 
     def clear(self):
         self._array_view = None
@@ -227,7 +228,8 @@ class Q2DViewer(Q2DViewerBase):
         self._last_clim = clim
         num_slices = self._array_view.num_slices()
         with QtCore.QSignalBlocker(self._dims_slider):
-            self._dims_slider_widget.setVisible(bool(num_slices > 1))
+            self._is_3d = bool(num_slices > 1)
+            self._dims_slider_widget.setVisible(self._is_3d)
             self._dims_slider.setRange(0, num_slices - 1)
             self._dims_slider.setValue(num_slices // 2)
             self._zpos_box.setRange(0, num_slices - 1)
@@ -313,7 +315,7 @@ class Q2DViewer(Q2DViewerBase):
             min_, max_ = self._last_clim
 
         point_size = self._point_size_normed()
-        if self._dims_slider.isVisible():
+        if self._is_3d:
             zs = self._points[:, 0]
             thickness = point_size if self._out_of_slice else 0.01
             zdiff = zs - slider_value

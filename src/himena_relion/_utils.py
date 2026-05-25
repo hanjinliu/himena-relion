@@ -6,9 +6,10 @@ from pathlib import Path
 import logging
 import time
 from typing import Annotated, Any, TextIO, get_args, get_origin, TYPE_CHECKING
+from functools import lru_cache
 
 import numpy as np
-from functools import lru_cache
+import polars as pl
 
 from starfile_rs import read_star
 from himena.types import is_subtype
@@ -376,3 +377,9 @@ def open_with_lock(
 
 class RelionPipelineLockError(RuntimeError):
     """Raised when failed to acquire lock for RELION default_pipeline.star file."""
+
+
+def read_mod(path: str | Path) -> pl.DataFrame:
+    import imodmodel
+
+    return pl.DataFrame(imodmodel.read(path))

@@ -6,6 +6,7 @@ import subprocess
 import numpy as np
 import polars as pl
 
+from contextlib import suppress
 from qtpy import QtWidgets as QtW, QtGui, QtCore
 import scipy.ndimage as ndi
 from himena.consts import MonospaceFontFamily
@@ -19,7 +20,7 @@ from himena_relion._widgets import (
     QMicrographListWidget,
 )
 from himena_relion import _job_dir, _utils
-from himena_relion.relion5_tomo._tomo_utils import project_fiducials, read_xyz
+from himena_relion.relion5_tomo._tomo_utils import project_fiducials
 from himena_relion.schemas._movie_tilts import TSModel, TSGroupModel
 
 _LOGGER = logging.getLogger(__name__)
@@ -119,7 +120,7 @@ class QAlignTiltSeriesViewer(QJobScrollArea):
         # and can be deleted by users after this job finished.
         in_tilt = job_dir.get_job_param("in_tiltseries")
         try:
-            ts_group = TSGroupModel.validate_file(in_tilt)
+            ts_group = TSGroupModel.validate_file(job_dir.resolve_path(in_tilt))
             ts_file = ts_group.tomo_tilt_series_star_file.filter(
                 ts_group.tomo_name == text
             ).first()
@@ -133,7 +134,7 @@ class QAlignTiltSeriesViewer(QJobScrollArea):
             aligner = ImodImageAligner.from_xf(xf, nbin, rot90=_rot_90)
             self._viewer.set_array_view(ts_view.with_filter(aligner.transform_image))
             # TODO: not aligned well yet.
-            # self._udpate_fiducials(text, aligner)
+            self._update_fiducials(text, aligner)
         except Exception:
             _LOGGER.error("Failed to load tilt series", exc_info=True)
             self._viewer.clear()
@@ -160,56 +161,68 @@ class QAlignTiltSeriesViewer(QJobScrollArea):
         if log_file.exists():
             self._align_log.setPlainText(log_file.read_text())
 
-    def _udpate_fiducials(self, text: str, aligner: ImodImageAligner):
+    def _update_fiducials(self, tomo_name: str, aligner: ImodImageAligner):
         # if tracked fiducials are available, display them
         job_dir = self._job_dir
-        if (fid_path := fid_file(job_dir, text)).exists() and (
-            params := image_shape_params(job_dir, text)
+        if (
+            (params := image_shape_params(job_dir, tomo_name))
+            and (path_3dmod := _3dmod_file(job_dir, tomo_name)).exists()
+            and (path_tlt := _tlt_file(job_dir, tomo_name)).exists()
         ):
-            _LOGGER.debug("Fiducial file %s found. Load it.", fid_path)
-            fid = read_xyz(fid_path)[:, ::-1]  # to zyx
-            ny, nx = params
-
+            preali_bin = _get_preali_bin(job_dir, tomo_name)
+            fid = (
+                _utils.read_mod(path_3dmod)
+                .select("z", "y", "x")
+                .to_numpy()
+                .astype(np.float32)
+                * preali_bin
+            )
+            ny, nx = params  # shape *after* transformation
+            if aligner._rot90:
+                ny0, nx0 = nx, ny  # before transformation
+            else:
+                ny0, nx0 = ny, nx
             fid_proj = project_fiducials(
                 fid,
                 np.array([0, ny - 1, nx - 1]) / 2,
-                deg=np.loadtxt(fid_path.as_posix()[:-7] + "_fid.tlt"),
+                deg=np.loadtxt(path_tlt),
                 xf=aligner._components,
-                tilt_center=np.array([ny - 1, nx - 1]) / 2,
+                tilt_center=np.array([ny0 - 1, nx0 - 1]) / 2,
             )
             fid_proj[:, 1:] /= aligner._nbin
             fid_tr = aligner.transform_points(
                 pl.DataFrame(fid_proj, schema=["z", "y", "x"]),
-                (ny, nx),
+                (ny0, nx0),
             )
             self._viewer.set_points(fid_tr, size=10, out_of_slice=False)
             self._viewer.redraw()
-        else:
-            _LOGGER.debug("Fiducial file %s not found.", fid_path)
 
     def _open_in_etomo(self):
         edf = edf_file(self._job_dir, self._ts_list.current_text())
-        subprocess.Popen(["etomo", edf.as_posix()], start_new_session=True)
+        subprocess.Popen(
+            ["etomo", edf.as_posix()],
+            start_new_session=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
 
 
 class ImodImageAligner:
     def __init__(self, components, nbin: int = 4, rot90: bool = False):
-        self._components: list[np.ndarray] = components
+        self._components: np.ndarray = components
         self._nbin = nbin
         self._rot90 = rot90
 
     @classmethod
     def from_xf(cls, path, nbin: int = 4, rot90: bool = False) -> ImodImageAligner:
         """Create an ImodImageAligner from an IMOD .xf file."""
-        components = []
-        with open(path) as f:
-            for line in f:
-                vals = line.split()
-                if len(vals) != 6:
-                    raise ValueError("Invalid .xf file format.")
-                a11, a12, a21, a22, dx, dy = map(float, vals)
-                components.append(np.array([a11, a12, a21, a22, dx, dy]))
+        components = np.loadtxt(path)
         return cls(components, nbin=nbin, rot90=rot90)
+
+    @property
+    def components(self) -> np.ndarray:
+        """Return the alignment parameters as a numpy array."""
+        return self._components
 
     def transform_image(self, img: np.ndarray, i: int) -> np.ndarray:
         mat = self.matrix(i, img.shape)
@@ -249,14 +262,14 @@ class ImodImageAligner:
 
     def matrix(self, i: int, shape: tuple[int, int]) -> np.ndarray:
         """Get the transformation matrix for tilt index i."""
-        ny, nx = shape
+        ny, nx = shape  # shape *before* transformation
         nbin = self._nbin
         t = [[1, 0, ny // nbin / 2], [0, 1, nx // nbin / 2], [0, 0, 1]]
         if self._rot90:
             t_inv = [[1, 0, nx // nbin / 2], [0, 1, ny // nbin / 2], [0, 0, 1]]
         else:
             t_inv = t
-        a11, a12, a21, a22, dx, dy = self._components[i]
+        a11, a12, a21, a22, dx, dy = self.components[i]
         mat = [[a22, a21, dy / nbin], [a12, a11, dx / nbin], [0, 0, 1]]
         return t @ np.linalg.inv(mat) @ np.linalg.inv(t_inv)
 
@@ -298,10 +311,14 @@ def xf_file(jobdir: _job_dir.JobDirectory, tomoname: str) -> Path:
     return etomo_project_dir(jobdir, tomoname) / f"{tomoname}.xf"
 
 
-def fid_file(jobdir: _job_dir.JobDirectory, tomoname: str) -> Path:
-    """Return the path to the .fid file for a given tomogram name."""
-    # this is the mod file of tracked fiducials
-    return etomo_project_dir(jobdir, tomoname) / f"{tomoname}fid.xyz"
+def _3dmod_file(jobdir: _job_dir.JobDirectory, tomoname: str) -> Path:
+    """Return the path to the .prexf file for a given tomogram name."""
+    return etomo_project_dir(jobdir, tomoname) / f"{tomoname}.3dmod"
+
+
+def _tlt_file(jobdir: _job_dir.JobDirectory, tomoname: str) -> Path:
+    """Return the path to the .tlt file for a given tomogram name."""
+    return etomo_project_dir(jobdir, tomoname) / f"{tomoname}.tlt"
 
 
 def edf_file(jobdir: _job_dir.JobDirectory, tomoname: str) -> Path:
@@ -326,18 +343,26 @@ def image_shape_params(
 ) -> tuple[int, int] | None:
     """Try to get image shape from tilt.com and prenewst.com files."""
     path_tilt = etomo_project_dir(jobdir, tomoname) / "tilt.com"
-    with path_tilt.open("r") as f:
-        # FULLIMAGE 3838 3710
-        for line in f:
-            if line.startswith("FULLIMAGE "):
-                nx, ny = map(int, line.split()[1:3])
-    if ny > 0 and nx > 0:
-        return (ny, nx)
-    return None
+    with suppress(Exception):
+        with path_tilt.open("r") as f:
+            # FULLIMAGE 3838 3710
+            for line in f:
+                if line.startswith("FULLIMAGE "):
+                    nx, ny = map(int, line.split()[1:3])
+        if ny > 0 and nx > 0:
+            return (ny, nx)
 
 
-def _tilt_axis_angle(degree: float) -> float:
-    return abs((float(degree) + 90) % 180 - 90)
+def _get_preali_bin(jobdir: _job_dir.JobDirectory, tomoname: str) -> int:
+    """Try to get pre-alignment binning from prenewst.com file."""
+    path_prenewst = etomo_project_dir(jobdir, tomoname) / "align.com"
+    with suppress(Exception):
+        with path_prenewst.open("r") as f:
+            # PREALI_BIN 4
+            for line in f:
+                if line.startswith("ImagesAreBinned "):
+                    return int(line.split()[1])
+    return 8
 
 
 def _imod_output_align_file(subdir: Path) -> str:
