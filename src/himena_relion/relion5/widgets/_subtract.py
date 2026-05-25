@@ -30,10 +30,10 @@ class QSubtractViewer(QJobScrollArea):
         self._job_dir = job_dir
         layout = self._layout
         self._num_page = 20
-        self._num_part_label = QtW.QLabel()
+        self._num_part_label = QtW.QLabel(" --- particles")
         self._text_edit = QImageViewTextEdit(font_size=11)
         self._text_edit.setMinimumHeight(350)
-        self._lowpass_cutoff = QDoubleLineEdit("15.0")
+        self._lowpass_cutoff = QDoubleLineEdit("10.0")
         self._lowpass_cutoff.setMinimum(0.0)
         self._lowpass_cutoff.setMaximum(200.0)
         self._lowpass_cutoff.setFixedWidth(40)
@@ -73,7 +73,7 @@ class QSubtractViewer(QJobScrollArea):
 
     def initialize(self, job_dir: _job_dir.JobDirectory):
         """Initialize the viewer with the job directory."""
-        star_path = job_dir.resolve_path("particle_subtracted.star")
+        star_path = job_dir.path / "particles_subtracted.star"
         if not star_path.exists():
             self._text_edit.setPlainText("particle_subtracted.star not created yet.")
             return
@@ -81,11 +81,14 @@ class QSubtractViewer(QJobScrollArea):
         if particles_block := read_star(star_path).get("particles"):
             df = particles_block.to_polars()
 
-            self._current_df = df
             self._image_sub = df["rlnImageName"]
             self._image_orig = df["rlnImageOriginalName"]
-
+            self._slider.setRange(
+                0, max(0, self._image_sub.len() - 1) // self._num_page
+            )
             self._slider_value_changed(0, update_slider=True)
+        else:
+            self._text_edit.setPlainText("No 'particles' block found in the star file.")
 
         num_total = self._image_orig.len()
         self._num_part_label.setText(f"Total: <b>{num_total}</b> particles")
@@ -111,6 +114,11 @@ class QSubtractViewer(QJobScrollArea):
         end_index = min(start_index + self._num_page, self._image_orig.len() + 1)
         sl = slice(start_index, end_index)
         first = True
+
+        try:
+            cutoff_a = float(self._lowpass_cutoff.text())
+        except ValueError:
+            return
         for (mrc_orig, img_orig), (_, img_sub), ith in zip(
             read_mrc_slices(self._image_orig[sl], self._job_dir),
             read_mrc_slices(self._image_sub[sl], self._job_dir),
@@ -121,16 +129,16 @@ class QSubtractViewer(QJobScrollArea):
                 angst = mrc_orig.voxel_size.x
                 size = mrc_orig.header.nx
                 msg = f"Image size: {size} pix ({size * angst:.1f} A)\nBefore --> After subtraction"
-                cutoff_rel = angst / float(self._lowpass_cutoff.text())
+                cutoff_rel = angst / cutoff_a
                 first = False
                 yield self._on_text_ready, (msg + "\n\n", session)
 
-            img_str_orig = self._text_edit.image_to_base64(
+            img_str_ori = self._text_edit.image_to_base64(
                 img_orig, f"{ith}", cutoff_rel
             )
-            yield self._on_string_ready, (img_str_orig, session)
+            yield self._on_string_ready, (img_str_ori, session)
             yield self._on_text_ready, (" -> ", session)
-            img_str_sub = self._text_edit.image_to_base64(img_sub, f"{ith}", cutoff_rel)
+            img_str_sub = self._text_edit.image_to_base64(img_sub, "", cutoff_rel)
             yield self._on_string_ready, (img_str_sub, session)
             yield self._on_text_ready, ("\n", session)
 
