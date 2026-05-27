@@ -42,8 +42,7 @@ def test_initial_model_widget(
 
         assert tester.widget._viewer.has_image
         assert tester.widget._iter_choice.maximum() == 0
-    assert tester.widget._class_choice.minimum() == 1
-    assert tester.widget._class_choice.maximum() == 3
+    assert tester.widget._list_widget.rowCount() == 3
 
     ### Prepare iteration 10 ###
 
@@ -64,8 +63,7 @@ def test_initial_model_widget(
     assert tester.widget._viewer.has_image
     assert tester.widget._iter_choice.maximum() == 10
     assert tester.widget._iter_choice.value() == 10
-    assert tester.widget._class_choice.minimum() == 1
-    assert tester.widget._class_choice.maximum() == 3
+    assert tester.widget._list_widget.rowCount() == 3
 
     tester.widget._iter_choice.setValue(0)
     QApplication.processEvents()
