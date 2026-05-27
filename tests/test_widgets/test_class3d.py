@@ -1,6 +1,7 @@
 from typing import Callable
 from qtpy.QtWidgets import QApplication
 from pathlib import Path
+import pytest
 from himena_relion._job_dir import JobDirectory
 from himena_relion.relion5.widgets._class3d import QClass3DViewer
 from himena_relion.schemas import ParticleMetaModel, ModelStarModel
@@ -19,6 +20,7 @@ def test_class3d_widget(
     qtbot,
     make_job_directory: Callable[[str, str], JobDirectory],
     jobs_dir_spa,
+    himena_ui,
 ):
     star_text = Path(jobs_dir_spa / "Class3D" / "job001" / "job.star").read_text()
     job_dir = make_job_directory(star_text, "Class3D")
@@ -85,3 +87,8 @@ def test_class3d_widget(
     tester.widget._list_widget.set_current_row(1)
     QApplication.processEvents()
     assert tester.widget._list_widget.rowCount() == 3
+
+    with pytest.raises(FileNotFoundError):
+        tester.widget._continue_from_here_clicked()
+    tester.write_text("run_it001_optimiser.star", "")
+    tester.widget._continue_from_here_clicked()

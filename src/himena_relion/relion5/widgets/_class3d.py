@@ -132,7 +132,7 @@ class QClass3DViewer(QJobScrollArea):
                     Class3DNoAlignmentContinue as C,
                 )
             else:
-                from himena_relion.relion5._continues import Class3DJob as C
+                from himena_relion.relion5._continues import Class3DContinue as C
 
         niter = self._iter_choice.value()
         optimiser_path = self._job_dir.path / f"run_it{niter:03d}_optimiser.star"

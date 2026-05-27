@@ -1,5 +1,6 @@
 from typing import Callable
 from qtpy.QtWidgets import QApplication
+import pytest
 from pathlib import Path
 from himena_relion._job_dir import JobDirectory
 from himena_relion.relion5.widgets._initial_model import QInitialModelViewer
@@ -19,6 +20,7 @@ def test_initial_model_widget(
     qtbot,
     make_job_directory: Callable[[str, str], JobDirectory],
     jobs_dir_spa,
+    himena_ui,
 ):
     star_text = Path(jobs_dir_spa / "InitialModel" / "job001" / "job.star").read_text()
     job_dir = make_job_directory(star_text, "InitialModel")
@@ -69,3 +71,8 @@ def test_initial_model_widget(
     QApplication.processEvents()
     tester.widget._iter_choice.setValue(10)
     QApplication.processEvents()
+
+    with pytest.raises(FileNotFoundError):
+        tester.widget._continue_from_here_clicked()
+    tester.write_text("run_it010_optimiser.star", "")
+    tester.widget._continue_from_here_clicked()
