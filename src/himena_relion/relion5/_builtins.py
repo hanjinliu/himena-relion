@@ -1,9 +1,9 @@
 from pathlib import Path
 import shutil
-from typing import Any, Literal
+from typing import Any
 
 from magicgui.widgets.bases import ValueWidget
-from himena_relion._job_class import _Relion5BuiltinJob, parse_string
+from himena_relion._job_class import _Relion5BuiltinJob, parse_string, InvalidInputError
 from himena_relion._job_dir import JobDirectory
 from himena_relion import _configs, _annotated as _a
 from himena_relion._utils import command_not_found_err_msg
@@ -217,6 +217,11 @@ class _MotionCorrJobBase(_Relion5SpaJob):
         kwargs["patch"] = (kwargs.pop("patch_x", 1), kwargs.pop("patch_y", 1))
         return super().normalize_kwargs_inv(**kwargs)
 
+    @classmethod
+    def prerun_check(cls, **kwargs) -> None:
+        if str(kwargs.get("input_star_mics", "")) == "":
+            raise InvalidInputError("Input movies.star must be provided.")
+
 
 class MotionCorr2Job(_MotionCorrJobBase):
     """Motion correction using MotionCor2 (GPU)."""
@@ -276,6 +281,7 @@ class MotionCorr2Job(_MotionCorrJobBase):
 
     @classmethod
     def prerun_check(cls, **kwargs) -> None:
+        super().prerun_check(**kwargs)
         if shutil.which(mcor2 := _configs.get_motioncor2_exe()) is None:
             raise ValueError(
                 command_not_found_err_msg(f"MotionCor2 executable not found: {mcor2}")
@@ -420,6 +426,8 @@ class CtfEstimationJob(_Relion5SpaJob):
             raise ValueError(
                 command_not_found_err_msg(f"CTFFind4 executable not found: {cmd}")
             )
+        if str(kwargs.get("input_star_mics", "")).strip() == "":
+            raise InvalidInputError("Input micrographs.star must be provided.")
 
 
 class ManualPickJob(_Relion5SpaJob):
@@ -565,6 +573,11 @@ class _AutoPickJob(_Relion5SpaJob):
             if name in kwargs and float(kwargs[name]) < 0:
                 kwargs[name] = None
         return kwargs
+
+    @classmethod
+    def prerun_check(cls, **kwargs) -> None:
+        if str(kwargs.get("fn_input_autopick", "")).strip() == "":
+            raise InvalidInputError("Input micrographs.star must be provided.")
 
 
 class AutoPickLogJob(_AutoPickJob):
@@ -733,6 +746,12 @@ class AutoPickTemplate2DJob(_AutoPickJob):
     def setup_widgets(cls, widgets):
         _autopick_helix_setup(widgets)
 
+    @classmethod
+    def prerun_check(cls, **kwargs) -> None:
+        super().prerun_check(**kwargs)
+        if str(kwargs.get("fn_refs_autopick", "")).strip() == "":
+            raise InvalidInputError("Input 2D reference(s) must be provided.")
+
 
 class AutoPickTemplate3DJob(_AutoPickJob):
     @classmethod
@@ -772,9 +791,9 @@ class AutoPickTemplate3DJob(_AutoPickJob):
     def run(
         self,
         fn_input_autopick: _a.io.IN_MICROGRAPHS = "",
-        fn_ref3d_autopick: _a.io.REF_TYPE = "",
         angpix: _a.autopick.ANGPIX = None,
         # References
+        fn_ref3d_autopick: _a.autopick.FN_REF3D_AUTOPICK = "",
         ref3d_symmetry: _a.autopick.REF3D_SYMMETRY = "C1",
         ref3d_sampling: _a.autopick.REF3D_SAMPLING = "30 degrees",
         lowpass: _a.autopick.LOWPASS = 20,
@@ -811,6 +830,12 @@ class AutoPickTemplate3DJob(_AutoPickJob):
     @classmethod
     def setup_widgets(cls, widgets):
         _autopick_helix_setup(widgets)
+
+    @classmethod
+    def prerun_check(cls, **kwargs) -> None:
+        super().prerun_check(**kwargs)
+        if str(kwargs.get("fn_ref3d_autopick", "")).strip() == "":
+            raise InvalidInputError("Input 3D reference must be provided.")
 
 
 class AutoPickTopazTrain(_AutoPickJob):
@@ -904,6 +929,7 @@ class AutoPickTopazTrain(_AutoPickJob):
 
     @classmethod
     def prerun_check(cls, **kwargs) -> None:
+        super().prerun_check(**kwargs)
         if shutil.which(cmd := _configs.get_topaz_exe()) is None:
             raise ValueError(
                 command_not_found_err_msg(f"Topaz executable not found: {cmd}")
@@ -993,6 +1019,7 @@ class AutoPickTopazPick(_AutoPickJob):
 
     @classmethod
     def prerun_check(cls, **kwargs) -> None:
+        super().prerun_check(**kwargs)
         if shutil.which(cmd := _configs.get_topaz_exe()) is None:
             raise ValueError(
                 command_not_found_err_msg(f"Topaz executable not found: {cmd}")
@@ -2218,8 +2245,14 @@ class PostProcessJob(_Relion5SpaJob):
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
-
-FIT_CTF_CHOICES = Literal["No", "Per-micrograph", "Per-particle"]
+    @classmethod
+    def prerun_check(cls, **kwargs):
+        if "half" not in str(kwargs.get("fn_in", "")):
+            raise InvalidInputError(
+                "Input half map (containing 'half' substring) must be provided."
+            )
+        if str(kwargs.get("fn_mask", "")).strip() == "":
+            raise InvalidInputError("Input mask must be provided.")
 
 
 class _CtfRefineJobBase(_Relion5SpaJob):
@@ -2627,6 +2660,13 @@ class ParticleSubtractionJob(_Relion5SpaJob):
             widgets["center"].enabled = value == "User-defined"
 
         _on_center_method_changed(widgets["center_method"].value == "User-defined")
+
+    @classmethod
+    def prerun_check(cls, **kwargs):
+        if str(kwargs.get("fn_opt", "")).strip() == "":
+            raise InvalidInputError("Input optimiser.star must be provided.")
+        if str(kwargs.get("fn_mask", "")).strip() == "":
+            raise InvalidInputError("Input mask must be provided.")
 
 
 class BayesianPolishTrainJob(_Relion5SpaJob):

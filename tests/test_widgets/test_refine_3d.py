@@ -1,4 +1,5 @@
 from typing import Callable
+import pytest
 from qtpy.QtWidgets import QApplication
 from pathlib import Path
 from himena_relion._job_dir import JobDirectory
@@ -19,6 +20,7 @@ def test_refine3d_widget(
     qtbot,
     make_job_directory: Callable[[str, str], JobDirectory],
     jobs_dir_spa,
+    himena_ui,
 ):
     star_text = Path(jobs_dir_spa / "Refine3D" / "job001" / "job.star").read_text()
     job_dir = make_job_directory(star_text, "Refine3D")
@@ -66,6 +68,10 @@ def test_refine3d_widget(
     QApplication.processEvents()
     tester.widget._iter_choice.setValue(1)
     QApplication.processEvents()
+    with pytest.raises(FileNotFoundError):
+        tester.widget._continue_from_here_clicked()
+    tester.write_text("run_it001_optimiser.star", "")
+    tester.widget._continue_from_here_clicked()
 
 def test_refine3d_widget_final_data(
     qtbot,

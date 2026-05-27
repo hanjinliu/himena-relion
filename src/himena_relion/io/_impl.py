@@ -103,6 +103,11 @@ def overwrite_relion_job(ui: MainWindow, job_dir: JobDirectory):
         raise RuntimeError("Cannot determine job class.")
 
     scheduler = job_cls._show_scheduler_widget(ui, {}, cwd=job_dir.relion_project_dir)
+    scheduler.update_by_job(
+        job_cls,
+        cwd=job_dir.relion_project_dir,
+        subtitle=f"Overwriting {job_dir.job_normal_id()}",
+    )
     scheduler.set_edit_mode(job_dir)
     scheduler.set_parameters(job_dir.get_job_params_as_dict())
 
@@ -118,7 +123,11 @@ def clone_relion_job(ui: MainWindow, job_dir: JobDirectory):
     if job_cls is None:
         raise RuntimeError("Cannot determine job class.")
     scheduler = job_cls._show_scheduler_widget(ui, {}, cwd=job_dir.relion_project_dir)
-    scheduler.update_by_job(job_cls, cwd=job_dir.relion_project_dir)
+    scheduler.update_by_job(
+        job_cls,
+        cwd=job_dir.relion_project_dir,
+        subtitle=f"Clone of {job_dir.job_normal_id()}",
+    )
     scheduler.set_parameters(job_dir.get_job_params_as_dict())
     scheduler.set_schedule_mode()
 

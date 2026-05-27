@@ -656,7 +656,9 @@ class QJobStateLabel(QtW.QWidget, JobWidgetBase):
         self._state_label.setText("")
 
     def on_job_updated(self, job_dir, fp):
-        if fp.name == "default_pipeline.star" or fp.suffix == "":
+        if (
+            fp.name == "default_pipeline.star" or fp.suffix == ""  # RELION_JOB_XXXX
+        ):
             self._on_job_updated(job_dir)
 
     def initialize(self, job_dir):

@@ -85,6 +85,17 @@ class Class3DTomoContinue(_Relion5BuiltinContinue):
     def run(
         self,
         fn_cont: _a.io.CONTINUE = "",
+        fn_mask: _a.io.IN_MASK = "",
+        tau_fudge: _a.misc.TAU_FUDGE = 4,
+        nr_iter: _a.class_.NUM_ITER = 25,
+        particle_diameter: _a.misc.MASK_DIAMETER = 200,
+        # Sampling
+        sampling: _a.sampling.ANG_SAMPLING = "7.5 degrees",
+        offset_range_step: _a.sampling.OFFSET_RANGE_STEP = (5, 1),
+        do_local_ang_searches: _a.sampling.LOCAL_ANG_SEARCH = False,
+        sigma_angles: _a.sampling.SIGMA_ANGLES = 5,
+        relax_sym: _a.sampling.RELAX_SYMMETRY = "",
+        allow_coarser: _a.sampling.ALLOW_COARSER_SAMPLING = False,
         # Compute
         do_fast_subsets: _a.compute.USE_FAST_SUBSET = False,
         do_parallel_discio: _a.compute.USE_PARALLEL_DISC_IO = True,
@@ -112,6 +123,11 @@ class Refine3DTomoContinue(_Relion5BuiltinContinue):
     def run(
         self,
         fn_cont: _a.io.CONTINUE = "",
+        fn_mask: _a.io.IN_MASK = "",
+        particle_diameter: _a.misc.MASK_DIAMETER = 200,
+        do_solvent_fsc: _a.misc.SOLVENT_FLATTEN_FSC = False,
+        relax_sym: _a.sampling.RELAX_SYMMETRY = "",
+        auto_faster: _a.sampling.AUTO_FASTER = False,
         # Compute
         do_parallel_discio: _a.compute.USE_PARALLEL_DISC_IO = True,
         nr_pool: _a.compute.NUM_POOL = 3,

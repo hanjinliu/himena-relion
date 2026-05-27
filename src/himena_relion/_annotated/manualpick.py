@@ -30,6 +30,7 @@ DIAMETER = Annotated[
     float,
     {
         "label": "Particle diameter (A)",
+        "min": 0.1,
         "tooltip": (
             "The diameter of the circle used around picked particles (in Angstroms). "
             "Only used for display."
@@ -41,6 +42,7 @@ MICSCALE = Annotated[
     float,
     {
         "label": "Scale for micrographs",
+        "min": 0.0,
         "tooltip": (
             "The micrographs will be displayed at this relative scale, i.e. a value of "
             "0.5 means that only every second pixel will be displayed."

@@ -381,4 +381,3 @@ def test_manually_create_mask(
     tester.test_run(ext_dir, widget=widget)
     assert (ext_dir / "mask.mrc").exists()
     assert (ext_dir / "mask_base.mrc").exists()
-    assert (ext_dir / "mask_base_backup.mrc").exists()

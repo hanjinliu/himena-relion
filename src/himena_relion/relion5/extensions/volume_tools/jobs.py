@@ -1,3 +1,4 @@
+from pathlib import Path
 import subprocess
 import time
 from typing import Annotated
@@ -10,6 +11,7 @@ from himena_relion._job_class import connect_jobs
 from himena_relion.consts import MenuId
 from himena_relion.external import RelionExternalJob
 from himena_relion._configs import get_chimera_exe
+from himena_relion._utils import relion_python_executable
 from himena_relion._annotated.io import MAP_TYPE
 from himena_relion.relion5.extensions.volume_tools.widgets import QMaskCreateViewer
 from himena_relion.relion5._connections import mask_create_search_halfmap
@@ -43,7 +45,7 @@ class ManualMaskCreation(RelionExternalJob):
             str,
             {
                 "label": "Application to use",
-                "choices": ["Chimera/ChimeraX", "None"],
+                "choices": ["Chimera/ChimeraX", "Napari", "None"],
                 "widget_type": ToggleButtons,
                 "tooltip": (
                     "Application to use for manual mask creation. If 'None' is "
@@ -109,19 +111,27 @@ class ManualMaskCreation(RelionExternalJob):
         else:
             raise ValueError(f"Unknown blur method: {blur_method}")
 
-        # Delete existing mask files
-        mask_path.unlink(missing_ok=True)
-        if mask_base_path.exists():
-            mask_base_backup_path = mask_base_path.with_name("mask_base_backup.mrc")
-            mask_base_backup_path.unlink(missing_ok=True)
-            mask_base_path.rename(mask_base_backup_path)
-
         # volume onesmask #1.1 on_grid #1
         input_path = out_job_dir.resolve_path(in_3dref).as_posix()
         if use_app == "Chimera/ChimeraX":
             chimerax = get_chimera_exe()
             subprocess.Popen(
                 [chimerax, input_path],
+                cwd=out_job_dir.path,
+                start_new_session=True,
+            )
+        elif use_app == "Napari":
+            python_exe = relion_python_executable()
+            script_path = (
+                Path(__file__).parent.parent / "scripts" / "mask_creation_napari.py"
+            )
+            subprocess.Popen(
+                [
+                    python_exe,
+                    script_path.as_posix(),
+                    input_path,
+                    out_job_dir.path.as_posix(),
+                ],
                 cwd=out_job_dir.path,
                 start_new_session=True,
             )

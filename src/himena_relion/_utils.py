@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from contextlib import contextmanager, suppress
 import os
+import shutil
 from pathlib import Path
 import logging
 import time
@@ -15,6 +16,7 @@ from starfile_rs import read_star
 from himena.types import is_subtype
 from himena_relion.consts import Type
 from himena_relion.schemas import RelionPipelineModel, ParticleMetaModel
+from himena_relion._configs import get_relion_pipeliner_exe
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
@@ -383,3 +385,25 @@ def read_mod(path: str | Path) -> pl.DataFrame:
     import imodmodel
 
     return pl.DataFrame(imodmodel.read(path))
+
+
+@lru_cache(maxsize=1)
+def relion_python_executable() -> Path:
+    """Get the path to the Python executable that RELION uses."""
+    if pipeliner_path := shutil.which(get_relion_pipeliner_exe()):
+        pipeliner_path = Path(pipeliner_path)
+        # will be /path/to/relion/build/bin/relion_pipeliner
+        # we want /path/to/relion/build/CMakeCache.txt
+        cmake_cache_path = pipeliner_path.parent.parent / "CMakeCache.txt"
+        if cmake_cache_path.exists():
+            with cmake_cache_path.open() as f:
+                for line in f:
+                    if line.startswith("PYTHON_EXE_PATH:PATH="):
+                        python_path = line.split("=", 1)[1].strip()
+                        return Path(python_path)
+    if python_path := shutil.which("python"):
+        return Path(python_path)
+    raise RuntimeError(
+        "Failed to find Python executable used by RELION. Please make sure RELION is "
+        "installed and relion_pipeliner is in your PATH."
+    )

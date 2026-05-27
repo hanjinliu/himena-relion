@@ -23,6 +23,7 @@ from himena.consts import MonospaceFontFamily
 from himena.workflow import LocalReaderMethod
 from himena_relion._job_class import execute_job
 from himena_relion._job_dir import JobDirectory
+from himena_relion._widgets import QRelionJobWidget
 from himena_relion._widgets._job_widgets import QJobPipelineViewer
 from himena_relion._widgets._misc import QMoreActionButton
 from himena_relion._widgets._content_info import QJobContentInfo
@@ -247,7 +248,7 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         self._state_to_job_map.clear()
         for job in model.value.iter_nodes():
             _dict = self._state_to_job_map[job.status]
-            _dict[job.path.as_posix()] = job
+            _dict[job.path.as_posix() + "/"] = job
 
     def _on_pipeline_updated(self, pipeline: RelionDefaultPipeline) -> None:
         self._flow_chart.set_pipeline(pipeline)
@@ -340,24 +341,31 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         to_notify: list[str] = []
         # Notify newly succeeded jobs and run scheduled jobs
         if succeeded := (success_new - success_old) & running_old:
-            to_notify.append("\n".join(f"Job {job}/ succeeded." for job in succeeded))
+            to_notify.append("\n".join(f"Job {job} succeeded." for job in succeeded))
 
         # Notify newly failed jobs
-        if failed := failed_new - failed_old:
-            to_notify.append("\n".join(f"Job {job}/ failed." for job in failed))
+        if failed := (failed_new - failed_old) & running_old:
+            to_notify.append("\n".join(f"Job {job} failed." for job in failed))
 
-        # Notify newly started scheduled jobs
-        if started := (scheduled_old - scheduled_new) & running_new:
-            to_notify.append(
-                "\n".join(f"Scheduled job {job}/ started." for job in started)
-            )
+        # Notify newly scheduled jobs
+        if scheduled := scheduled_new - scheduled_old:
+            to_notify.append("\n".join(f"Job {job} scheduled." for job in scheduled))
 
         # Notify newly running jobs
-        if running := running_new - running_old - started:
-            to_notify.append("\n".join(f"Job {job}/ started." for job in running))
+        if started := running_new - running_old:
+            to_notify.append("\n".join(f"Job {job} started." for job in started))
+
+            # if job is opened, force update (because this may not trigger any file
+            # change)
+            for window in self._ui().iter_windows():
+                if (
+                    isinstance(widget := window.widget, QRelionJobWidget)
+                    and widget._job_dir.job_normal_id() in started
+                ):
+                    widget._state_widget.initialize(widget._job_dir)
 
         if to_notify:
-            ui.show_notification("\n\n".join(to_notify), title="Pipeline Updates")
+            ui.show_notification("\n".join(to_notify), title="Pipeline Updates")
 
     def keyPressEvent(self, a0):
         key = a0.key()

@@ -24,6 +24,7 @@ LOG_DIAM_MIN = Annotated[
             "The smallest allowed diameter for the blob-detection algorithm. This "
             "should correspond to the smallest size of your particles in Angstroms."
         ),
+        "min": 0.0,
         "group": "Laplacian",
     },
 ]
@@ -35,6 +36,7 @@ LOG_DIAM_MAX = Annotated[
             "The largest allowed diameter for the blob-detection algorithm. This "
             "should correspond to the largest size of your particles in Angstroms."
         ),
+        "min": 0.0,
         "group": "Laplacian",
     },
 ]
@@ -240,6 +242,21 @@ FN_REFS_AUTOPICK = Annotated[
             "picking. Note that the absolute greyscale needs to be correct, so <b>only "
             "use images created by RELION itself</b>, e.g. by 2D class averaging or "
             "projecting a RELION reconstruction."
+        ),
+        "group": "References",
+    },
+]
+FN_REF3D_AUTOPICK = Annotated[
+    str,
+    {
+        "label": "3D reference",
+        "widget_type": PathDrop,
+        "type_label": "DensityMap",
+        "allowed_extensions": [".mrc", ".map"],
+        "tooltip": (
+            "Input MRC file with the 3D reference maps, from which 2D references will "
+            "be made by projection. Note that the absolute greyscale needs to be "
+            "correct, so only use maps created by RELION itself from this data set."
         ),
         "group": "References",
     },
