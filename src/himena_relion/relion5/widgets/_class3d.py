@@ -2,9 +2,10 @@ from __future__ import annotations
 from pathlib import Path
 
 import logging
-from qtpy import QtWidgets as QtW
+from qtpy import QtWidgets as QtW, QtCore
 from superqt import QToggleSwitch
 from superqt.utils import thread_worker
+from himena.widgets import current_instance
 from himena_relion._widgets._shared.resizer import QResizer
 from himena_relion._widgets import (
     QJobScrollArea,
@@ -35,6 +36,9 @@ class QClass3DViewer(QJobScrollArea):
             ]
         )
         self._list_widget.verticalHeader().setVisible(False)
+        self._list_widget.setMinimumWidth(300)
+        self._list_widget.setMaximumWidth(400)
+
         self._viewer = Q3DViewer()
         _arrow_visible_default = False
         self._viewer._canvas.arrow_visual.visible = _arrow_visible_default
@@ -48,10 +52,15 @@ class QClass3DViewer(QJobScrollArea):
         )
         self._resizer = QResizer(self._viewer)
         self._symmetry_label = QSymmetryLabel()
-        self._list_widget.setMinimumWidth(300)
-        self._list_widget.setMaximumWidth(400)
         self._iter_choice = QIntWidget("Iteration", label_width=60)
         self._iter_choice.setMinimum(0)
+        self._continue_from_here_btn = QtW.QPushButton("Continue ...")
+        self._continue_from_here_btn.setStyleSheet("padding: 2px; border-radius: 4px;")
+        self._continue_from_here_btn.setToolTip(
+            "Click to continue 3D classification job from this iteration."
+        )
+        self._continue_from_here_btn.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
+        self._continue_from_here_btn.clicked.connect(self._continue_from_here_clicked)
         self._num_particles_label = QNumParticlesLabel()
         hor1 = QtW.QWidget()
         hor1.setMaximumWidth(400)
@@ -65,6 +74,7 @@ class QClass3DViewer(QJobScrollArea):
         hor_layout = QtW.QHBoxLayout(hor2)
         hor_layout.setContentsMargins(0, 0, 0, 0)
         hor_layout.addWidget(self._iter_choice)
+        hor_layout.addWidget(self._continue_from_here_btn)
         hor_layout.addWidget(self._num_particles_label)
         self._index_start = 1
         self._job_dir = job_dir
@@ -92,6 +102,7 @@ class QClass3DViewer(QJobScrollArea):
         nclasses = job_dir.num_classes()
         if nclasses == 0:
             return
+        self._list_widget.setFixedHeight(min(nclasses * 22 + 18, 110))
         niters = job_dir.num_iters()
         self._iter_choice.setMaximum(max(niters, 0))
         self._iter_choice.setValue(self._iter_choice.maximum())
@@ -103,6 +114,38 @@ class QClass3DViewer(QJobScrollArea):
         class_id = int(self._list_widget.current_text() or 1)
         self._update_for_value(value, class_id)
         self._update_summary_table(value)
+
+    def _continue_from_here_clicked(self):
+        is_no_alignment = self._job_dir.get_job_param("dont_skip_align", "Yes") == "No"
+        if self._job_dir.is_tomo():
+            if is_no_alignment:
+                from himena_relion.relion5_tomo._continues import (
+                    Class3DTomoNoAlignmentContinue as C,
+                )
+            else:
+                from himena_relion.relion5_tomo._continues import (
+                    Class3DTomoContinue as C,
+                )
+        else:
+            if is_no_alignment:
+                from himena_relion.relion5._continues import (
+                    Class3DNoAlignmentContinue as C,
+                )
+            else:
+                from himena_relion.relion5._continues import Class3DContinue as C
+
+        niter = self._iter_choice.value()
+        optimiser_path = self._job_dir.path / f"run_it{niter:03d}_optimiser.star"
+        if not optimiser_path.exists():
+            raise FileNotFoundError(
+                f"Optimiser STAR file not found for iteration {niter} (should be at "
+                f"{optimiser_path})"
+            )
+        fn_cont = self._job_dir.make_relative_path(optimiser_path).as_posix()
+        ui = current_instance()
+        C._show_scheduler_widget_for_continue(
+            ui, {"fn_cont": fn_cont, "_job_dir": self._job_dir}
+        )
 
     def _on_class_changed(self, value: tuple[str, str, str]):
         class_id = int(value[0])

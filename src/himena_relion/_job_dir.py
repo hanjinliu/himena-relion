@@ -570,12 +570,18 @@ class InitialModelResults(_3DResultsBase):
 
 
 class InitialModel3DJobDirectory(JobDirectory):
+    _job_type = "relion.initialmodel"
+
     def get_result(self, niter: int) -> InitialModelResults:
         return InitialModelResults.from_niter(self.path, niter)
 
     def num_classes(self) -> int:
-        """Return the number of classes."""
-        return len(list(self.path.glob("run_it000_class*.mrc")))
+        """Return the current number of classes in the class 3D job."""
+        num_classes = 0
+        for path in self.path.glob("run_it???_class???.mrc"):
+            with suppress(Exception):
+                num_classes = max(num_classes, int(path.stem[-3:]))
+        return num_classes
 
     def niter_list(self) -> list[int]:
         """Return the list of number of iterations."""
@@ -588,33 +594,6 @@ class InitialModel3DJobDirectory(JobDirectory):
 
 @dataclass
 class Refine3DResults(_3DResultsBase):
-    def refined_map(self, class_id: int) -> NDArray[np.floating]:
-        """Return the refined map for a given class ID."""
-        mrc_path = self.path / f"run_class{class_id + 1:03d}.mrc"
-        with mrcfile.open(mrc_path, mode="r") as mrc:
-            return mrc.data
-
-    def halfmaps(
-        self, class_id: int
-    ) -> tuple[NDArray[np.floating] | None, NDArray[np.floating] | None, float | None]:
-        """Return the half maps for a given class ID."""
-        half1_path = self._half_class_mrc(class_id + 1, 1)
-        half2_path = self._half_class_mrc(class_id + 1, 2)
-        scale = None
-        try:
-            with mrcfile.open(half1_path, mode="r") as mrc1:
-                img1 = mrc1.data
-                scale = mrc1.voxel_size.x
-        except Exception:
-            img1 = None
-        try:
-            with mrcfile.open(half2_path, mode="r") as mrc2:
-                img2 = mrc2.data
-                scale = mrc2.voxel_size.x
-        except Exception:
-            img2 = None
-        return img1, img2, scale
-
     def angdist(self, class_id: int, map_scale: float) -> list[TubeObject]:
         """Return the angular distribution for a given class ID."""
         if self.it_str == "":
@@ -626,35 +605,11 @@ class Refine3DResults(_3DResultsBase):
             return _read_tubes(full_path, map_scale)
         return []
 
-    def _half_class_mrc(self, class_id: int, num: Literal[1, 2] = 1) -> Path:
-        """Return the path to the half 1 class MRC file for this iteration."""
-        if self.it_str == "":
-            suffix = "_unfil"
-        else:
-            suffix = ""
-        name = f"run{self.it_str}_half{num}_class{class_id:03d}{suffix}.mrc"
-        return self.path / name
-
-    def _half_class_angdist_bild(self, class_id: int, num: Literal[1, 2] = 1) -> Path:
-        """Return the path to the half 1 class angular distribution BILD file for this iteration."""
-        # f"run{self.it_str}_class{class_id:03d}_angdist.bild"
-        return (
-            self.path / f"run{self.it_str}_half{num}_class{class_id:03d}_angdist.bild"
-        )
-
-    def _half_model_star(self, class_id: int, num: Literal[1, 2] = 1) -> Path:
-        """Return the path to the half 1 model star file for this iteration."""
-        return self.path / f"run{self.it_str}_half{num}_model_class{class_id:03d}.star"
-
 
 class Refine3DJobDirectory(JobDirectory):
     """Class for handling refine 3D job directories in RELION."""
 
-    _job_type = "relion.refine3d.tomo"
-
-    def refined_model_mrc(self) -> list[Path]:
-        """Return the path to the refined model image."""
-        return list(self.path.glob("run_class*.mrc"))
+    _job_type = "relion.refine3d"
 
     def get_result(self, niter: int) -> Refine3DResults:
         return Refine3DResults.from_niter(self.path, niter)
