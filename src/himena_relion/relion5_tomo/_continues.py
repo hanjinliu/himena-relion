@@ -7,6 +7,7 @@ from himena_relion.relion5_tomo._builtins import (
     MotionCorrOwnTomoJob,
     CtfEstimationTomoJob,
     Class3DTomoJob,
+    Class3DNoAlignmentTomoJob,
     Refine3DTomoJob,
 )
 from himena_relion import _annotated as _a
@@ -63,6 +64,41 @@ class InitialModelTomoContinue(_Relion5BuiltinContinue):
         # Compute
         do_parallel_discio: _a.compute.USE_PARALLEL_DISC_IO = True,
         nr_pool: _a.compute.NUM_POOL = 3,
+        do_preread_images: _a.compute.DO_PREREAD = False,
+        do_combine_thru_disc: _a.compute.DO_COMBINE_THRU_DISC = False,
+        gpu_ids: _a.compute.GPU_IDS = "",
+        # Running
+        nr_mpi: _a.running.NR_MPI = 1,
+        nr_threads: _a.running.NR_THREADS = 1,
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")
+
+    @classmethod
+    def more_node_mappings(cls) -> dict[str, str]:
+        return {_latest_optimiser_star: "fn_cont"}
+
+
+class Class3DTomoNoAlignmentContinue(_Relion5BuiltinContinue):
+    original_class = Class3DNoAlignmentTomoJob
+
+    def run(
+        self,
+        fn_cont: _a.io.CONTINUE = "",
+        fn_mask: _a.io.IN_MASK = "",
+        tau_fudge: _a.misc.TAU_FUDGE = 4,
+        nr_iter: _a.class_.NUM_ITER = 25,
+        particle_diameter: _a.misc.MASK_DIAMETER = 200,
+        # Sampling
+        sampling: _a.sampling.ANG_SAMPLING = "7.5 degrees",
+        offset_range_step: _a.sampling.OFFSET_RANGE_STEP = (5, 1),
+        relax_sym: _a.sampling.RELAX_SYMMETRY = "",
+        allow_coarser: _a.sampling.ALLOW_COARSER_SAMPLING = False,
+        # Compute
+        do_parallel_discio: _a.compute.USE_PARALLEL_DISC_IO = True,
+        nr_pool: _a.compute.NUM_POOL = 3,
+        do_pad1: _a.compute.DO_PAD1 = False,
         do_preread_images: _a.compute.DO_PREREAD = False,
         do_combine_thru_disc: _a.compute.DO_COMBINE_THRU_DISC = False,
         gpu_ids: _a.compute.GPU_IDS = "",
