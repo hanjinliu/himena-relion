@@ -151,7 +151,7 @@ class QRefine3DViewer(QJobScrollArea):
         fn_cont = self._job_dir.make_relative_path(optimiser_path).as_posix()
         ui = current_instance()
         C._show_scheduler_widget_for_continue(
-            ui, ui.current_model, {"fn_cont": fn_cont}
+            ui, {"fn_cont": fn_cont, "_job_dir": self._job_dir}
         )
 
     def _update_for_value(self, niter: int):

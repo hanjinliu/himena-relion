@@ -20,7 +20,7 @@ from typing import (
 from pathlib import Path
 from magicgui.widgets.bases import ValueWidget
 
-from himena.types import AnyContext, WidgetDataModel
+from himena.types import AnyContext
 from himena.workflow import WorkflowStep, LocalReaderMethod
 from himena.widgets import MainWindow
 from himena.plugins import when_reader_used, register_function
@@ -415,6 +415,11 @@ class _Relion5BuiltinContinue(_Relion5BuiltinJob):
             cls.original_class,
             cls,
             node_mapping=cls.more_node_mappings(),
+            other_context={
+                "_job_dir": lambda path: _job_dir.JobDirectory.from_job_star(
+                    path / "job.star"
+                )
+            },
         )
 
     @classmethod
@@ -437,11 +442,14 @@ class _Relion5BuiltinContinue(_Relion5BuiltinJob):
     def _show_scheduler_widget_for_continue(
         cls,
         ui: MainWindow,
-        model: WidgetDataModel,  # FIXME: don't use this arg
         context: AnyContext,
     ):
         scheduler = scheduler_widget(ui)
-        job_dir = model.value
+        if job_dir := context.pop("_job_dir", None):
+            pass
+        else:
+            job_dir = ui.current_model.value
+
         if not isinstance(job_dir, _job_dir.JobDirectory):
             raise RuntimeError("Widget model does not contain a job directory.")
         scheduler.update_by_job(
@@ -604,6 +612,7 @@ def connect_jobs(
     post: type[RelionJob],
     node_mapping: dict[str | Callable[[Path], str], str] | None = None,
     value_mapping: dict[str | Callable[[Path], Any], Any] | None = None,
+    other_context: dict[str, Any] | None = None,
 ):
     """Connect two jobs so that `post` will be suggested from the `pre` window."""
     _check_is_mapping(node_mapping)
@@ -611,7 +620,7 @@ def connect_jobs(
     CONNECTED_JOBS.append((pre, post))
     type_pre = Type.RELION_JOB + "." + pre.himena_model_type()
     when = when_reader_used(type_pre, "himena_relion.io.read_relion_job")
-    user_context = _node_mapping_to_context(node_mapping, value_mapping)
+    user_context = _node_mapping_to_context(node_mapping, value_mapping, other_context)
     when.add_command_suggestion(
         post.command_id(),
         user_context=user_context,
@@ -651,9 +660,11 @@ def scheduler_widget(ui: MainWindow) -> QJobScheduler:
 def _node_mapping_to_context(
     node_mapping: dict[str | Callable[[Path], str | None], str] | None = None,
     value_mapping: dict[Callable[[Path], Any], Any] | None = None,
+    other_context: dict[str, Any] | None = None,
 ):
     node_mapping = node_mapping or {}
     value_mapping = value_mapping or {}
+    other_context = other_context or {}
 
     def _func(ui: MainWindow, step: WorkflowStep) -> dict[str, Any]:
         if isinstance(step, LocalReaderMethod) and isinstance(path := step.path, Path):
@@ -702,6 +713,10 @@ def _node_mapping_to_context(
                 _LOGGER.error("Error in value mapping from %r to %r: %s", from_, to_, e)
                 continue
             out[to_] = returned_value
+        for key, other_val in other_context.items():
+            if callable(other_val):
+                other_val = other_val(val.path)
+            out[key] = other_val
         return out
 
     return _func
