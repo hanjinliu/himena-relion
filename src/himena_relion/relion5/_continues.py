@@ -191,6 +191,7 @@ class Class3DNoAlignmentContinue(_Relion5BuiltinContinue):
     def run(
         self,
         fn_cont: _a.io.CONTINUE = "",
+        fn_mask: _a.io.IN_MASK = "",
         tau_fudge: _a.misc.TAU_FUDGE = 4,
         nr_iter: _a.class_.NUM_ITER = 25,
         particle_diameter: _a.misc.MASK_DIAMETER = 200,
@@ -221,6 +222,7 @@ class Class3DContinue(_Relion5BuiltinContinue):
     def run(
         self,
         fn_cont: _a.io.CONTINUE = "",
+        fn_mask: _a.io.IN_MASK = "",
         tau_fudge: _a.misc.TAU_FUDGE = 4,
         nr_iter: _a.class_.NUM_ITER = 25,
         particle_diameter: _a.misc.MASK_DIAMETER = 200,
@@ -258,7 +260,11 @@ class Refine3DContinue(_Relion5BuiltinContinue):
     def run(
         self,
         fn_cont: _a.io.CONTINUE = "",
+        fn_mask: _a.io.IN_MASK = "",
         particle_diameter: _a.misc.MASK_DIAMETER = 200,
+        do_solvent_fsc: _a.misc.SOLVENT_FLATTEN_FSC = False,
+        relax_sym: _a.sampling.RELAX_SYMMETRY = "",
+        auto_faster: _a.sampling.AUTO_FASTER = False,
         # Compute
         do_parallel_discio: _a.compute.USE_PARALLEL_DISC_IO = True,
         nr_pool: _a.compute.NUM_POOL = 3,

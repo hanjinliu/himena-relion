@@ -28,6 +28,17 @@ from himena_relion.schemas import JobStarModel
 _LOGGER = logging.getLogger(__name__)
 
 
+class _QTitleLabel(QtW.QLabel):
+    def __init__(self, size_increase: int = 3):
+        super().__init__("")
+        self.setTextInteractionFlags(
+            QtCore.Qt.TextInteractionFlag.TextSelectableByMouse
+        )
+        font = self.font()
+        font.setPointSize(font.pointSize() + size_increase)
+        self.setFont(font)
+
+
 class QJobScheduler(QtW.QWidget):
     """Widget for scheduling a RELION job."""
 
@@ -36,10 +47,10 @@ class QJobScheduler(QtW.QWidget):
         self._ui = ui
         self._cwd: Path | None = None
         layout = QtW.QVBoxLayout(self)
-        self._title_label = QtW.QLabel("")  # job name
-        font = self._title_label.font()
-        font.setPointSize(font.pointSize() + 3)
-        self._title_label.setFont(font)
+        layout.setSpacing(1)
+        layout.setContentsMargins(6, 0, 6, 0)
+        self._title_label = _QTitleLabel(3)
+        self._subtitle_label = _QTitleLabel(1)  # such as "Clone of Refine3D/job043/"
         self._job_param_widget = QJobParameter()
         self._exec_btn = QtW.QPushButton("Run Job")
         self._exec_btn.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
@@ -59,6 +70,7 @@ class QJobScheduler(QtW.QWidget):
         _button_layout.addWidget(self._exec_btn, stretch=100)
         _button_layout.addWidget(btn, alignment=QtCore.Qt.AlignmentFlag.AlignRight)
         layout.addWidget(self._title_label)
+        layout.addWidget(self._subtitle_label)
         layout.addWidget(self._job_param_widget)
         layout.addWidget(self._buttons)
 
@@ -70,9 +82,13 @@ class QJobScheduler(QtW.QWidget):
     def sizeHint(self) -> QtCore.QSize:
         return QtCore.QSize(350, 600)
 
-    def _set_content(self, job_cls: type[RelionJob] | None, title: str):
+    def _set_content(
+        self, job_cls: type[RelionJob] | None, title: str, subtitle: str = ""
+    ):
         self._current_job_cls = job_cls
         self._title_label.setText(f"<b><span style='color: gray;'>{title}</span></b>")
+        self._subtitle_label.setText(f"<span style='color: gray;'>{subtitle}</span>")
+        self._subtitle_label.setVisible(subtitle.strip() != "")
         self._job_param_widget.clear_content()
 
     def clear_content(self):
@@ -84,6 +100,7 @@ class QJobScheduler(QtW.QWidget):
         job_cls: type[RelionJob],
         cwd: Path | None = None,
         init_params: bool = False,
+        subtitle: str = "",
     ):
         """Update the widget based on the job directory.
 
@@ -92,7 +109,7 @@ class QJobScheduler(QtW.QWidget):
             prefix = "Continue &mdash; "
         else:
             prefix = "Job: "
-        self._set_content(job_cls, prefix + job_cls.job_title())
+        self._set_content(job_cls, prefix + job_cls.job_title(), subtitle)
         self._job_param_widget.update_by_job(job_cls)
         assert isinstance(cwd, Path) or cwd is None
         self._cwd = cwd

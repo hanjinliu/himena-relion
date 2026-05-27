@@ -444,7 +444,11 @@ class _Relion5BuiltinContinue(_Relion5BuiltinJob):
         job_dir = model.value
         if not isinstance(job_dir, _job_dir.JobDirectory):
             raise RuntimeError("Widget model does not contain a job directory.")
-        scheduler.update_by_job(cls, cwd=job_dir.relion_project_dir)
+        scheduler.update_by_job(
+            cls,
+            cwd=job_dir.relion_project_dir,
+            subtitle=f"In {job_dir.job_normal_id()}",
+        )
         orig_params_raw = job_dir.get_job_params_as_dict()
         orig_params = cls.original_class.normalize_kwargs_inv(**orig_params_raw)
         try:
@@ -701,3 +705,7 @@ def _node_mapping_to_context(
         return out
 
     return _func
+
+
+class InvalidInputError(ValueError):
+    """Raised when the input fields are invalid."""

@@ -65,7 +65,11 @@ class QMaskCreateViewer(QtW.QWidget):
 
     def initialize(self, job_dir: _job_dir.JobDirectory):
         """Initialize the viewer with the job directory."""
-        in_map = template_mrc(job_dir)
+        template_path = job_dir.get_job_param("in_3dref")
+        in_map = None
+        with suppress(Exception):
+            with mrcfile.open(template_path, mode="r") as mrc:
+                in_map = mrc.data
         if in_map is not None:
             self._viewer.set_image(in_map, update_now=False)
             self._viewer.auto_threshold(update_now=False)
@@ -86,7 +90,8 @@ class QMaskCreateViewer(QtW.QWidget):
             self._message.setText(
                 "Mask file is not ready. \n"
                 f"Please create and save a binary mask {mask_base_path}\n"
-                f"or a blurred mask {mask_path}."
+                f"or a blurred mask {mask_path}\n"
+                f"using volume {template_path}"
             )
         else:
             self._message.setText("Mask file not available.")

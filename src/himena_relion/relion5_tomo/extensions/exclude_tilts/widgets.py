@@ -24,7 +24,7 @@ class QAutoExcludeTiltsViewer(QtW.QWidget):
         self._filter_widget = Q2DFilterWidget(bin_default=8, lowpass_default=30)
         self._mic_choice = QMicrographListWidget(["Micrograph"])
         self._mic_choice.current_changed.connect(self._mic_changed)
-        layout.addWidget(QtW.QLabel("<b>Tomogram Z slice with fiducials</b>"))
+        layout.addWidget(QtW.QLabel("<b>&#9679; Excluded Tilts</b>"))
         layout.addWidget(self._mic_choice)
         layout.addWidget(self._viewer)
 
