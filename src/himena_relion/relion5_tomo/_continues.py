@@ -164,7 +164,6 @@ class Class3DTomoContinue(_Relion5BuiltinContinue):
     @classmethod
     def prerun_check(cls, **kwargs) -> None:
         _assert_continue_file_exists(kwargs)
-        print("prerun check")
 
     @classmethod
     def setup_widgets(cls, widgets):

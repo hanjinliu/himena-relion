@@ -433,6 +433,10 @@ class AlignTiltSeriesImodFiducial(_AlignTiltSeriesJobBase):
         return super().command_id() + ".imodfiducial"
 
     @classmethod
+    def himena_model_type(cls):
+        return super().himena_model_type() + ".imodfiducial"
+
+    @classmethod
     def param_matches(cls, job_params: dict[str, str]) -> bool:
         return job_params.get("do_imod_fiducials", "No") == "Yes"
 
@@ -494,6 +498,10 @@ class AlignTiltSeriesImodPatch(_AlignTiltSeriesJobBase):
         return super().command_id() + ".imodpatch"
 
     @classmethod
+    def himena_model_type(cls):
+        return super().himena_model_type() + ".imodpatch"
+
+    @classmethod
     def param_matches(cls, job_params: dict[str, str]) -> bool:
         return job_params.get("do_imod_patchtrack", "No") == "Yes"
 
@@ -552,6 +560,10 @@ class AlignTiltSeriesAreTomo2(_AlignTiltSeriesJobBase):
     @classmethod
     def command_id(cls):
         return super().command_id() + ".aretomo2"
+
+    @classmethod
+    def himena_model_type(cls):
+        return super().himena_model_type() + ".aretomo2"
 
     @classmethod
     def param_matches(cls, job_params: dict[str, str]) -> bool:
@@ -1004,6 +1016,10 @@ class DenoiseTrain(_DenoiseJobBase):
         return super().command_id() + "-train"
 
     @classmethod
+    def himena_model_type(cls):
+        return super().himena_model_type() + ".train"
+
+    @classmethod
     def param_matches(cls, job_params: dict[str, str]) -> bool:
         return job_params.get("do_cryocare_train", "No") == "Yes"
 
@@ -1059,6 +1075,10 @@ class DenoisePredict(_DenoiseJobBase):
     @classmethod
     def command_id(cls):
         return super().command_id() + "-predict"
+
+    @classmethod
+    def himena_model_type(cls):
+        return super().himena_model_type() + "predict"
 
     @classmethod
     def param_matches(cls, job_params: dict[str, str]) -> bool:

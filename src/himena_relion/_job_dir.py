@@ -66,7 +66,7 @@ class JobDirectory:
             raise FileNotFoundError(f"File not found: {fp}")
         job_star = JobStarModel.validate_file(fp)
         type_label = job_star.job.job_type_label
-        for _ in range(type_label.count(".")):
+        for _ in range(max(type_label.count("."), 1)):
             if type_label in JobDirectory._type_map:
                 cls = JobDirectory._type_map[type_label]
                 return cls(fp.parent)
@@ -103,12 +103,12 @@ class JobDirectory:
 
     def himena_model_type(self) -> str:
         """Model type string specific to this job."""
-        if label := getattr(self, "_job_type", None):
+        if job_cls := self._to_job_class():
+            subtype = job_cls.himena_model_type()
+        elif label := getattr(self, "_job_type", None):
             subtype = label
             if self.is_tomo():
                 subtype = change_name_for_tomo(subtype)
-        elif job_cls := self._to_job_class():
-            subtype = job_cls.himena_model_type()
         else:
             subtype = "unknown"
         return Type.RELION_JOB + "." + subtype
