@@ -139,16 +139,16 @@ connect_jobs(
     _tomo.ReconstructTomoByAreTomo2,
     node_mapping={"aligned_tilt_series.star": "in_tiltseries"},
 )
-# connect_jobs(
-#     AlignTiltSeriesImodPatch,
-#     ReconstructTomogramJob,
-#     node_mapping={"aligned_tilt_series.star": "in_tiltseries"},
-# )
-# connect_jobs(
-#     AlignTiltSeriesAreTomo2,
-#     ReconstructTomogramJob,
-#     node_mapping={"aligned_tilt_series.star": "in_tiltseries"},
-# )
+connect_jobs(
+    _tomo.AlignTiltSeriesImodPatch,
+    _tomo.ReconstructTomogramJob,
+    node_mapping={"aligned_tilt_series.star": "in_tiltseries"},
+)
+connect_jobs(
+    _tomo.AlignTiltSeriesAreTomo2,
+    _tomo.ReconstructTomogramJob,
+    node_mapping={"aligned_tilt_series.star": "in_tiltseries"},
+)
 connect_jobs(
     _tomo.ReconstructHalfTomogramJob,
     _tomo.DenoiseTrain,
@@ -514,9 +514,8 @@ connect_jobs(
     node_mapping={"join_movies.star": "input_star_mics"},
 )
 
-# this causes duplicated menus in action hint?
-# connect_jobs(
-#     _tomo.PostProcessJob,
-#     _spa.ModelAngeloJob,
-#     node_mapping={"postprocess_masked.mrc": "fn_map"},
-# )
+connect_jobs(
+    _tomo.PostProcessTomoJob,
+    _spa.ModelAngeloJob,
+    node_mapping={"postprocess_masked.mrc": "fn_map"},
+)

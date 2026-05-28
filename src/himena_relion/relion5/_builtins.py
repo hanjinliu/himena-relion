@@ -1476,6 +1476,10 @@ class Class3DNoAlignmentJob(_Class3DJobBase):
         return super().command_id() + ".noalignment"
 
     @classmethod
+    def himena_model_type(cls):
+        return super().himena_model_type() + ".noalignment"
+
+    @classmethod
     def param_matches(cls, job_params: dict[str, str]) -> bool:
         return job_params.get("dont_skip_align", "Yes") == "No"
 
@@ -1568,6 +1572,10 @@ class Class3DJob(_Class3DJobBase):
     @classmethod
     def command_id(cls):
         return super().command_id() + ".alignment"
+
+    @classmethod
+    def himena_model_type(cls):
+        return super().himena_model_type() + ".alignment"
 
     @classmethod
     def param_matches(cls, job_params: dict[str, str]) -> bool:

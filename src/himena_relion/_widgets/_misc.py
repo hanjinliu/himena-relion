@@ -170,7 +170,9 @@ class QNumParticlesLabel(QtW.QLabel):
     def __init__(self):
         super().__init__()
         self.setText("--- particles")
-        self.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
+        self.setAlignment(
+            QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignVCenter
+        )
         self._num_particle_known = False
 
     def set_number(self, num: int):

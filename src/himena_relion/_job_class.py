@@ -47,6 +47,7 @@ if TYPE_CHECKING:
     from himena_relion._widgets._job_edit import QJobScheduler
 
 _LOGGER = logging.getLogger(__name__)
+_JOB_DIR_ARGS_NAME = "_job_dir"
 
 
 @dataclass
@@ -328,7 +329,7 @@ class _Relion5BuiltinJob(RelionJob):
     @classmethod
     def job_title(cls) -> str:
         type_label = cls.type_label()
-        for _ in range(type_label.count(".")):
+        for _ in range(max(type_label.count("."), 1)):
             if type_label in JOB_ID_MAP:
                 return JOB_ID_MAP[type_label]
             type_label = type_label.rsplit(".", 1)[0]
@@ -420,7 +421,7 @@ class _Relion5BuiltinContinue(_Relion5BuiltinJob):
             cls,
             node_mapping=cls.more_node_mappings(),
             other_context={
-                "_job_dir": lambda path: _job_dir.JobDirectory.from_job_star(
+                _JOB_DIR_ARGS_NAME: lambda path: _job_dir.JobDirectory.from_job_star(
                     path / "job.star"
                 )
             },
@@ -449,7 +450,7 @@ class _Relion5BuiltinContinue(_Relion5BuiltinJob):
         context: AnyContext,
     ):
         scheduler = scheduler_widget(ui)
-        if job_dir := context.pop("_job_dir", None):
+        if job_dir := context.pop(_JOB_DIR_ARGS_NAME, None):
             pass
         else:
             job_dir = ui.current_model.value
@@ -502,7 +503,7 @@ class _Relion5BuiltinContinue(_Relion5BuiltinJob):
         else:
             job_star_old_text = None
         job_star.write(job_star_path)
-        d = job_dir.path.relative_to(job_dir.relion_project_dir).as_posix()
+        d = job_dir.path.relative_to(job_dir.relion_project_dir)
         try:
             _exec = execute_job(d, cwd=job_dir.relion_project_dir)
         except Exception:
