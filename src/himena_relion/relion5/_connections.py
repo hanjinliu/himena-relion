@@ -135,6 +135,11 @@ for extract_job in [_spa.ExtractJob, _spa.ReExtractJob]:
     )
     connect_jobs(
         extract_job,
+        _spa.SelectDiscardJob,
+        node_mapping={"particles.star": "fn_data"},
+    )
+    connect_jobs(
+        extract_job,
         _spa.SelectSplitJob,
         node_mapping={"particles.star": "fn_data"},
     )

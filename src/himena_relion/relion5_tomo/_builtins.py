@@ -507,7 +507,7 @@ class AlignTiltSeriesImodPatch(_AlignTiltSeriesJobBase):
 
     @classmethod
     def job_title(cls) -> str:
-        return "Align Tilt Series (IMOD Patch Tracking)"
+        return "Align Tilt Series (IMOD Patch)"
 
     @classmethod
     def normalize_kwargs(cls, **kwargs):

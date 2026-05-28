@@ -178,3 +178,25 @@ DENDROGRAM_MINCLASS = Annotated[
         ),
     },
 ]
+DISCARD_LABEL = Annotated[
+    str,
+    {
+        "label": "Metadata label for images",
+        "tooltip": (
+            "Specify which column from the input STAR contains the names of the images "
+            "to be used to calculate the average and stddev values."
+        ),
+    },
+]
+DISCARD_SIGMA = Annotated[
+    float,
+    {
+        "label": "Sigma threshold for discarding images",
+        "tooltip": (
+            "Images with average and/or stddev values that are more than this many "
+            "times the ensemble stddev away from the ensemble mean will be discarded."
+        ),
+        "min": 0.1,
+        "max": 10.0,
+    },
+]
