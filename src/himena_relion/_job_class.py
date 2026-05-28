@@ -475,7 +475,6 @@ class _Relion5BuiltinContinue(_Relion5BuiltinJob):
         return scheduler
 
     def make_job_star(self, **kwargs) -> JobStarModel:
-        self.prerun_check(**kwargs)
         job_dir = self.output_job_dir
         job_star_path = job_dir.job_star()
         job_star = JobStarModel.validate_file(job_star_path)
@@ -496,6 +495,7 @@ class _Relion5BuiltinContinue(_Relion5BuiltinJob):
         # This will be called when the "Continue" button is clicked.
         job_dir = self.output_job_dir
         job_star_path = job_dir.job_star()
+        self.prerun_check(**kwargs)
         job_star = self.make_job_star(**kwargs)
         if job_star_path.exists():
             job_star_old_text = job_star_path.read_text()

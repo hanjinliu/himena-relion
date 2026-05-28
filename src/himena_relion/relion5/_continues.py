@@ -463,6 +463,4 @@ def _assert_continue_file_exists(kwargs: dict[str, Any]):
         raise ValueError(
             "An optimiser.star file must be provided to 'Continue from here' to continue this job."
         )
-    cont_path = Path(fn_cont)
-    if not cont_path.exists():
-        raise FileNotFoundError(f"Optimiser STAR file not found at {cont_path}")
+    # TODO: somehow check fn_cont exists (path is relative!)
