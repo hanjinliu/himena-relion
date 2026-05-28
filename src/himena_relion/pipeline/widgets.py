@@ -326,6 +326,7 @@ class QRelionPipelineFlowChart(QtW.QWidget):
     def _on_job_state_changed(self, pipeline: RelionDefaultPipeline):
         success_old = set(self._state_to_job_map[NodeStatus.SUCCEEDED].keys())
         failed_old = set(self._state_to_job_map[NodeStatus.FAILED].keys())
+        aborted_old = set(self._state_to_job_map[NodeStatus.ABORTED].keys())
         running_old = set(self._state_to_job_map[NodeStatus.RUNNING].keys())
         scheduled_old = set(self._state_to_job_map[NodeStatus.SCHEDULED].keys())
         self._state_to_job_map.clear()
@@ -347,12 +348,13 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         if failed := (failed_new - failed_old) & running_old:
             to_notify.append("\n".join(f"Job {job} failed." for job in failed))
 
+        _finished = success_old | failed_old | aborted_old
         # Notify newly scheduled jobs
-        if scheduled := scheduled_new - scheduled_old:
+        if scheduled := (scheduled_new - scheduled_old) & _finished:
             to_notify.append("\n".join(f"Job {job} scheduled." for job in scheduled))
 
         # Notify newly running jobs
-        if started := running_new - running_old:
+        if started := (running_new - running_old) & (_finished | scheduled_old):
             to_notify.append("\n".join(f"Job {job} started." for job in started))
 
             # if job is opened, force update (because this may not trigger any file

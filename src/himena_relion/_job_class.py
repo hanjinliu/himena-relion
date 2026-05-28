@@ -327,8 +327,12 @@ class _Relion5BuiltinJob(RelionJob):
 
     @classmethod
     def job_title(cls) -> str:
-        out = JOB_ID_MAP.get(cls.type_label(), "Unknown")
-        return out
+        type_label = cls.type_label()
+        for _ in range(type_label.count(".")):
+            if type_label in JOB_ID_MAP:
+                return JOB_ID_MAP[type_label]
+            type_label = type_label.rsplit(".", 1)[0]
+        return "Unknown"
 
     @classmethod
     def himena_model_type(cls) -> str:
@@ -471,6 +475,7 @@ class _Relion5BuiltinContinue(_Relion5BuiltinJob):
         return scheduler
 
     def make_job_star(self, **kwargs) -> JobStarModel:
+        self.prerun_check(**kwargs)
         job_dir = self.output_job_dir
         job_star_path = job_dir.job_star()
         job_star = JobStarModel.validate_file(job_star_path)

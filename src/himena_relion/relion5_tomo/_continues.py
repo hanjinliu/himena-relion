@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from himena_relion._job_class import _Relion5BuiltinContinue
+from himena_relion.relion5._continues import _assert_continue_file_exists
 from himena_relion.relion5_tomo._builtins import (
     InitialModelTomoJob,
     MotionCorr2TomoJob,
@@ -79,6 +80,10 @@ class InitialModelTomoContinue(_Relion5BuiltinContinue):
     def more_node_mappings(cls) -> dict[str, str]:
         return {_latest_optimiser_star: "fn_cont"}
 
+    @classmethod
+    def prerun_check(cls, **kwargs) -> None:
+        _assert_continue_file_exists(kwargs)
+
 
 class Class3DTomoNoAlignmentContinue(_Relion5BuiltinContinue):
     original_class = Class3DNoAlignmentTomoJob
@@ -113,6 +118,10 @@ class Class3DTomoNoAlignmentContinue(_Relion5BuiltinContinue):
     @classmethod
     def more_node_mappings(cls) -> dict[str, str]:
         return {_latest_optimiser_star: "fn_cont"}
+
+    @classmethod
+    def prerun_check(cls, **kwargs) -> None:
+        _assert_continue_file_exists(kwargs)
 
 
 class Class3DTomoContinue(_Relion5BuiltinContinue):
@@ -152,6 +161,21 @@ class Class3DTomoContinue(_Relion5BuiltinContinue):
     def more_node_mappings(cls) -> dict[str, str]:
         return {_latest_optimiser_star: "fn_cont"}
 
+    @classmethod
+    def prerun_check(cls, **kwargs) -> None:
+        _assert_continue_file_exists(kwargs)
+        print("prerun check")
+
+    @classmethod
+    def setup_widgets(cls, widgets):
+        @widgets["do_local_ang_searches"].changed.connect
+        def _on_do_local_ang_searches_changed(value: bool):
+            for name in ["sigma_angles", "relax_sym"]:
+                if (widget := widgets.get(name, None)) is not None:
+                    widget.enabled = value
+
+        _on_do_local_ang_searches_changed(widgets["do_local_ang_searches"].value)
+
 
 class Refine3DTomoContinue(_Relion5BuiltinContinue):
     original_class = Refine3DTomoJob
@@ -182,3 +206,7 @@ class Refine3DTomoContinue(_Relion5BuiltinContinue):
     @classmethod
     def more_node_mappings(cls) -> dict[str, str]:
         return {_latest_optimiser_star: "fn_cont"}
+
+    @classmethod
+    def prerun_check(cls, **kwargs) -> None:
+        _assert_continue_file_exists(kwargs)

@@ -65,8 +65,13 @@ class JobDirectory:
         if not fp.exists():
             raise FileNotFoundError(f"File not found: {fp}")
         job_star = JobStarModel.validate_file(fp)
-        cls = JobDirectory._type_map.get(job_star.job.job_type_label, JobDirectory)
-        return cls(fp.parent)
+        type_label = job_star.job.job_type_label
+        for _ in range(type_label.count(".")):
+            if type_label in JobDirectory._type_map:
+                cls = JobDirectory._type_map[type_label]
+                return cls(fp.parent)
+            type_label = type_label.rsplit(".", 1)[0]
+        return JobDirectory(fp.parent)
 
     def is_tomo(self) -> bool:
         """Return whether this job is a tomography job."""

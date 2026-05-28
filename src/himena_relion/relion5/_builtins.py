@@ -1487,6 +1487,8 @@ class Class3DNoAlignmentJob(_Class3DJobBase):
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
         # force no alignment
         kwargs["dont_skip_align"] = False
+        # highres_limit is only used for E-step, which includes alignment, not class
+        # asignment.
         kwargs["highres_limit"] = -1
         kwargs["do_local_ang_searches"] = False
         kwargs["sampling"] = 0
