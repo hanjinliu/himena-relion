@@ -240,6 +240,51 @@ class QSelectInteractiveViewer(QSelectJobBase):
                 yield "<br>"
 
 
+@register_job("relion.select.discard")
+class QDiscardParticlesViewer(QSelectJobBase):
+    def insert_html(self, job_dir: _job_dir.JobDirectory):
+        path_all = job_dir.get_job_param("fn_data", "")
+        path_sel = job_dir.path / "particles.star"
+        if not path_sel.exists() or path_all == "":
+            return _NOT_ENOUGH_MSG
+        yield "<h2>Summary</h2>"
+        try:
+            particles_all = read_star_block(path_all, "particles").trust_loop()
+            particles_selected = read_star_block(path_sel, "particles").trust_loop()
+        except Exception:
+            return "Output file is broken or missing."
+        n_selected = len(particles_selected)
+        n_all = len(particles_all)
+        n_removed = n_all - n_selected
+        yield self._get_summary_table(n_selected, n_removed, n_all)
+        df_particles_all = particles_all.to_polars()
+        df_particles_selected = particles_selected.to_polars()
+        df_particles_removed = df_particles_all.join(
+            df_particles_selected, on="rlnImageName", how="anti"
+        )
+
+        df_particles_selected = df_particles_selected.sample(24, seed=629934)
+        df_particles_removed = df_particles_removed.sample(24, seed=274418)
+
+        if "rlnTomoName" in df_particles_all.columns:
+            _read_fn = read_subtomo_as_2d
+        else:
+            _read_fn = read_image_as_2d
+        yield "<br><h2>Example Selected Particles</h2><br>"
+        rln_dir = self._job_dir.relion_project_dir
+        for row in df_particles_selected.iter_rows(named=True):
+            img = _read_fn(row["rlnImageName"], rln_dir)
+            if img is not None:
+                img_str = self._text_edit.image_to_base64(img)
+                yield f'<img src="data:image/png;base64,{img_str}"/>'
+        yield "<br><br><h2>Example Removed Particles</h2><br>"
+        for row in df_particles_removed.iter_rows(named=True):
+            img = _read_fn(row["rlnImageName"], rln_dir)
+            if img is not None:
+                img_str = self._text_edit.image_to_base64(img)
+                yield f'<img src="data:image/png;base64,{img_str}"/>'
+
+
 @register_job("relion.select.split")
 class QSplitParticlesViewer(QSelectJobBase):
     def insert_html(self, job_dir: _job_dir.JobDirectory):
@@ -317,3 +362,31 @@ def get_is_selected(job_dir: _job_dir.JobDirectory) -> NDArray[np.bool_] | None:
         return df["rlnSelected"].to_numpy() > 0
     except Exception:
         return None
+
+
+def read_image_as_2d(image_name: str, relion_dir: Path) -> NDArray[np.float32] | None:
+    if "@" in image_name:  # 00000012@Extract/job012/xyz.mrcs
+        ith, path_rel = image_name.split("@", 1)
+        ith = int(ith) - 1
+        path = relion_dir / path_rel
+        if path.exists():
+            with mrcfile.mmap(path) as mrc:
+                if mrc.data.ndim != 3:
+                    return None
+                return np.asarray(mrc.data[ith], dtype=np.float32)
+    return None
+
+
+def read_subtomo_as_2d(image_name: str, relion_dir: Path) -> NDArray[np.float32] | None:
+    path = relion_dir / image_name
+    if path.exists():
+        with mrcfile.mmap(path) as mrc:
+            if path.stem.endswith("_stack2d"):
+                if mrc.data.ndim == 3:
+                    p_img = mrc.data[(mrc.data.shape[0] - 1) // 2]
+                else:
+                    p_img = mrc.data
+                return np.asarray(p_img, dtype=np.float32)
+            else:
+                return np.asarray(mrc.data, dtype=np.float32).max(0)
+    return None

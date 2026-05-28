@@ -247,6 +247,11 @@ connect_jobs(
         _subtomo_diameter_a: "particle_diameter",
     },
 )
+connect_jobs(
+    _tomo.ExtractParticlesTomoJob,
+    _spa.SelectDiscardJob,
+    node_mapping={"particles.star": "fn_data"},
+)
 
 
 def _subtomo_binning(path: Path) -> int:

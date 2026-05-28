@@ -74,7 +74,7 @@ class QFindBeads3DViewer(QtW.QWidget):
         tomo_view = info.read_tomogram(self._job_dir.relion_project_dir)
         self._viewer.set_array_view(tomo_view, self._viewer._last_clim)
         bead_size = float(self._job_dir.get_job_param("gold_nm"))
-        point_size = bead_size / info.tomo_pixel_size * 10 + 0.5
+        point_size = bead_size / info.tomo_pixel_size * 10 + 4.5
         self._viewer.set_points(
             df_mod.select("z", "y", "x").to_numpy(), size=point_size
         )

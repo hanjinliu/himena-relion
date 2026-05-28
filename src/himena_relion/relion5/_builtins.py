@@ -2094,6 +2094,37 @@ class SelectRemoveDuplicatesJob(_SelectJob):
         raise NotImplementedError("This is a builtin job placeholder.")
 
 
+class SelectDiscardJob(_SelectJob):
+    """Discard particles by pixel value outliers.
+
+    All images in the input star file that have average and/or stddev pixel values that
+    are more than the specified sigma-values away from the ensemble mean will be
+    discarded.
+    """
+
+    @classmethod
+    def type_label(cls):
+        return "relion.select.discard"
+
+    @classmethod
+    def menu_id(cls):
+        return MenuId.RELION_FILTER_PARTICLES_JOB
+
+    @classmethod
+    def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
+        kwargs = super().normalize_kwargs(**kwargs)
+        kwargs["do_discard"] = True
+        return kwargs
+
+    def run(
+        self,
+        fn_data: _a.io.IN_PARTICLES = "",
+        discard_label: _a.select.DISCARD_LABEL = "rlnImageName",
+        discard_sigma: _a.select.DISCARD_SIGMA = 4.0,
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")
+
+
 class SelectSplitJob(_SelectJob):
     """Split particles into subsets."""
 
