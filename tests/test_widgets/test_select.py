@@ -1,5 +1,6 @@
 from typing import Callable
 from pathlib import Path
+import polars as pl
 from starfile_rs import as_star
 from himena_relion._job_dir import JobDirectory
 from himena_relion.relion5.widgets._select import QRemoveDuplicatesViewer, QDiscardParticlesViewer, QSplitParticlesViewer
@@ -43,16 +44,16 @@ def test_discard_widget(
 
     all_str = as_star(
         {
-            "particles": {
+            "particles": pl.DataFrame({
                 "rlnImageName": [f"000{i}@img.mrcs" for i in range(1, 6)]
-            }
+            })
         }
     ).to_string()
     particles_star_str = as_star(
         {
-            "particles": {
+            "particles": pl.DataFrame({
                 "rlnImageName": [f"000{i}@img.mrcs" for i in [2, 4]]
-            }
+            })
         }
     ).to_string()
     tester.write_text("particles.star", particles_star_str)
@@ -63,18 +64,18 @@ def test_discard_widget(
     # subtomo
     all_str = as_star(
         {
-            "particles": {
+            "particles": pl.DataFrame({
                 "rlnTomoName": ["TS_01" for i in range(1, 6)],
                 "rlnImageName": [f"img{i}_stack2d.mrc" for i in range(1, 6)]
-            }
+            })
         }
     ).to_string()
     particles_star_str = as_star(
         {
-            "particles": {
+            "particles": pl.DataFrame({
                 "rlnTomoName": ["TS_01" for i in range(2)],
                 "rlnImageName": [f"img{i}_stack2d.mrc" for i in [2, 4]]
-            }
+            })
         }
     ).to_string()
     tester.write_text("particles.star", particles_star_str)
@@ -86,18 +87,18 @@ def test_discard_widget(
     # subtomo 3D
     all_str = as_star(
         {
-            "particles": {
+            "particles": pl.DataFrame({
                 "rlnTomoName": ["TS_01" for i in range(1, 6)],
                 "rlnImageName": [f"img{i}_data.mrc" for i in range(1, 6)]
-            }
+            })
         }
     ).to_string()
     particles_star_str = as_star(
         {
-            "particles": {
+            "particles": pl.DataFrame({
                 "rlnTomoName": ["TS_01" for i in range(2)],
                 "rlnImageName": [f"img{i}_data.mrc" for i in [2, 4]]
-            }
+            })
         }
     ).to_string()
     tester.write_text("particles.star", particles_star_str)
@@ -105,6 +106,7 @@ def test_discard_widget(
     for i in range(1, 6):
         tester.write_random_mrc(f"img{i}_data.mrc", (10, 10, 10))
     tester.write_exit_with_success()
+    assert "missing" not in tester.widget._text_edit.toPlainText()
 
 def test_split_widget(
     qtbot,

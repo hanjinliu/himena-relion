@@ -249,7 +249,9 @@ class QDiscardParticlesViewer(QSelectJobBase):
             return _NOT_ENOUGH_MSG
         yield "<h2>Summary</h2>"
         try:
-            particles_all = read_star_block(path_all, "particles").trust_loop()
+            particles_all = read_star_block(
+                job_dir.resolve_path(path_all), "particles"
+            ).trust_loop()
             particles_selected = read_star_block(path_sel, "particles").trust_loop()
         except Exception:
             return "Output file is broken or missing."
@@ -263,8 +265,12 @@ class QDiscardParticlesViewer(QSelectJobBase):
             df_particles_selected, on="rlnImageName", how="anti"
         )
 
-        df_particles_selected = df_particles_selected.sample(24, seed=629934)
-        df_particles_removed = df_particles_removed.sample(24, seed=274418)
+        df_particles_selected = df_particles_selected.sample(
+            min(24, df_particles_selected.height), seed=629934
+        )
+        df_particles_removed = df_particles_removed.sample(
+            min(24, df_particles_removed.height), seed=274418
+        )
 
         if "rlnTomoName" in df_particles_all.columns:
             _read_fn = read_subtomo_as_2d
