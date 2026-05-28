@@ -296,10 +296,6 @@ class ScheduleMode(Mode):
         jobdirpath = job_cls.create_and_run_job(**params, _cwd=widget._cwd)
         widget.clear_content()
         if jobdirpath:
-            widget._ui.show_notification(
-                f"Job '{job_cls.job_title()}' scheduled at "
-                f"{_utils.normalize_job_id(jobdirpath)}."
-            )
             # job.star may not be ready yet.
             job_star = jobdirpath / "job.star"
             for _ in range(3):

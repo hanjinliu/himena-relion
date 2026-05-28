@@ -230,7 +230,8 @@ def read_or_show_job(ui: MainWindow, path: Path):
     # if already opened, switch to it
     for i_tab, tab in ui.tabs.enumerate():
         for i_window, window in tab.enumerate():
-            if not is_subtype(window.model_type(), Type.RELION_JOB):
+            mtype = window.model_type() or "not_a_relion_job"
+            if not is_subtype(mtype, Type.RELION_JOB):
                 continue
             try:
                 val = window.value

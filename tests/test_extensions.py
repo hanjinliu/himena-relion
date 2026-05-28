@@ -358,7 +358,7 @@ def test_manually_create_mask(
     mask_path = ext_dir / "mask_base.mrc"
     def create_mask():
         time.sleep(0.5)
-        with mrcfile.new(mask_path) as mrc:
+        with mrcfile.new(mask_path, overwrite=True) as mrc:
             mrc.set_data(np.random.normal(size=(8, 8, 8)).astype(np.float32))
             mrc.voxel_size = (0.78, 0.78, 0.78)
 

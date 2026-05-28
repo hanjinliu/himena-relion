@@ -1,5 +1,5 @@
 from pathlib import Path
-
+from typing import Any
 from himena_relion._job_class import _Relion5BuiltinContinue
 from himena_relion.relion5._builtins import (
     DynaMightJob,
@@ -184,6 +184,10 @@ class InitialModelContinue(_Relion5BuiltinContinue):
     def more_node_mappings(cls) -> dict[str, str]:
         return {_latest_optimiser_star: "fn_cont"}
 
+    @classmethod
+    def prerun_check(cls, **kwargs) -> None:
+        _assert_continue_file_exists(kwargs)
+
 
 class Class3DNoAlignmentContinue(_Relion5BuiltinContinue):
     original_class = Class3DNoAlignmentJob
@@ -214,6 +218,10 @@ class Class3DNoAlignmentContinue(_Relion5BuiltinContinue):
     @classmethod
     def more_node_mappings(cls) -> dict[str, str]:
         return {_latest_optimiser_star: "fn_cont"}
+
+    @classmethod
+    def prerun_check(cls, **kwargs) -> None:
+        _assert_continue_file_exists(kwargs)
 
 
 class Class3DContinue(_Relion5BuiltinContinue):
@@ -253,6 +261,20 @@ class Class3DContinue(_Relion5BuiltinContinue):
     def more_node_mappings(cls) -> dict[str, str]:
         return {_latest_optimiser_star: "fn_cont"}
 
+    @classmethod
+    def prerun_check(cls, **kwargs) -> None:
+        _assert_continue_file_exists(kwargs)
+
+    @classmethod
+    def setup_widgets(cls, widgets):
+        @widgets["do_local_ang_searches"].changed.connect
+        def _on_do_local_ang_searches_changed(value: bool):
+            for name in ["sigma_angles", "relax_sym"]:
+                if (widget := widgets.get(name, None)) is not None:
+                    widget.enabled = value
+
+        _on_do_local_ang_searches_changed(widgets["do_local_ang_searches"].value)
+
 
 class Refine3DContinue(_Relion5BuiltinContinue):
     original_class = Refine3DJob
@@ -283,6 +305,10 @@ class Refine3DContinue(_Relion5BuiltinContinue):
     @classmethod
     def more_node_mappings(cls) -> dict[str, str]:
         return {_latest_optimiser_star: "fn_cont"}
+
+    @classmethod
+    def prerun_check(cls, **kwargs) -> None:
+        _assert_continue_file_exists(kwargs)
 
 
 class MultiBodyContinue(_Relion5BuiltinContinue):
@@ -429,3 +455,12 @@ class DynaMightReconstructJob(_DynaMightContinue):
         min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
+
+
+def _assert_continue_file_exists(kwargs: dict[str, Any]):
+    fn_cont = kwargs.get("fn_cont", "")
+    if not fn_cont:
+        raise ValueError(
+            "An optimiser.star file must be provided to 'Continue from here' to continue this job."
+        )
+    # TODO: somehow check fn_cont exists (path is relative!)

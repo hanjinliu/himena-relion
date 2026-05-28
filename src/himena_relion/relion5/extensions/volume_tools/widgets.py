@@ -23,7 +23,7 @@ class QMaskCreateViewer(QtW.QWidget):
         self._viewer = Q3DViewer()
         self._resizer = QResizer(self._viewer)
         self._mask_level_slider = FloatSlider(
-            value=0.5, min=0.01, max=1.0, step=0.01, label="Mask Level"
+            value=0.5, min=0.01, max=0.99, step=0.01, label="Mask Level"
         )
         self._step_size = QtW.QSpinBox()
         self._step_size.setPrefix("step ")

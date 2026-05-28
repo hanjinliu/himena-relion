@@ -1,4 +1,5 @@
 from contextlib import suppress
+from pathlib import Path
 from typing import Callable
 from himena import MainWindow
 import pytest
@@ -141,9 +142,29 @@ def test_job_class_parse_arg():
     assert args["in_3dref"] == "ref.mrc"
     assert args["center_by"] == "pixel"
 
-def test_continue_job(himena_ui):
+def test_continue_job(
+    make_job_directory: Callable[[str, str], JobDirectory],
+    jobs_dir_spa,
+    himena_ui,
+):
     from himena_relion.relion5._continues import Refine3DContinue
 
-    _job_dir = JobDirectory(JOBS_DIR_SPA / "Refine3D/job001")
-    ref_job = Refine3DContinue(_job_dir)
+    star_text = Path(jobs_dir_spa / "Refine3D" / "job001" / "job.star").read_text()
+    optimiser_star_path = "Refine3D/job025/run_it010_optimiser.star"
+    lines = []
+    for line in star_text.splitlines():
+        if line.strip().startswith("fn_cont"):
+            line = f"fn_cont   {optimiser_star_path}"
+        lines.append(line)
+    star_text = "\n".join(lines)
+    job_dir = make_job_directory(star_text, "Refine3D")
+    job_dir.relion_project_dir.joinpath(optimiser_star_path).write_text("")  # create the optimiser.star file
+    ref_job = Refine3DContinue(job_dir)
+
+    model = JobStarModel.validate_file(job_dir.job_star())
     ref_job.make_job_star()
+
+    params = model.joboptions_values.to_dict()
+    assert "fn_cont" in params
+    kwargs = ref_job.normalize_kwargs_inv(**params)
+    ref_job.prerun_check(**kwargs)
