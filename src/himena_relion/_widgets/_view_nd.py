@@ -368,6 +368,9 @@ class Q2DViewer(Q2DViewerBase):
                 size=self._point_size_normed(),
             )
             self._canvas.markers_visual.visible = False
+
+        if self._auto_contrast_btn.live:
+            self._auto_contrast()
         self._canvas.update_canvas()
 
     def _point_size_normed(self) -> float:
