@@ -240,8 +240,9 @@ def trash_job(ui: MainWindow, job_dir: JobDirectory):
             [Path(name) in to_trash for name in pipeline.processes.process_name]
         )
 
+        # pipeline.nodes.name is e.g. Extract/job010/particles.star
         process_nodes_to_remove = pl.Series(
-            [Path(name) in to_trash for name in pipeline.nodes.name]
+            [Path(name).parent in to_trash for name in pipeline.nodes.name]
         )
 
         output_edges_trashed = pipeline.output_edges.dataframe.filter(
@@ -276,6 +277,7 @@ def trash_job(ui: MainWindow, job_dir: JobDirectory):
             _LOGGER.warning("Failed to close tabs for trashed jobs.", exc_info=True)
 
         f.seek(0)
+        f.truncate(0)
         f.write(pipeline.to_string())
 
         # move the job to trash
@@ -326,6 +328,7 @@ def restore_trashed_jobs(relion_project_dir: Path, job_ids: list[str]):
         all_input_edges = [pipeline.input_edges.dataframe]
         all_output_edges = [pipeline.output_edges.dataframe]
         for path_to_undo in all_jobs_to_undo:
+            # RELION GUI also use the job_pipeline.star to undelete
             job_pipeline_star = path_to_undo / "job_pipeline.star"
             path_dest = relion_project_dir / path_to_undo.relative_to(trash_dir)
             if not job_pipeline_star.exists():
@@ -366,6 +369,7 @@ def restore_trashed_jobs(relion_project_dir: Path, job_ids: list[str]):
         pipeline.input_edges = df_input_edges
         pipeline.output_edges = df_output_edges
         f.seek(0)
+        f.truncate(0)
         f.write(pipeline.to_string())
 
         # if the trash sub directory is empty, remove it.

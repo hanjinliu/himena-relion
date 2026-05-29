@@ -157,7 +157,11 @@ class JobDirectory:
     def _to_job_class(self) -> type[RelionJob] | None:
         from himena_relion._job_class import iter_relion_jobs, _Relion5BuiltinContinue
 
-        job_star = JobStarModel.validate_file(self.job_star())
+        job_star_path = self.job_star()
+        try:
+            job_star = JobStarModel.validate_file(job_star_path)
+        except FileNotFoundError:
+            return None
         job_type = job_star.job.job_type_label
         is_tomo = bool(job_star.job.job_is_tomo)
         only_is_tomo_did_not_match = None

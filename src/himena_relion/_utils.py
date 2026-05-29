@@ -218,6 +218,7 @@ def update_default_pipeline(
                 df[true_id, ic] = alias
             pipeline_star.processes = df
             f.seek(0)
+            f.truncate(0)
             f.write(pipeline_star.to_string())
     except Exception:
         _LOGGER.warning("Failed to update job state for %s", job_id, exc_info=True)
