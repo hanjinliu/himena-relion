@@ -172,10 +172,22 @@ class QRelionPipelineFlowChart(QtW.QWidget):
             self._inout.initialize(job_dir)
             self._inout.update_item_colors(job_dir)
             self._content_info.count_directory_content(job_dir.path)
+            try:
+                project_dir = self._relion_project_dir
+                gui_state = HimenaRelionGuiState.from_project_directory(project_dir)
+            except Exception:
+                pass
+            else:
+                if jobinfo := gui_state.jobs.get(job_dir.job_normal_id()):
+                    status_tip = " ".join(
+                        f"#{gui_state.tag_choices[i].name}" for i in jobinfo.tags
+                    )
+                    self._ui().set_status_tip(status_tip, duration=3)
 
     def _on_background_left_clicked(self):
         self._inout.clear_in_out()
         self._content_info.clear_content_info()
+        self._ui().set_status_tip("", duration=3)
 
     def _on_item_double_clicked(self, item: RelionJobNodeItem):
         path = self._relion_project_dir / item.id()

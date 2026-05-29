@@ -19,14 +19,27 @@ def test_trash_untrash(himena_ui: MainWindow, tmpdir):
     assert (rln_dir / "Import/job001").exists()
     assert not (rln_dir / "MotionCorr/job002").exists()
     assert not (rln_dir / "CtfFind/job003").exists()
+    assert rln_dir.joinpath("default_pipeline.star").exists()
+    default_pipeline_text = rln_dir.joinpath("default_pipeline.star").read_text()
+    assert "job001" in default_pipeline_text
+    assert "job002" not in default_pipeline_text
+    assert "job003" not in default_pipeline_text
     restore_trashed_jobs(rln_dir, ["MotionCorr/job002/"])
+    default_pipeline_text = rln_dir.joinpath("default_pipeline.star").read_text()
     assert (rln_dir / "Import/job001").exists()
     assert (rln_dir / "MotionCorr/job002").exists()
     assert not (rln_dir / "CtfFind/job003").exists()
+    assert "job001" in default_pipeline_text
+    assert "job002" in default_pipeline_text
+    assert "job003" not in default_pipeline_text
     restore_trashed_jobs(rln_dir, ["CtfFind/job003/"])
+    default_pipeline_text = rln_dir.joinpath("default_pipeline.star").read_text()
     assert (rln_dir / "Import/job001").exists()
     assert (rln_dir / "MotionCorr/job002").exists()
     assert (rln_dir / "CtfFind/job003").exists()
+    assert "job001" in default_pipeline_text
+    assert "job002" in default_pipeline_text
+    assert "job003" in default_pipeline_text
 
 def test_trash_widget(himena_ui: MainWindow, tmpdir):
     rln_dir = prep_relion_project(tmpdir)

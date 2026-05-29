@@ -12,10 +12,9 @@ from functools import lru_cache
 import numpy as np
 import polars as pl
 
-from starfile_rs import read_star
 from himena.types import is_subtype
 from himena_relion.consts import Type
-from himena_relion.schemas import RelionPipelineModel, ParticleMetaModel
+from himena_relion.schemas import RelionPipelineModel
 from himena_relion._configs import get_relion_pipeliner_exe
 
 if TYPE_CHECKING:
@@ -218,6 +217,7 @@ def update_default_pipeline(
                 df[true_id, ic] = alias
             pipeline_star.processes = df
             f.seek(0)
+            f.truncate(0)
             f.write(pipeline_star.to_string())
     except Exception:
         _LOGGER.warning("Failed to update job state for %s", job_id, exc_info=True)
@@ -245,28 +245,6 @@ def read_or_show_job(ui: MainWindow, path: Path):
     ui.read_file(path, append_history=False)
 
 
-def get_subset_sizes(path_optimiser: Path) -> tuple[int, int]:
-    path_optimiser = Path(path_optimiser)
-    if path_optimiser.exists():
-        optimier = read_star(path_optimiser).first().trust_single()
-        size = int(optimier.get("rlnSgdSubsetSize", -1))
-        fin_size = int(optimier.get("rlnSgdFinalSubsetSize", -1))
-        if size <= 0:
-            size = fin_size
-    else:
-        size, fin_size = -1, -1
-    if fin_size < 0:
-        stem = path_optimiser.stem
-        data_name = stem[: -len("_optimiser")] + "_data.star"
-        data_file = path_optimiser.parent / data_name
-        if data_file.exists():
-            part = ParticleMetaModel.validate_file(data_file)
-            fin_size = len(part.particles.block)
-    if size < 0:
-        size = fin_size
-    return size, fin_size
-
-
 def wait_for_file(path, num_retry: int = 5, delay: float = 0.1) -> bool:
     """Wait for a file to be created, return False if failed.
 
@@ -289,6 +267,7 @@ def get_pipeline_widgets(
     ui: MainWindow,
     relion_project_dir: Path | None = None,
 ) -> QRelionPipelineFlowChart | None:
+    """Return the currently active pipeline widget if exists."""
     from himena_relion.pipeline.widgets import QRelionPipelineFlowChart
 
     for dock in ui.dock_widgets:
