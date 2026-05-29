@@ -1,6 +1,7 @@
 from pathlib import Path
 import subprocess
 import time
+import shutil
 from typing import Annotated
 
 import mrcfile
@@ -10,7 +11,6 @@ from himena.qt.magicgui import ToggleButtons
 from himena_relion._job_class import connect_jobs
 from himena_relion.consts import MenuId
 from himena_relion.external import RelionExternalJob
-from himena_relion._configs import get_chimera_exe
 from himena_relion._utils import relion_python_executable
 from himena_relion._annotated.io import MAP_TYPE
 from himena_relion.relion5.extensions.volume_tools.widgets import QMaskCreateViewer
@@ -114,7 +114,11 @@ class ManualMaskCreation(RelionExternalJob):
         # volume onesmask #1.1 on_grid #1
         input_path = out_job_dir.resolve_path(in_3dref).as_posix()
         if use_app == "Chimera/ChimeraX":
-            chimerax = get_chimera_exe()
+            if not (chimerax := shutil.which("chimerax")):
+                if not (chimerax := shutil.which("chimera")):
+                    raise FileNotFoundError(
+                        "Neither ChimeraX nor Chimera executable found in PATH."
+                    )
             subprocess.Popen(
                 [chimerax, input_path],
                 cwd=out_job_dir.path,

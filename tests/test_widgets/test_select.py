@@ -4,7 +4,7 @@ import polars as pl
 from starfile_rs import as_star
 from himena_relion._job_dir import JobDirectory
 from himena_relion.relion5.widgets._select import QRemoveDuplicatesViewer, QDiscardParticlesViewer, QSplitParticlesViewer
-from himena_relion.relion5.widgets._join import QJoinParticleViewer
+from himena_relion.relion5.widgets._join import QJoinStarViewer
 from himena_relion.testing import JobWidgetTester
 from himena_relion.schemas import ParticleMetaModel, ParticlesModel
 
@@ -137,7 +137,7 @@ def test_join_widget(
     star_text = Path(jobs_dir_spa / "JoinStar" / "job001" / "job.star").read_text()
     job_dir = make_job_directory(star_text, "JoinStar")
 
-    tester = JobWidgetTester(QJoinParticleViewer(job_dir), job_dir)
+    tester = JobWidgetTester(QJoinStarViewer(job_dir), job_dir)
     qtbot.addWidget(tester.widget)
 
     tester.write_text("join_particles.star", ParticleMetaModel.example(40).to_string())

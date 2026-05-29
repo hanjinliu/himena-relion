@@ -1,4 +1,5 @@
 from pathlib import Path
+import shutil
 from dataclasses import dataclass
 from himena.plugins import register_config, config_field, get_config
 
@@ -96,7 +97,9 @@ def get_ctffind4_exe() -> str:
 
 
 def get_topaz_exe() -> str:
-    return _pipeliner_path().with_name("relion_python_topaz")
+    if pipeliner_path := _pipeliner_path():
+        return pipeliner_path.with_name("relion_python_topaz")
+    return "relion_python_topaz"
 
 
 def get_batchruntomo_exe() -> str:
@@ -112,11 +115,15 @@ def get_resmap_exe() -> str:
 
 
 def get_dynamight_exe() -> str:
-    return _pipeliner_path().with_name("relion_python_dynamight")
+    if pipeliner_path := _pipeliner_path():
+        return pipeliner_path.with_name("relion_python_dynamight")
+    return "relion_python_dynamight"
 
 
 def get_modelangelo_exe() -> str:
-    return _pipeliner_path().with_name("relion_python_modelangelo")
+    if pipeliner_path := _pipeliner_path():
+        return pipeliner_path.with_name("relion_python_modelangelo")
+    return "relion_python_modelangelo"
 
 
 def get_cryocare_dir() -> str:
@@ -157,5 +164,9 @@ def _may_expand_user(path: str) -> str:
     return path
 
 
-def _pipeliner_path() -> Path:
-    return Path(_may_expand_user(get_relion_pipeliner_exe())).resolve()
+def _pipeliner_path() -> Path | None:
+    path = shutil.which("relion_pipeliner")
+    if path is not None:
+        return Path(path)
+    else:
+        return None
