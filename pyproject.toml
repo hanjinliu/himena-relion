@@ -27,6 +27,7 @@ dependencies = [
   "starfile-rs>=0.1.9",
   "imodmodel>=0.1.0",
   "rich",
+  "psutil",
   "scipy>=1.15.3",
   "cmap>=0.6.2",
   "vispy>=0.15.2",

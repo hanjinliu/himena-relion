@@ -393,7 +393,8 @@ def relion_python_executable() -> Path:
                 for line in f:
                     if line.startswith("PYTHON_EXE_PATH:PATH="):
                         python_path = line.split("=", 1)[1].strip()
-                        return Path(python_path)
+                        if python_path.strip():
+                            return Path(python_path)
     if python_path := shutil.which("python"):
         return Path(python_path)
     raise RuntimeError(
