@@ -35,8 +35,7 @@ class QRelionPipelineFlowChartView(QFlowChartView):
             node.item().id(): node.pos() for node in self._node_map.values()
         }
         # clear all
-        self.scene().clear()
-        self._node_map.clear()
+        self.clear_items()
         self._id_added.clear()
 
         # Parents for filtering the flowchart
@@ -64,8 +63,7 @@ class QRelionPipelineFlowChartView(QFlowChartView):
         old_positions = {
             node.item().id(): node.pos() for node in self._node_map.values()
         }
-        self.scene().clear()
-        self._node_map.clear()
+        self.clear_items()
         self._id_added.clear()
 
         for info in pipeline._nodes:
@@ -179,13 +177,6 @@ class QRelionPipelineFlowChartView(QFlowChartView):
     def _update_selection_rect(self):
         if self._last_selection_highlight_rect:
             self.update(self._last_selection_highlight_rect.adjusted(-5, -5, 5, 5))
-
-    def center_on_item(self, item: RelionJobNodeItem):
-        """Move the view to ensure the item visible and select it."""
-        if node := self._node_map.get(item.id()):
-            center = node.center()
-            self.centerOn(center)
-            node.setSelected(True)
 
 
 def _track_children(root: RelionJobInfo) -> set[Path]:

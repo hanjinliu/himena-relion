@@ -31,12 +31,13 @@ from himena_relion._pipeline import is_all_inputs_ready
 from himena_relion.consts import Type, MenuId, JOB_ID_MAP
 from himena_relion._utils import (
     last_job_directory,
+    normalize_job_id,
     open_with_lock,
     unwrap_annotated,
     change_name_for_tomo,
     update_default_pipeline,
 )
-from himena_relion.schemas import JobStarModel
+from himena_relion.schemas import JobStarModel, RelionPipelineModel
 from himena_relion.pipeline_watcher import (
     run_watcher_new_process,
     execute_job,
@@ -210,10 +211,24 @@ class RelionJob(ABC):
         job_star_model = self.prep_job_star(**kwargs)
         job_star_model.write(job_dir.job_star())
         rln_dir = job_dir.relion_project_dir
-        to_run = str(job_dir.path.relative_to(rln_dir))
+        to_run = normalize_job_id(job_dir.path.relative_to(rln_dir))
         with open_with_lock(rln_dir / "default_pipeline.star") as f:
             update_default_pipeline(f, to_run, state="Scheduled")
+            # Old connections should be deleted.
+            # For example, when overwriting job "Select/job013/", the line
+            #   Extract/job012/particles Select/job013/
+            # should be deleted.
+            f.seek(0)
+            pipeline_model = RelionPipelineModel.validate_text(f.read())
+            indices = pipeline_model.input_edges.process == to_run
             run_watcher_new_process(rln_dir)
+            if indices.any():
+                pipeline_model.input_edges = (
+                    pipeline_model.input_edges.dataframe.filter(~indices)
+                )
+                f.seek(0)
+                f.truncate()
+                f.write(pipeline_model.to_string())
 
     @classmethod
     def _show_scheduler_widget(cls, ui: MainWindow, context: AnyContext, cwd=None):

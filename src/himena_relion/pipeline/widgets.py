@@ -102,6 +102,8 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         self._tool_buttons = [
             QColoredToolButton(self._new_job_palette, _utils.path_icon_svg("plus")),
             QColoredToolButton(self._find_job, _utils.path_icon_svg("find")),
+            QColoredToolButton(self._to_prev, _utils.path_icon_svg("arrow_left")),
+            QColoredToolButton(self._to_next, _utils.path_icon_svg("arrow_right")),
             QColoredToolButton(self._switch_mode, _utils.path_icon_svg("switch_mode")),
         ]
         self._content_info = QJobContentInfo()
@@ -434,6 +436,16 @@ class QRelionPipelineFlowChart(QtW.QWidget):
             how="palette",
         ):
             self._center_on_item(resp.path)
+
+    def _to_prev(self):
+        """Go to the previously visited position in the flowchart."""
+        if self._stacked_widget.currentWidget() == self._flow_chart:
+            self._flow_chart.goto_previous_position()
+
+    def _to_next(self):
+        """Go to the next visited position in the flowchart."""
+        if self._stacked_widget.currentWidget() == self._flow_chart:
+            self._flow_chart.goto_next_position()
 
     def _center_on_item(self, path: Path):
         if self._stacked_widget.currentWidget() is self._flow_chart:
