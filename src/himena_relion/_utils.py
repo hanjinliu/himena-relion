@@ -6,7 +6,7 @@ import shutil
 from pathlib import Path
 import logging
 import time
-from typing import Annotated, Any, TextIO, get_args, get_origin, TYPE_CHECKING
+from typing import Annotated, Any, Iterable, TextIO, get_args, get_origin, TYPE_CHECKING
 from functools import lru_cache
 
 import numpy as np
@@ -200,6 +200,7 @@ def update_default_pipeline(
         and state not in ("Scheduled", "Running", "Failed", "Succeeded", "Aborted")
     ):
         raise ValueError(f"State {state!r} is not a valid RELION job state.")
+    f.seek(0)
     try:
         pipeline_star = RelionPipelineModel.validate_text(f.read())
         pos_sl = pipeline_star.processes.process_name == normalize_job_id(job_id)
@@ -223,17 +224,29 @@ def update_default_pipeline(
         _LOGGER.warning("Failed to update job state for %s", job_id, exc_info=True)
 
 
-def remove_input_edges(f: TextIO, to_run: str):
+def _assert_input_edge(val) -> str:
+    if not isinstance(val, str):
+        raise ValueError(f"Expected input edge to be a string, got {type(val)}")
+    return val
+
+
+def replace_input_edges(f: TextIO, to_run: str, new_inputs: Iterable[str] = ()):
     f.seek(0)
     pipeline_model = RelionPipelineModel.validate_text(f.read())
+    to_run = normalize_job_id(to_run)
     indices = pipeline_model.input_edges.process == to_run
-    if indices.any():
-        pipeline_model.input_edges = pipeline_model.input_edges.dataframe.filter(
-            ~indices
-        )
-        f.seek(0)
-        f.truncate()
-        f.write(pipeline_model.to_string())
+    new_from_node = [_assert_input_edge(n) for n in new_inputs]
+    df = pipeline_model.input_edges.dataframe.filter(~indices)
+    if new_from_node:
+        df_new = pipeline_model.InputEdges(
+            from_node=new_from_node,
+            process=[to_run] * len(new_from_node),
+        ).dataframe
+        df = pl.concat([df, df_new], how="vertical")
+    pipeline_model.input_edges = df
+    f.seek(0)
+    f.truncate()
+    f.write(pipeline_model.to_string())
 
 
 def read_or_show_job(ui: MainWindow, path: Path):
@@ -368,6 +381,15 @@ def open_with_lock(
         # remove the lock
         with suppress(Exception):
             lock_dir.rmdir()
+
+
+def extract_input_edges(params: dict[str, str], keys: Iterable[str]) -> list[str]:
+    """Used for input_edges method."""
+    edges = []
+    for key in keys:
+        if val := params.get(key, "").strip():
+            edges.append(val)
+    return edges
 
 
 class RelionPipelineLockError(RuntimeError):

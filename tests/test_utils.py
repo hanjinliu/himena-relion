@@ -84,6 +84,6 @@ def test_remove_input_edges(tmpdir):
     assert "Import/job001/tilt_series.star MotionCorr/job002/" in star_path.read_text()
     assert "MotionCorr/job002/corrected_tilt_series.star CtfFind/job003/" in star_path.read_text()
     with _utils.open_with_lock(path) as f:
-        _utils.remove_input_edges(f, "MotionCorr/job002/")
+        _utils.replace_input_edges(f, "MotionCorr/job002/")
     assert "Import/job001/tilt_series.star\tMotionCorr/job002/" not in star_path.read_text()
     assert "MotionCorr/job002/corrected_tilt_series.star\tCtfFind/job003/" in star_path.read_text()

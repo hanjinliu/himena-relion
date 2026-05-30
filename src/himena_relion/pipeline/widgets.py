@@ -259,10 +259,7 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         else:
             self._directory_label.setText(f"{parts[-2]}/")
         self._watcher = self._watch_default_pipeline_star(src)
-        self._state_to_job_map.clear()
-        for job in model.value.iter_nodes():
-            _dict = self._state_to_job_map[job.status]
-            _dict[job.path.as_posix() + "/"] = job
+        self._update_state_to_job_maps(model.value)
 
     def _on_pipeline_updated(self, pipeline: RelionDefaultPipeline) -> None:
         self._flow_chart.set_pipeline(pipeline)
@@ -337,16 +334,19 @@ class QRelionPipelineFlowChart(QtW.QWidget):
                     self.gui_state_reload_required.emit()
                     yield
 
+    def _update_state_to_job_maps(self, pipeline: RelionDefaultPipeline):
+        self._state_to_job_map.clear()
+        for job in pipeline.iter_nodes():
+            _dict = self._state_to_job_map[job.status]
+            _dict[job.path.as_posix()] = job
+
     def _on_job_state_changed(self, pipeline: RelionDefaultPipeline):
         success_old = set(self._state_to_job_map[NodeStatus.SUCCEEDED].keys())
         failed_old = set(self._state_to_job_map[NodeStatus.FAILED].keys())
         aborted_old = set(self._state_to_job_map[NodeStatus.ABORTED].keys())
         running_old = set(self._state_to_job_map[NodeStatus.RUNNING].keys())
         scheduled_old = set(self._state_to_job_map[NodeStatus.SCHEDULED].keys())
-        self._state_to_job_map.clear()
-        for job in pipeline.iter_nodes():
-            _dict = self._state_to_job_map[job.status]
-            _dict[job.path.as_posix()] = job
+        self._update_state_to_job_maps(pipeline)
         success_new = set(self._state_to_job_map[NodeStatus.SUCCEEDED].keys())
         failed_new = set(self._state_to_job_map[NodeStatus.FAILED].keys())
         running_new = set(self._state_to_job_map[NodeStatus.RUNNING].keys())
@@ -703,7 +703,7 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         path = self._relion_project_dir / "default_pipeline.star"
         job_id = _utils.normalize_job_id(job_id)
         with _utils.open_with_lock(path) as f:
-            _utils.remove_input_edges(f, job_id)
+            _utils.replace_input_edges(f, job_id)
         execute_job(job_id, cwd=self._relion_project_dir)
 
 
