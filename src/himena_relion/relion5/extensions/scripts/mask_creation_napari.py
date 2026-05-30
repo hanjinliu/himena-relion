@@ -4,6 +4,7 @@ import napari
 import mrcfile
 from scipy import ndimage as ndi
 from qtpy import QtWidgets as QtW
+from pathlib import Path
 
 
 class QNapariActions(QtW.QWidget):
@@ -99,13 +100,15 @@ def main():
     def save_mask():
         """Save the current mask to the output path specified by the job."""
         mask_data = np.asarray(layer_label.data > 0, dtype=np.uint8)
-        with mrcfile.new(output_job_dir, overwrite=True) as mrc:
+        with mrcfile.new(Path(output_job_dir) / "mask_base.mrc", overwrite=True) as mrc:
             mrc.set_data(mask_data)
             mrc.voxel_size = (scale, scale, scale)
         viewer.close()
 
     viewer.window.add_dock_widget(dock, area="right")
     napari.run()
+    if not (Path(output_job_dir) / "mask_base.mrc").exists():
+        raise ValueError("'mask_base.mrc' was not created.")
 
 
 def _make_circular_footprint(radius: float):

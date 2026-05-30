@@ -48,8 +48,12 @@ class RelionPipelineWatcher:
                         continue
                     try:
                         pipeline = RelionDefaultPipeline.from_pipeline_star(path)
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        with open(
+                            self._relion_project_dir / ".himena_pipeline_watcher.log",
+                            "w",
+                        ) as f:
+                            print(f"Failed to parse pipeline file ({e}) -", fp, file=f)
                     else:
                         # Update the internal data (thus, the flow chart)
                         self._on_job_state_changed(pipeline)
@@ -60,20 +64,22 @@ class RelionPipelineWatcher:
             _dict = self._state_to_job_map[job.status]
             _dict[job.path.as_posix()] = job
 
-        if len(self._state_to_job_map[NodeStatus.SCHEDULED]) == 0:
-            # No more jobs to run. Stop watching and remove the lock file.
-            self._remove_lock()
-            return
+        with open(self._relion_project_dir / ".himena_pipeline_watcher.log", "w") as f:
+            if len(self._state_to_job_map[NodeStatus.SCHEDULED]) == 0:
+                # No more jobs to run. Stop watching and remove the lock file.
+                print("no more jobs to run -", job.path, file=f)
+                self._remove_lock()
+                return
 
-        updated = False
-        for job in self._state_to_job_map[NodeStatus.SCHEDULED].values():
-            # run all the scheduled jobs whose dependencies are met
-            if is_all_inputs_ready(job.path):
-                execute_job(
-                    job.path.as_posix(),
-                    cwd=pipeline.project_dir,
-                )
-                updated = True
+            updated = False
+            for job in self._state_to_job_map[NodeStatus.SCHEDULED].values():
+                # run all the scheduled jobs whose dependencies are met
+                if is_all_inputs_ready(job.path):
+                    execute_job(
+                        job.path.as_posix(),
+                        cwd=pipeline.project_dir,
+                    )
+                    updated = True
         if updated:
             path = self._relion_project_dir / "default_pipeline.star"
             if path.exists():
