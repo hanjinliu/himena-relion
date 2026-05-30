@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from contextlib import contextmanager, suppress
-import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 import shutil
@@ -32,8 +31,6 @@ from himena_relion.schemas import (
 if TYPE_CHECKING:
     from typing import Self
     from himena_relion.external.job_class import RelionExternalJob, RelionJob
-
-_LOGGER = logging.getLogger(__name__)
 
 
 class JobDirectory:

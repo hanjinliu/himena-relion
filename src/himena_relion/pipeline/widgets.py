@@ -596,7 +596,7 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         # Run now
         action = menu.addAction(
             "Run This Scheduled Job Now",
-            lambda: execute_job(item.id(), cwd=self._relion_project_dir),
+            lambda: self._run_this_scheduled_job_now(item.id()),
         )
         action.setToolTip(
             "Run this scheduled job immediately, regardless of whether all the parent\n"
@@ -697,6 +697,14 @@ class QRelionPipelineFlowChart(QtW.QWidget):
             for ith, tag_name in enumerate(out.values()):
                 self._flow_chart.edit_tag(ith, tag_name, tooltip=tag_name)
             self._flow_chart.save_gui_state(self._pipeline())
+
+    def _run_this_scheduled_job_now(self, job_id: Path):
+        """Run this scheduled job immediately."""
+        path = self._relion_project_dir / "default_pipeline.star"
+        job_id = _utils.normalize_job_id(job_id)
+        with _utils.open_with_lock(path) as f:
+            _utils.remove_input_edges(f, job_id)
+        execute_job(job_id, cwd=self._relion_project_dir)
 
 
 def _make_tag_icon(color: Color, checked: bool = False) -> QtGui.QIcon:

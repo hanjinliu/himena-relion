@@ -36,8 +36,9 @@ from himena_relion._utils import (
     unwrap_annotated,
     change_name_for_tomo,
     update_default_pipeline,
+    remove_input_edges,
 )
-from himena_relion.schemas import JobStarModel, RelionPipelineModel
+from himena_relion.schemas import JobStarModel
 from himena_relion.pipeline_watcher import (
     run_watcher_new_process,
     execute_job,
@@ -218,17 +219,8 @@ class RelionJob(ABC):
             # For example, when overwriting job "Select/job013/", the line
             #   Extract/job012/particles Select/job013/
             # should be deleted.
-            f.seek(0)
-            pipeline_model = RelionPipelineModel.validate_text(f.read())
-            indices = pipeline_model.input_edges.process == to_run
-            run_watcher_new_process(rln_dir)
-            if indices.any():
-                pipeline_model.input_edges = (
-                    pipeline_model.input_edges.dataframe.filter(~indices)
-                )
-                f.seek(0)
-                f.truncate()
-                f.write(pipeline_model.to_string())
+            remove_input_edges(f, to_run)
+        run_watcher_new_process(rln_dir)
 
     @classmethod
     def _show_scheduler_widget(cls, ui: MainWindow, context: AnyContext, cwd=None):

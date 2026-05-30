@@ -98,12 +98,12 @@ class QMaskCreateViewer(QJobScrollArea):
 
 def template_mrc(job_dir: _job_dir.JobDirectory) -> NDArray[np.floating] | None:
     """Return the template MRC file."""
-    return _read_mrc(job_dir.get_job_param("fn_in"))
+    return _read_mrc(job_dir.resolve_path(job_dir.get_job_param("fn_in")))
 
 
 def mask_mrc(job_dir: _job_dir.JobDirectory) -> NDArray[np.floating] | None:
     """Return the mask MRC file."""
-    return _read_mrc(job_dir.path / "mask.mrc")
+    return _read_mrc(job_dir.resolve_path(job_dir.path / "mask.mrc"))
 
 
 def _read_mrc(path: Path) -> NDArray[np.floating] | None:
