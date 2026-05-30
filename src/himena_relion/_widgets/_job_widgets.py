@@ -932,7 +932,7 @@ class QDirectoryTreeView(QtW.QTreeView):
 
     @staticmethod
     def _read_file(path: Path):
-        if path.name in ("job.star", "run.out", "run.err"):
+        if path.name in ("job.star", "run.out", "run.err", "default_pipeline.star"):
             plugin = "himena_builtins.io.read_as_text_anyway"
         else:
             plugin = None

@@ -5,6 +5,7 @@ import pytest
 
 from himena_relion import _utils
 from himena_relion._version import RelionVersion
+from ._utils import prep_relion_project
 
 def test_util_functions():
     mat = _utils.make_tilt_projection_mat(12)
@@ -72,3 +73,17 @@ def test_lock(tmpdir):
         with _utils.open_with_lock(pipeline_star):
             raise ValueError
     assert not tmpdir.joinpath(".relion_lock").exists()
+
+def test_remove_input_edges(tmpdir):
+    # Import/job001/tilt_series.star MotionCorr/job002/
+    path = Path(tmpdir) / "default_pipeline.star"
+
+    rln_dir = prep_relion_project(tmpdir)
+    star_path = rln_dir / "default_pipeline.star"
+    assert star_path.exists()
+    assert "Import/job001/tilt_series.star MotionCorr/job002/" in star_path.read_text()
+    assert "MotionCorr/job002/corrected_tilt_series.star CtfFind/job003/" in star_path.read_text()
+    with _utils.open_with_lock(path) as f:
+        _utils.remove_input_edges(f, "MotionCorr/job002/")
+    assert "Import/job001/tilt_series.star\tMotionCorr/job002/" not in star_path.read_text()
+    assert "MotionCorr/job002/corrected_tilt_series.star\tCtfFind/job003/" in star_path.read_text()

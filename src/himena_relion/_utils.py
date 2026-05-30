@@ -223,6 +223,19 @@ def update_default_pipeline(
         _LOGGER.warning("Failed to update job state for %s", job_id, exc_info=True)
 
 
+def remove_input_edges(f: TextIO, to_run: str):
+    f.seek(0)
+    pipeline_model = RelionPipelineModel.validate_text(f.read())
+    indices = pipeline_model.input_edges.process == to_run
+    if indices.any():
+        pipeline_model.input_edges = pipeline_model.input_edges.dataframe.filter(
+            ~indices
+        )
+        f.seek(0)
+        f.truncate()
+        f.write(pipeline_model.to_string())
+
+
 def read_or_show_job(ui: MainWindow, path: Path):
     """Open a RELION job file in the UI, or switch to it if already opened."""
     from himena_relion._job_dir import JobDirectory

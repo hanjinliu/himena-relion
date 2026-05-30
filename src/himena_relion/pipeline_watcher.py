@@ -65,6 +65,7 @@ class RelionPipelineWatcher:
             self._remove_lock()
             return
 
+        updated = False
         for job in self._state_to_job_map[NodeStatus.SCHEDULED].values():
             # run all the scheduled jobs whose dependencies are met
             if is_all_inputs_ready(job.path):
@@ -72,6 +73,11 @@ class RelionPipelineWatcher:
                     job.path.as_posix(),
                     cwd=pipeline.project_dir,
                 )
+                updated = True
+        if updated:
+            path = self._relion_project_dir / "default_pipeline.star"
+            if path.exists():
+                path.touch()
 
     def _lock_file_path(self) -> Path:
         return self._relion_project_dir / _WATCHER_FILE_NAME

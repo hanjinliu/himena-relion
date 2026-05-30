@@ -303,24 +303,23 @@ for class3d_job in [_tomo.Class3DTomoJob, _tomo.Class3DNoAlignmentTomoJob]:
             inherit_particle_diameter: "particle_diameter",
         },
     )
-    if class3d_job is _tomo.Class3DTomoJob:
-        connect_jobs(
-            class3d_job,
-            _spa.SelectClassesInteractiveJob,
-            node_mapping={_optimiser_last_iter: "fn_model"},
-        )
-        connect_jobs(
-            class3d_job,
-            _tomo.Refine3DTomoJob,
-            node_mapping={
-                "run_optimisation_set.star": "in_optim.in_optimisation",
-                run_class001_last_iter: "fn_ref",
-            },
-            value_mapping={
-                inherit_particle_diameter: "particle_diameter",
-                inherit_mask: "fn_mask",
-            },
-        )
+    connect_jobs(
+        class3d_job,
+        _spa.SelectClassesInteractiveJob,
+        node_mapping={_optimiser_last_iter: "fn_model"},
+    )
+    connect_jobs(
+        class3d_job,
+        _tomo.Refine3DTomoJob,
+        node_mapping={
+            "run_optimisation_set.star": "in_optim.in_optimisation",
+            run_class001_last_iter: "fn_ref",
+        },
+        value_mapping={
+            inherit_particle_diameter: "particle_diameter",
+            inherit_mask: "fn_mask",
+        },
+    )
     connect_jobs(
         _tomo.ReconstructParticlesJob,
         class3d_job,
