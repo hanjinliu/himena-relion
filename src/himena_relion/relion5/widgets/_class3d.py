@@ -3,9 +3,6 @@ from pathlib import Path
 
 import logging
 from qtpy import QtWidgets as QtW, QtCore
-from starfile_rs import read_star_block
-import mrcfile
-import numpy as np
 from superqt import QToggleSwitch
 from superqt.utils import thread_worker
 from himena.widgets import current_instance
@@ -28,7 +25,7 @@ _LOGGER = logging.getLogger(__name__)
 @register_job("relion.class3d", is_tomo=True)
 class QClass3DViewer(QJobScrollArea):
     def __init__(self, job_dir: _job_dir.Class3DJobDirectory):
-        from himena_relion._widgets._vispy import MaskMesh
+        # from himena_relion._widgets._vispy import MaskMesh
 
         super().__init__()
         self._list_widget = QMicrographListWidget(
@@ -94,9 +91,8 @@ class QClass3DViewer(QJobScrollArea):
         self._iter_choice.valueChanged.connect(self._on_iter_changed)
         self._list_widget.current_changed.connect(self._on_class_changed)
 
-        # show mask for iter=0
-        self._mesh_layer = MaskMesh(parent=self._viewer._canvas._viewbox.scene)
-        self._mesh_layer.visible = False
+        # self._mesh_layer = MaskMesh(parent=self._viewer._canvas._viewbox.scene)
+        # self._mesh_layer.visible = False
 
     def on_job_updated(self, job_dir: _job_dir.Class3DJobDirectory, path: str):
         """Handle changes to the job directory."""
@@ -162,24 +158,25 @@ class QClass3DViewer(QJobScrollArea):
 
     def _update_for_value(self, niter: int, class_id: int):
         self.window_closed_callback()
-        self._mesh_layer.visible = niter == 0
-        job_dir = self._job_dir
-        if (
-            niter == 0
-            and (optimiser_star := job_dir.path / "run_it000_optimiser.star").exists()
-        ):
-            try:
-                opt_gen = read_star_block(optimiser_star, "optimiser_general")
-                mask_path = job_dir.resolve_path(
-                    opt_gen.trust_single().get("rlnSolventMaskName", "None")
-                )
-                if mask_path.exists():
-                    with mrcfile.open(mask_path) as mrc:
-                        mask = np.asarray(mrc.data, np.float32)
-                    self._mesh_layer.set_data(mask, level=0.5, step=2)
-            except Exception:
-                _LOGGER.warning("Failed to load mask for iteration 0", exc_info=True)
-                self._mesh_layer.visible = False
+        # FIXME: This causes the viewer to disappear in linux
+        # self._mesh_layer.visible = niter == 0
+        # job_dir = self._job_dir
+        # if (
+        #     niter == 0
+        #     and (optimiser_star := job_dir.path / "run_it000_optimiser.star").exists()
+        # ):
+        #     try:
+        #         opt_gen = read_star_block(optimiser_star, "optimiser_general")
+        #         mask_path = job_dir.resolve_path(
+        #             opt_gen.trust_single().get("rlnSolventMaskName", "None")
+        #         )
+        #         if mask_path.exists():
+        #             with mrcfile.open(mask_path) as mrc:
+        #                 mask = np.asarray(mrc.data, np.float32)
+        #             self._mesh_layer.set_data(mask, level=0.5, step=2)
+        #     except Exception:
+        #         _LOGGER.warning("Failed to load mask for iteration 0", exc_info=True)
+        #         self._mesh_layer.visible = False
 
         self._worker = self._read_items(niter, class_id)
         self._start_worker()
