@@ -25,7 +25,7 @@ class QPostProcessViewer(QJobScrollArea):
         self._viewer = Q3DViewer()
         self._resizer = QResizer(self._viewer)
         self._use_mask = QToggleSwitch("Show masked map")
-        self._use_mask.setChecked(False)
+        self._use_mask.setChecked(True)
         self._canvas = QPlotCanvas(self)
         self._layout.setSpacing(0)
         self._layout.addWidget(self._viewer)
