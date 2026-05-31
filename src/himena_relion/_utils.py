@@ -234,15 +234,19 @@ def replace_input_edges(f: TextIO, to_run: str, new_inputs: Iterable[str] = ()):
     f.seek(0)
     pipeline_model = RelionPipelineModel.validate_text(f.read())
     to_run = normalize_job_id(to_run)
-    indices = pipeline_model.input_edges.process == to_run
+    pipeline_input_edges = pipeline_model.input_edges
     new_from_node = [_assert_input_edge(n) for n in new_inputs]
-    df = pipeline_model.input_edges.dataframe.filter(~indices)
+    if pipeline_input_edges is not None:
+        indices = pipeline_input_edges.process == to_run
+        df = pipeline_input_edges.dataframe.filter(~indices)
+    else:
+        df = RelionPipelineModel.InputEdges(from_node=[], process=[]).dataframe
     if new_from_node:
         df_new = pipeline_model.InputEdges(
             from_node=new_from_node,
             process=[to_run] * len(new_from_node),
         ).dataframe
-        df = pl.concat([df, df_new], how="vertical")
+        df = pl.concat([df, df_new], how="vertical_relaxed")
     pipeline_model.input_edges = df
     f.seek(0)
     f.truncate()

@@ -25,21 +25,20 @@ from himena_relion.relion5._builtins import (
 from himena_relion.consts import MenuId
 
 
-def norm_optim(kwargs):
+def norm_optim(kwargs: dict[str, Any]) -> dict[str, Any]:
     optim = kwargs.pop("in_optim", {})
-    kwargs["in_optimisation"] = optim.get("in_optimisation", "")
+    for key in ["in_optimisation", "in_particles", "in_tomograms", "in_trajectories"]:
+        if val := optim.get(key, "").strip():
+            kwargs[key] = val
     kwargs["use_direct_entries"] = parse_string(
         optim.get("use_direct_entries", False), bool
     )
-    kwargs["in_particles"] = optim.get("in_particles", "")
-    kwargs["in_tomograms"] = optim.get("in_tomograms", "")
-    kwargs["in_trajectories"] = optim.get("in_trajectories", "")
     if "sigma_tilt" in kwargs and kwargs["sigma_tilt"] is None:
         kwargs["sigma_tilt"] = -1.0
     return kwargs
 
 
-def norm_optim_inv(kwargs):
+def norm_optim_inv(kwargs: dict[str, Any]) -> dict[str, Any]:
     if "in_optim" not in kwargs:
         kwargs["in_optim"] = {
             "in_optimisation": kwargs.pop("in_optimisation", ""),

@@ -61,6 +61,7 @@ class _QTomogramViewerBase(QtW.QWidget):
         self._tomo_list.set_choices(items)
         if len(items) == 0:
             self._viewer.clear()
+            self._filter_widget.set_label_text("")
         elif len(items) == 1:
             self._viewer.auto_fit()
 
@@ -68,10 +69,14 @@ class _QTomogramViewerBase(QtW.QWidget):
         """Update the viewer when the selected tomogram changes."""
         text = texts[0]
         if tomo_view := self._get_filtered_view(self._job_dir, text):
+            tomo_view.try_memmap()
             self._viewer.set_array_view(
                 tomo_view.with_filter(self._filter_widget.apply),
                 self._viewer._last_clim,
             )
+            shape = (tomo_view.num_slices(),) + tomo_view.get_shape()
+            scale = tomo_view.get_scale()
+            self._filter_widget.set_label_text(f"{shape} {scale:.2f} Å/pix")
 
     def _get_filtered_view(
         self,

@@ -147,7 +147,12 @@ class QJobScheduler(QtW.QWidget):
     def _get_job_star_model(self) -> JobStarModel:
         job_cls = self._assert_job_class_selected()
         params = self.get_parameters()
-        # FIXME: continue job uses self.make_job_star to generate job.star
+        # continue job uses self.make_job_star to generate job.star, because it requires
+        # a job instance to create new job.star.
+        if isinstance(self._mode, ContinueMode):
+            job_ins = job_cls(self._mode.job_dir)
+            assert isinstance(job_ins, _Relion5BuiltinContinue)
+            return job_ins.make_job_star(**params)
         return job_cls.prep_job_star(**params)
 
     def preview_job_star(self):

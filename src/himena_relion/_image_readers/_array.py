@@ -5,6 +5,7 @@ from abc import ABC, abstractmethod
 from functools import lru_cache, reduce
 from io import BytesIO
 from pathlib import Path
+import time
 from typing import Callable, TYPE_CHECKING, Iterator
 import numpy as np
 from numpy.typing import NDArray
@@ -55,6 +56,19 @@ class ArrayFilteredView:
     def num_slices(self) -> int:
         """Get the number of slices in the array."""
         return self._view.num_slices()
+
+    def try_memmap(self, num_retries: int = 5, delay: float = 0.5):
+        # writing tomograms takes a long time, so the data may not be ready.
+        # `num_slices` will raise an exception if the data is not ready.
+        last_exception = None
+        for _ in range(num_retries):
+            try:
+                return self.num_slices()
+            except Exception as e:
+                last_exception = e
+                time.sleep(delay)
+        if last_exception is not None:
+            raise last_exception
 
     def with_filter(self, post_filter: Callable[[Arr, int], Arr]) -> ArrayFilteredView:
         return ArrayFilteredView(self._view, post_filter)
