@@ -113,6 +113,22 @@ class RelionExternalJob(RelionJob):
             **bound.arguments,
         )
 
+    def input_edges(self, **kwargs) -> list[str]:
+        sig = inspect.signature(self.run)
+        out = []
+        for param in sig.parameters.values():
+            if param.name in (
+                "in_3dref",
+                "in_coords",
+                "in_mask",
+                "in_mics",
+                "in_movies",
+                "in_parts",
+            ):
+                if edge := kwargs.get(param.name, ""):
+                    out.append(edge)
+        return out
+
     @abstractmethod
     def output_nodes(self) -> list[tuple[str, str]]:
         """List of output nodes produced by this job.

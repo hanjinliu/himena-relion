@@ -11,7 +11,7 @@ from himena_relion._adapt import (
     norm_extract_subtomo,
     norm_extract_subtomo_inv,
 )
-from himena_relion._utils import command_not_found_err_msg
+from himena_relion._utils import command_not_found_err_msg, extract_input_edges
 from himena_relion.relion5._builtins import (
     CtfEstimationJob,
     Class3DNoAlignmentJob,
@@ -79,6 +79,9 @@ class _ImportTomoOrCoordsJob(_Relion5TomoJob):
     @classmethod
     def job_is_tomo(cls):
         return False
+
+    def input_edges(self, **kwargs) -> list[str]:
+        return []
 
 
 class _ImportTomoJob(_ImportTomoOrCoordsJob):
@@ -388,6 +391,9 @@ class ExcludeTiltJob(_Relion5TomoJob):
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
+    def input_edges(self, **kwargs) -> list[str]:
+        return extract_input_edges(kwargs, ["in_tiltseries"])
+
 
 class _AlignTiltSeriesJobBase(_Relion5TomoJob):
     @classmethod
@@ -423,6 +429,9 @@ class _AlignTiltSeriesJobBase(_Relion5TomoJob):
         kwargs.pop("fn_aretomo_exe", None)
         kwargs.pop("fn_batchtomo_exe", None)
         return super().normalize_kwargs_inv(**kwargs)
+
+    def input_edges(self, **kwargs) -> list[str]:
+        return extract_input_edges(kwargs, ["in_tiltseries"])
 
 
 class AlignTiltSeriesImodFiducial(_AlignTiltSeriesJobBase):
@@ -767,6 +776,9 @@ class _ReconstructTomogramBaseJob(_Relion5TomoJob):
 
         # _on_in_tiltseries_changed(widgets["in_tiltseries"].value)
 
+    def input_edges(self, **kwargs) -> list[str]:
+        return extract_input_edges(kwargs, ["in_tiltseries"])
+
 
 class ReconstructTomogramJob(_ReconstructTomogramBaseJob):
     """Reconstruct tomograms from aligned tilt series by back projection."""
@@ -922,6 +934,9 @@ class PickJob(_Relion5TomoJob):
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
+    def input_edges(self, **kwargs) -> list[str]:
+        return extract_input_edges(kwargs, ["in_tomoset", "in_star_file"])
+
 
 class ExtractParticlesTomoJob(_Relion5TomoJob):
     """Extract pseudo subtomograms for averaging and refinement."""
@@ -976,6 +991,9 @@ class ExtractParticlesTomoJob(_Relion5TomoJob):
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
+    def input_edges(self, **kwargs) -> list[str]:
+        return extract_input_edges(kwargs, _OPTIM_KEYS)
+
 
 class _DenoiseJobBase(_Relion5TomoJob):
     @classmethod
@@ -1008,6 +1026,9 @@ class _DenoiseJobBase(_Relion5TomoJob):
             raise ValueError(
                 command_not_found_err_msg(f"CryoCARE directory does not exist: {d}")
             )
+
+    def input_edges(self, **kwargs) -> list[str]:
+        return extract_input_edges(kwargs, ["in_tomoset"])
 
 
 class DenoiseTrain(_DenoiseJobBase):
@@ -1183,6 +1204,9 @@ class InitialModelTomoJob(_Relion5TomoJob, InitialModelJob):
 
         widgets["ctf_intact_first_peak"].enabled = widgets["do_ctf_correction"].value
 
+    def input_edges(self, **kwargs) -> list[str]:
+        return extract_input_edges(kwargs, _OPTIM_KEYS)
+
 
 class Class3DNoAlignmentTomoJob(_Relion5TomoJob, Class3DNoAlignmentJob):
     """3D classification of subtomograms without alignment."""
@@ -1246,6 +1270,9 @@ class Class3DNoAlignmentTomoJob(_Relion5TomoJob, Class3DNoAlignmentJob):
         min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
+
+    def input_edges(self, **kwargs) -> list[str]:
+        return extract_input_edges(kwargs, _OPTIM_KEYS + ["fn_ref", "fn_mask"])
 
 
 class Class3DTomoJob(_Relion5TomoJob, Class3DJob):
@@ -1323,6 +1350,9 @@ class Class3DTomoJob(_Relion5TomoJob, Class3DJob):
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
+    def input_edges(self, **kwargs) -> list[str]:
+        return extract_input_edges(kwargs, _OPTIM_KEYS + ["fn_ref", "fn_mask"])
+
 
 class Refine3DTomoJob(_Relion5TomoJob, Refine3DJob):
     @classmethod
@@ -1391,6 +1421,9 @@ class Refine3DTomoJob(_Relion5TomoJob, Refine3DJob):
         min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
+
+    def input_edges(self, **kwargs) -> list[str]:
+        return extract_input_edges(kwargs, _OPTIM_KEYS + ["fn_ref", "fn_mask"])
 
 
 class ReconstructParticlesJob(_Relion5TomoJob):
@@ -1479,6 +1512,9 @@ class ReconstructParticlesJob(_Relion5TomoJob):
 
         _on_do_helix_changed(widgets["do_helix"].value)
 
+    def input_edges(self, **kwargs) -> list[str]:
+        return extract_input_edges(kwargs, _OPTIM_KEYS)
+
 
 class CtfRefineTomoJob(_Relion5TomoJob):
     @classmethod
@@ -1548,6 +1584,11 @@ class CtfRefineTomoJob(_Relion5TomoJob):
 
         _on_do_scale_changed(widgets["do_scale"].value)
 
+    def input_edges(self, **kwargs) -> list[str]:
+        return extract_input_edges(
+            kwargs, _OPTIM_KEYS + ["in_halfmaps", "in_refmask", "in_post"]
+        )
+
 
 class PostProcessTomoJob(_Relion5TomoJob, PostProcessJob):
     """Run post-processing on a subtomogram average."""
@@ -1615,3 +1656,11 @@ class FrameAlignTomoJob(_Relion5TomoJob):
             widgets["do_sq_exp_ker"].enabled = value
 
         _on_do_motion_changed(widgets["do_motion"].value)
+
+    def input_edges(self, **kwargs) -> list[str]:
+        return extract_input_edges(
+            kwargs, _OPTIM_KEYS + ["in_halfmaps", "in_refmask", "in_post"]
+        )
+
+
+_OPTIM_KEYS = ["in_optimisation", "in_particles", "in_tomograms", "in_trajectories"]

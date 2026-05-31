@@ -344,7 +344,7 @@ class EditMode(Mode):
         params = widget.get_parameters()
         job.edit_and_run_job(**params)
         widget.clear_content()
-        widget._ui.show_notification(f"Job '{job_cls.job_title()}' Overwritten.")
+        widget._ui.show_notification(f"Job '{job_cls.job_title()}' overwritten.")
 
     def button_text(self) -> str:
         return "Overwrite And Run"

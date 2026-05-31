@@ -47,6 +47,12 @@ def test_spa_job_match(job_str: str, make_himena_ui: Callable[[], MainWindow]):
     # job.star vs params converted from Python to job.star
     assert_param_name_match(params.keys(), params_back.keys())
 
+    # test input_edges method
+    edges = job_cls_ins.input_edges(**job_dir.get_job_params_as_dict())
+    assert isinstance(edges, list), f"input_edges should return a list, got {type(edges)}"
+    for edge in edges:
+        assert isinstance(edge, str), f"Each edge should be a string, got {type(edge)}"
+
 @pytest.mark.parametrize(
     "job_str",
     list(iter_tomo_job_dirs())
@@ -89,6 +95,11 @@ def test_tomo_job_match(job_str: str, make_himena_ui: Callable[[], MainWindow]):
 
     # job.star vs params converted from Python to job.star
     assert_param_name_match(params.keys(), params_back.keys())
+    # test input_edges method
+    edges = job_cls_ins.input_edges(**job_dir.get_job_params_as_dict())
+    assert isinstance(edges, list), f"input_edges should return a list, got {type(edges)}"
+    for edge in edges:
+        assert isinstance(edge, str), f"Each edge should be a string, got {type(edge)}"
 
 @pytest.mark.parametrize(
     "job_str",

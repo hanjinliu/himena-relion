@@ -6,7 +6,7 @@ from magicgui.widgets.bases import ValueWidget
 from himena_relion._job_class import _Relion5BuiltinJob, parse_string, InvalidInputError
 from himena_relion._job_dir import JobDirectory
 from himena_relion import _configs, _annotated as _a
-from himena_relion._utils import command_not_found_err_msg
+from himena_relion._utils import command_not_found_err_msg, extract_input_edges
 from himena_relion.schemas import OptimisationSetModel
 from himena_relion.consts import MenuId
 from himena_relion._adapt import norm_blush_reg, norm_blush_reg_inv
@@ -24,16 +24,21 @@ class _Relion5SpaJob(_Relion5BuiltinJob):
         return "RELION 5 SPA:"
 
 
-class _ImportMoviesJobBase(_Relion5SpaJob):
+class _ImportJobBase(_Relion5SpaJob):
+    def input_edges(self, **kwargs) -> list[str]:
+        return []
+
+    @classmethod
+    def menu_id(cls) -> str:
+        return MenuId.RELION_IMPORT_JOB
+
+
+class _ImportMoviesJobBase(_ImportJobBase):
     """Import movies into RELION."""
 
     @classmethod
     def type_label(cls) -> str:
         return "relion.import.movies"
-
-    @classmethod
-    def menu_id(cls) -> str:
-        return MenuId.RELION_IMPORT_JOB
 
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
@@ -56,6 +61,9 @@ class _ImportMoviesJobBase(_Relion5SpaJob):
         ]:  # fmt: skip
             kwargs.pop(name, None)
         return kwargs
+
+    def input_edges(self, **kwargs) -> list[str]:
+        return []
 
 
 class ImportMoviesJob(_ImportMoviesJobBase):
@@ -136,14 +144,10 @@ class ImportMicrographsJob(_ImportMoviesJobBase):
         raise NotImplementedError("This is a builtin job placeholder.")
 
 
-class ImportOthersJob(_Relion5Job):
+class ImportOthersJob(_ImportJobBase):
     @classmethod
     def type_label(cls) -> str:
         return "relion.import.other"
-
-    @classmethod
-    def menu_id(cls) -> str:
-        return MenuId.RELION_IMPORT_JOB
 
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
@@ -221,6 +225,9 @@ class _MotionCorrJobBase(_Relion5SpaJob):
     def prerun_check(cls, **kwargs) -> None:
         if str(kwargs.get("input_star_mics", "")) == "":
             raise InvalidInputError("Input movies.star must be provided.")
+
+    def input_edges(self, **kwargs) -> list[str]:
+        return extract_input_edges(kwargs, ["input_star_mics"])
 
 
 class MotionCorr2Job(_MotionCorrJobBase):
@@ -429,6 +436,9 @@ class CtfEstimationJob(_Relion5SpaJob):
         if str(kwargs.get("input_star_mics", "")).strip() == "":
             raise InvalidInputError("Input micrographs.star must be provided.")
 
+    def input_edges(self, **kwargs) -> list[str]:
+        return extract_input_edges(kwargs, ["input_star_mics"])
+
 
 class ManualPickJob(_Relion5SpaJob):
     """Manual particle picking."""
@@ -505,6 +515,9 @@ class ManualPickJob(_Relion5SpaJob):
             widgets["highpass"].enabled = value == "Band-pass"
 
         _on_filter_method_changed(widgets["filter_method"].value)  # initialize
+
+    def input_edges(self, **kwargs) -> list[str]:
+        return extract_input_edges(kwargs, ["fn_in"])
 
 
 class _AutoPickJob(_Relion5SpaJob):
@@ -666,6 +679,9 @@ class AutoPickLogJob(_AutoPickJob):
 
         _on_do_pick_helical_segments_changed(widgets["do_pick_helical_segments"].value)
 
+    def input_edges(self, **kwargs) -> list[str]:
+        return extract_input_edges(kwargs, ["fn_input_autopick"])
+
 
 class AutoPickTemplate2DJob(_AutoPickJob):
     """Automatic particle picking using template matching."""
@@ -752,6 +768,9 @@ class AutoPickTemplate2DJob(_AutoPickJob):
         if str(kwargs.get("fn_refs_autopick", "")).strip() == "":
             raise InvalidInputError("Input 2D reference(s) must be provided.")
 
+    def input_edges(self, **kwargs) -> list[str]:
+        return extract_input_edges(kwargs, ["fn_input_autopick", "fn_refs_autopick"])
+
 
 class AutoPickTemplate3DJob(_AutoPickJob):
     @classmethod
@@ -836,6 +855,9 @@ class AutoPickTemplate3DJob(_AutoPickJob):
         super().prerun_check(**kwargs)
         if str(kwargs.get("fn_ref3d_autopick", "")).strip() == "":
             raise InvalidInputError("Input 3D reference must be provided.")
+
+    def input_edges(self, **kwargs) -> list[str]:
+        return extract_input_edges(kwargs, ["fn_input_autopick", "fn_ref3d_autopick"])
 
 
 class AutoPickTopazTrain(_AutoPickJob):
@@ -935,6 +957,9 @@ class AutoPickTopazTrain(_AutoPickJob):
                 command_not_found_err_msg(f"Topaz executable not found: {cmd}")
             )
 
+    def input_edges(self, **kwargs) -> list[str]:
+        return extract_input_edges(kwargs, ["fn_input_autopick"])
+
 
 class AutoPickTopazPick(_AutoPickJob):
     @classmethod
@@ -1024,6 +1049,9 @@ class AutoPickTopazPick(_AutoPickJob):
             raise ValueError(
                 command_not_found_err_msg(f"Topaz executable not found: {cmd}")
             )
+
+    def input_edges(self, **kwargs) -> list[str]:
+        return extract_input_edges(kwargs, ["fn_input_autopick"])
 
 
 class _ExtractJobBase(_Relion5SpaJob):
@@ -1145,6 +1173,9 @@ class ExtractJob(_ExtractJobBase):
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
+    def input_edges(self, **kwargs) -> list[str]:
+        return extract_input_edges(kwargs, ["star_mics", "coords_suffix"])
+
 
 class ReExtractJob(_ExtractJobBase):
     """Particle re-extraction from micrographs."""
@@ -1202,6 +1233,9 @@ class ReExtractJob(_ExtractJobBase):
         min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
+
+    def input_edges(self, **kwargs) -> list[str]:
+        return extract_input_edges(kwargs, ["star_mics", "fndata_reextract"])
 
 
 class Class2DJob(_Relion5SpaJob):
@@ -1330,6 +1364,9 @@ class Class2DJob(_Relion5SpaJob):
 
         _on_do_helix_changed(widgets["do_helix"].value)  # initialize
 
+    def input_edges(self, **kwargs) -> list[str]:
+        return extract_input_edges(kwargs, ["fn_img"])
+
 
 class InitialModelJob(_Relion5SpaJob):
     @classmethod
@@ -1387,6 +1424,9 @@ class InitialModelJob(_Relion5SpaJob):
 
         widgets["ctf_intact_first_peak"].enabled = widgets["do_ctf_correction"].value
         # widgets["nr_mpi"].enabled = False  # VDAM does not support MPI
+
+    def input_edges(self, **kwargs) -> list[str]:
+        return extract_input_edges(kwargs, ["fn_img"])
 
 
 class _Class3DJobBase(_Relion5SpaJob):
@@ -1468,6 +1508,9 @@ class _Class3DJobBase(_Relion5SpaJob):
         _on_do_ctf_correction_changed(widgets["do_ctf_correction"].value)
         _setup_helix_params(widgets)
         # widgets["nr_mpi"].enabled = False  # VDAM does not support MPI
+
+    def input_edges(self, **kwargs) -> list[str]:
+        return extract_input_edges(kwargs, ["fn_img", "fn_ref", "fn_mask"])
 
 
 class Class3DNoAlignmentJob(_Class3DJobBase):
@@ -1806,6 +1849,9 @@ class Refine3DJob(_Relion5SpaJob):
         widgets["ctf_intact_first_peak"].enabled = widgets["do_ctf_correction"].value
         _setup_helix_params(widgets)
 
+    def input_edges(self, **kwargs) -> list[str]:
+        return extract_input_edges(kwargs, ["fn_img", "fn_ref", "fn_mask"])
+
 
 class MultiBodyJob(_Relion5SpaJob):
     """3D multibody refinement."""
@@ -1875,6 +1921,9 @@ class MultiBodyJob(_Relion5SpaJob):
             widgets["eigenval_range"].enabled = value
 
         _on_do_select_changed(widgets["do_select"].value)
+
+    def input_edges(self, **kwargs) -> list[str]:
+        return extract_input_edges(kwargs, ["fn_in"])
 
 
 class _SelectJob(_Relion5Job):
@@ -1973,6 +2022,9 @@ class SelectClassesInteractiveJob(_SelectJob):
                 return in_tomo
         return None
 
+    def input_edges(self, **kwargs) -> list[str]:
+        return [kwargs["fn_model"]]
+
 
 class SelectClassesAutoJob(_SelectJob):
     @classmethod
@@ -2000,6 +2052,9 @@ class SelectClassesAutoJob(_SelectJob):
         nr_groups: _a.select.NR_GROUPS = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
+
+    def input_edges(self, **kwargs) -> list[str]:
+        return [kwargs["fn_model"]]
 
 
 class _SelectValuesJob(_SelectJob):
@@ -2040,6 +2095,9 @@ class SelectParticlesJob(_SelectValuesJob):
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
+    def input_edges(self, **kwargs) -> list[str]:
+        return [kwargs["fn_data"]]
+
 
 class SelectMicrographsJob(_SelectValuesJob):
     @classmethod
@@ -2067,6 +2125,9 @@ class SelectMicrographsJob(_SelectValuesJob):
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
+    def input_edges(self, **kwargs) -> list[str]:
+        return [kwargs["fn_mic"]]
+
 
 class SelectRemoveDuplicatesJob(_SelectJob):
     """Remove duplicate particles based on their coordinates."""
@@ -2092,6 +2153,9 @@ class SelectRemoveDuplicatesJob(_SelectJob):
         image_angpix: _a.select.IMAGE_ANGPIX = None,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
+
+    def input_edges(self, **kwargs) -> list[str]:
+        return [kwargs["fn_data"]]
 
 
 class SelectDiscardJob(_SelectJob):
@@ -2124,6 +2188,9 @@ class SelectDiscardJob(_SelectJob):
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
+    def input_edges(self, **kwargs) -> list[str]:
+        return [kwargs["fn_data"]]
+
 
 class SelectSplitJob(_SelectJob):
     """Split particles into subsets."""
@@ -2153,6 +2220,9 @@ class SelectSplitJob(_SelectJob):
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
+    def input_edges(self, **kwargs) -> list[str]:
+        return [kwargs["fn_data"]]
+
 
 class SelectFilamentsJob(_SelectJob):
     @classmethod
@@ -2176,6 +2246,9 @@ class SelectFilamentsJob(_SelectJob):
         dendrogram_minclass: _a.select.DENDROGRAM_MINCLASS = -1000,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
+
+    def input_edges(self, **kwargs) -> list[str]:
+        return [kwargs["fn_model"]]
 
 
 class MaskCreationJob(_Relion5Job):
@@ -2227,6 +2300,9 @@ class MaskCreationJob(_Relion5Job):
             widgets["helical_z_percentage"].enabled = value
 
         widgets["helical_z_percentage"].enabled = False
+
+    def input_edges(self, **kwargs) -> list[str]:
+        return [kwargs["fn_in"]]
 
 
 class PostProcessJob(_Relion5SpaJob):
@@ -2295,6 +2371,9 @@ class PostProcessJob(_Relion5SpaJob):
         if str(kwargs.get("fn_mask", "")).strip() == "":
             raise InvalidInputError("Input mask must be provided.")
 
+    def input_edges(self, **kwargs) -> list[str]:
+        return extract_input_edges(kwargs, ["fn_in", "fn_mask"])
+
 
 class _CtfRefineJobBase(_Relion5SpaJob):
     _do_ctf_args = ("do_defocus", "do_astig", "do_bfactor", "do_phase")
@@ -2323,6 +2402,9 @@ class _CtfRefineJobBase(_Relion5SpaJob):
             for name in cls._do_ctf_args:
                 kwargs[name] = "No"
         return kwargs
+
+    def input_edges(self, **kwargs) -> list[str]:
+        return extract_input_edges(kwargs, ["fn_data", "fn_post"])
 
 
 class CtfRefineJob(_CtfRefineJobBase):
@@ -2453,6 +2535,11 @@ class JoinParticlesJob(_JoinStarBase):
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
+    def input_edges(self, **kwargs) -> list[str]:
+        return extract_input_edges(
+            kwargs, ["fn_part1", "fn_part2", "fn_part3", "fn_part4"]
+        )
+
 
 class JoinMicrographsJob(_JoinStarBase):
     """Join multiple micrograph star files into one."""
@@ -2477,6 +2564,9 @@ class JoinMicrographsJob(_JoinStarBase):
         min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
+
+    def input_edges(self, **kwargs) -> list[str]:
+        return extract_input_edges(kwargs, ["fn_mic1", "fn_mic2", "fn_mic3", "fn_mic4"])
 
 
 class JoinMoviesJob(_JoinStarBase):
@@ -2503,6 +2593,9 @@ class JoinMoviesJob(_JoinStarBase):
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
+    def input_edges(self, **kwargs) -> list[str]:
+        return extract_input_edges(kwargs, ["fn_mov1", "fn_mov2", "fn_mov3", "fn_mov4"])
+
 
 class _LocalResolutionJobBase(_Relion5Job):
     @classmethod
@@ -2526,6 +2619,9 @@ class _LocalResolutionJobBase(_Relion5Job):
         if float(kwargs.get("angpix", -1)) < 0:
             kwargs["angpix"] = None
         return kwargs
+
+    def input_edges(self, **kwargs) -> list[str]:
+        return extract_input_edges(kwargs, ["fn_in", "fn_mask"])
 
 
 class LocalResolutionResmapJob(_LocalResolutionJobBase):
@@ -2709,6 +2805,9 @@ class ParticleSubtractionJob(_Relion5SpaJob):
         if str(kwargs.get("fn_mask", "")).strip() == "":
             raise InvalidInputError("Input mask must be provided.")
 
+    def input_edges(self, **kwargs) -> list[str]:
+        return extract_input_edges(kwargs, ["fn_opt", "fn_mask", "fn_data"])
+
 
 class BayesianPolishTrainJob(_Relion5SpaJob):
     """Train Bayesian polishing model."""
@@ -2777,6 +2876,9 @@ class BayesianPolishTrainJob(_Relion5SpaJob):
         min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
+
+    def input_edges(self, **kwargs) -> list[str]:
+        return extract_input_edges(kwargs, ["fn_data", "fn_mic", "fn_post"])
 
 
 class BayesianPolishJob(_Relion5SpaJob):
@@ -2854,6 +2956,9 @@ class BayesianPolishJob(_Relion5SpaJob):
 
         _on_do_own_params_changed(widgets["do_own_params"].value)
 
+    def input_edges(self, **kwargs) -> list[str]:
+        return extract_input_edges(kwargs, ["fn_data", "fn_mic", "fn_post"])
+
 
 class DynaMightJob(_Relion5Job):
     """Run DynaMight for analysis of molecular motions and flexibility."""
@@ -2919,6 +3024,9 @@ class DynaMightJob(_Relion5Job):
                 command_not_found_err_msg(f"DynaMight executable not found: {cmd}")
             )
 
+    def input_edges(self, **kwargs) -> list[str]:
+        return extract_input_edges(kwargs, ["fn_star", "fn_map"])
+
 
 class ModelAngeloJob(_Relion5Job):
     """ModelAngelo job placeholder."""
@@ -2981,6 +3089,9 @@ class ModelAngeloJob(_Relion5Job):
             raise ValueError(
                 command_not_found_err_msg(f"ModelAngelo executable not found: {cmd}")
             )
+
+    def input_edges(self, **kwargs) -> list[str]:
+        return extract_input_edges(kwargs, ["fn_map"])
 
 
 def _autopick_helix_setup(widgets: dict[str, ValueWidget]) -> None:
