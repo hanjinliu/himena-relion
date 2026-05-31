@@ -1,6 +1,7 @@
 from pathlib import Path
 import subprocess
 import time
+import os
 import shutil
 from typing import Annotated
 
@@ -129,6 +130,8 @@ class ManualMaskCreation(RelionExternalJob):
             script_path = (
                 Path(__file__).parent.parent / "scripts" / "mask_creation_napari.py"
             )
+            env = os.environ.copy()
+            env.pop("QT_API", None)
             subprocess.Popen(
                 [
                     python_exe,
@@ -137,6 +140,7 @@ class ManualMaskCreation(RelionExternalJob):
                     out_job_dir.path.as_posix(),
                 ],
                 cwd=out_job_dir.path,
+                env=env,
                 start_new_session=True,
             )
 
