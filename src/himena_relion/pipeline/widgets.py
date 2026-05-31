@@ -363,7 +363,7 @@ class QRelionPipelineFlowChart(QtW.QWidget):
 
         _finished = success_old | failed_old | aborted_old
         # Notify newly scheduled jobs
-        if scheduled := (scheduled_new - scheduled_old) & _finished:
+        if scheduled := (scheduled_new - scheduled_old) & (_finished | running_old):
             to_notify.append("\n".join(f"Job {job} scheduled." for job in scheduled))
 
         # Notify newly running jobs
