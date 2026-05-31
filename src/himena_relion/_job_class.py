@@ -41,7 +41,6 @@ from himena_relion._utils import (
 from himena_relion.schemas import JobStarModel
 from himena_relion.pipeline_watcher import (
     run_watcher_new_process,
-    execute_job,
     RelionJobExecution,
 )
 
@@ -181,22 +180,14 @@ class RelionJob(ABC):
             tmpdir = Path(tmpdir)
             job_star_path = tmpdir / "job.star"
             job_star_model = cls.prep_job_star(**kwargs)
-
             job_star_model.write(job_star_path)
             # $ relion_pipeliner --addJobFromStar <job.star>
             # This reformats the input job.star and creates a new job directory.
             # The new job is scheduled but NOT run yet. To run the job, we need to
             # call relion_pipeliner --RunJobs <job_dir>
-            args = [get_relion_pipeliner_exe(), "--addJobFromStar", str(job_star_path)]
-            proc = subprocess.run(args, cwd=_cwd)
-            if proc.returncode != 0:
-                args_str = " ".join(args)
-                raise RuntimeError(
-                    f"{args_str} failed. Created job.star follows:"
-                    f"\n\n{job_star_path.read_text()}"
-                )
+            _run_relion_pipeliner_add_job_from_star(job_star_path, _cwd)
 
-        d = last_job_directory()  # FIXME: not thread-safe
+        d = last_job_directory(_cwd)  # FIXME: not thread-safe
         run_watcher_new_process(_cwd)
         if is_all_inputs_ready(d):
             return _cwd / d
@@ -222,17 +213,20 @@ class RelionJob(ABC):
         job_star_params = job_dir.get_job_params_as_dict()
         new_input_edges = self.input_edges(**job_star_params)
         rln_dir = job_dir.relion_project_dir
-        to_run = normalize_job_id(job_dir.path.relative_to(rln_dir))
+
         # Old connections should be updated.
         # For example, when overwriting job "Select/job013/", the line
         #   Extract/job012/particles Select/job013/
         # should be updated to the new input edges.
+        to_run = normalize_job_id(job_dir.path.relative_to(rln_dir))
         with job_dir.path.joinpath("job_pipeline.star").open("r+") as f:
             replace_input_edges(f, to_run, new_input_edges)
-        with open_with_lock(rln_dir / "default_pipeline.star") as f:
+        default_pipeline_star = rln_dir / "default_pipeline.star"
+        with open_with_lock(default_pipeline_star) as f:
             replace_input_edges(f, to_run, new_input_edges)
             update_default_pipeline(f, to_run, state="Scheduled")
         run_watcher_new_process(rln_dir)
+        default_pipeline_star.touch()
 
     @classmethod
     def _show_scheduler_widget(cls, ui: MainWindow, context: AnyContext, cwd=None):
@@ -453,14 +447,7 @@ class _Relion5BuiltinContinue(_Relion5BuiltinJob):
 
     @classmethod
     def normalize_kwargs(cls, **kwargs):
-        has_fn_cont = "fn_cont" in kwargs
-        if has_fn_cont:
-            # fn_cont is usually overwriten in normalize_kwargs but we need to keep.
-            fn_cont = kwargs["fn_cont"]
-        kwargs_out = cls.original_class.normalize_kwargs(**kwargs)
-        if has_fn_cont:
-            kwargs_out["fn_cont"] = fn_cont
-        return kwargs_out
+        return _keep_fn_cont(cls.original_class.normalize_kwargs, kwargs)
 
     @classmethod
     def _show_scheduler_widget_for_continue(
@@ -469,6 +456,7 @@ class _Relion5BuiltinContinue(_Relion5BuiltinJob):
         context: AnyContext,
     ):
         scheduler = scheduler_widget(ui)
+        context = dict(context)
         if job_dir := context.pop(_JOB_DIR_ARGS_NAME, None):
             pass
         else:
@@ -485,6 +473,9 @@ class _Relion5BuiltinContinue(_Relion5BuiltinJob):
         orig_params = cls.original_class.normalize_kwargs_inv(**orig_params_raw)
         try:
             sig = cls._signature()
+            keys_to_remove = set(orig_params.keys()) - set(sig.parameters.keys())
+            for key in keys_to_remove:
+                orig_params.pop(key)
             for orig_key, orig_val in orig_params.items():
                 if orig_key in sig.parameters:
                     context.setdefault(orig_key, orig_val)
@@ -497,46 +488,63 @@ class _Relion5BuiltinContinue(_Relion5BuiltinJob):
     def make_job_star(self, **kwargs) -> JobStarModel:
         job_dir = self.output_job_dir
         job_star_path = job_dir.job_star()
-        job_star = JobStarModel.validate_file(job_star_path)
-        params_df = job_star.joboptions_values.dataframe
-        kwargs = self.normalize_kwargs(**kwargs)
+        job_star_old = JobStarModel.validate_file(job_star_path)
+        params_df = job_star_old.joboptions_values.dataframe
+        orig_kwargs = _keep_fn_cont(
+            self.original_class.normalize_kwargs_inv, job_dir.get_job_params_as_dict()
+        )
+        for orig_key, orig_val in orig_kwargs.items():
+            if orig_key not in kwargs:
+                kwargs[orig_key] = orig_val
+        kwargs_new = self.normalize_kwargs(**kwargs)
         # update job parameters
-        for key, val_new in kwargs.items():
-            mask = job_star.joboptions_values.variable == key
+        for key, val_new in kwargs_new.items():
+            mask = job_star_old.joboptions_values.variable == key
             idx = np.where(mask)[0]
             if len(idx) == 1:
                 params_df[int(idx[0]), 1] = to_string(val_new)
-        job_star.joboptions_values = params_df
-        job_star.job.job_is_continue = 1
-        return job_star
+        job_star_old.joboptions_values = params_df
+        job_star_old.job.job_is_continue = 1
+        return job_star_old
 
     def continue_job(self, **kwargs) -> RelionJobExecution | None:
         """Continue this job with updated parameters."""
         # This will be called when the "Continue" button is clicked.
         job_dir = self.output_job_dir
         job_star_path = job_dir.job_star()
+        # `kwargs` come from the scheduler widget. Argument names are not complete.
         self.prerun_check(**kwargs)
         job_star = self.make_job_star(**kwargs)
-        if job_star_path.exists():
-            job_star_old_text = job_star_path.read_text()
-        else:
-            job_star_old_text = None
         job_star.write(job_star_path)
-        d = job_dir.path.relative_to(job_dir.relion_project_dir)
-        try:
-            _exec = execute_job(d, cwd=job_dir.relion_project_dir)
-        except Exception:
-            # Restore old job.star if execution fails
-            # This happens when, for example, continue job was executed from a system
-            # in which RELION commands are not available.
-            if job_star_old_text is not None:
-                job_star_path.write_text(job_star_old_text)
-            raise
-        return _exec
+
+        job_star_params = job_dir.get_job_params_as_dict()
+        new_input_edges = self.input_edges(**job_star_params)
+        rln_dir = job_dir.relion_project_dir
+
+        # Old connections should be updated. See `edit_and_run_job`.
+        to_run = normalize_job_id(job_dir.path.relative_to(rln_dir))
+        with job_dir.path.joinpath("job_pipeline.star").open("r+") as f:
+            replace_input_edges(f, to_run, new_input_edges)
+        default_pipeline_star = rln_dir / "default_pipeline.star"
+        with open_with_lock(default_pipeline_star) as f:
+            replace_input_edges(f, to_run, new_input_edges)
+            update_default_pipeline(f, to_run, state="Scheduled")
+        run_watcher_new_process(rln_dir)
+        default_pipeline_star.touch()
 
     def input_edges(self, **kwargs) -> list[str]:
         """Continue job should have the same input edges as the original job."""
-        return self.original_class.input_edges(**kwargs)
+        return self.original_class(self.output_job_dir).input_edges(**kwargs)
+
+
+def _keep_fn_cont(fn, kwargs):
+    has_fn_cont = "fn_cont" in kwargs
+    if has_fn_cont:
+        fn_cont = kwargs["fn_cont"]
+    kwargs_out = fn(**kwargs)
+    if has_fn_cont:
+        kwargs_out["fn_cont"] = fn_cont
+    return kwargs_out
 
 
 def iter_relion_jobs() -> Generator[type[RelionJob], None, None]:
@@ -749,6 +757,17 @@ def _node_mapping_to_context(
         return out
 
     return _func
+
+
+def _run_relion_pipeliner_add_job_from_star(job_star_path: Path, cwd: Path) -> None:
+    args = [get_relion_pipeliner_exe(), "--addJobFromStar", str(job_star_path)]
+    proc = subprocess.run(args, cwd=cwd)
+    if proc.returncode != 0:
+        args_str = " ".join(args)
+        raise RuntimeError(
+            f"{args_str} failed. Created job.star follows:"
+            f"\n\n{job_star_path.read_text()}"
+        )
 
 
 class InvalidInputError(ValueError):

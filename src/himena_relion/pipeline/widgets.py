@@ -21,7 +21,6 @@ from himena.qt._qflowchart import TagItem, QFlowChartNode
 from himena.exceptions import Cancelled
 from himena.consts import MonospaceFontFamily
 from himena.workflow import LocalReaderMethod
-from himena_relion._job_class import execute_job
 from himena_relion._job_dir import JobDirectory
 from himena_relion._widgets import QRelionJobWidget
 from himena_relion._widgets._job_widgets import QJobPipelineViewer
@@ -700,6 +699,8 @@ class QRelionPipelineFlowChart(QtW.QWidget):
 
     def _run_this_scheduled_job_now(self, job_id: Path):
         """Run this scheduled job immediately."""
+        from himena_relion.pipeline_watcher import execute_job
+
         path = self._relion_project_dir / "default_pipeline.star"
         job_id = _utils.normalize_job_id(job_id)
         with _utils.open_with_lock(path) as f:

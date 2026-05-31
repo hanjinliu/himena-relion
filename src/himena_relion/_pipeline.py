@@ -136,6 +136,7 @@ class RelionJobPipelineNode:
     path_file: Path  # like xxx.star
     path_job: Path | None = None  # relative path like Class3D/job009
     type_label: str | None = None
+    to_job_id: str | None = None
 
     @property
     def path(self) -> Path:
@@ -155,6 +156,7 @@ class RelionJobPipelineNode:
         cls,
         path: str,
         type_label: str | None = None,
+        to_job_id: str | None = None,
     ) -> RelionJobPipelineNode:
         path_obj = Path(path)
         if (
@@ -163,9 +165,9 @@ class RelionJobPipelineNode:
             or not path_obj.parent.name.startswith("job")
         ):
             # probably not inside a job directory
-            return cls(path_obj, None, type_label)
+            return cls(path_obj, None, type_label, to_job_id)
         else:
-            return cls(Path(path_obj.name), path_obj.parent, type_label)
+            return cls(Path(path_obj.name), path_obj.parent, type_label, to_job_id)
 
 
 @dataclass
@@ -208,8 +210,12 @@ class RelionPipeline:
                 RelionJobPipelineNode.from_file_path(
                     input_path_rel,
                     _type_map.get(input_path_rel, None),
+                    to_job_id,
                 )
-                for input_path_rel in pipeline.input_edges.from_node
+                for input_path_rel, to_job_id in zip(
+                    pipeline.input_edges.from_node,
+                    pipeline.input_edges.process,
+                )
             ]
         else:
             inputs = []

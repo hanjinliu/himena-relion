@@ -30,8 +30,7 @@ class QTomogramViewer(QJobScrollArea):
         super().__init__()
         self._job_dir = job_dir
 
-        self._filter_widget = Q2DFilterWidget()
-        self._filter_widget._bin_factor.setText("1")
+        self._filter_widget = Q2DFilterWidget(bin_default=1)
         self._viewer = Q2DViewer()
         self._viewer.setMinimumHeight(TOMO_VIEW_MIN_HEIGHT)
         self._resizer = QResizer(self._viewer)
@@ -82,6 +81,7 @@ class QTomogramViewer(QJobScrollArea):
         self._tomo_list.set_choices(items)
         if len(items) == 0:
             self._viewer.clear()
+            self._filter_widget.set_label_text("")
         elif len(items) == 1:
             self._viewer.auto_fit()
 
@@ -99,6 +99,7 @@ class QTomogramViewer(QJobScrollArea):
             tomo_view = ArrayFilteredView.from_mrc(mrc_path)
             ok = mrc_path.exists()
         if ok:
+            tomo_view.try_memmap()
             self._viewer.set_array_view(
                 tomo_view.with_filter(self._filter_widget.apply),
                 self._viewer._last_clim,

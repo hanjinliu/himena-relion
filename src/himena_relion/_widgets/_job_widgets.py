@@ -359,7 +359,19 @@ class QJobPipelineViewer(QtW.QWidget, JobWidgetBase):
         rln_dir = job_dir.relion_project_dir
 
         job_pipeline = RelionPipeline.from_star(path)
-        for input_node in job_pipeline.inputs:
+
+        default_pipeline_star = rln_dir / "default_pipeline.star"
+        if len(job_pipeline.inputs) == 0 and default_pipeline_star.exists():
+            # After job continue, job_pipeline.star will lose input nodes
+            default = RelionPipeline.from_star(default_pipeline_star)
+            inputs = []
+            this_job_id = job_dir.job_normal_id()
+            for each in default.inputs:
+                if each.to_job_id == this_job_id:
+                    inputs.append(each)
+        else:
+            inputs = job_pipeline.inputs
+        for input_node in inputs:
             input_path = rln_dir / input_node.path
             item = QRelionNodeItem(
                 rln_dir,
@@ -370,13 +382,11 @@ class QJobPipelineViewer(QtW.QWidget, JobWidgetBase):
             list_item.setSizeHint(item.sizeHint())
             self._list_widget_in.addItem(list_item)
             self._list_widget_in.setItemWidget(list_item, item)
-        if (
-            len(job_pipeline.outputs) == 0
-            and (pipeline_star := rln_dir / "default_pipeline.star").exists()
-        ):
+
+        if len(job_pipeline.outputs) == 0 and default_pipeline_star.exists():
             # Some jobs, such as "split particles", do not have output nodes but the
             # default pipeline will be updated after the job finishes.
-            default = RelionPipeline.from_star(pipeline_star)
+            default = RelionPipeline.from_star(default_pipeline_star)
             outputs = []
             this_job_id = job_dir.job_normal_id()
             for each in default.outputs:

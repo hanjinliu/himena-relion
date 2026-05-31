@@ -454,27 +454,30 @@ def _run_rotx(
     output_path: Path,
     do_float16: bool = True,
 ):
+    output_path_rotx = output_path.with_suffix(".rotx.mrc~")
     args = [
         "clip",
         "rotx",
         str(input_path),
-        str(output_path),
+        str(output_path_rotx),
     ]
     out = subprocess.run(args, stdout=subprocess.PIPE)
     if do_float16:
         # clip rotx does not support float16 output.
-        output_path_temp = output_path.with_suffix(".temp.mrc")
+        output_path_f16 = output_path.with_suffix(".f16.mrc~")
         args = [
             "newstack",
-            str(output_path),
-            str(output_path_temp),
+            str(output_path_rotx),
+            str(output_path_f16),
             "-quiet",
             "-mode",
             "12",
         ]
         out = subprocess.run(args, stdout=subprocess.PIPE)
-        output_path.unlink(missing_ok=True)
-        output_path_temp.rename(output_path)
+        output_path_rotx.unlink(missing_ok=True)
+        output_path_f16.rename(output_path)
+    else:
+        output_path_rotx.rename(output_path)
     return out
 
 

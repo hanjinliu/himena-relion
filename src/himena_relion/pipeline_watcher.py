@@ -10,7 +10,7 @@ import subprocess
 import logging
 import time
 from watchfiles import watch, Change
-from himena_relion._utils import normalize_job_id
+from himena_relion._utils import normalize_job_id, wait_for_file
 from himena_relion._configs import get_relion_pipeliner_exe
 from himena_relion import _job_dir
 
@@ -76,6 +76,11 @@ class RelionPipelineWatcher:
                     cwd=pipeline.project_dir,
                 )
                 updated = True
+                path = self._relion_project_dir / job.path / "default_pipeline.star"
+                if wait_for_file(path, num_retry=10, delay=0.05):
+                    # This is required to trigger the on_job_updated callback in some
+                    # widgets (such as QJobStateLabel).
+                    path.touch()
         if updated:
             path = self._relion_project_dir / "default_pipeline.star"
             if path.exists():

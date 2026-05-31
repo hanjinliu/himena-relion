@@ -110,6 +110,7 @@ def overwrite_relion_job(ui: MainWindow, job_dir: JobDirectory):
     )
     scheduler.set_edit_mode(job_dir)
     scheduler.set_parameters(job_dir.get_job_params_as_dict())
+    return scheduler
 
 
 def clone_relion_job(ui: MainWindow, job_dir: JobDirectory):
@@ -130,6 +131,7 @@ def clone_relion_job(ui: MainWindow, job_dir: JobDirectory):
     )
     scheduler.set_parameters(job_dir.get_job_params_as_dict())
     scheduler.set_schedule_mode()
+    return scheduler
 
 
 def set_job_alias(ui: MainWindow, job_dir: JobDirectory):
