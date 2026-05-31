@@ -1,13 +1,18 @@
 from pathlib import Path
 from himena import MainWindow
 
+import shutil
 import time
 from qtpy import QtCore
 import threading
+from himena_relion._job_dir import JobDirectory
+from himena_relion.relion5_tomo._continues import Refine3DTomoContinue
+from himena_relion._widgets._job_edit import ScheduleMode, ContinueMode, EditMode
 from himena_relion.pipeline.widgets import QRelionPipelineFlowChart, _list_jobs_for_palette
 from himena_relion.pipeline_watcher import run_watcher, _WATCHER_FILE_NAME
 from himena_relion._utils import update_default_pipeline
-from ._utils import DEFAULT_PIPELINES_DIR
+from himena_relion.io import _impl
+from ._utils import DEFAULT_PIPELINES_DIR, JOBS_DIR_TOMO
 
 def test_reading_default_pipeline(himena_ui: MainWindow, tmpdir):
     path = Path(tmpdir) / "default_pipeline.star"
@@ -97,3 +102,59 @@ def test_pipeline_watcher_exit(tmpdir):
         update_default_pipeline(f, "CtfFind/job003/", "Succeeded")
     thread.join(timeout=0.5)
     assert not rlndir.joinpath(_WATCHER_FILE_NAME).exists()
+
+def test_schedule_job(
+    tmpdir,
+    himena_ui,
+    monkeypatch,
+):
+    monkeypatch.setattr("himena_relion.pipeline_watcher.execute_job", lambda *args, **kwargs: None)
+    monkeypatch.setattr("himena_relion._job_class._run_relion_pipeliner_add_job_from_star", lambda *args, **kwargs: None)
+    rln_dir = Path(tmpdir)
+    rln_dir.joinpath("default_pipeline.star").write_text((DEFAULT_PIPELINES_DIR / "full.star").read_text())
+    shutil.copytree(JOBS_DIR_TOMO / "Refine3D" / "job001", rln_dir / "Refine3D" / "job001")
+    job_dir = JobDirectory(rln_dir / "Refine3D" / "job001")
+    job_cls = job_dir._to_job_class()
+    scheduler = job_cls._show_scheduler_widget(himena_ui, {}, cwd=rln_dir)
+    assert type(scheduler._mode) is ScheduleMode
+    scheduler._exec_btn.click()
+
+def test_continue_job(
+    tmpdir,
+    himena_ui,
+    monkeypatch,
+):
+    monkeypatch.setattr("himena_relion.pipeline_watcher.execute_job", lambda *args, **kwargs: None)
+
+    rln_dir = Path(tmpdir)
+    rln_dir.joinpath("default_pipeline.star").write_text((DEFAULT_PIPELINES_DIR / "full.star").read_text())
+    shutil.copytree(JOBS_DIR_TOMO / "Refine3D" / "job001", rln_dir / "Refine3D" / "job001")
+    job_dir = JobDirectory(rln_dir / "Refine3D" / "job001")
+    job_dir.path.joinpath("job_pipeline.star").write_text((DEFAULT_PIPELINES_DIR / "full.star").read_text())
+    job_dir.path.joinpath("run_it000_optimiser.star").write_text("")
+    job_cls_cont = Refine3DTomoContinue(job_dir)
+    scheduler = job_cls_cont._show_scheduler_widget_for_continue(
+        himena_ui,
+        {
+            "fn_cont": "Refine3D/job001/run_it000_optimiser.star",
+            "_job_dir": job_dir,
+        }
+    )
+    assert type(scheduler._mode) is ContinueMode
+    scheduler._exec_btn.click()
+
+def test_overwrite_job(
+    tmpdir,
+    himena_ui,
+    monkeypatch,
+):
+    monkeypatch.setattr("himena_relion.pipeline_watcher.execute_job", lambda *args, **kwargs: None)
+
+    rln_dir = Path(tmpdir)
+    rln_dir.joinpath("default_pipeline.star").write_text((DEFAULT_PIPELINES_DIR / "full.star").read_text())
+    shutil.copytree(JOBS_DIR_TOMO / "Refine3D" / "job001", rln_dir / "Refine3D" / "job001")
+    job_dir = JobDirectory(rln_dir / "Refine3D" / "job001")
+    job_dir.path.joinpath("job_pipeline.star").write_text((DEFAULT_PIPELINES_DIR / "full.star").read_text())
+    scheduler = _impl.overwrite_relion_job(himena_ui, job_dir)
+    assert type(scheduler._mode) is EditMode
+    scheduler._exec_btn.click()

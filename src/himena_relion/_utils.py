@@ -144,9 +144,11 @@ def make_tilt_projection_mat(deg: float) -> NDArray[np.float32]:
     return np.array([[cos, 0, -sin], [0, 1, 0], [sin, 0, cos]], dtype=np.float32)
 
 
-def last_job_directory() -> str:
+def last_job_directory(cwd: Path | None = None) -> str:
     """Get the identifier of the latest job."""
-    pipeline = RelionPipelineModel.validate_file("default_pipeline.star")
+    if cwd is None:
+        cwd = Path.cwd()
+    pipeline = RelionPipelineModel.validate_file(cwd / "default_pipeline.star")
     return pipeline.processes.process_name[-1]
 
 

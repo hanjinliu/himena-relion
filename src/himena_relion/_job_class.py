@@ -180,22 +180,14 @@ class RelionJob(ABC):
             tmpdir = Path(tmpdir)
             job_star_path = tmpdir / "job.star"
             job_star_model = cls.prep_job_star(**kwargs)
-
             job_star_model.write(job_star_path)
             # $ relion_pipeliner --addJobFromStar <job.star>
             # This reformats the input job.star and creates a new job directory.
             # The new job is scheduled but NOT run yet. To run the job, we need to
             # call relion_pipeliner --RunJobs <job_dir>
-            args = [get_relion_pipeliner_exe(), "--addJobFromStar", str(job_star_path)]
-            proc = subprocess.run(args, cwd=_cwd)
-            if proc.returncode != 0:
-                args_str = " ".join(args)
-                raise RuntimeError(
-                    f"{args_str} failed. Created job.star follows:"
-                    f"\n\n{job_star_path.read_text()}"
-                )
+            _run_relion_pipeliner_add_job_from_star(job_star_path, _cwd)
 
-        d = last_job_directory()  # FIXME: not thread-safe
+        d = last_job_directory(_cwd)  # FIXME: not thread-safe
         run_watcher_new_process(_cwd)
         if is_all_inputs_ready(d):
             return _cwd / d
@@ -765,6 +757,17 @@ def _node_mapping_to_context(
         return out
 
     return _func
+
+
+def _run_relion_pipeliner_add_job_from_star(job_star_path: Path, cwd: Path) -> None:
+    args = [get_relion_pipeliner_exe(), "--addJobFromStar", str(job_star_path)]
+    proc = subprocess.run(args, cwd=cwd)
+    if proc.returncode != 0:
+        args_str = " ".join(args)
+        raise RuntimeError(
+            f"{args_str} failed. Created job.star follows:"
+            f"\n\n{job_star_path.read_text()}"
+        )
 
 
 class InvalidInputError(ValueError):
