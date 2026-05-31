@@ -28,8 +28,7 @@ from himena_relion.consts import MenuId
 def norm_optim(kwargs: dict[str, Any]) -> dict[str, Any]:
     optim = kwargs.pop("in_optim", {})
     for key in ["in_optimisation", "in_particles", "in_tomograms", "in_trajectories"]:
-        if val := optim.get(key, "").strip():
-            kwargs[key] = val
+        kwargs[key] = optim.get(key, "")
     kwargs["use_direct_entries"] = parse_string(
         optim.get("use_direct_entries", False), bool
     )

@@ -455,14 +455,7 @@ class _Relion5BuiltinContinue(_Relion5BuiltinJob):
 
     @classmethod
     def normalize_kwargs(cls, **kwargs):
-        has_fn_cont = "fn_cont" in kwargs
-        if has_fn_cont:
-            # fn_cont is usually overwriten in normalize_kwargs but we need to keep.
-            fn_cont = kwargs["fn_cont"]
-        kwargs_out = cls.original_class.normalize_kwargs(**kwargs)
-        if has_fn_cont:
-            kwargs_out["fn_cont"] = fn_cont
-        return kwargs_out
+        return _keep_fn_cont(cls.original_class.normalize_kwargs, kwargs)
 
     @classmethod
     def _show_scheduler_widget_for_continue(
@@ -471,6 +464,7 @@ class _Relion5BuiltinContinue(_Relion5BuiltinJob):
         context: AnyContext,
     ):
         scheduler = scheduler_widget(ui)
+        context = dict(context)
         if job_dir := context.pop(_JOB_DIR_ARGS_NAME, None):
             pass
         else:
@@ -487,6 +481,9 @@ class _Relion5BuiltinContinue(_Relion5BuiltinJob):
         orig_params = cls.original_class.normalize_kwargs_inv(**orig_params_raw)
         try:
             sig = cls._signature()
+            keys_to_remove = set(orig_params.keys()) - set(sig.parameters.keys())
+            for key in keys_to_remove:
+                orig_params.pop(key)
             for orig_key, orig_val in orig_params.items():
                 if orig_key in sig.parameters:
                     context.setdefault(orig_key, orig_val)
@@ -501,9 +498,15 @@ class _Relion5BuiltinContinue(_Relion5BuiltinJob):
         job_star_path = job_dir.job_star()
         job_star_old = JobStarModel.validate_file(job_star_path)
         params_df = job_star_old.joboptions_values.dataframe
-        kwargs_incoming = self.normalize_kwargs(**kwargs)
+        orig_kwargs = _keep_fn_cont(
+            self.original_class.normalize_kwargs_inv, job_dir.get_job_params_as_dict()
+        )
+        for orig_key, orig_val in orig_kwargs.items():
+            if orig_key not in kwargs:
+                kwargs[orig_key] = orig_val
+        kwargs_new = self.normalize_kwargs(**kwargs)
         # update job parameters
-        for key, val_new in kwargs_incoming.items():
+        for key, val_new in kwargs_new.items():
             mask = job_star_old.joboptions_values.variable == key
             idx = np.where(mask)[0]
             if len(idx) == 1:
@@ -517,6 +520,7 @@ class _Relion5BuiltinContinue(_Relion5BuiltinJob):
         # This will be called when the "Continue" button is clicked.
         job_dir = self.output_job_dir
         job_star_path = job_dir.job_star()
+        # `kwargs` come from the scheduler widget. Argument names are not complete.
         self.prerun_check(**kwargs)
         job_star = self.make_job_star(**kwargs)
         job_star.write(job_star_path)
@@ -539,6 +543,16 @@ class _Relion5BuiltinContinue(_Relion5BuiltinJob):
     def input_edges(self, **kwargs) -> list[str]:
         """Continue job should have the same input edges as the original job."""
         return self.original_class(self.output_job_dir).input_edges(**kwargs)
+
+
+def _keep_fn_cont(fn, kwargs):
+    has_fn_cont = "fn_cont" in kwargs
+    if has_fn_cont:
+        fn_cont = kwargs["fn_cont"]
+    kwargs_out = fn(**kwargs)
+    if has_fn_cont:
+        kwargs_out["fn_cont"] = fn_cont
+    return kwargs_out
 
 
 def iter_relion_jobs() -> Generator[type[RelionJob], None, None]:

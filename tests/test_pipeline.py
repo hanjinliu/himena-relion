@@ -70,10 +70,29 @@ def test_pipeline_watcher(tmpdir):
     txt = (DEFAULT_PIPELINES_DIR / "full.star").read_text()
     path.write_text(txt)
 
+    with path.open("r+") as f:
+        update_default_pipeline(f, "MotionCorr/job002/", "Running")
+
     thread = threading.Thread(target=run_watcher, args=(str(rlndir),), daemon=True)
     thread.start()
     time.sleep(0.3)
     assert rlndir.joinpath(_WATCHER_FILE_NAME).exists()
+    with path.open("r+") as f:
+        update_default_pipeline(f, "CtfFind/job003/", "Succeeded")
+    thread.join(timeout=0.5)
+    assert not rlndir.joinpath(_WATCHER_FILE_NAME).exists()
+
+def test_pipeline_watcher_exit(tmpdir):
+    rlndir = Path(tmpdir)
+    path = rlndir / "default_pipeline.star"
+    # NOTE: CtfFind/job003/ is scheduled
+    txt = (DEFAULT_PIPELINES_DIR / "full.star").read_text()
+    path.write_text(txt)
+
+    thread = threading.Thread(target=run_watcher, args=(str(rlndir),), daemon=True)
+    thread.start()
+    time.sleep(0.3)
+    assert not rlndir.joinpath(_WATCHER_FILE_NAME).exists()
     with path.open("r+") as f:
         update_default_pipeline(f, "CtfFind/job003/", "Succeeded")
     thread.join(timeout=0.5)
