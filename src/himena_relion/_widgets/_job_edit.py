@@ -293,7 +293,7 @@ class ScheduleMode(Mode):
     def exec(self, widget: QJobScheduler):
         job_cls = widget._assert_job_class_selected()
         params = widget.get_parameters()
-        jobdirpath = job_cls.create_and_run_job(**params, _cwd=widget._cwd)
+        jobdirpath = job_cls.create_job(**params, _cwd=widget._cwd)
         widget.clear_content()
         if jobdirpath:
             # job.star may not be ready yet.

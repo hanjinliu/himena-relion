@@ -168,10 +168,11 @@ class RelionJob(ABC):
         return MenuId.RELION_OTHER_JOB
 
     @classmethod
-    def create_and_run_job(cls, _cwd: Path | None = None, **kwargs) -> Path | None:
+    def create_job(cls, _cwd: Path | None = None, **kwargs) -> Path | None:
         """Run or schedule job.
 
-        Return job directory path if job is ready to run.
+        Return job directory path if job is ready to run. The background watcher will
+        automatically detect the change and run the job.
         """
         cls.prerun_check(**kwargs)
         if _cwd is None:

@@ -64,8 +64,7 @@ class RelionPipelineWatcher:
         if len(self._state_to_job_map[NodeStatus.SCHEDULED]) == 0:
             # No more jobs to run. Stop watching and remove the lock file.
             _LOGGER.info("No more jobs to run, exiting")
-            self._remove_lock()
-            return
+            return self._remove_lock()
 
         updated = False
         for job in self._state_to_job_map[NodeStatus.SCHEDULED].values():
@@ -81,6 +80,13 @@ class RelionPipelineWatcher:
             path = self._relion_project_dir / "default_pipeline.star"
             if path.exists():
                 path.touch()
+        elif len(self._state_to_job_map[NodeStatus.RUNNING]) == 0:
+            # All the scheduled jobs cannot be run until the user fixes the dependencies,
+            # overwrites the failed jobs, or adds new jobs. Stop watching.
+            _LOGGER.info(
+                "None of the scheduled jobs can be automatically started, exiting"
+            )
+            return self._remove_lock()
 
     def _lock_file_path(self) -> Path:
         return self._relion_project_dir / _WATCHER_FILE_NAME
