@@ -95,11 +95,6 @@ class Class3DTomoNoAlignmentContinue(_Relion5BuiltinContinue):
         tau_fudge: _a.misc.TAU_FUDGE = 4,
         nr_iter: _a.class_.NUM_ITER = 25,
         particle_diameter: _a.misc.MASK_DIAMETER = 200,
-        # Sampling
-        sampling: _a.sampling.ANG_SAMPLING = "7.5 degrees",
-        offset_range_step: _a.sampling.OFFSET_RANGE_STEP = (5, 1),
-        relax_sym: _a.sampling.RELAX_SYMMETRY = "",
-        allow_coarser: _a.sampling.ALLOW_COARSER_SAMPLING = False,
         # Compute
         do_parallel_discio: _a.compute.USE_PARALLEL_DISC_IO = True,
         nr_pool: _a.compute.NUM_POOL = 3,

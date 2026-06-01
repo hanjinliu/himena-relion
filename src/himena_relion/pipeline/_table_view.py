@@ -66,11 +66,13 @@ class QRelionPipelineTableView(QtW.QWidget):
     def set_pipeline(self, pipeline: RelionDefaultPipeline) -> None:
         if not isinstance(pipeline, RelionDefaultPipeline):
             raise TypeError("Model value must be a RelionDefaultPipeline.")
+        proxy_old = self._table_view._model._proxy
         self._table_view._model = QRelionPipelineTableViewModel(
             self,
             pipeline,
             HimenaRelionGuiState.from_project_directory(pipeline.project_dir),
         )
+        self._table_view._model.set_proxy(proxy_old, ascending=self._sort_is_ascending)
         self._table_view.setModel(self._table_view._model)
         self._table_view.setColumnWidth(0, 60)
         self._table_view.setColumnWidth(1, 200)
@@ -190,7 +192,7 @@ class QRelionPipelineTableViewModel(QtCore.QAbstractTableModel):
         super().__init__(parent)
         self._pipeline = pipeline
         self._gui_state = gui_state
-        self._proxy = IdentityProxy(pipeline)
+        self._proxy: TableProxy = IdentityProxy(pipeline)
         self._is_ascending = True
 
     def relion_job_node_item(self, index: int) -> RelionJobNodeItem:

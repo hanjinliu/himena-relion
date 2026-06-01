@@ -17,7 +17,7 @@ from himena.plugins import validate_protocol
 from himena.style import Theme
 from himena.types import is_subtype
 from himena.qt import QColoredToolButton
-from himena.qt._qflowchart import TagItem, QFlowChartNode
+from himena.qt._qflowchart import TagItem
 from himena.exceptions import Cancelled
 from himena.consts import MonospaceFontFamily
 from himena.workflow import LocalReaderMethod
@@ -270,6 +270,19 @@ class QRelionPipelineFlowChart(QtW.QWidget):
             self._stacked_widget.setCurrentWidget(self._start_screen)
         elif cur_widget == self._start_screen:
             self._stacked_widget.setCurrentWidget(self._flow_chart)
+        if item := self.current_item():
+            dir_path = self._relion_project_dir / item.id()
+            self._content_info.count_directory_content(dir_path)
+        else:
+            self._content_info.clear_content_info()
+
+    def current_item(self) -> RelionJobNodeItem | None:
+        if self._stacked_widget.currentWidget() == self._flow_chart:
+            return self._flow_chart.current_item()
+        elif self._stacked_widget.currentWidget() == self._table_view:
+            return self._table_view.current_item()
+        else:
+            return None
 
     def _on_gui_state_updated(self) -> None:
         self._flow_chart.read_gui_state(self._pipeline())
@@ -412,15 +425,10 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         return super().keyPressEvent(a0)
 
     def _iter_selected_items(self) -> Iterable[RelionJobNodeItem]:
-        if self._stacked_widget.currentWidget() == self._flow_chart:
-            for qitem in self._flow_chart.scene().selectedItems():
-                if isinstance(qitem, QFlowChartNode) and isinstance(
-                    item := qitem.item(), RelionJobNodeItem
-                ):
-                    yield item
-        elif self._stacked_widget.currentWidget() == self._table_view:
-            if item := self._table_view.current_item():
-                yield item
+        if item := self.current_item():
+            # multiple selection may be supported in the future. For now, just return
+            # the current item.
+            yield item
 
     def _find_job(self):
         """Find a job in the flowchart by its name, ID or state."""

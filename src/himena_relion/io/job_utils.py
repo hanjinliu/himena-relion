@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 
 @register_function(
-    menus=[MenuId.RELION_UTILS, "/model_menu/open"],
+    menus=[MenuId.RELION_UTILS, "/model_menu/file"],
     types=[Type.RELION_JOB],
     title="Open job.star as text",
     command_id="himena-relion:open-job-star",
@@ -25,7 +25,7 @@ def open_relion_job_star(ui: MainWindow, model: WidgetDataModel):
 
 
 @register_function(
-    menus=[MenuId.RELION_UTILS, "/model_menu/open"],
+    menus=[MenuId.RELION_UTILS, "/model_menu/file"],
     types=[Type.RELION_JOB],
     title="Open job_pipeline.star as text",
     command_id="himena-relion:open-job-pipeline-star",
@@ -37,7 +37,7 @@ def open_relion_job_pipeline_star(ui: MainWindow, model: WidgetDataModel):
 
 
 @register_function(
-    menus=[MenuId.RELION_UTILS, "/model_menu/cleanup"],
+    menus=[MenuId.RELION_UTILS, "/model_menu/job"],
     types=[Type.RELION_JOB],
     title="Gentle clean",
     command_id="himena-relion:gentle-clean",
@@ -49,7 +49,7 @@ def gentle_clean_relion_job(ui: MainWindow, model: WidgetDataModel):
 
 
 @register_function(
-    menus=[MenuId.RELION_UTILS, "/model_menu/cleanup"],
+    menus=[MenuId.RELION_UTILS, "/model_menu/job"],
     types=[Type.RELION_JOB],
     title="Harsh clean",
     command_id="himena-relion:harsh-clean",
@@ -61,7 +61,7 @@ def harsh_clean_relion_job(ui: MainWindow, model: WidgetDataModel):
 
 
 @register_function(
-    menus=[MenuId.RELION_UTILS, "/model_menu/cleanup"],
+    menus=[MenuId.RELION_UTILS, "/model_menu/job"],
     types=[Type.RELION_JOB],
     title="Mark As Finished",
     command_id="himena-relion:mark-as-finished",
@@ -73,7 +73,7 @@ def mark_as_finished_relion_job(model: WidgetDataModel):
 
 
 @register_function(
-    menus=[MenuId.RELION_UTILS, "/model_menu/cleanup"],
+    menus=[MenuId.RELION_UTILS, "/model_menu/job"],
     types=[Type.RELION_JOB],
     title="Mark As Not Finished",
     command_id="himena-relion:mark-as-failed",
