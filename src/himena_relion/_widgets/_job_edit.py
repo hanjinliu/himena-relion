@@ -24,6 +24,7 @@ from magicgui.widgets.bases import ValueWidget
 from magicgui.signature import MagicParameter
 
 from himena_relion.schemas import JobStarModel
+from himena_relion.schemas._pipeline import RelionPipelineModel
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -312,7 +313,7 @@ class ScheduleMode(Mode):
             widget._ui.read_file(job_star, append_history=False)
 
     def button_text(self) -> str:
-        return "Run Job"
+        return "Create Job"
 
 
 class ContinueMode(Mode):
@@ -343,8 +344,31 @@ class EditMode(Mode):
     def exec(self, widget: QJobScheduler):
         job_cls = widget._assert_job_class_selected()
         job = job_cls(self.job_dir)
+
+        # check children of this job, if there are any, warn the user.
+        pipeline_model = RelionPipelineModel.validate_file(
+            self.job_dir.relion_project_dir / "default_pipeline.star"
+        )
+        job_id = self.job_dir.job_normal_id()
+        need_warn = False
+        if pipeline_model.input_edges is not None:
+            for from_ in pipeline_model.input_edges.from_node:
+                if from_.startswith(job_id):
+                    need_warn = True
+                    break
+        if need_warn and widget._ui.exec_choose_one_dialog(
+            title="Overwrite?",
+            message="This job's output nodes are used as inputs for other jobs, so "
+            "overwriting this job may leads to inconsistent job history.\n"
+            "Are you sure you want to overwrite this job?",
+            choices=[("Yes, overwrite", False), ("No, cancel", True)],
+            how="buttons",
+        ):
+            return
+
         # Delete all the non needed files
         self.job_dir.clear_job()
+
         # Update the scheduler widget with the parameters used to run this job
         params = widget.get_parameters()
         job.edit_and_run_job(**params)
