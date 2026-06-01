@@ -66,7 +66,10 @@ class QRelionPipelineTableView(QtW.QWidget):
     def set_pipeline(self, pipeline: RelionDefaultPipeline) -> None:
         if not isinstance(pipeline, RelionDefaultPipeline):
             raise TypeError("Model value must be a RelionDefaultPipeline.")
-        proxy_old = self._table_view._model._proxy
+        if self._table_view._model is None:
+            proxy_old = IdentityProxy(pipeline)
+        else:
+            proxy_old = self._table_view._model._proxy
         self._table_view._model = QRelionPipelineTableViewModel(
             self,
             pipeline,
