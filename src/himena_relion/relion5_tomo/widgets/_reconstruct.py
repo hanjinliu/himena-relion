@@ -73,45 +73,25 @@ class QReconstructViewer(QJobScrollArea):
         """Initialize the viewer with the job directory."""
         merged_mrc_path = job_dir.path / "merged.mrc"
         if not merged_mrc_path.exists():
-            return self._open_intermediate_result(job_dir)
+            self._open_intermediate_result(job_dir)
+        else:
+            self._open_final_result(merged_mrc_path)
+
+        if not self._num_particles_label.num_known():
+            n_particles = self._try_get_num_particles(job_dir)
+            self._num_particles_label.set_number(n_particles)
+        sym_name = job_dir.get_job_param("sym_name")
+        self._sym_label.set_symmetry(sym_name)
+
+    def _open_final_result(self, merged_mrc_path: Path):
         with mrcfile.open(merged_mrc_path, permissive=True) as mrc:
             self._img_raw = np.array(mrc.data)
             self._img_raw_scale = float(mrc.voxel_size.x)
 
-        self._file_name_label.setText("merged.mrc")
+        self._file_name_label.setText(merged_mrc_path.name)
         self._viewer.set_image(self._get_image_filtered(), update_now=False)
         self._viewer.auto_threshold(update_now=False)
         self._viewer.auto_fit()
-
-        # get the number of particles
-        try:
-            params = job_dir.get_job_params_as_dict()
-            if opt_path := params.get("in_optimisation", None):
-                opt_path = job_dir.relion_project_dir / opt_path
-                opt_model = OptimisationSetModel.validate_file(opt_path)
-                particles_path = opt_model.particles_star
-            elif ptcl := params.get("in_particles", None):
-                particles_path = job_dir.resolve_path(ptcl)
-            else:
-                return
-            if not particles_path.exists():
-                particles_path = job_dir.relion_project_dir / particles_path
-            star = read_star(particles_path)
-            if "particles" in star:
-                n_particles = star["particles"].trust_loop().shape[0]
-            elif len(star) == 1:
-                n_particles = star.first().trust_loop().shape[0]
-            else:
-                n_particles = -1
-        except Exception:
-            n_particles = -1
-            _LOGGER.warning(
-                "Failed to read particles star file to get number of particles",
-                exc_info=True,
-            )
-        sym_name = job_dir.get_job_param("sym_name")
-        self._sym_label.set_symmetry(sym_name)
-        self._num_particles_label.set_number(n_particles)
 
     def _open_intermediate_result(self, job_dir: _job_dir.JobDirectory):
         temp_dir = job_dir.path / "temp"
@@ -177,6 +157,32 @@ class QReconstructViewer(QJobScrollArea):
         if was_empty:
             self._viewer.auto_threshold(update_now=False)
             self._viewer.auto_fit()
+
+    def _try_get_num_particles(self, job_dir: _job_dir.JobDirectory) -> int:
+        try:
+            params = job_dir.get_job_params_as_dict()
+            if opt_path := params.get("in_optimisation", None):
+                opt_path = job_dir.relion_project_dir / opt_path
+                opt_model = OptimisationSetModel.validate_file(opt_path)
+                particles_path = job_dir.resolve_path(opt_model.particles_star)
+            elif ptcl := params.get("in_particles", None):
+                particles_path = job_dir.resolve_path(ptcl)
+            else:
+                return
+            star = read_star(particles_path)
+            if "particles" in star:
+                n_particles = star["particles"].trust_loop().shape[0]
+            elif len(star) == 1:
+                n_particles = star.first().trust_loop().shape[0]
+            else:
+                n_particles = -1
+        except Exception:
+            n_particles = -1
+            _LOGGER.warning(
+                "Failed to read particles star file to get number of particles",
+                exc_info=True,
+            )
+        return n_particles
 
     def _on_lowpass_changed(self):
         self._viewer.set_image(self._get_image_filtered(), update_now=True)

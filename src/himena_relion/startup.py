@@ -3,11 +3,10 @@
 from typing import TYPE_CHECKING
 
 from pathlib import Path
-import json
 import psutil
 from himena_relion._job_class import scheduler_widget
 from himena_relion._utils import get_pipeline_widgets
-from himena_relion.pipeline_watcher import _WATCHER_FILE_NAME
+from himena_relion.pipeline_watcher import _WATCHER_FILE_NAME, read_pid_from_lock
 
 if TYPE_CHECKING:
     from himena.widgets import MainWindow
@@ -26,14 +25,13 @@ def on_himena_startup(ui: "MainWindow"):
         # if pipeline-watcher lock exists, check if the process is actually running.
         if (lock := cwd.joinpath(_WATCHER_FILE_NAME)).exists():
             try:
-                js = json.loads(lock.read_text())
-                pid = js["pid"]
+                pid = read_pid_from_lock(lock)
             except Exception:
+                lock.unlink()
                 ui.show_notification(
                     f"Pipeline watcher lock file {_WATCHER_FILE_NAME} seems broken. "
-                    "This lock will be removed."
+                    "This lock is removed."
                 )
-                lock.unlink()
                 return
             try:
                 process_name = psutil.Process(pid).name()
@@ -41,7 +39,8 @@ def on_himena_startup(ui: "MainWindow"):
                 process_name = ""
             else:
                 if process_name != "himena-relion":
+                    lock.unlink()
                     ui.show_notification(
                         f"Pipeline watcher lock file {_WATCHER_FILE_NAME} found, but "
-                        "the process seems not running. This lock will be removed."
+                        "the process seems not running. This lock is removed."
                     )

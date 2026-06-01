@@ -83,7 +83,8 @@ def run_function(argv: list[str] | None = None) -> None:
         raise ValueError(f"External job not found for class_id: {class_id}")
     o_dir = Path(args["o"])
 
-    job = job_cls(ExternalJobDirectory(o_dir))
+    job_dir = ExternalJobDirectory(o_dir)
+    job = job_cls(job_dir)
     func_args = job._parse_args(args)
 
     # check if undefined arguments remain
@@ -96,9 +97,10 @@ def run_function(argv: list[str] | None = None) -> None:
         )
 
     # prepare output nodes in pipeline
-    root_rel = job.output_job_dir.path.relative_to(
-        job.output_job_dir.relion_project_dir
-    )
+    root_rel = job.output_job_dir.path.relative_to(job_dir.relion_project_dir)
+
+    # FIXME: At the moment the job_pipeline.star is updated, Job is already running and
+    # the default_pipeline.star does not include all the output nodes.
     with job.output_job_dir.edit_job_pipeline() as pipeline:
         for file_path_rel, label in job.output_nodes():
             pipeline.append_output(root_rel / file_path_rel, label)
