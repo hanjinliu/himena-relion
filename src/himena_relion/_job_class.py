@@ -489,7 +489,6 @@ class _Relion5BuiltinContinue(_Relion5BuiltinJob):
         job_dir = self.output_job_dir
         job_star_path = job_dir.job_star()
         job_star_old = JobStarModel.validate_file(job_star_path)
-        params_df = job_star_old.joboptions_values.dataframe
         orig_kwargs = _keep_fn_cont(
             self.original_class.normalize_kwargs_inv, job_dir.get_job_params_as_dict()
         )
@@ -497,7 +496,9 @@ class _Relion5BuiltinContinue(_Relion5BuiltinJob):
             if orig_key not in kwargs:
                 kwargs[orig_key] = orig_val
         kwargs_new = self.normalize_kwargs(**kwargs)
+
         # update job parameters
+        params_df = job_star_old.joboptions_values.dataframe
         for key, val_new in kwargs_new.items():
             mask = job_star_old.joboptions_values.variable == key
             idx = np.where(mask)[0]

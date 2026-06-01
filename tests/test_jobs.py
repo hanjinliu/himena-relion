@@ -173,8 +173,9 @@ def test_continue_job(
     ref_job = Refine3DContinue(job_dir)
 
     model = JobStarModel.validate_file(job_dir.job_star())
-    ref_job.make_job_star()
-
+    output = ref_job.make_job_star()
+    assert output.joboptions_values.dataframe.shape == model.joboptions_values.dataframe.shape
+    assert output.joboptions_values.to_dict() != model.joboptions_values.to_dict(), "The continue job should update the parameters"
     params = model.joboptions_values.to_dict()
     assert "fn_cont" in params
     kwargs = ref_job.normalize_kwargs_inv(**params)
