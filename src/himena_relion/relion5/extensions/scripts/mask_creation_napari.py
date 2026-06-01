@@ -107,8 +107,6 @@ def main():
 
     viewer.window.add_dock_widget(dock, area="right")
     napari.run()
-    if not (Path(output_job_dir) / "mask_base.mrc").exists():
-        raise ValueError("'mask_base.mrc' was not created.")
 
 
 def _make_circular_footprint(radius: float):

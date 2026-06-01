@@ -9,6 +9,7 @@ from pathlib import Path
 import subprocess
 import logging
 import time
+import warnings
 from watchfiles import watch, Change
 from himena_relion._utils import normalize_job_id, wait_for_file
 from himena_relion._configs import get_relion_pipeliner_exe
@@ -105,10 +106,21 @@ class RelionPipelineWatcher:
                 break
             time.sleep(0.1)
         else:
-            raise WatcherAlreadyRunningError(
-                f"Failed to acquire lock after {num_retry} retries. Another watcher "
-                "might be running."
-            )
+            try:
+                pid = read_pid_from_lock(path)
+            except Exception:
+                warnings.warn(
+                    f"Pipeline watcher lock file {_WATCHER_FILE_NAME} seems broken. "
+                    "This lock will be removed.",
+                    RuntimeWarning,
+                    stacklevel=1,
+                )
+                path.unlink()
+            else:
+                raise WatcherAlreadyRunningError(
+                    f"Failed to acquire lock after {num_retry} retries. Another "
+                    f"watcher at PID {pid} is running."
+                )
         lock_info = {
             "pid": os.getpid(),
             "user": _get_user(),
@@ -130,6 +142,12 @@ def _get_user() -> str:
         # os.getlogin() may fail in some environments. In that case, fall back to the
         # default value.
         return "unknown"
+
+
+def read_pid_from_lock(lock_path: Path) -> int:
+    """Get the PID of the current watcher process"""
+    js = json.loads(lock_path.read_text())
+    return js["pid"]
 
 
 class WatcherAlreadyRunningError(RuntimeError):

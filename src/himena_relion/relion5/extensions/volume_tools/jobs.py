@@ -112,18 +112,19 @@ class ManualMaskCreation(RelionExternalJob):
         else:
             raise ValueError(f"Unknown blur method: {blur_method}")
 
-        # volume onesmask #1.1 on_grid #1
         input_path = out_job_dir.resolve_path(in_3dref).as_posix()
+        time_0 = time.time()
+        self.console.log("Waiting for user to create mask.")
+
+        # volume onesmask #1.1 on_grid #1
         if use_app == "Chimera/ChimeraX":
-            if not (chimerax := shutil.which("chimerax")):
-                if not (chimerax := shutil.which("chimera")):
-                    raise FileNotFoundError(
-                        "Neither ChimeraX nor Chimera executable found in PATH."
-                    )
-            subprocess.Popen(
+            if (chimerax := _find_chimera_exec()) is None:
+                raise FileNotFoundError(
+                    "Neither ChimeraX nor Chimera executable found in PATH."
+                )
+            subprocess.run(
                 [chimerax, input_path],
                 cwd=out_job_dir.path,
-                start_new_session=True,
             )
         elif use_app == "Napari":
             python_exe = relion_python_executable()
@@ -132,7 +133,7 @@ class ManualMaskCreation(RelionExternalJob):
             )
             env = os.environ.copy()
             env.pop("QT_API", None)
-            subprocess.Popen(
+            subprocess.run(
                 [
                     python_exe,
                     script_path.as_posix(),
@@ -141,17 +142,15 @@ class ManualMaskCreation(RelionExternalJob):
                 ],
                 cwd=out_job_dir.path,
                 env=env,
-                start_new_session=True,
             )
-
-        time_0 = time.time()
-        self.console.log("Waiting for user to create mask.")
-        while not mask_path.exists() and not mask_base_path.exists():
-            time.sleep(1)
-            yield
-            if time.time() - time_0 > self._max_wait_time_sec:
-                self.console.log("Mask creation timed out.")
-                raise TimeoutError("Mask creation timed out.")
+        else:
+            # wait for user to create mask by themselves
+            while not mask_path.exists() and not mask_base_path.exists():
+                time.sleep(1)
+                yield
+                if time.time() - time_0 > self._max_wait_time_sec:
+                    self.console.log("Mask creation timed out.")
+                    raise TimeoutError("Mask creation timed out.")
         if mask_base_path.exists():
             with mrcfile.open(mask_base_path) as mrc:
                 mask_data = mrc.data
@@ -201,6 +200,13 @@ def _blur_gaussian(dist_scaled):
     return np.exp(-(dist_scaled**2) / (2 * sigma**2), dtype=np.float32).astype(
         np.float32
     )
+
+
+def _find_chimera_exec() -> str | None:
+    if not (chimerax := shutil.which("chimerax")):
+        if not (chimerax := shutil.which("chimera")):
+            return None
+    return chimerax
 
 
 connect_jobs(

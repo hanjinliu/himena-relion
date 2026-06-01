@@ -3122,6 +3122,7 @@ def _setup_helix_params(widgets: dict[str, ValueWidget]) -> None:
         "helical_z_percentage",
         "keep_tilt_prior_fixed",
     ]
+    helical_names = [name for name in helical_names if name in widgets]
 
     @widgets["do_helix"].changed.connect
     def _on_helical(value: bool):
