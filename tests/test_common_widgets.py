@@ -45,7 +45,7 @@ def test_pipeline_viewer(qtbot: QtBot, tmpdir):
     job_dir_obj = JobDirectory(_job_dir)
     viewer.initialize(job_dir_obj)
     viewer.on_job_updated(job_dir_obj, _job_dir / "job_pipeline.star")
-    viewer._tree_view.set_job_directory(job_dir_obj)
+    viewer._tree_view.initialize(job_dir_obj)
     viewer._tree_view._make_context_menu(viewer._tree_view.model().index(0, 0))
     viewer._tree_view._make_drag(viewer._tree_view.model().index(0, 0))
 

@@ -4,7 +4,6 @@ import logging
 from pathlib import Path
 import polars as pl
 import subprocess
-import shutil
 from typing import TYPE_CHECKING
 from himena import MainWindow
 from himena.exceptions import Cancelled
@@ -212,6 +211,8 @@ def trash_job(ui: MainWindow, job_dir: JobDirectory):
         for from_, to_ in zip(
             pipeline.input_edges.from_node, pipeline.input_edges.process
         ):
+            # e.g. from_ = "MotionCorr/job002/corrected_micrographs.star"
+            #        to_ = "CtfFind/job003/"
             job_spec = Path(to_)
             if Path(from_).parent in to_trash or job_spec in to_trash:
                 if (
@@ -292,10 +293,7 @@ def trash_job(ui: MainWindow, job_dir: JobDirectory):
                 continue
             dest = trash_dir / p
             dest.parent.mkdir(parents=True, exist_ok=True)
-            if dest.exists():
-                _LOGGER.warning(f"Destination {dest} already exists. Overwriting.")
-                _remove_dir_or_file(dest)
-            src.rename(dest)
+            _move_dir(src, dest)
 
         # remove nodes from directories like .Nodes/DensityMap/Reconstruct/job060
         node_to_type_map = _make_node_to_type_map(nodes_trashed)
@@ -356,10 +354,8 @@ def restore_trashed_jobs(relion_project_dir: Path, job_ids: list[str]):
             all_input_edges.append(job_pipeline.input_edges.dataframe)
             all_output_edges.append(job_pipeline.output_edges.dataframe)
             path_dest.parent.mkdir(parents=True, exist_ok=True)
-            if path_dest.exists():
-                _LOGGER.warning(f"Destination {path_dest} already exists. Overwriting.")
-                _remove_dir_or_file(path_dest)
-            path_to_undo.rename(path_dest)
+            _move_dir(path_to_undo, path_dest)
+
         df_processes = _concat_and_reorder(all_processes, "rlnPipeLineProcessName")
         df_nodes = _concat_and_reorder(all_nodes, "rlnPipeLineNodeName")
         df_input_edges = _concat_and_reorder(all_input_edges, "rlnPipeLineEdgeFromNode")
@@ -458,11 +454,18 @@ def _make_node_to_type_map(df_node) -> dict[str, str]:
     return node_to_type_map
 
 
-def _remove_dir_or_file(dest: Path):
-    if dest.is_dir():
-        shutil.rmtree(dest)
+def _move_dir(src: Path, dest: Path):
+    if dest.exists():
+        # Move all child files/directories from src to dest
+        for item in src.iterdir():
+            if item.is_dir():
+                _move_dir(item, dest / item.name)
+            else:
+                item.rename(dest / item.name)
+        src.rmdir()
     else:
-        dest.unlink()
+        # Just move src to dest
+        src.rename(dest)
 
 
 def _concat_and_reorder(dfs: list[pl.DataFrame], column_name: str):

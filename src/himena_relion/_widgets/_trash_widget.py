@@ -4,6 +4,7 @@ from pathlib import Path
 import shutil
 from glob import glob
 import sys
+import threading
 from qtpy import QtCore, QtWidgets as QtW
 from watchfiles import watch
 from superqt.utils import thread_worker
@@ -34,6 +35,13 @@ class QTrashWidget(QtW.QSplitter):
         self._job_list_widget.setSelectionMode(
             QtW.QAbstractItemView.SelectionMode.ExtendedSelection
         )
+        self._clear_all_btn = QtW.QPushButton("Clear Trash")
+        self._clear_all_btn.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
+        self._clear_all_btn.setToolTip(
+            "Permanently delete all jobs in the Trash. This action cannot be undone."
+        )
+        self._clear_all_btn.clicked.connect(self._clear_trash)
+
         self._content_info = QJobContentInfo()
         self._job_view = QRelionJobWidgetBase()
         self._job_view._state_widget._set_alias_btn.hide()
@@ -43,6 +51,7 @@ class QTrashWidget(QtW.QSplitter):
         left_layout.setContentsMargins(0, 0, 0, 0)
         left_layout.addWidget(self._trash_label)
         left_layout.addWidget(self._job_list_widget)
+        left_layout.addWidget(self._clear_all_btn)
         left_layout.addWidget(self._content_info)
         self.addWidget(left)
         self.addWidget(self._job_view)
@@ -123,6 +132,7 @@ class QTrashWidget(QtW.QSplitter):
             job_id = f"{job_path.parent.name}/{job_path.name}/"
             item = QtW.QListWidgetItem(job_id)
             self._job_list_widget.addItem(item)
+        self._clear_all_btn.setEnabled(len(entries) > 0)
 
     def _on_job_selected(self):
         trash_dir = self.trash_dir()
@@ -133,11 +143,17 @@ class QTrashWidget(QtW.QSplitter):
             self._job_view.clear_tabs()
             return
         job_id = selected_items[0].text()
-        job_dir = JobDirectory.from_job_star(trash_dir / job_id / "job.star")
+        job_path = trash_dir / job_id
+        job_star_path = job_path / "job.star"
+        self._content_info.count_directory_content(job_path)
+        if not job_star_path.exists():
+            self._job_view.clear_tabs()
+            self._job_view._state_widget.clear_content("job.star not found")
+            return
+        job_dir = JobDirectory.from_job_star(job_star_path)
         if (current := self._job_view._job_dir) and job_dir.path == current.path:
             return  # same job selected, do nothing
 
-        self._content_info.count_directory_content(job_dir.path)
         self._job_view.clear_tabs()
         self._job_view.update_job(job_dir)
         for widget in self._job_view._iter_job_widgets():
@@ -146,6 +162,13 @@ class QTrashWidget(QtW.QSplitter):
             elif isinstance(widget, QJobPipelineViewer):
                 widget._list_widget_in.setEnabled(False)
                 widget._list_widget_out.setEnabled(False)
+
+    def _clear_trash(self, *, join: bool = False):
+        job_ids = [
+            self._job_list_widget.item(ith).text()
+            for ith in range(self._job_list_widget.count())
+        ]
+        _delete_permanently(job_ids, self.trash_dir(), join=join)
 
     def _make_context_menu(self):
         selected_items = self._job_list_widget.selectedItems()
@@ -187,10 +210,10 @@ class QTrashWidget(QtW.QSplitter):
 
 def _copy_job_paths(job_ids: list[str], trash_dir: Path):
     paths = [str(trash_dir / job_id) for job_id in job_ids]
-    QtW.QApplication.clipboard().setText("\n".join(paths))
+    current_instance().set_clipboard(text="\n".join(paths))
 
 
-def _delete_permanently(job_ids: list[str], trash_dir: Path):
+def _delete_permanently(job_ids: list[str], trash_dir: Path, *, join: bool = False):
     paths_to_del: list[Path] = []
     ids_to_del: list[str] = []
     for job_id in job_ids:
@@ -204,8 +227,15 @@ def _delete_permanently(job_ids: list[str], trash_dir: Path):
         message=_html_list("Following jobs will be deleted permanently:", ids_to_del),
         choices=[("Yes, delete permanently", True), ("Cancel", False)],
     ):
-        for job_path in paths_to_del:
-            shutil.rmtree(job_path)
+        thread = threading.Thread(target=_rm_tree, args=(paths_to_del,), daemon=True)
+        thread.start()
+        if join:
+            thread.join()  # just for testing
+
+
+def _rm_tree(paths_to_del: list[Path]):
+    for job_path in paths_to_del:
+        shutil.rmtree(job_path)
 
 
 register_widget_class(Type.RELION_TRASH, QTrashWidget, priority=100)
