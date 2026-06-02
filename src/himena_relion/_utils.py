@@ -232,7 +232,12 @@ def _assert_input_edge(val) -> str:
     return val
 
 
-def replace_input_edges(f: TextIO, to_run: str, new_inputs: Iterable[str] = ()):
+def replace_input_edges(
+    f: TextIO,
+    to_run: str,
+    new_inputs: Iterable[str] = (),
+    default_pipeline: str | Path | None = None,
+):
     f.seek(0)
     pipeline_model = RelionPipelineModel.validate_text(f.read())
     to_run = normalize_job_id(to_run)
@@ -249,6 +254,20 @@ def replace_input_edges(f: TextIO, to_run: str, new_inputs: Iterable[str] = ()):
             process=[to_run] * len(new_from_node),
         ).dataframe
         df = pl.concat([df, df_new], how="vertical_relaxed")
+
+        # when updating job_pipeline.star, we need to update the node info based on the
+        # default_pipeline.star as well.
+        if default_pipeline:
+            nodes_full = RelionPipelineModel.validate_file(
+                default_pipeline
+            ).nodes.dataframe.filter(pl.col("rlnPipeLineNodeName").is_in(new_from_node))
+            nodes_this = pipeline_model.nodes.dataframe.filter(
+                pl.col("rlnPipeLineNodeName").str.starts_with(to_run)
+            )
+            pipeline_model.nodes = pl.concat(
+                [nodes_full, nodes_this], how="vertical_relaxed"
+            )
+
     pipeline_model.input_edges = df
     f.seek(0)
     f.truncate()

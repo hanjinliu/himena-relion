@@ -714,6 +714,7 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         with _utils.open_with_lock(path) as f:
             _utils.replace_input_edges(f, job_id)
         execute_job(job_id, cwd=self._relion_project_dir)
+        _utils.read_or_show_job(self._ui(), self._relion_project_dir / job_id)
 
 
 def _make_tag_icon(color: Color, checked: bool = False) -> QtGui.QIcon:
