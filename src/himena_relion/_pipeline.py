@@ -230,7 +230,7 @@ class RelionPipeline:
             ]
         else:
             outputs = []
-        if (depth := pipeline.nodes.type_label_depth) is not None:
+        if (depth := pipeline.nodes.type_label_depth) is not None and len(depth) > 0:
             process_type_label_depth = depth[0]
         else:
             process_type_label_depth = None

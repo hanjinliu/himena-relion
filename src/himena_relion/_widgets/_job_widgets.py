@@ -92,7 +92,6 @@ class QJobScrollArea(QtW.QScrollArea, JobWidgetBase):
 
     def _start_worker(self):
         self._worker.yielded.connect(self._on_yielded)
-        # self._worker.finished.connect(self.window_closed_callback)
         start_worker(self._worker)
 
 
@@ -156,11 +155,10 @@ class QTextEditBase(QtW.QWidget, JobWidgetBase):
     def _popup_this(self):
         """Popup the content of this text edit to a new window."""
         if self._filename_label_open_target is not None:
-            path = self._filename_label_open_target
             current_instance().add_data_model_as_popup(
                 create_text_model(
-                    path.read_text(encoding="utf-8"),
-                    title=path.name,
+                    self._text_edit.toPlainText(),
+                    title=self._filename_label_open_target.name,
                     font_family=MonospaceFontFamily,
                     editable=False,
                 )
@@ -312,7 +310,7 @@ class QNoteEdit(QTextEditBase):
             return
         note_path = self._job_dir.path / "note.txt"
         text = self.toPlainText()
-        if note_path.read_text(encoding="utf-8") != text or not note_path.exists():
+        if (not note_path.exists()) or note_path.read_text(encoding="utf-8") != text:
             note_path.write_text(text)
 
 
@@ -411,7 +409,7 @@ class QJobPipelineViewer(QtW.QWidget, JobWidgetBase):
             self._list_widget_out.setItemWidget(list_item, item)
 
         if tree := self._tree_view:
-            tree.set_job_directory(job_dir)
+            tree.initialize(job_dir)
 
     def update_item_colors(self, job_dir: _job_dir.JobDirectory):
         """Update the colors based on whether the files exist."""
@@ -661,13 +659,16 @@ class QJobStateLabel(QtW.QWidget, JobWidgetBase):
         self.setFixedHeight(27)
         self.clear_content()
 
-    def clear_content(self):
-        self._job_desc.setText("<b><span style='color: gray;'>Not Selected</span></b>")
+    def clear_content(self, text: str = "Not Selected"):
+        self._job_desc.setText(f"<b><span style='color: gray;'>{text}</span></b>")
         self._state_label.setText("")
 
     def on_job_updated(self, job_dir, fp):
         if (
-            fp.name == "default_pipeline.star" or fp.suffix == ""  # RELION_JOB_XXXX
+            fp.name == "default_pipeline.star"
+            or fp.suffix == ""  # RELION_JOB_XXXX
+            or self._state_label.text() == "Scheduled"
+            and fp.name == "run.out"
         ):
             self._on_job_updated(job_dir)
 
@@ -850,7 +851,7 @@ class QFileSystemModel(QtW.QFileSystemModel):
             return "<Deleted>"
 
 
-class QDirectoryTreeView(QtW.QTreeView):
+class QDirectoryTreeView(QtW.QTreeView, JobWidgetBase):
     """A tree view to show directory structure."""
 
     def __init__(self, parent=None):
@@ -867,13 +868,16 @@ class QDirectoryTreeView(QtW.QTreeView):
         self.doubleClicked.connect(self._double_clicked)
         self._job_dir: _job_dir.JobDirectory | None = None
 
-    def set_job_directory(self, job_dir: _job_dir.JobDirectory):
+    def initialize(self, job_dir: _job_dir.JobDirectory):
         """Set the root directory to the given job directory."""
         model = QFileSystemModel(self)
         model.setRootPath(str(job_dir.path))
         self._job_dir = job_dir
         self.setModel(model)
         self.setRootIndex(model.index(str(job_dir.path)))
+
+    def tab_title(self) -> str:
+        return "Content"
 
     def _make_context_menu(self, index: QtCore.QModelIndex):
         menu = QtW.QMenu(self)

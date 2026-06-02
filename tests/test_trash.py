@@ -50,12 +50,30 @@ def test_trash_widget(himena_ui: MainWindow, tmpdir):
     assert isinstance(win.widget, QTrashWidget)
     assert win.widget.trash_dir() == rln_dir / "Trash"
 
+    list_widget = win.widget._job_list_widget
     win.widget._make_context_menu()
-    win.widget._job_list_widget.setCurrentRow(0)
+    list_widget.setCurrentRow(0)
     win.widget._make_context_menu()
 
     _copy_job_paths(["MotionCorr/job002/"], rln_dir / "Trash")
     assert (rln_dir / "Trash" / "MotionCorr/job002").exists()
+    win.widget._update_job_list()
+    # child jobs will also be moved to trash.
+    assert [list_widget.item(i).text() for i in range(list_widget.count())] == ["MotionCorr/job002/", "CtfFind/job003/"]
     with choose_one_dialog_response(himena_ui, True):
-        _delete_permanently(["MotionCorr/job002/"], rln_dir / "Trash")
+        _delete_permanently(["MotionCorr/job002/"], rln_dir / "Trash", join=True)
     assert not (rln_dir / "Trash" / "MotionCorr/job002").exists()
+    win.widget._update_job_list()
+    assert [list_widget.item(i).text() for i in range(list_widget.count())] == ["CtfFind/job003/"]
+
+    # Gentle/Harsh cleaned data will be move to Trash without job.star
+    dir_clean = rln_dir / "Trash" / "Class3D" / "job003"
+    dir_clean.mkdir(parents=True)
+    dir_clean.joinpath("run_it001_data.star").write_text("")
+    win.widget._update_job_list()
+    assert [list_widget.item(i).text() for i in range(list_widget.count())] == ["CtfFind/job003/", "Class3D/job003/"]
+    list_widget.setCurrentRow(list_widget.count() - 1)
+    with choose_one_dialog_response(himena_ui, True):
+        win.widget._clear_trash(join=True)
+    win.widget._update_job_list()
+    assert list_widget.count() == 0
