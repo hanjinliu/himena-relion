@@ -2,13 +2,12 @@ from __future__ import annotations
 from pathlib import Path
 import logging
 import polars as pl
-from qtpy import QtWidgets as QtW, QtCore, QtGui
+from qtpy import QtWidgets as QtW, QtCore
 from superqt import QToggleSwitch
-from starfile_rs import read_star, read_star_block
+from starfile_rs import read_star
 import mrcfile
 from superqt.utils import thread_worker
 from himena.widgets import current_instance
-from himena.consts import MonospaceFontFamily
 from himena_relion.schemas import ModelGroups
 from himena_relion._utils import wait_for_file
 from himena_relion._widgets._shared.resizer import QResizer
@@ -20,6 +19,7 @@ from himena_relion._widgets import (
     QPlotCanvas,
     QNumParticlesLabel,
     QSymmetryLabel,
+    QOptimiserInfoTextEdit,
 )
 from himena_relion import _job_dir
 
@@ -67,10 +67,21 @@ class QRefine3DViewer(QJobScrollArea):
         )
 
         self._num_particles_label = QNumParticlesLabel()
-        self._optimiser_info = QtW.QPlainTextEdit()
-        self._optimiser_info.setReadOnly(True)
-        self._optimiser_info.setFont(QtGui.QFont(MonospaceFontFamily))
-        self._optimiser_info.setFixedHeight(160)
+        self._optimiser_info = QOptimiserInfoTextEdit()
+        self._optimiser_info.add_entry("rlnParticleDiameter", "Mask diameter", " Å")
+        self._optimiser_info.add_entry("rlnSolventMaskName", "Solvent mask")
+        self._optimiser_info.add_entry(
+            "rlnOverallAccuracyRotations", "Rotation accuracy", "°"
+        )
+        self._optimiser_info.add_entry(
+            "rlnOverallAccuracyTranslationsAngst", "Translation accuracy", " Å"
+        )
+        self._optimiser_info.add_entry(
+            "rlnChangesOptimalOrientations", "Changes in optimal orientations", "°"
+        )
+        self._optimiser_info.add_entry(
+            "rlnChangesOptimalOffsets", "Changes in optimal offsets", " pixels"
+        )
         self._optimiser_info.setMaximumWidth(max_width)
 
         self._layout.addWidget(QtW.QLabel("<b>&#9679; Refined Map</b>"))
@@ -99,7 +110,7 @@ class QRefine3DViewer(QJobScrollArea):
         self._layout.addWidget(QtW.QLabel("<b>&#9679; Fourier Shell Correlation</b>"))
         self._layout.addWidget(self._fsc_plot)
         self._layout.addSpacing(5)
-        self._layout.addWidget(QtW.QLabel("<b>&#9679; Optimisation parameters</b>"))
+        self._layout.addWidget(QtW.QLabel("<b>&#9679; optimiser.star</b>"))
         self._layout.addWidget(self._optimiser_info)
         self._index_start = 1
         self._job_dir = _job_dir.Refine3DJobDirectory(job_dir.path)
@@ -192,6 +203,14 @@ class QRefine3DViewer(QJobScrollArea):
         if map_out is not None:
             yield self._viewer.set_image, map_out
 
+        ### Read current optimiser and sampling info ###
+        if is_final:
+            optimiser_star = self._job_dir.path / "run_optimiser.star"
+        else:
+            optimiser_star = self._job_dir.path / f"run{res.it_str}_optimiser.star"
+
+        yield self._optimiser_info.read_optimiser_star, optimiser_star
+
         ### Read FSC ###
         if is_final:
             model_star = self._job_dir.path / "run_model.star"
@@ -236,33 +255,6 @@ class QRefine3DViewer(QJobScrollArea):
         if scale is not None and wait_for_file(bild_path):
             tubes = res.angdist(1, scale)
             yield self._viewer._canvas.set_arrows, tubes
-
-        ### Read current optimiser and sampling info ###
-        if is_final:
-            optimiser_star = self._job_dir.path / "run_optimiser.star"
-        else:
-            optimiser_star = self._job_dir.path / f"run{res.it_str}_optimiser.star"
-
-        try:
-            opt_gen = read_star_block(
-                optimiser_star, "optimiser_general"
-            ).trust_single()
-            # sampling_star = self._job_dir.path / opt_gen.get("rlnOrientSamplingStarFile", "")
-            # samp_gen = read_star_block(sampling_star, "sampling_general").trust_single()
-        except Exception:
-            info = "No info available."
-        else:
-            # healpix_order = float(samp_gen.get("rlnHealpixOrder", "nan"))
-            # rot_step = float(samp_gen.get("rlnPsiStep", "nan")) / healpix_order
-            info = "\n".join(
-                [
-                    f"Mask diameter        = {opt_gen.get('rlnParticleDiameter', 'nan')} Å",
-                    f"Solvent mask         = {opt_gen.get('rlnSolventMaskName', 'None')}",
-                    f"Rotation accuracy    = {opt_gen.get('rlnOverallAccuracyRotations', 'nan')}°",
-                    f"Translation accuracy = {opt_gen.get('rlnOverallAccuracyTranslationsAngst', 'nan')} Å",
-                ]
-            )
-        yield self._optimiser_info.setPlainText, info
 
         ### Done ###
         self._worker = None

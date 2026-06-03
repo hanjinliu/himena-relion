@@ -15,6 +15,7 @@ from himena_relion._widgets import (
     QMicrographListWidget,
     QSymmetryLabel,
     QNumParticlesLabel,
+    QOptimiserInfoTextEdit,
 )
 from himena_relion import _job_dir
 from himena_relion._utils import wait_for_file
@@ -64,6 +65,27 @@ class QClass3DViewer(QJobScrollArea):
         self._continue_from_here_btn.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
         self._continue_from_here_btn.clicked.connect(self._continue_from_here_clicked)
         self._num_particles_label = QNumParticlesLabel()
+
+        self._optimiser_info = QOptimiserInfoTextEdit()
+        self._optimiser_info.add_entry("rlnParticleDiameter", "Mask diameter", " Å")
+        self._optimiser_info.add_entry("rlnSolventMaskName", "Solvent mask")
+        self._optimiser_info.add_entry(
+            "rlnOverallAccuracyRotations", "Rotation accuracy", "°"
+        )
+        self._optimiser_info.add_entry(
+            "rlnOverallAccuracyTranslationsAngst", "Translation accuracy", " Å"
+        )
+        self._optimiser_info.add_entry(
+            "rlnChangesOptimalClasses", "Changes in optimal classes"
+        )
+        self._optimiser_info.add_entry(
+            "rlnChangesOptimalOrientations", "Changes in optimal orientations", "°"
+        )
+        self._optimiser_info.add_entry(
+            "rlnChangesOptimalOffsets", "Changes in optimal offsets", " pixels"
+        )
+        self._optimiser_info.setMaximumWidth(400)
+
         hor1 = QtW.QWidget()
         hor1.setMaximumWidth(400)
         hor1.setFixedHeight(26)
@@ -87,6 +109,9 @@ class QClass3DViewer(QJobScrollArea):
         self._layout.addWidget(self._viewer)
         self._layout.addWidget(self._resizer)
         self._layout.addWidget(hor2)
+        self._layout.addSpacing(5)
+        self._layout.addWidget(QtW.QLabel("<b>&#9679; optimiser.star</b>"))
+        self._layout.addWidget(self._optimiser_info)
 
         self._iter_choice.valueChanged.connect(self._on_iter_changed)
         self._list_widget.current_changed.connect(self._on_class_changed)
@@ -214,7 +239,13 @@ class QClass3DViewer(QJobScrollArea):
             yield self._auto_threshold_and_fit, None
         tubes = res.angdist(class_id, scale)
         yield self._viewer._canvas.set_arrows, tubes
-        if wait_for_file(res._data_star(), num_retry=100, delay=0.3):
+
+        ### Read current optimiser and sampling info ###
+        optimiser_star = self._job_dir.path / f"run{res.it_str}_optimiser.star"
+
+        yield self._optimiser_info.read_optimiser_star, optimiser_star
+
+        if wait_for_file(res._data_star(), num_retry=50, delay=0.1):
             try:
                 part = res.particles()
             except Exception:
@@ -223,6 +254,7 @@ class QClass3DViewer(QJobScrollArea):
             else:
                 num_particles = len(part.particles.block)
                 yield self._num_particles_label.set_number_for_class3d, num_particles
+
         self._worker = None
 
     def _auto_threshold_and_fit(self, *_):

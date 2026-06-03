@@ -278,6 +278,8 @@ def read_or_show_job(ui: MainWindow, path: Path):
     """Open a RELION job file in the UI, or switch to it if already opened."""
     from himena_relion._job_dir import JobDirectory
 
+    if path.is_file() and path.name == "job.star":
+        path = path.parent
     # if already opened, switch to it
     for i_tab, tab in ui.tabs.enumerate():
         for i_window, window in tab.enumerate():
