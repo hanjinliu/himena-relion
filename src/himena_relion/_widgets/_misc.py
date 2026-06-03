@@ -218,6 +218,7 @@ class QOptimiserInfoTextEdit(QtW.QPlainTextEdit):
         self.setReadOnly(True)
         self.setFont(QtGui.QFont(MonospaceFontFamily))
         self.setFixedHeight(160)
+        self.setWordWrapMode(QtGui.QTextOption.WrapMode.NoWrap)
         # column_name, label, suffix
         self._entries: list[tuple[str, str, str]] = []
 
