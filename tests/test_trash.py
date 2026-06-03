@@ -2,6 +2,7 @@ from himena import MainWindow
 from himena.testing import choose_one_dialog_response
 from himena_relion._job_dir import JobDirectory
 from himena_relion._widgets._trash_widget import QTrashWidget, _copy_job_paths, _delete_permanently
+from himena_relion.schemas import RelionPipelineModel
 from himena_relion.io._impl import trash_job, restore_trashed_jobs
 from ._utils import prep_relion_project
 
@@ -40,6 +41,28 @@ def test_trash_untrash(himena_ui: MainWindow, tmpdir):
     assert "job001" in default_pipeline_text
     assert "job002" in default_pipeline_text
     assert "job003" in default_pipeline_text
+
+def test_trash_untrash_with_alias(himena_ui: MainWindow, tmpdir):
+    import os
+
+    rln_dir = prep_relion_project(tmpdir)
+    p = RelionPipelineModel.validate_file(rln_dir / "default_pipeline.star")
+    df = p.processes.dataframe
+    df[1, 1] = "MotionCorr/alias-0/"
+    (rln_dir / "default_pipeline.star").write_text(p.to_string())
+    os.symlink(rln_dir / "MotionCorr/job002", rln_dir / "MotionCorr/alias-0", target_is_directory=True)
+
+    himena_ui.read_file(rln_dir / "default_pipeline.star")
+    assert rln_dir.joinpath("MotionCorr/alias-0").exists()
+    with choose_one_dialog_response(himena_ui, True):
+        trash_job(himena_ui, JobDirectory(rln_dir / "MotionCorr/alias-0"))
+    assert not rln_dir.joinpath("MotionCorr/alias-0").exists()
+    assert not rln_dir.joinpath("MotionCorr/job002").exists()
+
+    restore_trashed_jobs(rln_dir, ["MotionCorr/job002/"])
+    assert rln_dir.joinpath("MotionCorr/alias-0").exists()
+    assert rln_dir.joinpath("MotionCorr/job002").exists()
+    assert rln_dir.joinpath("MotionCorr/alias-0").resolve() == rln_dir.joinpath("MotionCorr/job002").resolve()
 
 def test_trash_widget(himena_ui: MainWindow, tmpdir):
     rln_dir = prep_relion_project(tmpdir)
