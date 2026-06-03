@@ -327,7 +327,7 @@ for class3d_job in [_tomo.Class3DTomoJob, _tomo.Class3DNoAlignmentTomoJob]:
             _tomo.ReconstructParticlesJob.get_optimisation_set: "in_optim.in_optimisation",
             _tomo.ReconstructParticlesJob.get_particles: "in_optim.in_particles",
             _tomo.ReconstructParticlesJob.get_tomoset: "in_optim.in_tomograms",
-            _tomo.ReconstructParticlesJob.get_trajectory: "in_optim.in_trajectory",
+            _tomo.ReconstructParticlesJob.get_trajectory: "in_optim.in_trajectories",
             "merged.mrc": "fn_ref",
         },
         value_mapping={_recon_diameter_a: "particle_diameter"},
@@ -386,7 +386,7 @@ connect_jobs(
         _tomo.ReconstructParticlesJob.get_optimisation_set: "in_optim.in_optimisation",
         _tomo.ReconstructParticlesJob.get_particles: "in_optim.in_particles",
         _tomo.ReconstructParticlesJob.get_tomoset: "in_optim.in_tomograms",
-        _tomo.ReconstructParticlesJob.get_trajectory: "in_optim.in_trajectory",
+        _tomo.ReconstructParticlesJob.get_trajectory: "in_optim.in_trajectories",
         "merged.mrc": "fn_ref",
     },
     value_mapping={
@@ -448,7 +448,10 @@ def _postprocess_search_optim(path: Path) -> str | None:
 
 
 def postprocess_search_halfmaps(path: Path) -> str | None:
-    parents = JobDirectory(path).parent_jobs()
+    job_dir = JobDirectory(path)
+    parents = job_dir.parent_jobs()
+    if half_path := job_dir.get_job_param("fn_in", "").strip():
+        return half_path
     for p in parents:
         type_label = p.job_type_label()
         if type_label.startswith("relion.refine3d"):
@@ -464,7 +467,10 @@ def postprocess_search_halfmaps(path: Path) -> str | None:
 
 
 def postprocess_search_refmask(path: Path) -> str | None:
-    parents = JobDirectory(path).parent_jobs()
+    job_dir = JobDirectory(path)
+    if mask_path := job_dir.get_job_param("fn_mask", "").strip():
+        return mask_path
+    parents = job_dir.parent_jobs()
     for p in parents:
         type_label = p.job_type_label()
         if type_label.startswith("relion.maskcreate"):
@@ -520,6 +526,48 @@ connect_jobs(
 
 connect_jobs(
     _tomo.PostProcessTomoJob,
+    _tomo.FrameAlignTomoJob,
+    node_mapping={
+        _postprocess_search_optim: "in_optim.in_optimisation",
+        postprocess_search_halfmaps: "in_halfmaps",
+        postprocess_search_refmask: "in_refmask",
+        "postprocess.star": "in_post",
+    },
+)
+
+connect_jobs(
+    _tomo.PostProcessTomoJob,
     _spa.ModelAngeloJob,
     node_mapping={"postprocess_masked.mrc": "fn_map"},
+)
+
+
+def _get_particles_from_frame_align(path: Path) -> str | None:
+    job_dir = JobDirectory(path)
+    if job_dir.get_job_param("do_motion", "No") == "Yes":
+        return path / "particles.star"
+    elif in_opt := job_dir.get_job_param("in_optimisation", ""):
+        if (in_opt := job_dir.resolve_path(in_opt)).exists():
+            return job_dir.resolve_path(
+                OptimisationSetModel.validate_file(in_opt).particles_star
+            )
+    elif in_parts := job_dir.get_job_param("in_particles", ""):
+        return job_dir.resolve_path(in_parts)
+    return None
+
+
+connect_jobs(
+    _tomo.FrameAlignTomoJob,
+    _tomo.ExtractParticlesTomoJob,
+    node_mapping={
+        _get_particles_from_frame_align: "in_optim.in_particles",
+        "tomograms.star": "in_optim.in_tomograms",
+        "motion.star": "in_optim.in_trajectories",
+    },
+)
+
+connect_jobs(
+    _tomo.FrameAlignTomoJob,
+    _tomo.ReconstructParticlesJob,
+    node_mapping={OPTIMISATION_SET_STAR: "in_optim.in_optimisation"},
 )

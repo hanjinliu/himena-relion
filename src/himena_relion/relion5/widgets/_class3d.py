@@ -229,12 +229,15 @@ class QClass3DViewer(QJobScrollArea):
         self._viewer._canvas.arrow_visual.visible = checked
         self._viewer._canvas.update_canvas()
 
+    def _set_image_no_clim_update(self, img):
+        self._viewer.set_image(img, update_now=True, update_clim=False)
+
     @thread_worker
     def _read_items(self, niter, class_id):
         res = self._job_dir.get_result(niter)
         map0, scale = res.class_map(class_id - self._index_start)
         was_empty = not self._viewer.has_image
-        yield self._viewer.set_image, map0
+        yield self._set_image_no_clim_update, map0
         if was_empty:
             yield self._auto_threshold_and_fit, None
         tubes = res.angdist(class_id, scale)
