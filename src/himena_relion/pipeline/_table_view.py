@@ -69,7 +69,8 @@ class QRelionPipelineTableView(QtW.QWidget):
         if self._table_view._model is None:
             proxy_old = IdentityProxy(pipeline)
         else:
-            proxy_old = self._table_view._model._proxy
+            # need reconstruction of the proxy because the length changed.
+            proxy_old = type(self._table_view._model._proxy)(pipeline)
         self._table_view._model = QRelionPipelineTableViewModel(
             self,
             pipeline,
@@ -105,7 +106,7 @@ class QRelionPipelineTableView(QtW.QWidget):
 
     def center_on_item(self, path: Path):
         _model = self._table_view._model
-        for row in range(_model.rowCount()):
+        for row in range(min(_model.rowCount(), len(_model._pipeline))):
             if _model.relion_job_node_item(row).id() == path:
                 index = _model.index(row, 0)
                 self._table_view.scrollTo(
@@ -159,14 +160,13 @@ class _QRelionPipelineTableView(QtW.QTableView):
     def _double_clicked(self, index: QtCore.QModelIndex):
         if not index.isValid():
             return
-        item = self._model.relion_job_node_item(index.row())
-        self.item_left_double_clicked.emit(item)
+        if item := self._model.relion_job_node_item(index.row()):
+            self.item_left_double_clicked.emit(item)
 
     def mousePressEvent(self, e):
         self._drag_start_pos = e.pos()
         index = self.indexAt(self._drag_start_pos)
-        if index.isValid():
-            item = self._model.relion_job_node_item(index.row())
+        if index.isValid() and (item := self._model.relion_job_node_item(index.row())):
             if e.button() == QtCore.Qt.MouseButton.LeftButton:
                 self.item_left_pressed.emit(item)
             elif e.button() == QtCore.Qt.MouseButton.RightButton:
@@ -175,8 +175,11 @@ class _QRelionPipelineTableView(QtW.QTableView):
 
     def mouseReleaseEvent(self, e):
         index = self.indexAt(self._drag_start_pos)
-        if index.isValid() and (e.pos() - self._drag_start_pos).manhattanLength() < 5:
-            item = self._model.relion_job_node_item(index.row())
+        if (
+            index.isValid()
+            and (e.pos() - self._drag_start_pos).manhattanLength() < 5
+            and (item := self._model.relion_job_node_item(index.row()))
+        ):
             if e.button() == QtCore.Qt.MouseButton.LeftButton:
                 self.item_left_clicked.emit(item)
             elif e.button() == QtCore.Qt.MouseButton.RightButton:
@@ -198,12 +201,17 @@ class QRelionPipelineTableViewModel(QtCore.QAbstractTableModel):
         self._proxy: TableProxy = IdentityProxy(pipeline)
         self._is_ascending = True
 
-    def relion_job_node_item(self, index: int) -> RelionJobNodeItem:
+    def relion_job_node_item(self, index: int) -> RelionJobNodeItem | None:
         if not self._is_ascending:
             # If descending, map the index to the end of the list
             index = self._proxy.count() - 1 - index
-        job_info = self._pipeline[self._proxy.map(index)]
-        return RelionJobNodeItem(job_info)
+        ith = self._proxy.map(index)
+        try:
+            job_info = self._pipeline[ith]
+        except IndexError:
+            return None
+        else:
+            return RelionJobNodeItem(job_info)
 
     def set_proxy(self, proxy: TableProxy, ascending: bool = True):
         self.beginResetModel()
@@ -224,7 +232,10 @@ class QRelionPipelineTableViewModel(QtCore.QAbstractTableModel):
     ):
         if not index.isValid():
             return None
-        job_info = self.relion_job_node_item(index.row())._job
+        if relion_job_node_item := self.relion_job_node_item(index.row()):
+            job_info = relion_job_node_item._job
+        else:
+            return None
         column = index.column()
         if role == QtCore.Qt.ItemDataRole.DisplayRole:
             if column == 0:  # job012
@@ -264,7 +275,6 @@ class QRelionPipelineTableViewModel(QtCore.QAbstractTableModel):
             )
         elif role == QtCore.Qt.ItemDataRole.DecorationRole:
             if column == 0:  # show color for the job state
-                relion_job_node_item = self.relion_job_node_item(index.row())
                 qcolor = QtGui.QColor.fromRgbF(*relion_job_node_item.color().rgba)
                 pixmap = QtGui.QPixmap(16, 16)
                 pixmap.fill(qcolor)
