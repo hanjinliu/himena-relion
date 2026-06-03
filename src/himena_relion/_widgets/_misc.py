@@ -4,11 +4,12 @@ import base64
 from typing import Callable
 import uuid
 import numpy as np
-from qtpy import QtWidgets as QtW, QtCore
+from qtpy import QtWidgets as QtW, QtCore, QtGui
 from PIL import Image, ImageDraw, ImageFont
 from scipy import ndimage as ndi
 from io import BytesIO
-
+from starfile_rs import read_star_block
+from himena.consts import MonospaceFontFamily
 from himena_relion._utils import lowpass_filter
 
 
@@ -207,6 +208,36 @@ class QSymmetryLabel(QtW.QLabel):
 
     def set_symmetry(self, sym_name: str):
         self.setText(f"Symmetry: <b>{sym_name}</b>")
+
+
+class QOptimiserInfoTextEdit(QtW.QPlainTextEdit):
+    """A QTextEdit to show the optimiser information."""
+
+    def __init__(self):
+        super().__init__()
+        self.setReadOnly(True)
+        self.setFont(QtGui.QFont(MonospaceFontFamily))
+        self.setFixedHeight(160)
+        # column_name, label, suffix
+        self._entries: list[tuple[str, str, str]] = []
+
+    def add_entry(self, column_name: str, label: str, suffix: str = ""):
+        self._entries.append((column_name, label, suffix))
+
+    def read_optimiser_star(self, path):
+        try:
+            opt_gen = read_star_block(path, "optimiser_general").trust_single()
+        except Exception:
+            info = "No info available."
+        else:
+            num_longest = max(len(val) for _, val, _ in self._entries)
+            info = "\n".join(
+                [
+                    f"{label:<{num_longest}} = {opt_gen.get(key, '--')}{suffix}"
+                    for key, label, suffix in self._entries
+                ]
+            )
+        self.setPlainText(info)
 
 
 def spacer_widget():

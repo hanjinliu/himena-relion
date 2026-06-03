@@ -25,6 +25,7 @@ from himena_relion._widgets._misc import (
     QImageViewTextEdit,
     QNumParticlesLabel,
     QSymmetryLabel,
+    QOptimiserInfoTextEdit,
 )
 from himena_relion._widgets._job_edit import QJobScheduler
 from himena_relion._widgets._trash_widget import QTrashWidget
@@ -51,6 +52,7 @@ __all__ = [
     "QMoreActionButton",
     "QSymmetryLabel",
     "QTrashWidget",
+    "QOptimiserInfoTextEdit",
     "spacer_widget",
 ]
 

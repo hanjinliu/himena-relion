@@ -39,6 +39,7 @@ class JobDirectory:
     _type_map = {}
 
     def __init__(self, path: str | Path):
+        # path: directory
         self.path = Path(path).resolve()
         if not self.path.exists():
             raise FileNotFoundError(f"Job directory {self.path} does not exist.")
@@ -637,9 +638,11 @@ class Refine3DJobDirectory(JobDirectory):
 
 
 class Class3DResults(_3DResultsBase):
-    def class_map(self, class_id: int) -> tuple[NDArray[np.floating], float]:
+    def class_map(self, class_id: int) -> tuple[NDArray[np.floating] | None, float]:
         """Return the class 3D map for a given class ID."""
         mrc_path = self.path / f"run{self.it_str}_class{class_id + 1:03d}.mrc"
+        if not mrc_path.exists():
+            return None, 1.0
         with mrcfile.open(mrc_path, mode="r") as mrc:
             return mrc.data, mrc.voxel_size.x
 

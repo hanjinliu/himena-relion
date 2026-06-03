@@ -457,7 +457,7 @@ class QRelionPipelineFlowChart(QtW.QWidget):
     def _center_on_item(self, path: Path):
         if self._stacked_widget.currentWidget() is self._flow_chart:
             if node := self._flow_chart._node_map.get(path):
-                self._flow_chart.center_on_item(node.item())
+                self._flow_chart.center_on_item(node.item(), animate=True)
         elif self._stacked_widget.currentWidget() is self._table_view:
             self._table_view.center_on_item(path)
 
@@ -502,6 +502,7 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         running_jobs = list(self._state_to_job_map[NodeStatus.RUNNING].values())
         if len(running_jobs) > 0:
             for job in self._state_to_job_map[NodeStatus.RUNNING].values():
+                self._center_on_item(job.path)
                 _utils.read_or_show_job(self._ui(), job.path)
         else:
             self._ui().show_notification("No running jobs to open.")
@@ -511,8 +512,8 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         succeeded_jobs = list(self._state_to_job_map[NodeStatus.SUCCEEDED].values())
         if len(succeeded_jobs) > 0:
             last_job = max(succeeded_jobs, key=lambda job: _exit_success_time(job))
-            self._center_on_item(last_job.path)
             if (path := self._relion_project_dir / last_job.path).exists():
+                self._center_on_item(last_job.path)
                 return _utils.read_or_show_job(self._ui(), path)
         self._ui().show_notification("No completed jobs to open.")
 
