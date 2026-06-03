@@ -219,18 +219,6 @@ MAX_ERROR = Annotated[
         "group": "Polish",
     },
 ]
-DO_SHIFT_ALIGN = Annotated[
-    bool,
-    {
-        "label": "Align by shift only",
-        "tooltip": (
-            "If set to Yes, tilt series projection shifts are refined based on "
-            "cross-correlation. Useful for very badly aligned frames. No iterative "
-            "optimisation."
-        ),
-        "group": "Polish",
-    },
-]
 SHIFT_ALIGN_TYPE = Annotated[
     str,
     {
@@ -249,12 +237,17 @@ SHIFT_ALIGN_TYPE = Annotated[
 DO_MOTION = Annotated[
     bool,
     {
-        "label": "Fit per-particle motion",
+        "label": "Align by",
+        "choices": [("Per-particle motion", True), ("Shift only", False)],
         "tooltip": (
-            "If set to Yes, then the subtomogram version of Bayesian polishing will be "
-            "used to fit per-particle (3D) motion tracks, besides the rigid part of the "
-            "motion in the tilt series."
+            "If set to 'Per-particle motion', then the subtomogram version of Bayesian "
+            "polishing will be used to fit per-particle (3D) motion tracks, besides "
+            "the rigid part of the motion in the tilt series.\n"
+            "If set to 'Shift only', tilt series projection shifts are refined based "
+            "on cross-correlation. Useful for very badly aligned frames. No iterative "
+            "optimisation."
         ),
+        "widget_type": ToggleButtons,
         "group": "Polish",
     },
 ]

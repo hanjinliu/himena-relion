@@ -1608,11 +1608,13 @@ class FrameAlignTomoJob(_Relion5TomoJob):
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
         kwargs = norm_optim(super().normalize_kwargs(**kwargs))
+        kwargs["do_shift_align"] = not kwargs.get("do_motion", False)
         return kwargs
 
     @classmethod
     def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
         kwargs = norm_optim_inv(super().normalize_kwargs_inv(**kwargs))
+        kwargs.pop("do_shift_align", None)  # This is a derived parameter.
         return kwargs
 
     def run(
@@ -1625,9 +1627,8 @@ class FrameAlignTomoJob(_Relion5TomoJob):
         # Polish
         box_size: _a.polish.BOX_SIZE = 128,
         max_error: _a.polish.MAX_ERROR = 5,
-        do_shift_align: _a.polish.DO_SHIFT_ALIGN = True,
-        shift_align_type: _a.polish.SHIFT_ALIGN_TYPE = "Entire micrographs",
         do_motion: _a.polish.DO_MOTION = False,
+        shift_align_type: _a.polish.SHIFT_ALIGN_TYPE = "Entire micrographs",
         sigma_vel: _a.polish.SIGMA_VEL = 0.2,
         sigma_div: _a.polish.SIGMA_DIV = 5000,
         do_sq_exp_ker: _a.polish.DO_SQ_EXP_KER = False,
@@ -1641,14 +1642,9 @@ class FrameAlignTomoJob(_Relion5TomoJob):
 
     @classmethod
     def setup_widgets(cls, widgets):
-        @widgets["do_shift_align"].changed.connect
-        def _on_do_shift_align_changed(value: bool):
-            widgets["shift_align_type"].enabled = value
-
-        _on_do_shift_align_changed(widgets["do_shift_align"].value)
-
         @widgets["do_motion"].changed.connect
         def _on_do_motion_changed(value: bool):
+            widgets["shift_align_type"].enabled = not value
             widgets["sigma_vel"].enabled = value
             widgets["sigma_div"].enabled = value
             widgets["do_sq_exp_ker"].enabled = value

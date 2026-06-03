@@ -45,14 +45,19 @@ def bin_image(img: np.ndarray, nbin: int) -> np.ndarray:
 
 
 def lowpass_filter(img: np.ndarray, cutoff: float) -> np.ndarray:
-    """Apply a low-pass filter to a 2D image in Fourier space."""
+    """Apply a low-pass filter to a 2D or 3D image in Fourier space."""
     if cutoff <= 0 or cutoff >= 0.9:
         return img
-    fr = frequency_mesh(img.shape)
+    if img.ndim == 2:
+        fr = frequency_mesh(img.shape)
+    elif img.ndim == 3:
+        fr = frequency_mesh_3d(img.shape)
+    else:
+        raise ValueError(f"Expected 2D or 3D image, got {img.ndim}D")
     filter_mask = fr <= cutoff
-    img_ft = np.fft.fft2(img)
+    img_ft = np.fft.fftn(img)
     img_ft_filtered = img_ft * filter_mask
-    img_filtered = np.fft.ifft2(img_ft_filtered).real
+    img_filtered = np.fft.ifftn(img_ft_filtered).real
     return img_filtered
 
 
@@ -62,6 +67,19 @@ def frequency_mesh(shape: tuple[int, int]) -> np.ndarray:
     fy, fx = np.fft.fftfreq(shape[0]), np.fft.fftfreq(shape[1])
     fxx, fyy = np.meshgrid(fx, fy)
     fr = np.sqrt(fxx**2 + fyy**2)
+    return fr
+
+
+@lru_cache(maxsize=4)
+def frequency_mesh_3d(shape: tuple[int, int, int]) -> np.ndarray:
+    """Generate a 3D frequency mesh for a given image shape."""
+    fz, fy, fx = (
+        np.fft.fftfreq(shape[0]),
+        np.fft.fftfreq(shape[1]),
+        np.fft.fftfreq(shape[2]),
+    )
+    fxx, fyy, fzz = np.meshgrid(fx, fy, fz)
+    fr = np.sqrt(fxx**2 + fyy**2 + fzz**2)
     return fr
 
 
