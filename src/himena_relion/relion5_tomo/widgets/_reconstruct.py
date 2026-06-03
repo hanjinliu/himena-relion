@@ -73,9 +73,13 @@ class QReconstructViewer(QJobScrollArea):
         """Initialize the viewer with the job directory."""
         merged_mrc_path = job_dir.path / "merged.mrc"
         if not merged_mrc_path.exists():
-            self._open_intermediate_result(job_dir)
+            result_found = self._open_intermediate_result(job_dir)
         else:
             self._open_final_result(merged_mrc_path)
+            result_found = True
+
+        if not result_found:
+            return
 
         if not self._num_particles_label.num_known():
             n_particles = self._try_get_num_particles(job_dir)
@@ -93,11 +97,13 @@ class QReconstructViewer(QJobScrollArea):
         self._viewer.auto_threshold(update_now=False)
         self._viewer.auto_fit()
 
-    def _open_intermediate_result(self, job_dir: _job_dir.JobDirectory):
+    def _open_intermediate_result(self, job_dir: _job_dir.JobDirectory) -> bool:
+        """Return True if intermediate result found."""
         temp_dir = job_dir.path / "temp"
         if not temp_dir.exists():
             self._img_raw = None
-            return self._clear_image()
+            self._clear_image()
+            return False
         image_data: list[np.ndarray] = []
         ctf_data: list[np.ndarray] = []
         ith_tomo = "0"
@@ -109,7 +115,8 @@ class QReconstructViewer(QJobScrollArea):
             with mrcfile.open(ctfpath, mode="r") as mrc:
                 ctf_data.append(mrc.data)
         if len(image_data) == 0:
-            return self._clear_image()
+            self._clear_image()
+            return False
         # Every sum_X_data_halfX.mrc is a (2N, N, N/2) float32 image for a (N, N, N)
         # reconstruction. The first N planes are the real part and the next N planes are
         # the imaginary part of the Fourier transform.
@@ -157,6 +164,7 @@ class QReconstructViewer(QJobScrollArea):
         if was_empty:
             self._viewer.auto_threshold(update_now=False)
             self._viewer.auto_fit()
+        return True
 
     def _try_get_num_particles(self, job_dir: _job_dir.JobDirectory) -> int:
         try:

@@ -760,14 +760,21 @@ def _node_mapping_to_context(
     return _func
 
 
-def _run_relion_pipeliner_add_job_from_star(job_star_path: Path, cwd: Path) -> None:
+def _run_relion_pipeliner_add_job_from_star(
+    job_star_path: Path,
+    cwd: Path,
+    *,
+    alias: str | None = None,
+) -> None:
     args = [get_relion_pipeliner_exe(), "--addJobFromStar", str(job_star_path)]
-    proc = subprocess.run(args, cwd=cwd)
+    if alias is not None:
+        args += ["--setJobAlias", alias]
+    proc = subprocess.run(args, cwd=cwd, capture_output=True, text=True)
     if proc.returncode != 0:
         args_str = " ".join(args)
         raise RuntimeError(
-            f"{args_str} failed. Created job.star follows:"
-            f"\n\n{job_star_path.read_text()}"
+            f"{args_str} failed:\n{proc.stderr}"
+            f"\n\nCreated job.star follows:\n\n{job_star_path.read_text()}"
         )
 
 

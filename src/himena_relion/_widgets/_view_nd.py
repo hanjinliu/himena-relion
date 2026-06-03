@@ -481,7 +481,12 @@ class Q3DViewer(Q3DViewerBase):
     def has_image(self) -> bool:
         return self._has_image
 
-    def set_image(self, image: np.ndarray | None, update_now: bool = True):
+    def set_image(
+        self,
+        image: np.ndarray | None,
+        update_now: bool = True,
+        update_clim: bool = True,
+    ):
         """Set the 3D image to be displayed."""
         had_image = self.has_image
         if image is None:
@@ -508,7 +513,11 @@ class Q3DViewer(Q3DViewerBase):
         if self._has_image:
             self._hist_view.set_view_range(view_min, view_max)
 
-        self._hist_view.set_hist_for_array(image, (view_min, view_max))
+        if update_clim or not had_image:
+            clim = (view_min, view_max)
+        else:
+            clim = self._canvas.contrast_limits
+        self._hist_view.set_hist_for_array(image, clim=clim)
         self._hist_view.set_minmax((th_min, th_max))
 
         if image is not None:
