@@ -5,13 +5,23 @@ from himena_relion import _job_dir
 from himena_relion.io import _impl
 from ._utils import prep_relion_project
 
-def test_updating_job(himena_ui: MainWindow, tmpdir):
+def test_set_alias(himena_ui: MainWindow, tmpdir):
     rln_dir = prep_relion_project(tmpdir)
     job_dir = _job_dir.JobDirectory.from_job_star(rln_dir / "MotionCorr/job002/job.star")
     _impl.overwrite_relion_job(himena_ui, job_dir)
     _impl.clone_relion_job(himena_ui, job_dir)
     with user_string_input_response(himena_ui, "alias-0"):
         _impl.set_job_alias(himena_ui, job_dir)
+    assert rln_dir.joinpath("MotionCorr/alias-0").is_symlink()
+    assert "alias-0" in job_dir.path.joinpath("job_pipeline.star").read_text()
+
+    # update alias to another name
+    with user_string_input_response(himena_ui, "alias-1"):
+        _impl.set_job_alias(himena_ui, job_dir)
+    assert not rln_dir.joinpath("MotionCorr/alias-0").exists()
+    assert rln_dir.joinpath("MotionCorr/alias-1").is_symlink()
+    assert "alias-0" not in job_dir.path.joinpath("job_pipeline.star").read_text()
+    assert "alias-1" in job_dir.path.joinpath("job_pipeline.star").read_text()
 
     # cannot start with "job"
     with pytest.raises(ValueError):

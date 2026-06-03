@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
+import warnings
 import polars as pl
 import subprocess
 from typing import TYPE_CHECKING
@@ -161,10 +162,10 @@ def set_job_alias(ui: MainWindow, job_dir: JobDirectory):
     if (val := res.get_input()) is None:
         raise Cancelled
     alias = val.strip()
+
+    # Alias cannot be empty or start with "job", or contain forbidden characters
     if alias == "" or alias.startswith("job"):
         raise ValueError("Alias cannot be empty or start with 'job'.")
-
-    # Check if alias is a valid folder name
     invalid_chars = '*?()/"\\|#<>&%{}$'
     if any(char in alias for char in invalid_chars):
         raise ValueError(f"Alias contains invalid characters. Avoid: {invalid_chars}")
@@ -173,15 +174,30 @@ def set_job_alias(ui: MainWindow, job_dir: JobDirectory):
     if (job_dir.path.parent / alias).exists():
         raise FileExistsError(f"Alias '{alias}' already exists.")
 
+    # Update the default_pipeline.star with the new alias, and create a symlink.
     with open_with_lock(job_dir.relion_project_dir / "default_pipeline.star") as f:
+        # Update job_pipeline.star with the new alias.
+        if (job_pipe_path := job_dir.path.joinpath("job_pipeline.star")).exists():
+            job_pipe = RelionPipelineModel.validate_file(job_pipe_path)
+            job_pipe.processes = job_pipe.processes.dataframe.with_columns(
+                rlnPipeLineProcessAlias=pl.lit(alias)
+            )
+            job_pipe_path.write_text(job_pipe.to_string())
+        else:
+            warnings.warn(
+                f"{job_pipe_path} does not exist. This job directory might be broken.",
+                RuntimeWarning,
+                stacklevel=1,
+            )
+
         new_path = job_dir.path.parent / alias
         for other_job in job_dir.path.parent.iterdir():
             if other_job.is_symlink() and other_job.resolve() == job_dir.path:
-                # this is the old alias for this job
+                # This is the old alias for this job. Rename it to the new alias.
                 other_job.rename(new_path)
                 break
         else:
-            # no existing alias, create a new one
+            # No existing alias, create a new one
             new_path.symlink_to(job_dir.path, target_is_directory=True)
         update_default_pipeline(
             f,
@@ -242,6 +258,9 @@ def trash_job(ui: MainWindow, job_dir: JobDirectory):
         process_name_to_remove = pl.Series(
             [Path(name) in to_trash for name in pipeline.processes.process_name]
         )
+        aliases_to_remove = pipeline.processes.dataframe.filter(process_name_to_remove)[
+            "rlnPipeLineProcessAlias"
+        ]
 
         # pipeline.nodes.name is e.g. Extract/job010/particles.star
         process_nodes_to_remove = pl.Series(
@@ -295,6 +314,15 @@ def trash_job(ui: MainWindow, job_dir: JobDirectory):
             dest.parent.mkdir(parents=True, exist_ok=True)
             _move_dir(src, dest)
 
+        # unlink aliases
+        for alias in aliases_to_remove:
+            alias = str(alias)
+            if alias == "None":
+                continue
+            alias_path = rln_dir / alias
+            if alias_path.is_symlink():  # False if alias_path does not exist
+                alias_path.unlink()
+
         # remove nodes from directories like .Nodes/DensityMap/Reconstruct/job060
         node_to_type_map = _make_node_to_type_map(nodes_trashed)
         to_node_list = output_edges_trashed["rlnPipeLineEdgeToNode"]
@@ -312,6 +340,7 @@ def trash_job(ui: MainWindow, job_dir: JobDirectory):
 
 
 def restore_trashed_jobs(relion_project_dir: Path, job_ids: list[str]):
+    """Restore trashed jobs with given job ids."""
     trash_dir = _trash_dir(relion_project_dir)
     all_jobs_to_undo: list[Path] = []
     for job_id in job_ids:
@@ -338,23 +367,23 @@ def restore_trashed_jobs(relion_project_dir: Path, job_ids: list[str]):
                 _LOGGER.warning(f"Destination {path_dest} already exists. Skipping.")
                 continue
             job_pipeline = RelionPipelineModel.validate_file(job_pipeline_star)
-            df_proc = job_pipeline.processes.dataframe
-            # job_pipeline.star is still in "Running" state, so we have to update it.
-            status_label = df_proc["rlnPipeLineProcessStatusLabel"]
-            sl = status_label == "Running"
-            if path_to_undo.joinpath(FileNames.EXIT_SUCCESS).exists():
-                status_label[sl] = "Succeeded"
-            elif path_to_undo.joinpath(FileNames.EXIT_FAILURE).exists():
-                status_label[sl] = "Failed"
-            elif path_to_undo.joinpath(FileNames.EXIT_ABORTED).exists():
-                status_label[sl] = "Aborted"
-            df_proc = df_proc.with_columns(status_label)
+            df_proc = _get_pipeline_process_df(job_pipeline, path_to_undo)
             all_processes.append(df_proc)
             all_nodes.append(job_pipeline.nodes.dataframe)
             all_input_edges.append(job_pipeline.input_edges.dataframe)
             all_output_edges.append(job_pipeline.output_edges.dataframe)
             path_dest.parent.mkdir(parents=True, exist_ok=True)
             _move_dir(path_to_undo, path_dest)
+            alias = job_pipeline.processes.alias[0]
+            if alias != "None":
+                # create a symlink for the alias
+                alias_path = relion_project_dir / alias
+                if alias_path.exists():
+                    _LOGGER.warning(
+                        f"Alias path {alias_path} already exists. Skipping alias creation."
+                    )
+                else:
+                    alias_path.symlink_to(path_dest, target_is_directory=True)
 
         df_processes = _concat_and_reorder(all_processes, "rlnPipeLineProcessName")
         df_nodes = _concat_and_reorder(all_nodes, "rlnPipeLineNodeName")
@@ -362,6 +391,7 @@ def restore_trashed_jobs(relion_project_dir: Path, job_ids: list[str]):
         df_output_edges = _concat_and_reorder(
             all_output_edges, "rlnPipeLineEdgeProcess"
         )
+        # Update default_pipeline.star model object and write back to file
         pipeline.processes = df_processes
         pipeline.nodes = df_nodes
         pipeline.input_edges = df_input_edges
@@ -468,7 +498,22 @@ def _move_dir(src: Path, dest: Path):
         src.rename(dest)
 
 
+def _get_pipeline_process_df(job_pipeline: RelionPipelineModel, path_to_undo: Path):
+    df_proc = job_pipeline.processes.dataframe
+    # job_pipeline.star is still in "Running" state, so we have to update it.
+    status_label = df_proc["rlnPipeLineProcessStatusLabel"]
+    sl = status_label == "Running"
+    if path_to_undo.joinpath(FileNames.EXIT_SUCCESS).exists():
+        status_label[sl] = "Succeeded"
+    elif path_to_undo.joinpath(FileNames.EXIT_FAILURE).exists():
+        status_label[sl] = "Failed"
+    elif path_to_undo.joinpath(FileNames.EXIT_ABORTED).exists():
+        status_label[sl] = "Aborted"
+    return df_proc.with_columns(status_label)
+
+
 def _concat_and_reorder(dfs: list[pl.DataFrame], column_name: str):
+    """Concatenate dataframes and sort by the given column."""
     df_processes = pl.concat(dfs, how="vertical_relaxed")
     order = df_processes[column_name].map_elements(_try_get_job_name).arg_sort()
     return df_processes[order]
