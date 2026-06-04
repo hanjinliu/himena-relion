@@ -53,6 +53,7 @@ def _extract_job_pipeline(pipeline: RelionPipelineModel, job_name: str) -> Relio
     )
 
 def prep_relion_project(tmpdir):
+    """Write default_pipeline.star and job directories, and return the RELION directory."""
     rln_dir = Path(tmpdir)
 
     # prepare default_pipeline.star

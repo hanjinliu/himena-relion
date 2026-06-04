@@ -106,6 +106,10 @@ class RelionJob(ABC):
     def run(self, *args, **kwargs) -> Generator[None, None, None]:
         """Run this job."""
 
+    def status_tip(self) -> str:
+        """Simple information specific to this job."""
+        return self.job_title()
+
     @classmethod
     def _signature(cls) -> inspect.Signature:
         return inspect.signature(cls.run.__get__(object()))

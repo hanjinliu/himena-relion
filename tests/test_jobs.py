@@ -30,6 +30,7 @@ def test_spa_job_match(job_str: str, make_himena_ui: Callable[[], MainWindow]):
     assert isinstance(job_cls_ins.job_title(), str)
     assert isinstance(job_cls_ins.command_palette_title_prefix(), str)
     assert isinstance(job_cls_ins.himena_model_type(), str)
+    assert isinstance(job_cls_ins.status_tip(), str)
     assert not job_cls_ins.job_is_tomo()
 
     model = JobStarModel.validate_file(job_dir.job_star())
@@ -69,6 +70,7 @@ def test_tomo_job_match(job_str: str, make_himena_ui: Callable[[], MainWindow]):
     assert isinstance(job_cls_ins.job_title(), str)
     assert isinstance(job_cls_ins.command_palette_title_prefix(), str)
     assert isinstance(job_cls_ins.himena_model_type(), str)
+    assert isinstance(job_cls_ins.status_tip(), str)
     # assert job_cls_ins.job_is_tomo()
 
     model = JobStarModel.validate_file(job_dir.job_star())

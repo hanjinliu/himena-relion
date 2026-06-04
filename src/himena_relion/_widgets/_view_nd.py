@@ -449,8 +449,10 @@ class Q3DViewer(Q3DViewerBase):
         self._auto_thresh_btn = QtW.QPushButton("Auto")
         self._auto_thresh_btn.setFixedWidth(40)
         self._auto_thresh_btn.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
-        self._auto_thresh_btn.clicked.connect(lambda: self.auto_threshold())
-        self._auto_thresh_btn.setToolTip("Automatically set the iso-surface threshold")
+        self._auto_thresh_btn.clicked.connect(self._on_auto_clicked)
+        self._auto_thresh_btn.setToolTip(
+            "Automatically set the iso-surface threshold or contrast limits."
+        )
         self._has_image = False
         self._footer = _thresh = QtW.QWidget()
         _thresh.setSizePolicy(
@@ -558,6 +560,12 @@ class Q3DViewer(Q3DViewerBase):
         self._canvas.camera.update()
         if update_now:
             self._canvas.update_canvas()
+
+    def _on_auto_clicked(self):
+        if self._canvas._volume_visual.method == "iso":
+            self.auto_threshold()
+        else:
+            self._canvas.contrast_limits = self._canvas._lims
 
     def _on_iso_changed(self, value: float):
         self._canvas.set_iso_threshold(value)
@@ -771,16 +779,19 @@ class Q3DLocalResViewer(Q3DViewerBase):
         self._iso_slider.setFixedHeight(32)
         self._iso_slider.threshold_changed.connect(self._on_iso_changed)
         self._iso_slider.set_hist_scale("log")
-        self._auto_threshold_btn = QtW.QPushButton("Auto")
-        self._auto_threshold_btn.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
-        self._auto_threshold_btn.setFixedWidth(40)
-        self._auto_threshold_btn.clicked.connect(lambda: self.auto_threshold())
+        self._auto_thresh_btn = QtW.QPushButton("Auto")
+        self._auto_thresh_btn.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
+        self._auto_thresh_btn.setFixedWidth(40)
+        self._auto_thresh_btn.setToolTip(
+            "Automatically set the iso-surface threshold or contrast limits."
+        )
+        self._auto_thresh_btn.clicked.connect(self._on_auto_clicked)
         self._clim_slider = QHistogramView(mode="clim")
         self._clim_slider.setFixedHeight(32)
         self._clim_slider.clim_changed.connect(self._on_clim_changed)
 
         self._surface = IsoSurface(parent=self._canvas._viewbox.scene)
-        _thresh = labeled("Threshold", self._iso_slider, self._auto_threshold_btn)
+        _thresh = labeled("Threshold", self._iso_slider, self._auto_thresh_btn)
         _thresh.setMaximumWidth(400)
         _thresh.setMinimumWidth(300)
         clim_slider = labeled("Resolution (A)", self._clim_slider)
@@ -816,6 +827,12 @@ class Q3DLocalResViewer(Q3DViewerBase):
             # Set light direction parallel to camera view direction
             view_direction = self._canvas.camera.view_direction()
             self._surface.shading_filter.light_dir = -view_direction
+
+    def _on_auto_clicked(self):
+        if self._canvas._volume_visual.method == "iso":
+            self.auto_threshold()
+        else:
+            self._canvas.contrast_limits = self._canvas._lims
 
     def auto_threshold(self, thresh: float | None = None, update_now: bool = True):
         """Automatically set the threshold based on the image data."""

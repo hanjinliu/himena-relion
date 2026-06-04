@@ -154,7 +154,7 @@ class QReconstructViewer(QJobScrollArea):
 
         if tomo_star:
             tomo_model = TomogramsGroupModel.validate_file(tomo_star)
-            self._img_raw_scale = tomo_model.original_pixel_size.mean() * binning
+            self._img_raw_scale: float = tomo_model.original_pixel_size.mean() * binning
         else:
             self._img_raw_scale = 0.3 * binning  # fallback
 
