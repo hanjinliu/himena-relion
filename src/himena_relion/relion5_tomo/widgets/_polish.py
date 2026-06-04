@@ -114,7 +114,7 @@ class QFrameAlignTomoViewer(QJobScrollArea):
             df_tomo = read_star(tomo_star).first().to_polars()
             yield from df_tomo["rlnTomoName"]
         elif temp_dir.exists():
-            suffix = "_particles"
+            suffix = "_positions"
             for fp in temp_dir.glob(f"*{suffix}.star"):
                 yield fp.stem[: -len(suffix)]
 

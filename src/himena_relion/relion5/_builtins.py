@@ -1862,7 +1862,7 @@ class Refine3DJob(_Relion5SpaJob):
             path = paths[-1]
             crit = "0.5"
         res = read_star(path).first().trust_single()["rlnCurrentResolution"]
-        return f"FSC {crit}: {res} Å"
+        return f"FSC {crit} = {res} Å"
 
 
 class MultiBodyJob(_Relion5SpaJob):
@@ -2000,14 +2000,35 @@ class _SelectJob(_Relion5Job):
         return kwargs
 
 
-class SelectClassesInteractiveJob(_SelectJob):
-    @classmethod
-    def type_label(cls):
-        return "relion.select.interactive"
-
+class _SelectClassesJob(_SelectJob):
     @classmethod
     def menu_id(cls):
         return MenuId.RELION_FILTER_PARTICLES_JOB
+
+    def status_tip(self) -> str:
+        path = self.output_job_dir.path / "backup_selection.star"
+        try:
+            df = read_star(path).first().trust_loop().to_polars()
+            num_classes = len(df.height)
+            cls_indices = [str(i + 1) for i, a in enumerate(df["rlnSelected"]) if a > 0]
+        except Exception:
+            return super().status_tip()
+        else:
+            if len(cls_indices) < 10:
+                return (
+                    f"Selected: {', '.join(cls_indices)} (from {num_classes} classes)"
+                )
+            else:
+                return f"Selected: {len(cls_indices)}/{num_classes} classes"
+
+    def input_edges(self, **kwargs) -> list[str]:
+        return [kwargs["fn_model"]]
+
+
+class SelectClassesInteractiveJob(_SelectClassesJob):
+    @classmethod
+    def type_label(cls):
+        return "relion.select.interactive"
 
     def run(self, fn_model: _a.io.IN_OPTIMISER = ""):
         raise NotImplementedError("This is a builtin job placeholder.")
@@ -2034,18 +2055,11 @@ class SelectClassesInteractiveJob(_SelectJob):
                 return in_tomo
         return None
 
-    def input_edges(self, **kwargs) -> list[str]:
-        return [kwargs["fn_model"]]
 
-
-class SelectClassesAutoJob(_SelectJob):
+class SelectClassesAutoJob(_SelectClassesJob):
     @classmethod
     def type_label(cls):
         return "relion.select.class2dauto"
-
-    @classmethod
-    def menu_id(cls):
-        return MenuId.RELION_FILTER_PARTICLES_JOB
 
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
@@ -2065,9 +2079,6 @@ class SelectClassesAutoJob(_SelectJob):
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
-    def input_edges(self, **kwargs) -> list[str]:
-        return [kwargs["fn_model"]]
-
 
 class _SelectValuesJob(_SelectJob):
     @classmethod
@@ -2079,6 +2090,15 @@ class _SelectValuesJob(_SelectJob):
         kwargs = super().normalize_kwargs(**kwargs)
         kwargs["do_select_values"] = True
         return super().normalize_kwargs(**kwargs)
+
+    def status_tip(self) -> str:
+        try:
+            d = self.output_job_dir.get_job_params_as_dict()
+            min0 = f"{d['select_minval']:.3g}"
+            max0 = f"{d['select_maxval']:.3g}"
+            return f"Filtered by {min0} ≤ {d['select_label']} ≤ {max0}"
+        except Exception:
+            return super().status_tip()
 
 
 class SelectParticlesJob(_SelectValuesJob):

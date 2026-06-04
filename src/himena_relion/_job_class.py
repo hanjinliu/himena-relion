@@ -108,7 +108,7 @@ class RelionJob(ABC):
 
     def status_tip(self) -> str:
         """Simple information specific to this job."""
-        return self.job_title()
+        return ""
 
     @classmethod
     def _signature(cls) -> inspect.Signature:
