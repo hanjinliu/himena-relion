@@ -116,9 +116,10 @@ def collect_for_iters(
             model_dict = read_star(path).first().trust_single().to_dict()
             model_dict["rlnCurrentIteration"] = int(path.stem.split("_")[1][2:])
             rows_res.append(model_dict)
-        df_res = pl.DataFrame(rows_res).select(
-            pl.col("rlnCurrentIteration"),
-            pl.col("rlnCurrentResolution").cast(pl.Float32, strict=False),
-        )
-        df = df.join(df_res, on="rlnCurrentIteration", how="left")
+        if len(rows_res) > 0:
+            df_res = pl.DataFrame(rows_res).select(
+                pl.col("rlnCurrentIteration"),
+                pl.col("rlnCurrentResolution").cast(pl.Float32, strict=False),
+            )
+            df = df.join(df_res, on="rlnCurrentIteration", how="left")
     return df

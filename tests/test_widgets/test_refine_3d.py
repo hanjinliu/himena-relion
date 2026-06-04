@@ -2,25 +2,17 @@ from typing import Callable
 import pytest
 from qtpy.QtWidgets import QApplication
 from pathlib import Path
+from himena import MainWindow, WidgetDataModel
 from himena_relion._job_dir import JobDirectory
 from himena_relion.relion5.widgets._refine import QRefine3DViewer
 from himena_relion.schemas import ParticleMetaModel
 from himena_relion.testing import JobWidgetTester
 
-_BILD_TEXT = """
-.color 0.166667 0 0.833333
-.cylinder 192.261 192.261 132.16 215.955 215.955 137.824 7.41416
-.color 0.166667 0 0.833333
-.cylinder 172.616 202.082 151.04 190.416 228.723 162.368 7.41416
-.color 0.166667 0 0.833333
-.cylinder 202.082 172.616 151.04 228.723 190.416 162.368 7.41416
-"""
-
 def test_refine3d_widget(
     qtbot,
     make_job_directory: Callable[[str, str], JobDirectory],
     jobs_dir_spa,
-    himena_ui,
+    himena_ui: MainWindow,
 ):
     star_text = Path(jobs_dir_spa / "Refine3D" / "job001" / "job.star").read_text()
     job_dir = make_job_directory(star_text, "Refine3D")
@@ -70,8 +62,16 @@ def test_refine3d_widget(
     QApplication.processEvents()
     with pytest.raises(FileNotFoundError):
         tester.widget._continue_from_here_clicked()
-    tester.write_text("run_it001_optimiser.star", "")
+    tester.write_text("run_it001_optimiser.star", _OPTIMISER_TEXT)
     tester.widget._continue_from_here_clicked()
+
+    himena_ui.exec_action(
+        "himena-relion:show-summary-panel",
+        model_context=WidgetDataModel(
+            value=job_dir,
+            type="relion_job.relion.refine3d",
+        )
+    )
 
 def test_refine3d_widget_final_data(
     qtbot,
@@ -97,3 +97,27 @@ def test_refine3d_widget_final_data(
     QApplication.processEvents()
 
     assert tester.widget._viewer.has_image
+
+
+_BILD_TEXT = """
+.color 0.166667 0 0.833333
+.cylinder 192.261 192.261 132.16 215.955 215.955 137.824 7.41416
+.color 0.166667 0 0.833333
+.cylinder 172.616 202.082 151.04 190.416 228.723 162.368 7.41416
+.color 0.166667 0 0.833333
+.cylinder 202.082 172.616 151.04 228.723 190.416 162.368 7.41416
+"""
+
+_OPTIMISER_TEXT = """
+data_optimiser_general
+
+_rlnCurrentIteration 1
+_rlnBestResolutionThusFar 0.1
+_rlnOverallAccuracyRotations 0.9
+_rlnOverallAccuracyTranslationsAngst 1.6
+_rlnChangesOptimalOrientations 1.4
+_rlnChangesOptimalOffsets 2.5
+_rlnChangesOptimalClasses 0.0
+_rlnSmallestChangesOrientations 1.4
+_rlnSmallestChangesOffsets 2.5
+"""
