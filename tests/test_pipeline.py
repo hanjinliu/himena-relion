@@ -12,7 +12,7 @@ from himena_relion.pipeline.widgets import QRelionPipelineFlowChart, _list_jobs_
 from himena_relion.pipeline_watcher import run_watcher, _WATCHER_FILE_NAME
 from himena_relion._utils import update_default_pipeline
 from himena_relion.io import _impl
-from ._utils import DEFAULT_PIPELINES_DIR, JOBS_DIR_TOMO
+from ._utils import DEFAULT_PIPELINES_DIR, JOBS_DIR_TOMO, prep_relion_project
 
 def test_reading_default_pipeline(himena_ui: MainWindow, tmpdir):
     path = Path(tmpdir) / "default_pipeline.star"
@@ -34,6 +34,21 @@ def test_empty_default_pipeline(himena_ui: MainWindow, tmpdir):
     himena_ui.read_file(path)
     flowchart = get_pipeline_widget(himena_ui)
     assert flowchart._stacked_widget.currentWidget() == flowchart._start_screen
+
+def test_item_click(himena_ui: MainWindow, tmpdir):
+    path = prep_relion_project(tmpdir) / "default_pipeline.star"
+    himena_ui.read_file(path)
+    flowchart = get_pipeline_widget(himena_ui)
+
+    item = flowchart._flow_chart._node_map[Path("MotionCorr/job002")].item()
+    flowchart._open_as_raw_text()
+    flowchart._open_project_note()
+    flowchart._copy_project_path()
+    (Path(tmpdir) / item.id() / "note.txt").write_text("This is a note.")
+    flowchart._on_item_left_pressed(item)
+    flowchart._on_item_double_clicked(item)
+    flowchart._to_prev()
+    flowchart._to_next()
 
 def get_pipeline_widget(himena_ui: MainWindow) -> QRelionPipelineFlowChart:
     for dock in himena_ui.dock_widgets:

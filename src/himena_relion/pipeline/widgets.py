@@ -467,7 +467,7 @@ class QRelionPipelineFlowChart(QtW.QWidget):
     def _center_on_item(self, path: Path):
         if self._stacked_widget.currentWidget() is self._flow_chart:
             if node := self._flow_chart._node_map.get(path):
-                self._flow_chart.center_on_item(node.item(), animate=True)
+                self._flow_chart.center_on_item(node.item())
         elif self._stacked_widget.currentWidget() is self._table_view:
             self._table_view.center_on_item(path)
 
