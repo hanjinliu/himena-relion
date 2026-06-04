@@ -2009,17 +2009,15 @@ class _SelectClassesJob(_SelectJob):
         path = self.output_job_dir.path / "backup_selection.star"
         try:
             df = read_star(path).first().trust_loop().to_polars()
-            num_classes = len(df.height)
+            ncls = df.height
             cls_indices = [str(i + 1) for i, a in enumerate(df["rlnSelected"]) if a > 0]
         except Exception:
             return super().status_tip()
         else:
             if len(cls_indices) < 10:
-                return (
-                    f"Selected: {', '.join(cls_indices)} (from {num_classes} classes)"
-                )
+                return f"Selected: {', '.join(cls_indices)} (from {ncls} classes)"
             else:
-                return f"Selected: {len(cls_indices)}/{num_classes} classes"
+                return f"Selected: {len(cls_indices)}/{ncls} classes"
 
     def input_edges(self, **kwargs) -> list[str]:
         return [kwargs["fn_model"]]

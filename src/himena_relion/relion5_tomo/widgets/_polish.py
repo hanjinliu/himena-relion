@@ -81,7 +81,9 @@ class QFrameAlignTomoViewer(QJobScrollArea):
         motion = self._get_motions_for_tomo(text, scale, zoom=zoom)
         if len(motion) != len(points):
             _LOGGER.warning(
-                "Number of motion tracks does not match number of particles"
+                "Number of motion tracks does not match number of particles: %s vs %s.",
+                len(motion),
+                len(points),
             )
             return
         motion_shifted = [(motion[i] + points[i])[:, ::-1] for i in range(len(motion))]
@@ -115,7 +117,7 @@ class QFrameAlignTomoViewer(QJobScrollArea):
             yield from df_tomo["rlnTomoName"]
         elif temp_dir.exists():
             suffix = "_positions"
-            for fp in temp_dir.glob(f"*{suffix}.star"):
+            for fp in sorted(temp_dir.glob(f"*{suffix}.star")):
                 yield fp.stem[: -len(suffix)]
 
     def _get_motions_for_tomo(
