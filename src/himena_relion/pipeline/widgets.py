@@ -227,14 +227,23 @@ class QRelionPipelineFlowChart(QtW.QWidget):
 
     def _close_all_tabs(self):
         """Close all tabs in the main window that contain jobs from this pipeline."""
+        indices = self._tab_indices_from_this_pipeline()
+        for i in reversed(indices):
+            del self._ui().tabs[i]
+
+    def _tab_indices_from_this_pipeline(self) -> list[int]:
         indices: list[int] = []
         for i_tab, tab in self._ui().tabs.enumerate():
             if not tab.is_single_window:
                 continue
             if is_subtype(tab[0].model_type(), Type.RELION_JOB):
-                indices.append(i_tab)
-        for i in reversed(indices):
-            del self._ui().tabs[i]
+                val = tab[0].to_model().value
+                if (
+                    isinstance(val, JobDirectory)
+                    and val.relion_project_dir == self._relion_project_dir
+                ):
+                    indices.append(i_tab)
+        return indices
 
     @validate_protocol
     def update_model(self, model: WidgetDataModel) -> None:
