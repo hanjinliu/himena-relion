@@ -33,7 +33,7 @@ class ManualMaskCreation(RelionExternalJob):
 
     @classmethod
     def job_title(cls):
-        return "Manual Mask Creation"
+        return "Draw Mask"
 
     @classmethod
     def menu_id(cls):

@@ -1,4 +1,10 @@
-from himena_relion.relion5 import widgets, _builtins, _connections, _continues
+from himena_relion.relion5 import (
+    widgets,
+    _builtins,
+    _connections,
+    _continues,
+    _commands,
+)
 from himena_relion.relion5.extensions import (
     SymmetryExpansionJob,
     HelicalSymmetryExpansionJob,
@@ -7,7 +13,7 @@ from himena_relion.relion5.extensions import (
     ManualMaskCreation,
 )
 
-del widgets, _builtins, _connections, _continues
+del widgets, _builtins, _connections, _continues, _commands
 
 __all__ = [
     "SymmetryExpansionJob",

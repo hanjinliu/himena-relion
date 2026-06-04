@@ -65,9 +65,6 @@ class QPlotCanvas(QModelMatplotlibCanvas):
         return self._plot_single(df, "rlnCtfMaxResolution", "Res. (Å)")
 
     def _plot_single(self, df: pl.DataFrame, ycol: str, ylabel: str):
-        theme = self._main_theme()
-        fig = hplt.figure(theme.background)
-
         if "rlnTomoNominalStageTiltAngle" in df.columns:
             # this is a tilt series
             xvals = df["rlnTomoNominalStageTiltAngle"]
@@ -76,12 +73,22 @@ class QPlotCanvas(QModelMatplotlibCanvas):
             # just micrographs
             xvals = np.arange(len(df))
             xlabel = "Micrograph"
-        if ycol in df.columns:
-            yvals = df[ycol]
+        yvals = df.get_column(ycol, default=None)
+        self._plot_single_impl(xvals, yvals, xlabel, ylabel)
+
+    def _plot_single_impl(
+        self, xvals, yvals, xlabel: str, ylabel: str, title: str = ""
+    ):
+        theme = self._main_theme()
+        fig = hplt.figure(theme.background)
+
+        if yvals is not None:
             color_u = "#1f17f483" if theme.is_light_background() else "#00ced183"
             fig.scatter(xvals, yvals, size=self._size, width=0.5, color=color_u)
         fig.x.label = xlabel
         fig.y.label = ylabel
+        if title:
+            fig.title = title
         self.update_model(WidgetDataModel(value=fig, type=StandardType.PLOT))
         self.tight_layout()
 

@@ -393,10 +393,28 @@ connect_jobs(
         _recon_diameter_a: "particle_diameter",
     },
 )
+
+
+def _mask_for_postprocess(path: Path) -> str | None:
+    job_dir = JobDirectory(path)
+    for p in job_dir.parent_jobs():
+        type_label = p.job_type_label()
+        if type_label.startswith(("relion.framealigntomo", "relion.ctfrefinetomo")):
+            if mask_path := p.get_job_param("in_refmask", "").strip():
+                return mask_path
+        elif type_label.startswith("relion.refine3d"):
+            if mask_path := p.get_job_param("fn_mask", "").strip():
+                return mask_path
+    return None
+
+
 connect_jobs(
     _tomo.ReconstructParticlesJob,
     _tomo.PostProcessTomoJob,
-    node_mapping={"half1.mrc": "fn_in"},
+    node_mapping={
+        "half1.mrc": "fn_in",
+        _mask_for_postprocess: "fn_mask",
+    },
 )
 connect_jobs(
     _tomo.Refine3DTomoJob,
