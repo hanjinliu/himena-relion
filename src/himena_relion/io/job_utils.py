@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import shutil
 from typing import TYPE_CHECKING
 from himena import MainWindow, WidgetDataModel
 from himena.exceptions import Cancelled
@@ -215,6 +216,31 @@ def open_trash_directory(ui: MainWindow):
         ui.read_file(relion_project_dir / "Trash", append_history=False)
     else:
         ui.show_notification("No RELION project is currently open.")
+
+
+@register_function(
+    menus=[],
+    types=["relion_job.relion.pseudosubtomo"],
+    title="Delete All Extracted Subtomograms",
+    command_id="himena-relion:delete-all-subtomos",
+    run_async=True,
+)
+def delete_all_subtomos(ui: MainWindow, model: WidgetDataModel):
+    """Clean up all the extracted subtomograms."""
+    job_dir = assert_job(model)
+    dirs = list(job_dir.path.joinpath("Subtomograms").iterdir())
+    if len(dirs) == 0:
+        ui.show_notification("No subtomogram to delete.")
+        return
+
+    if ui.exec_choose_one_dialog(
+        title="Delete all?",
+        message="Are you sure you want to delete all the extracted subtomograms? "
+        "This action cannot be undone.",
+        choices=[("Yes, delete all", True), ("No, cancel", False)],
+    ):
+        for each_dir in dirs:
+            shutil.rmtree(each_dir)
 
 
 def assert_job(model: WidgetDataModel) -> JobDirectory:

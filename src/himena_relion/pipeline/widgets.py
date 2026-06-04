@@ -169,6 +169,7 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         return QtCore.QSize(350, 600)
 
     def _on_item_left_pressed(self, item: RelionJobNodeItem):
+        status_tips: list[str] = []
         if job_dir := item.job_dir(self._relion_project_dir):
             self._inout.initialize(job_dir)
             self._inout.update_item_colors(job_dir)
@@ -179,11 +180,20 @@ class QRelionPipelineFlowChart(QtW.QWidget):
             except Exception:
                 pass
             else:
-                if jobinfo := gui_state.jobs.get(job_dir.job_normal_id()):
+                if (
+                    jobinfo := gui_state.jobs.get(job_dir.job_normal_id())
+                ) and jobinfo.tags:
                     status_tip = " ".join(
                         f"#{gui_state.tag_choices[i].name}" for i in jobinfo.tags
                     )
-                    self._ui().set_status_tip(status_tip, duration=3)
+                    status_tips.append(status_tip)
+            if (note_path := job_dir.path / "note.txt").exists():
+                with open(note_path) as f:
+                    first_line = f.readline().strip()
+                if first_line:
+                    status_tips.append(first_line)
+
+        self._ui().set_status_tip(" | ".join(status_tips), duration=5)
 
     def _on_background_left_clicked(self):
         self._inout.clear_in_out()

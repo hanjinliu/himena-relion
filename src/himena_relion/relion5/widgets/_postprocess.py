@@ -2,6 +2,7 @@ from __future__ import annotations
 from pathlib import Path
 import logging
 import mrcfile
+from qtpy import QtWidgets as QtW
 from superqt import QToggleSwitch
 from starfile_rs import read_star
 from himena_relion._utils import wait_for_file
@@ -27,10 +28,15 @@ class QPostProcessViewer(QJobScrollArea):
         self._use_mask = QToggleSwitch("Show masked map")
         self._use_mask.setChecked(True)
         self._canvas = QPlotCanvas(self)
+        self._canvas.setMaximumSize(480, 280)
+        self._canvas.setMinimumSize(380, 200)
         self._layout.setSpacing(0)
+        self._layout.addWidget(QtW.QLabel("<b>&#9679; Sharpened Map</b>"))
         self._layout.addWidget(self._viewer)
         self._layout.addWidget(self._resizer)
         self._layout.addWidget(self._use_mask)
+        self._layout.addSpacing(5)
+        self._layout.addWidget(QtW.QLabel("<b>&#9679; Fourier Shell Correlation</b>"))
         self._layout.addWidget(self._canvas)
         self._layout.addWidget(spacer_widget())
         self._job_dir = job_dir
@@ -38,7 +44,7 @@ class QPostProcessViewer(QJobScrollArea):
 
     def on_job_updated(self, job_dir: _job_dir.JobDirectory, path: str):
         """Handle changes to the job directory."""
-        if Path(path).suffix not in [".out", ".err"]:
+        if Path(path).name in ["postprocess_masked.mrc", "postprocess.mrc"]:
             self.initialize(job_dir)
             _LOGGER.debug("%s Updated", self._job_dir.job_number)
 
