@@ -1,7 +1,7 @@
 from pathlib import Path
 import shutil
 from typing import Any
-
+from starfile_rs import read_star
 from magicgui.widgets.bases import ValueWidget
 from himena_relion._job_class import _Relion5BuiltinJob, parse_string, InvalidInputError
 from himena_relion._job_dir import JobDirectory
@@ -1852,6 +1852,18 @@ class Refine3DJob(_Relion5SpaJob):
     def input_edges(self, **kwargs) -> list[str]:
         return extract_input_edges(kwargs, ["fn_img", "fn_ref", "fn_mask"])
 
+    def status_tip(self) -> str:
+        if (path := self.output_job_dir.path.joinpath("run_model.star")).exists():
+            crit = "0.143"
+        else:
+            paths = sorted(self.output_job_dir.path.glob("run_it*_half1_model.star"))
+            if len(paths) == 0:
+                return super().status_tip()
+            path = paths[-1]
+            crit = "0.5"
+        res = read_star(path).first().trust_single()["rlnCurrentResolution"]
+        return f"FSC {crit}: {res} Å"
+
 
 class MultiBodyJob(_Relion5SpaJob):
     """3D multibody refinement."""
@@ -2373,6 +2385,14 @@ class PostProcessJob(_Relion5SpaJob):
 
     def input_edges(self, **kwargs) -> list[str]:
         return extract_input_edges(kwargs, ["fn_in", "fn_mask"])
+
+    def status_tip(self) -> str:
+        try:
+            post_path = self.output_job_dir.path / "postprocess.star"
+            res = read_star(post_path).first().trust_single()["rlnFinalResolution"]
+            return f"FSC 0.143 = {res} Å"
+        except Exception:
+            return super().status_tip()
 
 
 class _CtfRefineJobBase(_Relion5SpaJob):

@@ -169,31 +169,14 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         return QtCore.QSize(350, 600)
 
     def _on_item_left_pressed(self, item: RelionJobNodeItem):
-        status_tips: list[str] = []
         if job_dir := item.job_dir(self._relion_project_dir):
             self._inout.initialize(job_dir)
             self._inout.update_item_colors(job_dir)
             self._content_info.count_directory_content(job_dir.path)
-            try:
-                project_dir = self._relion_project_dir
-                gui_state = HimenaRelionGuiState.from_project_directory(project_dir)
-            except Exception:
-                pass
-            else:
-                if (
-                    jobinfo := gui_state.jobs.get(job_dir.job_normal_id())
-                ) and jobinfo.tags:
-                    status_tip = " ".join(
-                        f"#{gui_state.tag_choices[i].name}" for i in jobinfo.tags
-                    )
-                    status_tips.append(status_tip)
-            if (note_path := job_dir.path / "note.txt").exists():
-                with open(note_path) as f:
-                    first_line = f.readline().strip()
-                if first_line:
-                    status_tips.append(first_line)
-
-        self._ui().set_status_tip(" | ".join(status_tips), duration=5)
+            status_tip = self._make_status_tip(job_dir)
+        else:
+            status_tip = ""  # should not happen
+        self._ui().set_status_tip(status_tip, duration=5)
 
     def _on_background_left_clicked(self):
         self._inout.clear_in_out()
@@ -470,6 +453,38 @@ class QRelionPipelineFlowChart(QtW.QWidget):
                 self._flow_chart.center_on_item(node.item())
         elif self._stacked_widget.currentWidget() is self._table_view:
             self._table_view.center_on_item(path)
+
+    def _make_status_tip(self, job_dir: JobDirectory) -> str:
+        status_tips: list[str] = []
+
+        # First line of note.txt
+        if (note_path := job_dir.path / "note.txt").exists():
+            with open(note_path) as f:
+                first_line = f.readline().strip()
+            if first_line:
+                status_tips.append(first_line)
+
+        # Job specific status tip
+        if job_cls := job_dir._to_job_class():
+            job_ins = job_cls(job_dir)
+            status_tips.append(job_ins.status_tip())
+
+        # Tags
+        try:
+            project_dir = self._relion_project_dir
+            gui_state = HimenaRelionGuiState.from_project_directory(project_dir)
+        except Exception:
+            pass
+        else:
+            if (
+                jobinfo := gui_state.jobs.get(job_dir.job_normal_id())
+            ) and jobinfo.tags:
+                status_tip = " ".join(
+                    f"#{gui_state.tag_choices[i].name}" for i in jobinfo.tags
+                )
+                status_tips.append(status_tip)
+
+        return " | ".join(status_tips)
 
     def _switch_mode(self):
         """Switch between flowchart view and table view."""
