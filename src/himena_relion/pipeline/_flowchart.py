@@ -102,11 +102,12 @@ class QRelionPipelineFlowChartView(QFlowChartView):
         tag_id_to_index = {tag.id: idx for idx, tag in enumerate(existing_tags)}
         try:
             for job_id in self._node_map.keys():
-                tags = []
+                tags: list[int] = []
                 for tag in self.item_tags(job_id):
                     if (index := tag_id_to_index.get(tag.id)) is not None:
                         tags.append(index)
-                jobs[normalize_job_id(job_id)] = JobState(tags=tags)
+                if tags:
+                    jobs[normalize_job_id(job_id)] = JobState(tags=tags)
 
             gui_state = HimenaRelionGuiState(
                 jobs=jobs,
@@ -177,11 +178,3 @@ class QRelionPipelineFlowChartView(QFlowChartView):
     def _update_selection_rect(self):
         if self._last_selection_highlight_rect:
             self.update(self._last_selection_highlight_rect.adjusted(-5, -5, 5, 5))
-
-
-def _track_children(root: RelionJobInfo) -> set[Path]:
-    all_paths = {root.path}
-    for child in root.children:
-        all_paths.add(child.node.path)
-        all_paths.update(_track_children(child.node))
-    return all_paths

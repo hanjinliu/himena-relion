@@ -4,9 +4,16 @@ from typing import TYPE_CHECKING
 
 from pathlib import Path
 import psutil
+from himena_relion._job_dir import JobDirectory
 from himena_relion._job_class import scheduler_widget
 from himena_relion._utils import get_pipeline_widgets
-from himena_relion.pipeline_watcher import _WATCHER_FILE_NAME, read_pid_from_lock
+from himena_relion.pipeline_watcher import (
+    _WATCHER_FILE_NAME,
+    read_pid_from_lock,
+    get_user,
+)
+from himena_relion.pipeline import QRelionPipelineFlowChart
+from himena_relion.pipeline._gui_state import HimenaRelionGuiState
 
 if TYPE_CHECKING:
     from himena.widgets import MainWindow
@@ -44,3 +51,50 @@ def on_himena_startup(ui: "MainWindow"):
                         f"Pipeline watcher lock file {_WATCHER_FILE_NAME} found, but "
                         "the process seems not running. This lock is removed."
                     )
+
+        # try to recover the last opened jobs
+        if gui_state := HimenaRelionGuiState.try_from_project_directory(cwd):
+            can_open: list[Path] = []
+            for job_id in gui_state.jobs_opened.get(get_user(), []):
+                job_dir_path = cwd / job_id
+                if job_dir_path.exists():
+                    can_open.append(job_dir_path)
+            n = len(can_open)
+
+            if n > 0:
+                s = "" if n == 1 else "s"
+                ui.show_notification(
+                    f"You have {n} opened job{s} in the last session. Do you want to "
+                    "recover them?",
+                    title="Recover Jobs",
+                    callbacks={
+                        "Yes, open": lambda: _open_jobs(ui, can_open),
+                        "No": lambda: None,
+                    },
+                )
+
+
+def _open_jobs(ui: "MainWindow", can_open: list[Path]):
+    ui.read_files(
+        can_open,
+        plugin="himena_relion.io.read_relion_job",
+        append_history=False,
+    )
+
+
+def on_himena_teardown(ui: "MainWindow"):
+    """This function is called on himena teardown."""
+
+    for dock in ui.dock_widgets:
+        ids_opened: list[str] = []
+        if not isinstance(dock.widget, QRelionPipelineFlowChart):
+            continue
+        relion_project_dir = dock.widget._relion_project_dir
+        gui_state = HimenaRelionGuiState.from_project_directory(relion_project_dir)
+        for i in dock.widget._tab_indices_from_this_pipeline():
+            win = ui.tabs[i][0]
+            if isinstance(job_dir := win.value, JobDirectory):
+                ids_opened.append(job_dir.job_normal_id())
+        if ids_opened:
+            gui_state.jobs_opened[get_user()] = ids_opened
+        gui_state.dump_to_project_directory(relion_project_dir)

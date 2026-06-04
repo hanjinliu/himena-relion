@@ -47,6 +47,13 @@ class HimenaRelionGuiState(BaseModel):
         default_factory=_default_tag_choices,
         description="The list of available tags that can be assigned to jobs.",
     )
+    jobs_opened: dict[str, list[str]] = Field(
+        default_factory=dict,
+        description=(
+            "A mapping from user to the list of job IDs that were opened in the GUI "
+            "just before closing the GUI."
+        ),
+    )
     version: str = Field(
         default=__version__,
         description="The version of the Himena Relion GUI.",

@@ -102,8 +102,8 @@ def collect_for_iters(
     ]
     columns = [
         pl.col("rlnCurrentIteration"),
-        pl.col("rlnOverallAccuracyRotations"),
-        pl.col("rlnOverallAccuracyTranslationsAngst"),
+        _replace_with_null("rlnOverallAccuracyRotations", 998),
+        _replace_with_null("rlnOverallAccuracyTranslationsAngst", 998),
         pl.col("rlnChangesOptimalOrientations"),
         pl.col("rlnChangesOptimalOffsets"),
     ]
@@ -123,3 +123,11 @@ def collect_for_iters(
             )
             df = df.join(df_res, on="rlnCurrentIteration", how="left")
     return df
+
+
+def _replace_with_null(colname: str, thresh: float):
+    return (
+        pl.when(pl.col(colname).lt(thresh))
+        .then(pl.col(colname))
+        .otherwise(pl.lit(float("nan")))
+    )

@@ -491,6 +491,7 @@ class Q3DViewer(Q3DViewerBase):
     ):
         """Set the 3D image to be displayed."""
         had_image = self.has_image
+        clim_old = self._canvas.contrast_limits if had_image else None
         if image is None:
             self._canvas.image = image = np.zeros((2, 2, 2))
             self._canvas.image_visual.visible = False
@@ -515,12 +516,11 @@ class Q3DViewer(Q3DViewerBase):
         if self._has_image:
             self._hist_view.set_view_range(view_min, view_max)
 
-        if update_clim or not had_image:
+        if update_clim or clim_old is None:
             clim = (view_min, view_max)
         else:
-            clim = self._canvas.contrast_limits
-        self._hist_view.set_hist_for_array(image, clim=clim)
-        self._hist_view.set_minmax((th_min, th_max))
+            clim = clim_old
+        self._hist_view.set_hist_for_array(image, clim=clim, minmax=(th_min, th_max))
 
         if image is not None:
             # FIXME: clim for isosurface rendering is not updated correctly. This
@@ -530,6 +530,10 @@ class Q3DViewer(Q3DViewerBase):
         self._canvas.set_iso_threshold(self._hist_view.threshold())
         if self._control_widget is not None:
             self._control_widget.set_info(image)
+        if not update_clim:
+            # need to force update
+            self._hist_view.set_clim(clim)
+            self._canvas.contrast_limits = clim
         if update_now:
             self._canvas.update_canvas()
 

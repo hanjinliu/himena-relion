@@ -123,7 +123,7 @@ class RelionPipelineWatcher:
                 )
         lock_info = {
             "pid": os.getpid(),
-            "user": _get_user(),
+            "user": get_user(),
         }
         path.write_text(json.dumps(lock_info, indent=2))
         try:
@@ -135,7 +135,8 @@ class RelionPipelineWatcher:
         self._lock_file_path().unlink(missing_ok=True)
 
 
-def _get_user() -> str:
+def get_user() -> str:
+    """Get the username of the current user."""
     try:
         return os.getlogin()
     except OSError:
