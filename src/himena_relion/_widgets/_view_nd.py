@@ -47,8 +47,8 @@ class QViewer(QtW.QWidget):
         self._context_menu_actions = [
             ("Usage", self._show_usage),
             ("Auto Fit", lambda: self.auto_fit()),
-            ("Copy Screenshot", self._canvas.copy_screenshot),
-            ("Save Screenshot", self._canvas.save_screenshot),
+            ("Copy Screenshot", lambda: self._canvas.copy_screenshot()),
+            ("Save Screenshot", lambda: self._canvas.save_screenshot()),
         ]
 
     def set_background_color(self, color):
@@ -56,7 +56,9 @@ class QViewer(QtW.QWidget):
 
     def _show_usage(self):
         current_instance()._backend_main_window._add_whats_this(
-            doc_to_whats_this(self.__doc__), style="markdown"
+            doc_to_whats_this(self.__doc__),
+            style="markdown",
+            title="Usage",
         )
 
     def _make_context_menu(self):
