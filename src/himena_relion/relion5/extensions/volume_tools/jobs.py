@@ -1,7 +1,6 @@
 from pathlib import Path
 import subprocess
 import time
-import os
 import shutil
 from typing import Annotated
 
@@ -122,18 +121,17 @@ class ManualMaskCreation(RelionExternalJob):
                 raise FileNotFoundError(
                     "Neither ChimeraX nor Chimera executable found in PATH."
                 )
-            subprocess.run(
+            subprocess.Popen(
                 [chimerax, input_path],
                 cwd=out_job_dir.path,
+                start_new_session=True,  # open in a new terminal on Linux
             )
         elif use_app == "Napari":
             python_exe = relion_python_executable()
             script_path = (
                 Path(__file__).parent.parent / "scripts" / "mask_creation_napari.py"
             )
-            env = os.environ.copy()
-            env.pop("QT_API", None)
-            subprocess.run(
+            subprocess.Popen(
                 [
                     python_exe,
                     script_path.as_posix(),
@@ -141,16 +139,15 @@ class ManualMaskCreation(RelionExternalJob):
                     out_job_dir.path.as_posix(),
                 ],
                 cwd=out_job_dir.path,
-                env=env,
+                start_new_session=True,  # open in a new terminal on Linux
             )
-        else:
-            # wait for user to create mask by themselves
-            while not mask_path.exists() and not mask_base_path.exists():
-                time.sleep(1)
-                yield
-                if time.time() - time_0 > self._max_wait_time_sec:
-                    self.console.log("Mask creation timed out.")
-                    raise TimeoutError("Mask creation timed out.")
+        # wait for user to create mask
+        while not mask_path.exists() and not mask_base_path.exists():
+            time.sleep(1)
+            yield
+            if time.time() - time_0 > self._max_wait_time_sec:
+                self.console.log("Mask creation timed out.")
+                raise TimeoutError("Mask creation timed out.")
         if mask_base_path.exists():
             with mrcfile.open(mask_base_path) as mrc:
                 mask_data = mrc.data
