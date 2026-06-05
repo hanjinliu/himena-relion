@@ -476,7 +476,8 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         # Job specific status tip
         if job_cls := job_dir._to_job_class():
             job_ins = job_cls(job_dir)
-            status_tips.append(job_ins.status_tip())
+            if tip := job_ins.status_tip():
+                status_tips.append(tip)
 
         # Tags
         try:
