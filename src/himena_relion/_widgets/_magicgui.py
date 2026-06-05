@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from magicgui.widgets.bases import ValuedContainerWidget
+from magicgui.widgets import LineEdit
 from magicgui.types import Undefined
+from qtpy import QtWidgets as QtW, QtCore, QtGui
 from himena.qt.magicgui import FloatEdit, IntEdit, ToggleButtons
 
 from himena_relion._job_class import parse_string
@@ -277,3 +279,14 @@ class Class2DAlgorithmEdit(ValuedContainerWidget):
     def _on_algorithm_changed(self, algorithm: str):
         self._niter_em.visible = algorithm == "EM"
         self._niter_grad.visible = algorithm == "VDAM"
+
+
+class GpuIdEdit(LineEdit):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        qlineedit: QtW.QLineEdit = self.native
+        qlineedit.setValidator(
+            QtGui.QRegularExpressionValidator(
+                QtCore.QRegularExpression(r"^(\d+(,|:))*\d*$")
+            )
+        )

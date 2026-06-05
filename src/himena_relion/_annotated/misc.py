@@ -96,6 +96,8 @@ MASK_DIAMETER = Annotated[
     float,
     {
         "label": "Mask diameter (A)",
+        "min": 1.0,
+        "max": 2000.0,
         "tooltip": (
             "The experimental images will be masked with a soft circular mask with "
             "this diameter. Make sure this radius is not set too small because that "
@@ -134,6 +136,8 @@ INITIAL_LOWPASS = Annotated[
     float,
     {
         "label": "Initial low-pass filter (A)",
+        "min": 0.0,
+        "max": 1000.0,
         "tooltip": (
             "It is recommended to strongly low-pass filter your initial reference map. "
             "If it has not yet been low-pass filtered, it may be done internally using "

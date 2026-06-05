@@ -42,6 +42,15 @@ class SliceResult(NamedTuple):
 class QViewer(QtW.QWidget):
     _always_force_sync: bool = False  # for testing
 
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._context_menu_actions = [
+            ("Usage", self._show_usage),
+            ("Auto Fit", lambda: self.auto_fit()),
+            ("Copy Screenshot", self._canvas.copy_screenshot),
+            ("Save Screenshot", self._canvas.save_screenshot),
+        ]
+
     def set_background_color(self, color):
         self._canvas._scene.bgcolor = color
 
@@ -52,10 +61,8 @@ class QViewer(QtW.QWidget):
 
     def _make_context_menu(self):
         menu = QtW.QMenu(self)
-        menu.addAction("Usage", self._show_usage)
-        menu.addAction("Auto Fit", lambda: self.auto_fit())
-        menu.addAction("Copy Screenshot", self._canvas.copy_screenshot)
-        menu.addAction("Save Screenshot", self._canvas.save_screenshot)
+        for text, callback in self._context_menu_actions:
+            menu.addAction(text, callback)
         return menu
 
     def _show_context_menu(self):
@@ -76,11 +83,6 @@ class Q2DViewerBase(QViewer):
         """Automatically fit the camera to the image."""
         self._canvas.auto_fit()
         self._canvas.update_canvas()
-
-    def _show_context_menu(self):
-        menu = self._make_context_menu()
-        pos = menu.mapFromGlobal(QtGui.QCursor.pos())
-        menu.exec(pos)
 
 
 class Q2DSimpleViewer(Q2DViewerBase):
@@ -757,11 +759,6 @@ class Q3DTomogramViewer(QViewer):
         slice_image = self._canvas._current_image_slice
         c0, c1 = self._canvas.contrast_limits
         self._clim_widget.set_hist_for_array(slice_image, (c0, c1))
-
-    def _show_context_menu(self):
-        menu = self._make_context_menu()
-        pos = menu.mapFromGlobal(QtGui.QCursor.pos())
-        menu.exec(pos)
 
 
 class Q3DLocalResViewer(Q3DViewerBase):
