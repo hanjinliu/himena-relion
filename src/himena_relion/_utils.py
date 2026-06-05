@@ -393,6 +393,11 @@ def bytes_to_size_str(num_bytes: int) -> str:
     return size_str
 
 
+def invert_y(img):
+    """Most of the 2D image viewers (such as 3dmod) invert the Y axis."""
+    return img[::-1]
+
+
 @contextmanager
 def open_with_lock(
     pipeline_path: str | Path,

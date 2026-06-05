@@ -8,9 +8,10 @@ import numpy as np
 import mrcfile
 from superqt import QFlowLayout, QLabeledSlider
 from himena.qt.magicgui import ToggleButtons
+from himena_builtins.qt.image import QImageGraphicsView
 from himena_relion._job_dir import JobDirectory
-from himena_relion._widgets import Q2DSimpleViewer
 from himena_relion._widgets import QIntWidget
+from himena_relion._utils import invert_y
 
 
 class ProjectionMode(StrEnum):
@@ -56,7 +57,7 @@ class Class3DPopup(QtW.QWidget):
         if len(niter_choices) == 0:
             raise ValueError("No iteration found.")
 
-        self._viewers = [Q2DSimpleViewer() for _ in range(num_classes)]
+        self._viewers = [QImageGraphicsView() for _ in range(num_classes)]
         self._images: list[np.ndarray] = []
         self._image_consensus: np.ndarray = np.array([])
         self._job_dir = job_dir
@@ -66,16 +67,22 @@ class Class3DPopup(QtW.QWidget):
         self._direction = Direction.XY
 
         self._dim_slider = QLabeledSlider(QtCore.Qt.Orientation.Horizontal)
+        self._dim_slider.setMaximumWidth(320)
 
         self._viewer_container = QtW.QWidget()
         flow_layout = QFlowLayout(self._viewer_container)
+        flow_layout.setContentsMargins(0, 0, 0, 0)
+        flow_layout.setSpacing(0)
         flow_layout.setVerticalSpacing(4)
         flow_layout.setHorizontalSpacing(4)
         for viewer in self._viewers:
             viewer.setFixedSize(180, 180)
+            # viewer._canvas.camera.interactive = False
+            viewer.add_image_layer()
             flow_layout.addWidget(viewer)
 
         self._iter_choice = QIntWidget("Iteration", label_width=60)
+        self._iter_choice.setMaximumWidth(200)
         self._iter_choice.setValue(max(niter_choices))
         self._iter_choice.setRange(min(niter_choices), max(niter_choices))
         self._mode_projection_mgui = ToggleButtons(
@@ -89,8 +96,11 @@ class Class3DPopup(QtW.QWidget):
         mode_controls = QtW.QHBoxLayout()
         mode_controls.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
         mode_controls.setContentsMargins(0, 0, 0, 0)
+        mode_controls.addWidget(QtW.QLabel("Projection:"))
         mode_controls.addWidget(self._mode_projection_mgui.native)
+        mode_controls.addWidget(QtW.QLabel("Show:"))
         mode_controls.addWidget(self._mode_intensity_mgui.native)
+        mode_controls.addWidget(QtW.QLabel("Plane:"))
         mode_controls.addWidget(self._direction_mgui.native)
         layout.addLayout(mode_controls)
 
@@ -98,6 +108,7 @@ class Class3DPopup(QtW.QWidget):
         data_controls.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
         data_controls.setContentsMargins(0, 0, 0, 0)
         data_controls.addWidget(self._iter_choice)
+        data_controls.addWidget(QtW.QLabel("Index:"))
         data_controls.addWidget(self._dim_slider)
         layout.addLayout(data_controls)
 
@@ -126,7 +137,6 @@ class Class3DPopup(QtW.QWidget):
         self._image_consensus = img_consensus
         self._dim_slider.setMaximum(imgs[0].shape[0] - 1)
         self._dim_slider.setValue(imgs[0].shape[0] // 2)
-        self.update_images()
 
     def update_images(self):
         input_images = []
@@ -140,9 +150,9 @@ class Class3DPopup(QtW.QWidget):
                     axis = 2
             match self._mode_projection:
                 case ProjectionMode.MAX:
-                    fn = np.max
+                    fn = self._max
                 case ProjectionMode.MEAN:
-                    fn = np.mean
+                    fn = self._mean
                 case ProjectionMode.SLICE:
                     fn = self._slice_image
             match self._mode_intensity:
@@ -157,27 +167,34 @@ class Class3DPopup(QtW.QWidget):
         min0, max0 = np.quantile(input_images, [0.02, 0.98])
         match self._mode_intensity:
             case IntensityMode.ORIGINAL:
-                _cmap = "gray"
+                _cmap = Colormap("gray")
                 _clim = (min0, max0)
             case IntensityMode.DIFF:
-                _cmap = Colormap(["blue", "white", "red"]).to_vispy()
+                _cmap = Colormap(["blue", "white", "red"])
                 abs_max = max(abs(min0), abs(max0))
                 _clim = (-abs_max, abs_max)
+        input_images = np.clip((input_images - _clim[0]) / (_clim[1] - _clim[0]), 0, 1)
         for img_proj, viewer in zip(input_images, self._viewers):
-            viewer.set_image(img_proj, cmap=_cmap, clim=_clim)
-            viewer.auto_fit()
+            viewer.set_array(0, _cmap(img_proj, bytes=True))
+            viewer.auto_range()
 
     def _slice_image(self, img: np.ndarray, axis: int) -> np.ndarray:
         sl = [slice(None)] * img.ndim
         sl[axis] = self._dim_slider.value()
         return img[tuple(sl)]
 
+    def _mean(self, img: np.ndarray, axis: int) -> np.ndarray:
+        return invert_y(np.mean(img, axis=axis))
+
+    def _max(self, img: np.ndarray, axis: int) -> np.ndarray:
+        return invert_y(np.max(img, axis=axis))
+
     def _on_iter_changed(self, value: int):
         self.load_maps(self._job_dir, value)
 
     def _on_mode_changed(self):
         self.update_images()
-        self._dim_slider.setEnabled(self._mode_projection is ProjectionMode.SLICE)
+        self._dim_slider.setVisible(self._mode_projection is ProjectionMode.SLICE)
 
     def _on_mode_projection_changed(self, value: ProjectionMode):
         self._mode_projection = value
@@ -192,4 +209,7 @@ class Class3DPopup(QtW.QWidget):
         self._on_mode_changed()
 
     def _on_slider_changed(self, value: int):
+        self.update_images()
+
+    def widget_added_callback(self):
         self.update_images()
