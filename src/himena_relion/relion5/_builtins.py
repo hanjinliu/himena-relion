@@ -2053,6 +2053,19 @@ class SelectClassesInteractiveJob(_SelectClassesJob):
                 return in_tomo
         return None
 
+    @classmethod
+    def _search_trajs(cls, path: Path) -> str | None:
+        """Only used for inspect particles of tomo extension."""
+        if job_class3d := cls._search_parent_class3d(path):
+            params = job_class3d.get_job_params_as_dict()
+            if opt_path := params.get("in_optimisation", None):
+                opt_path = job_class3d.relion_project_dir / opt_path
+                opt = OptimisationSetModel.validate_file(opt_path)
+                return opt.trajectories_star
+            elif in_trajectories := params.get("in_trajectories", None):
+                return in_trajectories
+        return None
+
 
 class SelectClassesAutoJob(_SelectClassesJob):
     @classmethod
