@@ -26,6 +26,7 @@ from himena_relion.schemas import (
     TSModel,
     ParticleMetaModel,
     ModelStarModel,
+    ModelGroups,
 )
 
 if TYPE_CHECKING:
@@ -546,22 +547,6 @@ class _3DResultsBase:
     def model_groups(self) -> ModelStarModel:
         return ModelStarModel.validate_file(self._model_star())
 
-    def _data_star(self) -> Path:
-        """Return the path to the data star file for this iteration."""
-        return self.path / f"run{self.it_str}_data.star"
-
-    def _optimisation_set_star(self) -> Path:
-        """Return the path to the optimisation set star file for this iteration."""
-        return self.path / f"run{self.it_str}_optimisation_set.star"
-
-    def _optimiser_star(self) -> Path:
-        """Return the path to the optimiser star file for this iteration."""
-        return self.path / f"run{self.it_str}_optimiser.star"
-
-    def _sampling_star(self) -> Path:
-        """Return the path to the sampling star file for this iteration."""
-        return self.path / f"run{self.it_str}_sampling.star"
-
     def _model_star(self) -> Path:
         """Return the path to the model star file for this iteration."""
         return self.path / f"run{self.it_str}_model.star"
@@ -655,11 +640,6 @@ class Class3DResults(_3DResultsBase):
         # Class3D no-alignment jobs do not have angdist files
         return []
 
-    def particles(self) -> ParticleMetaModel:
-        """Return the particles model for this iteration."""
-        star_path = self._data_star()
-        return ParticleMetaModel.validate_file(star_path)
-
 
 class Class3DJobDirectory(JobDirectory):
     """Class for handling class 3D job directories in RELION."""
@@ -745,3 +725,83 @@ def _read_tubes(full_path, map_scale: float) -> list[TubeObject]:
             )
             cylinders.append(cyl)
     return cylinders
+
+
+def try_get_particle_number(job_dir: JobDirectory) -> int:
+    """Try to get the number of particles for certain job types."""
+    _type_label = job_dir.job_type_label()
+    if _type_label.startswith("relion.reconstructparticletomo"):
+        return _particle_number_reconstruct_particles(job_dir)
+    elif _type_label.startswith("relion.refine3d"):
+        return _particle_num_refine3d(job_dir)
+    elif _type_label.startswith(("relion.class3d", "relion.initialmodel")):
+        return _particle_num_class3d(job_dir)
+    elif _type_label.startswith("relion.postprocess"):
+        return _particle_num_postprocess(job_dir)
+    return -1
+
+
+def _particle_number_reconstruct_particles(job_dir: JobDirectory) -> int:
+    try:
+        params = job_dir.get_job_params_as_dict()
+        if opt_path := params.get("in_optimisation", None):
+            opt_path = job_dir.relion_project_dir / opt_path
+            opt_model = OptimisationSetModel.validate_file(opt_path)
+            particles_path = job_dir.resolve_path(opt_model.particles_star)
+        elif ptcl := params.get("in_particles", None):
+            particles_path = job_dir.resolve_path(ptcl)
+        else:
+            return
+        star = read_star(particles_path)
+        if "particles" in star:
+            n_particles = star["particles"].trust_loop().shape[0]
+        elif len(star) == 1:
+            n_particles = star.first().trust_loop().shape[0]
+        else:
+            n_particles = -1
+    except Exception:
+        n_particles = -1
+    return n_particles
+
+
+def _particle_num_refine3d(job_dir: JobDirectory) -> int:
+    model_star_half1 = job_dir.path / "run_it000_half1_model.star"
+    model_star_half2 = job_dir.path / "run_it000_half2_model.star"
+    model_star = job_dir.path / "run_model.star"
+    try:
+        if model_star.exists():
+            return _particle_num_from_run_model(model_star)
+        elif model_star_half1.exists() and model_star_half2.exists():
+            return _particle_num_from_run_model(
+                model_star_half1
+            ) + _particle_num_from_run_model(model_star_half2)
+        else:
+            return -1
+    except Exception:
+        return -1
+
+
+def _particle_num_class3d(job_dir: JobDirectory) -> int:
+    try:
+        model_star = next(job_dir.path.glob("run_it*_model.star"))
+        return _particle_num_from_run_model(model_star)
+    except Exception:
+        return -1
+
+
+def _particle_num_postprocess(job_dir: JobDirectory) -> int:
+    if fn_in := job_dir.get_job_param("fn_in"):
+        try:
+            job_dir_parent = JobDirectory.from_job_star(
+                job_dir.resolve_path(fn_in).parent.resolve() / "job.star"
+            )
+        except Exception:
+            return -1
+        return try_get_particle_number(job_dir_parent)
+    return -1
+
+
+def _particle_num_from_run_model(model_star):
+    star = read_star(model_star)
+    groups = ModelGroups.validate_block(star.get("model_groups"))
+    return groups.num_particles.sum()

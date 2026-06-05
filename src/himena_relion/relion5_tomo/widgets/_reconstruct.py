@@ -82,7 +82,7 @@ class QReconstructViewer(QJobScrollArea):
             return
 
         if not self._num_particles_label.num_known():
-            n_particles = self._try_get_num_particles(job_dir)
+            n_particles = _job_dir.try_get_particle_number(job_dir)
             self._num_particles_label.set_number(n_particles)
         sym_name = job_dir.get_job_param("sym_name")
         self._sym_label.set_symmetry(sym_name)
