@@ -53,8 +53,7 @@ class RelionJobNodeItem(BaseNodeItem):
                 return Color("lightgray")
 
     def tooltip(self) -> str:
-        """Return the tooltip text for the node"""
-        return f"Status: {self._job.status.value.capitalize()}"
+        return ""
 
     def id(self):
         """Return a unique identifier for the node"""

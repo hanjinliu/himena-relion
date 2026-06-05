@@ -145,14 +145,14 @@ class QFrameAlignTomoViewer(QJobScrollArea):
     def _get_particles_for_tomo(self, tomo_name: str) -> NDArray[np.float32]:
         particles_star = self._job_dir.path / "particles.star"
         temp_particles_star = (
-            self._job_dir.path / "temp" / f"{tomo_name}_particles.star"
+            self._job_dir.path / "temp" / f"{tomo_name}_positions.star"
         )
         if temp_particles_star.exists():
-            model = ParticleMetaModel.validate_file(temp_particles_star)
-            part = model.particles
-            z = part.centered_z
-            y = part.centered_y
-            x = part.centered_x
+            # NOTE: temporary particles does not pass ParticleMetaModel validation.
+            df = read_star(temp_particles_star).first().to_polars()
+            z = df["rlnCenteredCoordinateZAngst"]
+            y = df["rlnCenteredCoordinateYAngst"]
+            x = df["rlnCenteredCoordinateXAngst"]
         elif particles_star.exists():
             model = ParticleMetaModel.validate_file(particles_star)
             part = model.particles

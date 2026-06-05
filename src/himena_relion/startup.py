@@ -64,13 +64,9 @@ def on_himena_startup(ui: "MainWindow"):
             if n > 0:
                 s = "" if n == 1 else "s"
                 ui.show_notification(
-                    f"You have {n} opened job{s} in the last session. Do you want to "
-                    "recover them?",
-                    title="Recover Jobs",
-                    callbacks={
-                        "Yes, open": lambda: _open_jobs(ui, can_open),
-                        "No": lambda: None,
-                    },
+                    f"You have {n} opened job{s} in the last session.",
+                    title="Recover Jobs?",
+                    callbacks={"Open all": lambda: _open_jobs(ui, can_open)},
                 )
 
 

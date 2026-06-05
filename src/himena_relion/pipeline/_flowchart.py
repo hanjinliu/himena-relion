@@ -175,6 +175,10 @@ class QRelionPipelineFlowChartView(QFlowChartView):
         self._update_selection_rect()
         return super().mouseMoveEvent(event)
 
+    def wheelEvent(self, event):
+        self._update_selection_rect()
+        return super().wheelEvent(event)
+
     def _update_selection_rect(self):
         if self._last_selection_highlight_rect:
             self.update(self._last_selection_highlight_rect.adjusted(-5, -5, 5, 5))

@@ -1,7 +1,7 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 import warnings
 from datetime import datetime
 from cmap import Color
@@ -34,11 +34,12 @@ class QRelionPipelineTableView(QtW.QWidget):
 
         # prepare header
         self._sort_by_widget_mgui = ToggleButtons(
-            choices=["Job ID", "Time"],
+            choices=["Job ID", "Time", "Job Name"],
             value="Job ID",
-            tooltip="Specify how to sort the jobs in the table. 'Job ID' sorts by the "
-            "numbering (e.g. job001, job002, ...), while 'Time' sorts by the last "
-            "modified time by checking the mtime of 'run.out' file",
+            tooltip="Specify how to sort the jobs in the table.\n"
+            " - 'Job ID': sort by the numbering (e.g. job001, job002, ...).\n"
+            " - 'Time': sort by the last modified time by checking the mtime of 'run.out' file\n"
+            " - 'Job Name': sort by the job type name (e.g. AlignTilts, CTF Refine, ...).",
         )
         self._sort_by_widget_mgui.changed.connect(self._on_sort_by_changed)
         self._sort_ascending_btn = QColoredToolButton(
@@ -117,12 +118,15 @@ class QRelionPipelineTableView(QtW.QWidget):
     def _on_sort_by_changed(self, value: str):
         if self._table_view._model is None:
             return
-        if value == "Job ID":
-            new_proxy = IdentityProxy(self._table_view._model._pipeline)
-        elif value == "Time":
-            new_proxy = SortByTimeProxy(self._table_view._model._pipeline)
-        else:  # pragma: no cover
-            raise ValueError("Invalid sort index")
+        match value:
+            case "Job ID":
+                new_proxy = IdentityProxy(self._table_view._model._pipeline)
+            case "Time":
+                new_proxy = SortByTimeProxy(self._table_view._model._pipeline)
+            case "Job Name":
+                new_proxy = SortByNameProxy(self._table_view._model._pipeline)
+            case _:
+                raise ValueError("Invalid sort index")
         self._table_view._model.set_proxy(new_proxy, ascending=self._sort_is_ascending)
 
     def _switch_sort_order(self):
@@ -361,19 +365,33 @@ class IdentityProxy(TableProxy):
         return self._count
 
 
-class SortByTimeProxy(TableProxy):
+class TableSortProxy(TableProxy):
     def __init__(self, pipeline: RelionDefaultPipeline):
-        pdir = pipeline.project_dir
-        self._sorted_indices = sorted(
-            range(len(pipeline)),
-            key=lambda i: _get_mtime(pdir / pipeline[i].path / "run.out"),
-        )
+        self._sorted_indices = self._prep_sort_indices(pipeline)
 
     def map(self, index: int) -> int:
         return self._sorted_indices[index]
 
     def count(self) -> int:
         return len(self._sorted_indices)
+
+    @abstractmethod
+    def _prep_sort_indices(self, pipeline: RelionDefaultPipeline) -> Any:
+        """Prepare the sorted indices based on the pipeline."""
+
+
+class SortByTimeProxy(TableSortProxy):
+    def _prep_sort_indices(self, pipeline: RelionDefaultPipeline) -> list[int]:
+        pdir = pipeline.project_dir
+        return sorted(
+            range(len(pipeline)),
+            key=lambda i: _get_mtime(pdir / pipeline[i].path / "run.out"),
+        )
+
+
+class SortByNameProxy(TableSortProxy):
+    def _prep_sort_indices(self, pipeline: RelionDefaultPipeline) -> list[int]:
+        return sorted(range(len(pipeline)), key=lambda i: pipeline[i].path)
 
 
 def _get_mtime(path: Path) -> float:

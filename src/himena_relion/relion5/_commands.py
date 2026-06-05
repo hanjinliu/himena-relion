@@ -21,18 +21,5 @@ def show_summary_panel(ui: MainWindow, model: WidgetDataModel):
     from .popups._relion_refine import RefineJobPopup
 
     job_dir = assert_job(model)
-    if model.type.startswith("relion_job.relion.refine3d"):
-        include_classes = False
-        model_suffix = "_half1_model"
-    elif model.type.startswith("relion_job.relion.class3d"):
-        include_classes = True
-        model_suffix = "_model"
-    elif model.type.startswith("relion_job.relion.initialmodel"):
-        include_classes = True
-        model_suffix = "_model"
-    else:
-        raise ValueError(f"Unsupported job type: {model.type}")
-    widget = RefineJobPopup(
-        ui, job_dir, include_classes=include_classes, model_suffix=model_suffix
-    )
+    widget = RefineJobPopup(ui, job_dir)
     ui.add_widget_as_popup(widget, title=f"Summary of {job_dir.job_normal_id()}")

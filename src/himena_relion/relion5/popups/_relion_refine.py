@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from qtpy import QtWidgets as QtW
 import polars as pl
 from starfile_rs import read_star
@@ -18,18 +17,12 @@ class RefineJobPopup(QtW.QWidget):
         self,
         ui: MainWindow,
         job_dir: JobDirectory,
-        include_classes: bool = True,
-        model_suffix: str | None = "_half1_model",
     ):
         super().__init__()
         layout = QtW.QHBoxLayout(self)
         layout.setContentsMargins(2, 2, 2, 2)
 
-        df = collect_for_iters(
-            job_dir.path,
-            include_classes=include_classes,
-            model_suffix=model_suffix,
-        )
+        df = collect_for_iters(job_dir)
         df_view = QDataFrameView(ui)
         df_view.update_model(create_dataframe_model(df, editable=False))
         df_view.setMaximumWidth(380)
@@ -44,26 +37,7 @@ class RefineJobPopup(QtW.QWidget):
         ith = 0
         self._canvases: list[QPlotCanvas] = []
         df_it1 = df.filter(pl.col("rlnCurrentIteration") > 0)
-        for ycol, ylabel, title in [
-            ("rlnChangesOptimalClasses", "Change", "Changes of Optimal Classes"),
-            ("rlnCurrentResolution", "Resolution (Å)", "Current Resolution"),
-            (
-                "rlnOverallAccuracyRotations",
-                "Accuracy (°)",
-                "Overall Accuracy of Rotations",
-            ),
-            (
-                "rlnOverallAccuracyTranslationsAngst",
-                "Accuracy (Å)",
-                "Overall Accuracy of Translations",
-            ),
-            (
-                "rlnChangesOptimalOrientations",
-                "Change (°)",
-                "Changes of Optimal Orientations",
-            ),
-            ("rlnChangesOptimalOffsets", "Change (pix)", "Changes of Optimal Offsets"),
-        ]:
+        for ycol, ylabel, title in _LABEL_CONST:
             if ycol not in df_it1.columns:
                 continue
             r0 = ith // ncols
@@ -91,43 +65,60 @@ def plot(df: pl.DataFrame, ycol: str, ylabel: str, title: str) -> QPlotCanvas:
     return canvas
 
 
-def collect_for_iters(
-    root: Path,
-    include_classes: bool = True,
-    model_suffix: str | None = "_model",
-) -> pl.DataFrame:
+def collect_for_iters(job_dir: JobDirectory) -> pl.DataFrame:
+    root = job_dir.path
+    type_label = job_dir.job_type_label()
+
     rows = [
         read_star(path).first().trust_single().to_dict()
         for path in root.glob("run_it*_optimiser.star")
     ]
     columns = [
         pl.col("rlnCurrentIteration"),
-        _replace_with_null("rlnOverallAccuracyRotations", 998),
-        _replace_with_null("rlnOverallAccuracyTranslationsAngst", 998),
-        pl.col("rlnChangesOptimalOrientations"),
-        pl.col("rlnChangesOptimalOffsets"),
+        _replace_with_null(pl.col("rlnOverallAccuracyRotations"), 998),
+        _replace_with_null(pl.col("rlnOverallAccuracyTranslationsAngst"), 998),
     ]
-    if include_classes:
+    if not (
+        type_label.startswith("relion.class3d")
+        and job_dir.get_job_param("dont_skip_align", "Yes") == "No"
+    ):  # don't include alignment results for no-alignment 3D class
+        columns += [
+            pl.col("rlnChangesOptimalOrientations"),
+            pl.col("rlnChangesOptimalOffsets"),
+        ]
+    if type_label.startswith(("relion.class3d", "relion.initialmodel")):
         columns += [pl.col("rlnChangesOptimalClasses")]
+        model_suffix = "_model"
+    elif type_label.startswith("relion.refine3d"):
+        model_suffix = "_half1_model"
+    else:
+        raise ValueError(f"Unsupported job type: {type_label}")
     df = pl.DataFrame(rows).select(*columns).sort("rlnCurrentIteration")
-    if model_suffix is not None:
-        rows_res = []
-        for path in root.glob(f"run_it*{model_suffix}.star"):
-            model_dict = read_star(path).first().trust_single().to_dict()
-            model_dict["rlnCurrentIteration"] = int(path.stem.split("_")[1][2:])
-            rows_res.append(model_dict)
-        if len(rows_res) > 0:
-            df_res = pl.DataFrame(rows_res).select(
-                pl.col("rlnCurrentIteration"),
-                pl.col("rlnCurrentResolution").cast(pl.Float32, strict=False),
-            )
-            df = df.join(df_res, on="rlnCurrentIteration", how="left")
+    rows_res = []
+    for path in root.glob(f"run_it*{model_suffix}.star"):
+        model_dict = read_star(path).first().trust_single().to_dict()
+        model_dict["rlnCurrentIteration"] = int(path.stem.split("_")[1][2:])
+        rows_res.append(model_dict)
+    if len(rows_res) > 0:
+        df_res = pl.DataFrame(rows_res).select(
+            pl.col("rlnCurrentIteration"),
+            _replace_with_null(
+                pl.col("rlnCurrentResolution").cast(pl.Float32, strict=False), 998
+            ),
+        )
+        df = df.join(df_res, on="rlnCurrentIteration", how="left")
     return df
 
 
-def _replace_with_null(colname: str, thresh: float):
-    return (
-        pl.when(pl.col(colname).lt(thresh))
-        .then(pl.col(colname))
-        .otherwise(pl.lit(float("nan")))
-    )
+def _replace_with_null(col: pl.Expr, thresh: float):
+    return pl.when(col.lt(thresh)).then(col).otherwise(pl.lit(float("nan")))
+
+
+_LABEL_CONST = [
+    ("rlnChangesOptimalClasses", "Change", "Changes of Optimal Classes"),
+    ("rlnCurrentResolution", "Resolution (Å)", "Current Resolution"),
+    ("rlnOverallAccuracyRotations", "Accuracy (°)", "Overall Accuracy of Rotations"),
+    ("rlnOverallAccuracyTranslationsAngst", "Accuracy (Å)", "Overall Accuracy of Translations"),
+    ("rlnChangesOptimalOrientations", "Change (°)", "Changes of Optimal Orientations"),
+    ("rlnChangesOptimalOffsets", "Change (pix)", "Changes of Optimal Offsets"),
+]  # fmt: skip

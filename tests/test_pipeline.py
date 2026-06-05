@@ -83,6 +83,13 @@ def test_reading_default_pipeline_during_filtering(himena_ui: MainWindow, tmpdir
     table_view._table_view._model.data(index00, QtCore.Qt.ItemDataRole.DecorationRole)
     table_view._table_view._model.data(index02, QtCore.Qt.ItemDataRole.DecorationRole)
 
+    table_view._sort_by_widget_mgui.value = "Job Name"
+    table_view._sort_ascending_btn.click()
+    table_view._sort_ascending_btn.click()
+    table_view._sort_by_widget_mgui.value = "Job ID"
+    table_view._sort_ascending_btn.click()
+    table_view._sort_ascending_btn.click()
+
 def test_pipeline_watcher(tmpdir):
     rlndir = Path(tmpdir)
     path = rlndir / "default_pipeline.star"
