@@ -26,9 +26,11 @@ _LOGGER = logging.getLogger(__name__)
 @register_job("relion.class3d", is_tomo=True)
 class QClass3DViewer(QJobScrollArea):
     def __init__(self, job_dir: _job_dir.Class3DJobDirectory):
-        # from himena_relion._widgets._vispy import MaskMesh
-
         super().__init__()
+        self._index_start = 1
+        self._last_niter = 0
+        self._job_dir = job_dir
+
         self._list_widget = QMicrographListWidget(
             [
                 "Class",
@@ -100,8 +102,6 @@ class QClass3DViewer(QJobScrollArea):
         hor_layout.addWidget(self._iter_choice)
         hor_layout.addWidget(self._continue_from_here_btn)
         hor_layout.addWidget(self._num_particles_label)
-        self._index_start = 1
-        self._job_dir = job_dir
 
         self._layout.setSpacing(0)
         self._layout.addWidget(self._list_widget)
@@ -144,6 +144,7 @@ class QClass3DViewer(QJobScrollArea):
         class_id = int(self._list_widget.current_text() or 1)
         self._update_for_value(value, class_id)
         self._update_summary_table(value)
+        self._last_niter = value
 
     def _continue_from_here_clicked(self):
         is_no_alignment = self._job_dir.get_job_param("dont_skip_align", "Yes") == "No"
@@ -230,7 +231,7 @@ class QClass3DViewer(QJobScrollArea):
         self._viewer._canvas.update_canvas()
 
     def _set_image_no_clim_update(self, img):
-        self._viewer.set_image(img, update_now=True, update_clim=False)
+        self._viewer.set_image(img, update_now=True, update_clim=self._last_niter == 0)
 
     @thread_worker
     def _read_items(self, niter, class_id):

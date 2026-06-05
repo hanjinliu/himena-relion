@@ -1,5 +1,5 @@
 from typing import Annotated
-
+from himena_relion._widgets._magicgui import GpuIdEdit
 
 USE_PARALLEL_DISC_IO = Annotated[
     bool,
@@ -104,6 +104,7 @@ GPU_IDS = Annotated[
     str,
     {
         "label": "GPU IDs to use",
+        "widget_type": GpuIdEdit,
         "tooltip": (
             "Provide a list of which GPUs (0,1,2,3, etc) to use. MPI-processes are "
             "separated by ':'. For example, to place one rank on device 0 and one "

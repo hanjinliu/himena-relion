@@ -186,6 +186,7 @@ connect_jobs(
     node_mapping={
         "particles.star": "in_optim.in_particles",
         _spa.SelectClassesInteractiveJob._search_mics: "in_optim.in_tomograms",
+        _spa.SelectClassesInteractiveJob._search_trajs: "in_optim.in_trajectories",
     },
 )
 connect_jobs(
@@ -194,6 +195,7 @@ connect_jobs(
     node_mapping={
         "particles.star": "in_optim.in_particles",
         _spa.SelectClassesInteractiveJob._search_mics: "in_optim.in_tomograms",
+        _spa.SelectClassesInteractiveJob._search_trajs: "in_optim.in_trajectories",
     },
 )
 connect_jobs(
@@ -202,6 +204,7 @@ connect_jobs(
     node_mapping={
         "particles.star": "in_optim.in_particles",
         _spa.SelectClassesInteractiveJob._search_mics: "in_optim.in_tomograms",
+        _spa.SelectClassesInteractiveJob._search_trajs: "in_optim.in_trajectories",
     },
 )
 connect_jobs(
@@ -210,6 +213,7 @@ connect_jobs(
     node_mapping={
         "particles.star": "in_optim.in_particles",
         _spa.SelectClassesInteractiveJob._search_mics: "in_optim.in_tomograms",
+        _spa.SelectClassesInteractiveJob._search_trajs: "in_optim.in_trajectories",
     },
 )
 connect_jobs(
@@ -454,8 +458,7 @@ def _postprocess_search_optim(path: Path) -> str | None:
         match p.job_type_label():
             case "relion.refine3d.tomo":
                 optim_path = p.path / "run_optimisation_set.star"
-                if optim_path.exists():
-                    return str(optim_path)
+                return str(optim_path)
             case "relion.reconstructparticletomo":
                 if out := _tomo.ReconstructParticlesJob.get_optimisation_set(p.path):
                     return out

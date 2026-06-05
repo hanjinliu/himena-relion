@@ -10,7 +10,7 @@ from scipy import ndimage as ndi
 from io import BytesIO
 from starfile_rs import read_star_block
 from himena.consts import MonospaceFontFamily
-from himena_relion._utils import lowpass_filter
+from himena_relion._utils import lowpass_filter, invert_y
 
 
 class QTableModel(QtCore.QAbstractTableModel):
@@ -145,7 +145,7 @@ class QImageViewTextEdit(QtW.QTextEdit):
             / (img_slice_filt.max() - img_slice_filt.min())
             * 255
         )
-        img_slice = img_slice_normed.astype(np.uint8)
+        img_slice = invert_y(img_slice_normed.astype(np.uint8))
 
         pil_img = Image.fromarray(img_slice).convert("RGB")
         draw = ImageDraw.Draw(pil_img)

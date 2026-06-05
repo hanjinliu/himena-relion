@@ -96,6 +96,9 @@ class _Vispy2DBase(_VispyBase):
         self._markers.visible = False
         self._scene.events.mouse_double_click.connect(lambda event: self.auto_fit())
 
+        # To make the upside consistent with 3dmod
+        self.camera.up = "-z"
+
     @property
     def camera(self) -> scene.PanZoomCamera:
         return self._viewbox.camera

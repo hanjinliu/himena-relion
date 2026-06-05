@@ -42,6 +42,8 @@ class QPostProcessViewer(QJobScrollArea):
         self._job_dir = job_dir
         self._use_mask.toggled.connect(self._on_use_mask_toggled)
 
+        self._current_map_path = None
+
     def on_job_updated(self, job_dir: _job_dir.JobDirectory, path: str):
         """Handle changes to the job directory."""
         if Path(path).name in ["postprocess_masked.mrc", "postprocess.mrc"]:
@@ -61,6 +63,10 @@ class QPostProcessViewer(QJobScrollArea):
             self._viewer.set_image(img, update_now=False)
             self._viewer.auto_threshold(update_now=False)
             self._viewer.auto_fit()
+            self._current_map_path = mrc_path
+        else:
+            self._viewer.set_image(None)
+            self._current_map_path = None
 
         # show FSC
         if wait_for_file(starpath := job_dir.path / "postprocess.star", delay=0.02):

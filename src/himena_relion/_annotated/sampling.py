@@ -17,6 +17,8 @@ SIGMA_TILT = Annotated[
     float | None,
     {
         "label": "Prior width on tilt angle",
+        "min": 0.0,
+        "max": 90.0,
         "tooltip": (
             "The width of the prior on the tilt angle: angular searches will be +/-3 "
             "times this value. Tilt priors will be defined when particles have been "
@@ -76,6 +78,7 @@ OFFSET_RANGE_STEP = Annotated[
             "value for the first iteration(s) only, and the sampling rate will be "
             "increased automatically after that."
         ),
+        "options": {"min": 0.0},
         "group": "Sampling",
     },
 ]
