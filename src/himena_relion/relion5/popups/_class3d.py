@@ -77,7 +77,6 @@ class Class3DPopup(QtW.QWidget):
         flow_layout.setHorizontalSpacing(4)
         for viewer in self._viewers:
             viewer.setFixedSize(180, 180)
-            # viewer._canvas.camera.interactive = False
             viewer.add_image_layer()
             flow_layout.addWidget(viewer)
 
@@ -108,7 +107,9 @@ class Class3DPopup(QtW.QWidget):
         data_controls.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
         data_controls.setContentsMargins(0, 0, 0, 0)
         data_controls.addWidget(self._iter_choice)
-        data_controls.addWidget(QtW.QLabel("Index:"))
+        _index_label = QtW.QLabel("Index:")
+        _index_label.setMaximumWidth(48)
+        data_controls.addWidget(_index_label)
         data_controls.addWidget(self._dim_slider)
         layout.addLayout(data_controls)
 
@@ -164,7 +165,7 @@ class Class3DPopup(QtW.QWidget):
             input_images.append(img_proj)
         input_images = np.stack(input_images)
         # prep LUT
-        min0, max0 = np.quantile(input_images, [0.02, 0.98])
+        min0, max0 = np.quantile(input_images, [0.01, 0.99])
         match self._mode_intensity:
             case IntensityMode.ORIGINAL:
                 _cmap = Colormap("gray")

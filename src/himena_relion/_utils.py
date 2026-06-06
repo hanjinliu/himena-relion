@@ -260,6 +260,21 @@ def replace_input_edges(
     new_inputs: Iterable[str] = (),
     default_pipeline: str | Path | None = None,
 ):
+    """Replace input edges in the pipeline STAR for overwriting/continuing jobs.
+
+    Parameters
+    ----------
+    f : TextIO
+        The file object for the pipeline STAR file to be modified.
+    to_run : str
+        The job identifier (e.g. "Refine3D/job010/") for which the input edges will be
+        updated
+    new_inputs : Iterable[str], optional
+        The new input edges (from_node) for the job `to_run`. If empty, the input edges
+        will not be edited.
+    default_pipeline : path-like, optional
+        The path to the default_pipeline.star file.
+    """
     f.seek(0)
     pipeline_model = RelionPipelineModel.validate_text(f.read())
     to_run = normalize_job_id(to_run)

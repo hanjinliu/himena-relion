@@ -1918,7 +1918,7 @@ class MultiBodyJob(_Relion5SpaJob):
         do_combine_thru_disc: _a.compute.DO_COMBINE_THRU_DISC = False,
         gpu_ids: _a.compute.GPU_IDS = "",
         # Running
-        nr_mpi: _a.running.NR_MPI = 1,
+        nr_mpi: _a.running.NR_MPI = 3,
         nr_threads: _a.running.NR_THREADS = 1,
         do_queue: _a.running.DO_QUEUE = False,
         min_dedicated: _a.running.MIN_DEDICATED = 1,
