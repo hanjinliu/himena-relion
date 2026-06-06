@@ -18,7 +18,6 @@ from himena_relion._widgets import (
     QOptimiserInfoTextEdit,
 )
 from himena_relion import _job_dir
-from himena_relion._utils import wait_for_file
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -249,15 +248,9 @@ class QClass3DViewer(QJobScrollArea):
 
         yield self._optimiser_info.read_optimiser_star, optimiser_star
 
-        if wait_for_file(res._data_star(), num_retry=50, delay=0.1):
-            try:
-                part = res.particles()
-            except Exception:
-                # STAR file may not be ready when the number of particles is large.
-                pass
-            else:
-                num_particles = len(part.particles.block)
-                yield self._num_particles_label.set_number_for_class3d, num_particles
+        if not self._num_particles_label.num_known():
+            num_particles = _job_dir.try_get_particle_number(self._job_dir)
+            yield self._num_particles_label.set_number_for_class3d, num_particles
 
         self._worker = None
 

@@ -150,9 +150,9 @@ class Class3DPopup(QtW.QWidget):
                     axis = 2
             match self._mode_projection:
                 case ProjectionMode.MAX:
-                    fn = self._max
+                    fn = np.max
                 case ProjectionMode.MEAN:
-                    fn = self._mean
+                    fn = np.mean
                 case ProjectionMode.SLICE:
                     fn = self._slice_image
             match self._mode_intensity:
@@ -160,7 +160,7 @@ class Class3DPopup(QtW.QWidget):
                     img_input = img
                 case IntensityMode.DIFF:
                     img_input = img - self._image_consensus
-            img_proj = fn(img_input, axis=axis)
+            img_proj = invert_y(fn(img_input, axis=axis))
             input_images.append(img_proj)
         input_images = np.stack(input_images)
         # prep LUT
@@ -182,12 +182,6 @@ class Class3DPopup(QtW.QWidget):
         sl = [slice(None)] * img.ndim
         sl[axis] = self._dim_slider.value()
         return img[tuple(sl)]
-
-    def _mean(self, img: np.ndarray, axis: int) -> np.ndarray:
-        return invert_y(np.mean(img, axis=axis))
-
-    def _max(self, img: np.ndarray, axis: int) -> np.ndarray:
-        return invert_y(np.max(img, axis=axis))
 
     def _on_iter_changed(self, value: int):
         self.load_maps(self._job_dir, value)

@@ -8,7 +8,6 @@ from starfile_rs import read_star
 import mrcfile
 from superqt.utils import thread_worker
 from himena.widgets import current_instance
-from himena_relion.schemas import ModelGroups
 from himena_relion._utils import wait_for_file
 from himena_relion._widgets._shared.resizer import QResizer
 from himena_relion._widgets import (
@@ -68,20 +67,16 @@ class QRefine3DViewer(QJobScrollArea):
 
         self._num_particles_label = QNumParticlesLabel()
         self._optimiser_info = QOptimiserInfoTextEdit()
-        self._optimiser_info.add_entry("rlnParticleDiameter", "Mask diameter", " Å")
-        self._optimiser_info.add_entry("rlnSolventMaskName", "Solvent mask")
-        self._optimiser_info.add_entry(
-            "rlnOverallAccuracyRotations", "Rotation accuracy", "°"
-        )
-        self._optimiser_info.add_entry(
-            "rlnOverallAccuracyTranslationsAngst", "Translation accuracy", " Å"
-        )
-        self._optimiser_info.add_entry(
-            "rlnChangesOptimalOrientations", "Changes in optimal orientations", "°"
-        )
-        self._optimiser_info.add_entry(
-            "rlnChangesOptimalOffsets", "Changes in optimal offsets", " pixels"
-        )
+        for entry in [
+            ("rlnParticleDiameter", "Mask diameter", " Å"),
+            ("rlnSolventMaskName", "Solvent mask"),
+            ("rlnOverallAccuracyRotations", "Rotation accuracy", "°"),
+            ("rlnOverallAccuracyTranslationsAngst", "Translation accuracy", " Å"),
+            ("rlnChangesOptimalOrientations", "Changes in optimal orientations", "°"),
+            ("rlnChangesOptimalOffsets", "Changes in optimal offsets", " pixels"),
+        ]:
+            self._optimiser_info.add_entry(*entry)
+
         self._optimiser_info.setMaximumWidth(max_width)
 
         self._layout.addWidget(QtW.QLabel("<b>&#9679; Refined Map</b>"))
@@ -221,25 +216,21 @@ class QRefine3DViewer(QJobScrollArea):
         if wait_for_file(model_star):
             _LOGGER.debug("%s found, read FSC data.", model_star)
             star = read_star(model_star)
-            if (
-                "model_class_1" in star
-                and "model_groups" in star
-                and "model_general" in star
-            ):
+            if "model_class_1" in star and "model_general" in star:
                 df_fsc = star["model_class_1"].to_polars()
-                groups = ModelGroups.validate_block(star["model_groups"])
                 reso = float(
                     star["model_general"]
                     .trust_single()
                     .to_dict()["rlnCurrentResolution"]
                 )
                 yield self._set_fsc, (df_fsc, reso)
-                # NOTE: multiply by 2 to account for half-sets
+                _fsc_plotted = True
+
+            if not self._num_particles_label.num_known():
                 yield (
                     self._num_particles_label.set_number,
-                    groups.num_particles.sum() * 2,
+                    _job_dir.try_get_particle_number(self._job_dir),
                 )
-                _fsc_plotted = True
         if not _fsc_plotted:
             _LOGGER.debug("Model STAR file was not found after waiting.")
             yield self._set_fsc, None
