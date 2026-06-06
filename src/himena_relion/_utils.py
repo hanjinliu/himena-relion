@@ -151,6 +151,10 @@ def read_icon_svg_for_type(type_label: str) -> str:
             return read_icon_svg("process")
         case "TomoTrajectoryData":
             return read_icon_svg("trajectories")
+        case "AtomCoords":
+            return read_icon_svg("atom_coords")
+        # case "Sequence":
+        #     ...
         case _:
             return read_icon_svg("file")
 

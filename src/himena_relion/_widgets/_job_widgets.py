@@ -17,7 +17,7 @@ from himena.consts import MonospaceFontFamily
 from himena.widgets import current_instance, set_status_tip
 from himena.qt import drag_files, QColoredSVGIcon, QColoredToolButton
 from himena.exceptions import Cancelled
-from himena_relion import _job_class, _job_dir
+from himena_relion import _job_class, _job_dir, _configs
 from himena_relion._impl_objects import start_worker
 from himena_relion._utils import (
     normalize_job_id,
@@ -531,7 +531,7 @@ class QRelionNodeItem(QtW.QWidget):
                     self,
                     path=filepath.parent,
                     path_rel=self._filepath_rel.parent,
-                    icon_label=self.item_icon_label(is_dir=True),
+                    icon_label=QIconLabel("directory"),
                 )
                 widget_dir.dragged.connect(self._drag_dir_event)
                 widget_dir.double_clicked.connect(self._open_dir_event)
@@ -547,7 +547,7 @@ class QRelionNodeItem(QtW.QWidget):
             self,
             path=filepath,
             path_rel=self._filepath_rel,
-            icon_label=self.item_icon_label(),
+            icon_label=QIconLabel(self.file_type_category()),
             text=self._filepath.name if show_dir else None,
         )
         widget_file.dragged.connect(self._drag_file_event)
@@ -565,20 +565,6 @@ class QRelionNodeItem(QtW.QWidget):
         if self._filetype is None:
             return None
         return self._filetype.split(".")[0]
-
-    def item_icon_label(self, is_dir: bool = False) -> QtW.QLabel:
-        qiconlabel = QtW.QLabel()
-        qiconlabel.setFixedSize(20, 20)
-        if is_dir:
-            icon = QColoredSVGIcon(read_icon_svg("folder"), color="gray")
-        else:
-            icon = self._icon_for_filetype()
-        qiconlabel.setPixmap(icon.pixmap(18, 18))
-        return qiconlabel
-
-    def _icon_for_filetype(self) -> QtGui.QIcon:
-        svg = read_icon_svg_for_type(self.file_type_category())
-        return QColoredSVGIcon(svg, color="gray")
 
     def _drag_dir_event(self):
         set_status_tip(f"Start dragging directory {self._filepath.parent}", duration=5)
@@ -618,6 +604,21 @@ def plugin_for_filetype(file_type_category: str | None) -> str | None:
             return "himena_relion.io.read_density_map"
         case _:
             return None
+
+
+class QIconLabel(QtW.QLabel):
+    """Widget used for showing icon for a node"""
+
+    def __init__(self, file_type_category: str | None = None):
+        super().__init__()
+        self.setFixedSize(20, 20)
+        if file_type_category == "directory":
+            icon = QColoredSVGIcon(read_icon_svg("folder"), color="gray")
+        else:
+            svg = read_icon_svg_for_type(file_type_category)
+            icon = QColoredSVGIcon(svg, color="gray")
+        self.setPixmap(icon.pixmap(18, 18))
+        self._file_type_category = file_type_category
 
 
 class QJobStateLabel(QtW.QWidget, JobWidgetBase):
@@ -731,7 +732,7 @@ class QFileLabel(QtW.QWidget):
         parent: QRelionNodeItem,
         path: Path | None = None,
         path_rel: Path | None = None,
-        icon_label: QtW.QLabel | None = None,
+        icon_label: QIconLabel | None = None,
         text: str | None = None,
     ):
         super().__init__(parent)
@@ -741,7 +742,10 @@ class QFileLabel(QtW.QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
         if icon_label:
+            self._file_type_category = icon_label._file_type_category
             layout.addWidget(icon_label)
+        else:
+            self._file_type_category = None
         self._pressed_pos = QtCore.QPoint()
         self._enabled = False
         if path and path_rel:
@@ -799,10 +803,12 @@ class QFileLabel(QtW.QWidget):
         menu = QtW.QMenu(self)
         menu.addAction("Open", self._open_path)
         menu.addSeparator()
-        menu.addAction("Copy Path To Clipboard", self._copy_path_to_clipboard)
-        menu.addAction(
-            "Copy Relative Path To Clipboard", self._copy_rel_path_to_clipboard
-        )
+        menu.addAction("Copy Path To Clipboard", self._copy_path)
+        menu.addAction("Copy Relative Path To Clipboard", self._copy_path_rel)
+        if self._file_type_category in ("DensityMap", "Mask3D", "AtomCoords"):
+            menu.addSeparator()
+            menu.addAction("Open In ChimeraX", self._open_in_chimerax)
+
         return menu
 
     def _open_path(self):
@@ -814,13 +820,14 @@ class QFileLabel(QtW.QWidget):
             append_history=False,
         )
 
-    def _copy_path_to_clipboard(self):
-        if clipboard := QtW.QApplication.clipboard():
-            clipboard.setText(str(self._path))
+    def _open_in_chimerax(self):
+        _configs.open_in_chimerax(self._path)
 
-    def _copy_rel_path_to_clipboard(self):
-        if clipboard := QtW.QApplication.clipboard():
-            clipboard.setText(str(self._path_rel))
+    def _copy_path(self):
+        current_instance().set_clipboard(text=str(self._path))
+
+    def _copy_path_rel(self):
+        current_instance().set_clipboard(text=str(self._path_rel))
 
 
 class QFileSystemModel(QtW.QFileSystemModel):
@@ -888,6 +895,18 @@ class QDirectoryTreeView(QtW.QTreeView, JobWidgetBase):
         menu.addAction(
             "Copy Path", lambda: current_instance().set_clipboard(text=str(path))
         )
+        if path.is_file():
+            if path.suffix in (".map", ".mrc", ".mrcs", ".tiff", ".tif"):
+                menu.addSeparator()
+                menu.addAction(
+                    "Open In ChimeraX", lambda: _configs.open_in_chimerax(path)
+                )
+                menu.addAction("Open In 3dmod", lambda: _configs.open_in_3dmod(path))
+            elif path.suffix in (".cif", ".bild", ".pdb"):
+                menu.addSeparator()
+                menu.addAction(
+                    "Open In ChimeraX", lambda: _configs.open_in_chimerax(path)
+                )
         return menu
 
     def _show_context_menu(self, pos: QtCore.QPoint):

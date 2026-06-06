@@ -1,6 +1,8 @@
+import os
 from pathlib import Path
 import shutil
 from dataclasses import dataclass
+import subprocess
 from himena.plugins import register_config, config_field, get_config
 
 
@@ -149,6 +151,43 @@ def get_queue_dict() -> dict[str, str]:
         "qsub": config.qsub,
         "qsubscript": config.qsubscript,
     }
+
+
+def open_in_chimerax(path: str | Path) -> None:
+    """Open the given file in ChimeraX or Chimera.
+
+    This function requires `himena` application."""
+    exe = get_chimera_exe()
+    if shutil.which(exe) is None:
+        raise RuntimeError(
+            f"ChimeraX/Chimera executable '{exe}' not found. Please check your RELION "
+            "configuration in the setting dialog (Ctrl+,)."
+        )
+    return open_in_external_app(path, exe)
+
+
+def open_in_3dmod(path: str | Path) -> None:
+    return open_in_imod_command(path, "3dmod")
+
+
+def open_in_imod_command(path: str | Path, exe: str) -> None:
+    if shutil.which(exe) is None:
+        exe = str(Path(get_batchruntomo_exe()).parent.joinpath(exe))
+        if shutil.which(exe) is None:
+            raise RuntimeError(f"{exe} executable not found.")
+    return open_in_external_app(path, exe)
+
+
+def open_in_external_app(path: str | Path, command: str, *more_args) -> None:
+    env = os.environ.copy()
+    env.pop("QT_API", None)
+    subprocess.Popen(
+        [command, str(path), *more_args],
+        start_new_session=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        env=env,
+    )
 
 
 def _get_himena_relion_config() -> RelionConfig:

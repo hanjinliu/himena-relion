@@ -2,7 +2,6 @@ from __future__ import annotations
 from functools import partial
 from pathlib import Path
 import logging
-import subprocess
 import numpy as np
 import polars as pl
 
@@ -19,7 +18,7 @@ from himena_relion._widgets import (
     register_job,
     QMicrographListWidget,
 )
-from himena_relion import _job_dir, _utils
+from himena_relion import _job_dir, _utils, _configs
 from himena_relion.relion5_tomo._tomo_utils import project_fiducials
 from himena_relion.schemas._movie_tilts import TSModel, TSGroupModel
 
@@ -201,12 +200,7 @@ class QAlignTiltSeriesViewer(QJobScrollArea):
 
     def _open_in_etomo(self):
         edf = edf_file(self._job_dir, self._ts_list.current_text())
-        subprocess.Popen(
-            ["etomo", edf.as_posix()],
-            start_new_session=True,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
+        _configs.open_in_imod_command(edf, "etomo")
 
 
 class ImodImageAligner:
