@@ -81,7 +81,7 @@ class _Vispy2DBase(_VispyBase):
 
         # initialize camera
         self._viewbox.camera.aspect = 1.0
-        self._viewbox.camera.flip = (False, True, False)
+        self._viewbox.camera.flip = (False, False, False)
 
         # initialize image visual
         self._image = VispyImage(cmap="gray", parent=self._viewbox.scene)
@@ -95,9 +95,6 @@ class _Vispy2DBase(_VispyBase):
         self._markers.update_gl_state(depth_test=False)
         self._markers.visible = False
         self._scene.events.mouse_double_click.connect(lambda event: self.auto_fit())
-
-        # To make the upside consistent with 3dmod
-        self.camera.up = "-z"
 
     @property
     def camera(self) -> scene.PanZoomCamera:

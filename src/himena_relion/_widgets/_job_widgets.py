@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from datetime import datetime
 import logging
-import os
-import subprocess
 from contextlib import suppress
 from pathlib import Path
 import html
@@ -19,9 +17,8 @@ from himena.consts import MonospaceFontFamily
 from himena.widgets import current_instance, set_status_tip
 from himena.qt import drag_files, QColoredSVGIcon, QColoredToolButton
 from himena.exceptions import Cancelled
-from himena_relion import _job_class, _job_dir
+from himena_relion import _job_class, _job_dir, _configs
 from himena_relion._impl_objects import start_worker
-from himena_relion._configs import get_chimera_exe
 from himena_relion._utils import (
     normalize_job_id,
     read_icon_svg,
@@ -806,13 +803,12 @@ class QFileLabel(QtW.QWidget):
         menu = QtW.QMenu(self)
         menu.addAction("Open", self._open_path)
         menu.addSeparator()
-        menu.addAction("Copy Path To Clipboard", self._copy_path_to_clipboard)
-        menu.addAction(
-            "Copy Relative Path To Clipboard", self._copy_rel_path_to_clipboard
-        )
-        if self._file_type_category == "DensityMap":
+        menu.addAction("Copy Path To Clipboard", self._copy_path)
+        menu.addAction("Copy Relative Path To Clipboard", self._copy_path_rel)
+        if self._file_type_category in ("DensityMap", "Mask3D", "AtomCoords"):
             menu.addSeparator()
             menu.addAction("Open In ChimeraX", self._open_in_chimerax)
+
         return menu
 
     def _open_path(self):
@@ -825,23 +821,13 @@ class QFileLabel(QtW.QWidget):
         )
 
     def _open_in_chimerax(self):
-        env = os.environ.copy()
-        env.pop("QT_API", None)
-        subprocess.Popen(
-            [get_chimera_exe(), self._path.as_posix()],
-            start_new_session=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            env=env,
-        )
+        _configs.open_in_chimerax(self._path)
 
-    def _copy_path_to_clipboard(self):
-        if clipboard := QtW.QApplication.clipboard():
-            clipboard.setText(str(self._path))
+    def _copy_path(self):
+        current_instance().set_clipboard(text=str(self._path))
 
-    def _copy_rel_path_to_clipboard(self):
-        if clipboard := QtW.QApplication.clipboard():
-            clipboard.setText(str(self._path_rel))
+    def _copy_path_rel(self):
+        current_instance().set_clipboard(text=str(self._path_rel))
 
 
 class QFileSystemModel(QtW.QFileSystemModel):
@@ -909,6 +895,18 @@ class QDirectoryTreeView(QtW.QTreeView, JobWidgetBase):
         menu.addAction(
             "Copy Path", lambda: current_instance().set_clipboard(text=str(path))
         )
+        if path.is_file():
+            if path.suffix in (".map", ".mrc", ".mrcs", ".tiff", ".tif"):
+                menu.addSeparator()
+                menu.addAction(
+                    "Open In ChimeraX", lambda: _configs.open_in_chimerax(path)
+                )
+                menu.addAction("Open In 3dmod", lambda: _configs.open_in_3dmod(path))
+            elif path.suffix in (".cif", ".bild", ".pdb"):
+                menu.addSeparator()
+                menu.addAction(
+                    "Open In ChimeraX", lambda: _configs.open_in_chimerax(path)
+                )
         return menu
 
     def _show_context_menu(self, pos: QtCore.QPoint):
