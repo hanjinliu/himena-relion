@@ -135,11 +135,11 @@ def test_ctfrefine_tomo_intermediate(
     tester.mkdir("temp/scale")
     tester.write_text("temp/defocus/TS_1.star", as_star(
         {
-            "TS_1": {
+            "TS_1": pl.DataFrame({
                 "rlnDefocusU": [10000, 11000, 12000, 11000, 10000],
                 "rlnDefocusV": [9000, 9500, 10000, 10500, 11000],
                 "rlnDefocusAngle": [50, 40, 20, 50, 40],
-            }
+            })
         }
     ).to_string())
     tester.write_text("temp/scale/TS_1.star", as_star(
