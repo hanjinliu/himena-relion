@@ -612,7 +612,7 @@ class QIconLabel(QtW.QLabel):
     def __init__(self, file_type_category: str | None = None):
         super().__init__()
         self.setFixedSize(20, 20)
-        if file_type_category.lower() == "directory":
+        if file_type_category == "directory":
             icon = QColoredSVGIcon(read_icon_svg("folder"), color="gray")
         else:
             svg = read_icon_svg_for_type(file_type_category)
