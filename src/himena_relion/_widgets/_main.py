@@ -7,6 +7,7 @@ import weakref
 from qtpy import QtWidgets as QtW, QtCore, QtGui
 from superqt import QElidingLabel
 from superqt.utils import thread_worker, GeneratorWorker
+from contextlib import contextmanager
 from watchfiles import watch
 from timeit import default_timer
 from himena import MainWindow, WidgetDataModel
@@ -212,6 +213,19 @@ class QRelionJobWidget(QRelionJobWidgetBase):
             for updated_file in updated_files:
                 self.job_updated.emit(updated_file)
                 yield
+
+    @contextmanager
+    def pause_watcher(self):
+        """Context manager to pause the directory watcher."""
+        had_watcher = self._watcher is not None
+        if had_watcher:
+            self._watcher.quit()
+            self._watcher = None
+        try:
+            yield
+        finally:
+            if self._job_dir is not None and self._watcher is None:
+                self._watcher = self._watch_job_directory(self._job_dir.path)
 
     def _on_job_updated(self, path: Path):
         """Handle changes to the job directory."""

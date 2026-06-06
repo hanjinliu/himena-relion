@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import shutil
 from typing import TYPE_CHECKING
+from contextlib import nullcontext, suppress
 from himena import MainWindow, WidgetDataModel
 from himena.exceptions import Cancelled
 from himena.plugins import register_function
@@ -227,20 +228,29 @@ def open_trash_directory(ui: MainWindow):
 )
 def delete_all_subtomos(ui: MainWindow, model: WidgetDataModel):
     """Clean up all the extracted subtomograms."""
+    from himena_relion._widgets import QRelionJobWidget
+
     job_dir = assert_job(model)
     dirs = list(job_dir.path.joinpath("Subtomograms").iterdir())
     if len(dirs) == 0:
         ui.show_notification("No subtomogram to delete.")
         return
 
+    # cleanup causes a lot of file events, so we pause the watcher if possible.
+    _context = nullcontext
+    with suppress(Exception):
+        if isinstance(job_widget := ui.current_window.widget, QRelionJobWidget):
+            _context = job_widget.pause_watcher
+
     if ui.exec_choose_one_dialog(
         title="Delete all?",
-        message="Are you sure you want to delete all the extracted subtomograms? "
-        "This action cannot be undone.",
+        message="Are you sure you want to delete all the files/directories under "
+        "`Subtomograms/`? This action cannot be undone.",
         choices=[("Yes, delete all", True), ("No, cancel", False)],
     ):
-        for each_dir in dirs:
-            shutil.rmtree(each_dir)
+        with _context():
+            for each_dir in dirs:
+                shutil.rmtree(each_dir)
 
 
 def assert_job(model: WidgetDataModel) -> JobDirectory:
