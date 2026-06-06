@@ -126,6 +126,8 @@ class QCtfRefineTomoViewer(QJobScrollArea):
         layout = self._layout
         self._defocus_canvas = QPlotCanvas(self)
         self._defocus_canvas.setFixedSize(360, 160)
+        self._defocus_angle_canvas = QPlotCanvas(self)
+        self._defocus_angle_canvas.setFixedSize(360, 160)
         self._ctf_scale_canvas = QPlotCanvas(self)
         self._ctf_scale_canvas.setFixedSize(360, 160)
         self._ts_list = QMicrographListWidget(["Tilt Series"])
@@ -133,6 +135,8 @@ class QCtfRefineTomoViewer(QJobScrollArea):
         layout.addWidget(self._ts_list)
         layout.addWidget(QtW.QLabel("<b>&#9679; Defocus</b>"))
         layout.addWidget(self._defocus_canvas)
+        layout.addWidget(QtW.QLabel("<b>&#9679; Defocus angle</b>"))
+        layout.addWidget(self._defocus_angle_canvas)
         layout.addWidget(QtW.QLabel("<b>&#9679; CTF Scale Factor</b>"))
         layout.addWidget(self._ctf_scale_canvas)
 
@@ -148,27 +152,58 @@ class QCtfRefineTomoViewer(QJobScrollArea):
             _LOGGER.debug("%s Updated", self._job_dir.job_number)
 
     def _process_update(self):
-        choices = [(p.stem,) for p in iter_tilt_series_path(self._job_dir)]
+        if self._job_dir.path.joinpath("tomograms.star").exists():
+            choices = [(p.stem,) for p in iter_tilt_series_path(self._job_dir)]
+        else:
+            if (defocus_dir := self._job_dir.path / "temp" / "defocus").exists():
+                choices = [(p.stem,) for p in defocus_dir.glob("*.star")]
+            elif (scale_dir := self._job_dir.path / "temp" / "scale").exists():
+                choices = [(p.stem,) for p in scale_dir.glob("*.star")]
+            else:
+                choices = []
         choices.sort(key=lambda x: x[0])
         self._ts_list.set_choices(choices)
         if len(choices) == 0:
             # clear everything
             self._defocus_canvas.clear()
+            self._defocus_angle_canvas.clear()
             self._ctf_scale_canvas.clear()
 
     def _ts_choice_changed(self, texts: tuple[str, ...]):
         """Update the viewer when the selected tomogram changes."""
         job_dir = self._job_dir
         text = texts[0]
-        for ts_path in iter_tilt_series_path(job_dir):
-            if ts_path.stem == text:
-                df = read_star(ts_path).first().trust_loop().to_polars()
+        defocus_refined = self._job_dir.get_job_param("do_reg_def", "No") == "Yes"
+        scale_refined = self._job_dir.get_job_param("do_scale", "No") == "Yes"
+        # tomo_scale_refined = self._job_dir.get_job_param("do_tomo_scale", "No") == "Yes"
+        if job_dir.path.joinpath("tomograms.star").exists():
+            # job finished
+            ts_path = job_dir.path / "tilt_series" / f"{text}.star"
+            df = read_star(ts_path).first().trust_loop().to_polars()
+            if defocus_refined:
                 self._defocus_canvas.plot_defocus(df)
+                self._defocus_angle_canvas.plot_ctf_defocus_angle(df)
+            if scale_refined:
                 self._ctf_scale_canvas.plot_ctf_scale(df)
-                break
+        elif (temp_dir := job_dir.path / "temp").exists():
+            # Try to get nominal tilt angles
+            if (
+                defocus_refined
+                and (defocus_star := temp_dir / "defocus" / f"{text}.star").exists()
+            ):
+                df = read_star(defocus_star).first().trust_loop().to_polars()
+                self._defocus_canvas.plot_defocus(df)
+                self._defocus_angle_canvas.plot_ctf_defocus_angle(df)
+            if (
+                scale_refined
+                and (scale_star := temp_dir / "scale" / f"{text}.star").exists()
+            ):
+                df = read_star(scale_star).first().trust_loop().to_polars()
+                self._ctf_scale_canvas.plot_ctf_scale(df)
 
     def widget_added_callback(self):
         self._defocus_canvas.widget_added_callback()
+        self._defocus_angle_canvas.widget_added_callback()
         self._ctf_scale_canvas.widget_added_callback()
 
 

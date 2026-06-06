@@ -765,28 +765,21 @@ def _particle_number_reconstruct_particles(job_dir: JobDirectory) -> int:
 
 
 def _particle_num_refine3d(job_dir: JobDirectory) -> int:
-    model_star_half1 = job_dir.path / "run_it000_half1_model.star"
-    model_star_half2 = job_dir.path / "run_it000_half2_model.star"
-    model_star = job_dir.path / "run_model.star"
-    try:
-        if model_star.exists():
-            return _particle_num_from_run_model(model_star)
-        elif model_star_half1.exists() and model_star_half2.exists():
-            return _particle_num_from_run_model(
-                model_star_half1
-            ) + _particle_num_from_run_model(model_star_half2)
-        else:
-            return -1
-    except Exception:
-        return -1
+    for model_star_half1 in job_dir.path.glob("run_it*_half1_model.star"):
+        model_star_half2 = job_dir.path / model_star_half1.name.replace(
+            "half1", "half2"
+        )
+        if model_star_half1.exists() and model_star_half2.exists():
+            n1 = _particle_num_from_run_model(model_star_half1)
+            n2 = _particle_num_from_run_model(model_star_half2)
+            if n1 >= 0 and n2 >= 0:
+                return n1 + n2
+    return -1
 
 
 def _particle_num_class3d(job_dir: JobDirectory) -> int:
-    try:
-        model_star = next(job_dir.path.glob("run_it*_model.star"))
-        return _particle_num_from_run_model(model_star)
-    except Exception:
-        return -1
+    model_star = next(job_dir.path.glob("run_it*_model.star"))
+    return _particle_num_from_run_model(model_star)
 
 
 def _particle_num_postprocess(job_dir: JobDirectory) -> int:
@@ -801,7 +794,10 @@ def _particle_num_postprocess(job_dir: JobDirectory) -> int:
     return -1
 
 
-def _particle_num_from_run_model(model_star):
-    star = read_star(model_star)
-    groups = ModelGroups.validate_block(star.get("model_groups"))
-    return groups.num_particles.sum()
+def _particle_num_from_run_model(model_star) -> int:
+    try:
+        star = read_star(model_star)
+        groups = ModelGroups.validate_block(star.get("model_groups"))
+        return groups.num_particles.sum()
+    except Exception:
+        return -1

@@ -25,7 +25,6 @@ def test_reconstruct_particle_widget(
     for i in range(5):
         QtW.QApplication.processEvents()
 
-# @pytest.mark.skipif(sys.platform == "win32", reason="Access violation in Windows CI")
 def test_reconstruct_particle_widget_intermediate(
     qtbot,
     make_job_directory: Callable[[str, str], JobDirectory],

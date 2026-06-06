@@ -192,6 +192,8 @@ def _list_subtomo_names(job_dir: _job_dir.JobDirectory, tomoname: str) -> list[s
         suffix = "_stack2d.mrcs"
     else:
         suffix = "_data.mrc"
+    if not tomo_dir.exists():
+        return []
     return [p for p in os.listdir(tomo_dir) if p.endswith(suffix)]
 
 
