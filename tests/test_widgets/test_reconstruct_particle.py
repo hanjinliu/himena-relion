@@ -1,8 +1,7 @@
-import sys
 from typing import Callable
 from pathlib import Path
 
-import pytest
+from qtpy import QtWidgets as QtW
 from himena_relion._job_dir import JobDirectory
 from himena_relion.relion5_tomo.widgets._reconstruct import QReconstructViewer
 from himena_relion.testing import JobWidgetTester
@@ -23,8 +22,10 @@ def test_reconstruct_particle_widget(
     assert not tester.widget._viewer.has_image
     tester.write_random_mrc("merged.mrc", (32, 32, 32))
     assert tester.widget._viewer.has_image
+    for i in range(5):
+        QtW.QApplication.processEvents()
 
-@pytest.mark.skipif(sys.platform == "win32", reason="Access violation in Windows CI")
+# @pytest.mark.skipif(sys.platform == "win32", reason="Access violation in Windows CI")
 def test_reconstruct_particle_widget_intermediate(
     qtbot,
     make_job_directory: Callable[[str, str], JobDirectory],
@@ -45,3 +46,5 @@ def test_reconstruct_particle_widget_intermediate(
     tester.write_random_mrc("temp/sum_2_ctf_half0.mrc", (32, 32, 17))
     tester.write_random_mrc("temp/sum_2_data_half0.mrc", (64, 32, 17))
     assert tester.widget._viewer.has_image
+    for i in range(5):
+        QtW.QApplication.processEvents()

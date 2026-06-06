@@ -6,7 +6,6 @@ import logging
 import mrcfile
 import numpy as np
 from qtpy import QtWidgets as QtW, QtCore
-from starfile_rs import read_star
 from superqt import QToggleSwitch
 from himena.qt._qlineedit import QDoubleLineEdit
 from himena_relion._widgets import (
@@ -167,32 +166,6 @@ class QReconstructViewer(QJobScrollArea):
             self._viewer.auto_threshold(update_now=False)
             self._viewer.auto_fit()
         return True
-
-    def _try_get_num_particles(self, job_dir: _job_dir.JobDirectory) -> int:
-        try:
-            params = job_dir.get_job_params_as_dict()
-            if opt_path := params.get("in_optimisation", None):
-                opt_path = job_dir.relion_project_dir / opt_path
-                opt_model = OptimisationSetModel.validate_file(opt_path)
-                particles_path = job_dir.resolve_path(opt_model.particles_star)
-            elif ptcl := params.get("in_particles", None):
-                particles_path = job_dir.resolve_path(ptcl)
-            else:
-                return
-            star = read_star(particles_path)
-            if "particles" in star:
-                n_particles = star["particles"].trust_loop().shape[0]
-            elif len(star) == 1:
-                n_particles = star.first().trust_loop().shape[0]
-            else:
-                n_particles = -1
-        except Exception:
-            n_particles = -1
-            _LOGGER.warning(
-                "Failed to read particles star file to get number of particles",
-                exc_info=True,
-            )
-        return n_particles
 
     def _on_lowpass_changed(self):
         self._viewer.set_image(self._get_image_filtered(), update_now=True)
