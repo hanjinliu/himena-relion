@@ -19,7 +19,7 @@ _rlnJobOptionValue #2
 do_defocus        Yes
 do_frame_scale        Yes
   do_queue         No
-do_reg_def         No
+do_reg_def         Yes
   do_scale        Yes
 do_tomo_scale         No
 focus_range       3000
