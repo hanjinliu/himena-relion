@@ -1,5 +1,6 @@
 from abc import abstractmethod
 import inspect
+import sys
 from pathlib import Path
 from typing import Any, Generator
 from rich.console import Console
@@ -221,3 +222,11 @@ class RelionExternalJob(RelionJob):
             if key not in params:
                 kwargs.pop(key, None)
         return kwargs
+
+    def _log_job_version_info(self):
+        job_cls = type(self)
+        mod_str = job_cls.__module__.split(".")[0]
+        if (mod := sys.modules.get(mod_str, None)) is not None:
+            if _job_version := getattr(mod, "__version__", ""):
+                self.console.log(f"Using {mod_str} v{_job_version}")
+        self.console.log("Version info not found for this job.")

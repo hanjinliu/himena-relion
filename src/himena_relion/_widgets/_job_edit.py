@@ -309,7 +309,7 @@ class ScheduleMode(Mode):
                 try:
                     JobStarModel.validate_file(job_star)
                 except ValidationError:
-                    time.sleep(0.05)
+                    time.sleep(0.1)
             widget._ui.read_file(job_star, append_history=False)
 
     def button_text(self) -> str:
@@ -488,3 +488,6 @@ class QHTMLTextEdit(QtW.QTextEdit):
                 _utils.open_url(self._anchor)
             self._anchor = None
         return super().mouseReleaseEvent(e)
+
+
+def _check_recursive_pipeline(): ...
