@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from qtpy import QtWidgets as QtW, QtCore
 from enum import StrEnum
+from PIL import Image, ImageDraw, ImageFont
 from cmap import Colormap
 from starfile_rs import read_star
 import numpy as np
@@ -178,8 +179,14 @@ class Class3DPopup(QtW.QWidget):
                 abs_max = max(abs(min0), abs(max0))
                 _clim = (-abs_max, abs_max)
         input_images = np.clip((input_images - _clim[0]) / (_clim[1] - _clim[0]), 0, 1)
-        for img_proj, viewer in zip(input_images, self._viewers):
-            viewer.set_array(0, _cmap(img_proj, bytes=True))
+        for ith, (img_proj, viewer) in enumerate(zip(input_images, self._viewers)):
+            img_slice = _cmap(img_proj, bytes=True)
+            pil_img = Image.fromarray(img_slice)
+            draw = ImageDraw.Draw(pil_img)
+            font = ImageFont.load_default()
+            font.size = 11
+            draw.text((2, 2), f"{ith + 1}", fill=(0, 255, 0), font=font)
+            viewer.set_array(0, np.array(pil_img))
             viewer.auto_range()
 
     def _slice_image(self, img: np.ndarray, axis: int) -> np.ndarray:
