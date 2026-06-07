@@ -17,6 +17,7 @@ class QLabelWithButtons(QtW.QWidget):
         super().__init__()
         layout = QtW.QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(3)
         layout.addWidget(QtW.QLabel(label), stretch=10)
         self.setFixedWidth(width)
         tool_buttons = []

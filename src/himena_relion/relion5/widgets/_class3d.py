@@ -72,7 +72,10 @@ class QClass3DViewer(QJobScrollArea):
 
         self._opt_label = QLabelWithButtons(
             label="<b>&#9679; Optimisation results</b>",
-            buttons=[(path_icon_svg("plot"), self._show_summary_plot)],
+            buttons=[
+                (path_icon_svg("panels"), self._show_inspect_classes),
+                (path_icon_svg("plot"), self._show_summary_plot),
+            ],
             width=max_width,
         )
 
@@ -111,7 +114,7 @@ class QClass3DViewer(QJobScrollArea):
         self._layout.addWidget(self._resizer)
         self._layout.addWidget(hor2)
         self._layout.addSpacing(5)
-        self._layout.addWidget(QtW.QLabel("<b>&#9679; Refinement Results</b>"))
+        self._layout.addWidget(self._opt_label)
         self._layout.addWidget(self._optimiser_info)
 
         self._iter_choice.valueChanged.connect(self._on_iter_changed)
@@ -146,6 +149,10 @@ class QClass3DViewer(QJobScrollArea):
         self._update_for_value(value, class_id)
         self._update_summary_table(value)
         self._last_niter = value
+
+    def _show_inspect_classes(self):
+        """Show the class distribution and representative images."""
+        return current_instance().exec_action("himena-relion:inspect-classes")
 
     def _show_summary_plot(self):
         """Show a table and plots of the metrics over iterations."""

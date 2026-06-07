@@ -58,7 +58,10 @@ class QInitialModelViewer(QJobScrollArea):
 
         self._opt_label = QLabelWithButtons(
             label="<b>&#9679; Optimisation results</b>",
-            buttons=[(path_icon_svg("plot"), self._show_summary_plot)],
+            buttons=[
+                (path_icon_svg("panels"), self._show_inspect_classes),
+                (path_icon_svg("plot"), self._show_summary_plot),
+            ],
             width=max_width,
         )
         self._optimiser_info = QOptimiserInfoTextEdit()
@@ -138,6 +141,10 @@ class QInitialModelViewer(QJobScrollArea):
     def _on_class_changed(self, value: tuple[str, str, str]):
         class_id = int(value[0])
         self._update_for_value(self._iter_choice.value(), class_id)
+
+    def _show_inspect_classes(self):
+        """Show the class distribution and representative images."""
+        return current_instance().exec_action("himena-relion:inspect-classes")
 
     def _show_summary_plot(self):
         """Show a table and plots of the metrics over iterations."""
