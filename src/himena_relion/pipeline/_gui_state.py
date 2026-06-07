@@ -2,6 +2,7 @@ from __future__ import annotations
 import datetime
 from pathlib import Path
 import uuid
+import warnings
 from cmap import Color
 
 from pydantic import BaseModel, Field, PrivateAttr
@@ -70,7 +71,11 @@ class HimenaRelionGuiState(BaseModel):
         if not path.exists():
             return None
         js = path.read_text()
-        self = cls.model_validate_json(js)
+        try:
+            self = cls.model_validate_json(js)
+        except Exception as e:
+            warnings.warn(f"Failed to read {path}: {e}", stacklevel=1)
+            return None
         self._write_time = datetime.datetime.fromtimestamp(path.stat().st_mtime)
         return self
 
