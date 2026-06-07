@@ -363,6 +363,7 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         self._update_state_to_job_maps(pipeline)
         success_new = set(self._state_to_job_map[NodeStatus.SUCCEEDED].keys())
         failed_new = set(self._state_to_job_map[NodeStatus.FAILED].keys())
+        aborted_new = set(self._state_to_job_map[NodeStatus.ABORTED].keys())
         running_new = set(self._state_to_job_map[NodeStatus.RUNNING].keys())
         scheduled_new = set(self._state_to_job_map[NodeStatus.SCHEDULED].keys())
         ui = self._ui()
@@ -375,6 +376,10 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         # Notify newly failed jobs
         if failed := (failed_new - failed_old) & running_old:
             to_notify.append("\n".join(f"Job {job} failed." for job in failed))
+
+        # Notify newly aborted jobs
+        if aborted := (aborted_new - aborted_old) & running_old:
+            to_notify.append("\n".join(f"Job {job} aborted." for job in aborted))
 
         _finished = success_old | failed_old | aborted_old
         # Notify newly scheduled jobs
