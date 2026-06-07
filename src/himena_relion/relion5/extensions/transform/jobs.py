@@ -91,8 +91,8 @@ class ShiftMapJob(RelionExternalJob):
         else:
             raise ValueError(f"Invalid value for center_by: {center_by}")
 
-        self.console.log(f"Shift in pixels: {new_center_pix}")
-        self.console.log(f"Shift in angstroms: {new_center_ang}")
+        self.console.log(f"Shift in pixels: {_round_shift(new_center_pix)}")
+        self.console.log(f"Shift in angstroms: {_round_shift(new_center_ang)}")
         _shift_image(in_3dref, out_job_dir.path / _c.OUTPUT_MAP, new_center_pix)
         self.console.log(f"Write shifted map to {out_job_dir.path / _c.OUTPUT_MAP}")
         if in_mask:
@@ -127,7 +127,7 @@ def _center_by_com(
     img, img_scale = _read_image(path)
     com = _img_center_of_mass(img)
     center = tuple((s - 1) / 2 for s in img.shape)
-    out_pix = tuple(float(cm - c) for c, cm in zip(center, com))
+    out_pix = tuple(float(c - cm) for c, cm in zip(center, com))
     out_angst = tuple(d * img_scale for d in out_pix)
     return out_pix, out_angst
 
@@ -191,6 +191,10 @@ def _read_image(path) -> tuple[np.ndarray, float]:
         img = mrc.data
         pixel_size = mrc.voxel_size.x  # assuming isotropic voxels
     return img, float(pixel_size)
+
+
+def _round_shift(shift_pix):
+    return tuple(round(s, 2) for s in shift_pix)
 
 
 connect_jobs(

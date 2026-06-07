@@ -28,6 +28,7 @@ def test_shift_map(qtbot, tmpdir):
     ext_dir.mkdir(parents=True, exist_ok=True)
     img_path = ext_dir / "in_3dref.mrc"
     mask_path = ext_dir / "in_mask.mrc"
+
     with mrcfile.new(img_path) as mrc:
         mrc.set_data(np.random.normal(size=(8, 8, 8)).astype(np.float32))
     with mrcfile.new(mask_path) as mrc:
@@ -35,6 +36,8 @@ def test_shift_map(qtbot, tmpdir):
         mrc.voxel_size = (0.78, 0.78, 0.78)
 
     tester = ExternalJobTester(ShiftMapJob)
+    job_ins = tester.create_job_instance(ext_dir)
+    job_ins._log_job_version_info()
     widget = tester.provide_widget(ext_dir)
     qtbot.addWidget(widget)
     tester.prep_job_star(ext_dir, in_3dref=str(img_path), center_by="pixel", new_center=(1, 0, -1.2))

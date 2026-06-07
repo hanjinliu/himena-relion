@@ -69,10 +69,13 @@ class ExternalJobTester:
         directory.joinpath("job.star").write_text(txt)
         return txt
 
-    def provide_widget(self, directory: Path):
+    def create_job_instance(self, directory: Path) -> RelionExternalJob:
         job_dir = ExternalJobDirectory(directory)
-        job = self._job_cls(job_dir)
-        widget = job.provide_widget(job_dir)
+        return self._job_cls(job_dir)
+
+    def provide_widget(self, directory: Path):
+        job = self.create_job_instance(directory)
+        widget = job.provide_widget(job.output_job_dir)
         if widget is NotImplemented:
             raise NotImplementedError(
                 f"{self._job_cls.__name__} does not provide a widget."

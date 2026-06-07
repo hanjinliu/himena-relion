@@ -105,6 +105,9 @@ def run_function(argv: list[str] | None = None) -> None:
         for file_path_rel, label in job.output_nodes():
             pipeline.append_output(root_rel / file_path_rel, label)
 
+    # Log version
+    job._log_job_version_info()
+
     # Run the function
     is_generator = inspect.isgeneratorfunction(job.run)
     if is_generator:
