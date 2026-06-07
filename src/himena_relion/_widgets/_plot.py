@@ -174,6 +174,37 @@ class QPlotCanvas(QModelMatplotlibCanvas):
         fig.set_legend(font_size=9.0)
         self._fsc_finalize(fig)
 
+    def plot_guinier_postprocess(self, df: pl.DataFrame):
+        x = df["rlnResolutionSquared"]
+        y0 = df["rlnLogAmplitudesOriginal"]
+        y1 = df["rlnLogAmplitudesWeighted"]
+        xtickpos = np.linspace(x.min(), x.max(), 6)
+        xticklabels = [999] + np.sqrt(1 / xtickpos[1:]).tolist()
+        theme = self._main_theme()
+        fig = hplt.figure(theme.background)
+        fig.plot(x, y0, name="Original")
+        fig.plot(x, y1, name="Weighted")
+        fig.x.set_ticks(
+            xtickpos,
+            labels=[_res_to_str(r) for r in xticklabels],
+        )
+        fig.set_legend(font_size=9.0)
+
+        fig.x.label = "Resolution (Å)"
+        fig.y.label = "ln(Amplitude)"
+
+        # Determine ylim. The first point is the DC component. Invalid amplitudes are
+        # set to -99.0.
+        y_trim = np.concatenate([y0[1:].to_numpy(), y1[1:].to_numpy()])
+        y_trim = y_trim[y_trim > -98]
+        if len(y_trim) > 0:
+            y_min = y_trim.min()
+            y_max = y_trim.max()
+            y_range = y_max - y_min
+            fig.y.lim = (y_min - 0.04 * y_range, y_max + 0.04 * y_range)
+            self.update_model(WidgetDataModel(value=fig, type=StandardType.PLOT))
+            self.tight_layout()
+
     def plot_hist(
         self,
         arr,

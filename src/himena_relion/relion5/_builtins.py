@@ -2010,11 +2010,13 @@ class _SelectClassesJob(_SelectJob):
         try:
             df = read_star(path).first().trust_loop().to_polars()
             ncls = df.height
-            cls_indices = [str(i + 1) for i, a in enumerate(df["rlnSelected"]) if a > 0]
+            cls_indices = [
+                f"class{i + 1:0>3}" for i, a in enumerate(df["rlnSelected"]) if a > 0
+            ]
         except Exception:
             return super().status_tip()
         else:
-            if len(cls_indices) < 10:
+            if len(cls_indices) < 8:
                 return f"Selected: {', '.join(cls_indices)} (from {ncls} classes)"
             else:
                 return f"Selected: {len(cls_indices)}/{ncls} classes"
