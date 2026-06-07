@@ -8,8 +8,9 @@ from starfile_rs import read_star
 import mrcfile
 from superqt.utils import thread_worker
 from himena.widgets import current_instance
-from himena_relion._utils import wait_for_file
+from himena_relion._utils import wait_for_file, path_icon_svg
 from himena_relion._widgets._shared.resizer import QResizer
+from himena_relion._widgets._shared.label_with_button import QLabelWithButtons
 from himena_relion._widgets import (
     QJobScrollArea,
     Q3DViewer,
@@ -66,6 +67,11 @@ class QRefine3DViewer(QJobScrollArea):
         )
 
         self._num_particles_label = QNumParticlesLabel()
+        self._opt_label = QLabelWithButtons(
+            label="<b>&#9679; Optimisation results</b>",
+            buttons=[(path_icon_svg("plot"), self._show_summary_plot)],
+            width=max_width,
+        )
         self._optimiser_info = QOptimiserInfoTextEdit()
         for entry in [
             ("rlnParticleDiameter", "Mask diameter", " Å"),
@@ -101,11 +107,10 @@ class QRefine3DViewer(QJobScrollArea):
         hor_layout2.addWidget(self._num_particles_label)
         self._layout.addWidget(_hor)
         self._layout.addWidget(self._show_run_class001_btn)
-        self._layout.addSpacing(5)
-        self._layout.addWidget(QtW.QLabel("<b>&#9679; Fourier Shell Correlation</b>"))
+        self._layout.addSpacing(8)
+        self._layout.addWidget(self._opt_label)
         self._layout.addWidget(self._fsc_plot)
         self._layout.addSpacing(5)
-        self._layout.addWidget(QtW.QLabel("<b>&#9679; optimiser.star</b>"))
         self._layout.addWidget(self._optimiser_info)
         self._index_start = 1
         self._job_dir = _job_dir.Refine3DJobDirectory(job_dir.path)
@@ -140,6 +145,10 @@ class QRefine3DViewer(QJobScrollArea):
 
     def _on_show_run_class001_toggled(self):
         self._update_for_value(self._iter_choice.value())
+
+    def _show_summary_plot(self):
+        """Show a table and plots of the metrics over iterations."""
+        return current_instance().exec_action("himena-relion:show-summary-panel")
 
     def _continue_from_here_clicked(self):
         if self._job_dir.is_tomo():

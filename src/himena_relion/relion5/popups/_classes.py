@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from qtpy import QtWidgets as QtW, QtCore
 from enum import StrEnum
+from PIL import Image, ImageDraw, ImageFont
 from cmap import Colormap
 from starfile_rs import read_star
 import numpy as np
@@ -10,7 +11,7 @@ from superqt import QFlowLayout, QLabeledSlider
 from himena.qt.magicgui import ToggleButtons
 from himena_builtins.qt.image import QImageGraphicsView
 from himena_relion._job_dir import JobDirectory
-from himena_relion._widgets import QIntWidget
+from himena_relion._widgets import QIntChoiceWidget
 from himena_relion._utils import invert_y
 
 
@@ -35,6 +36,8 @@ class Class3DPopup(QtW.QWidget):
     def __init__(
         self,
         job_dir: JobDirectory,
+        default_mode_projection: str | ProjectionMode = "mean",
+        default_mode_intensity: str | IntensityMode = "diff",
     ):
         super().__init__()
         layout = QtW.QVBoxLayout(self)
@@ -62,8 +65,8 @@ class Class3DPopup(QtW.QWidget):
         self._image_consensus: np.ndarray = np.array([])
         self._job_dir = job_dir
 
-        self._mode_projection = ProjectionMode.SLICE
-        self._mode_intensity = IntensityMode.DIFF
+        self._mode_projection = ProjectionMode(default_mode_projection)
+        self._mode_intensity = IntensityMode(default_mode_intensity)
         self._direction = Direction.XY
 
         self._dim_slider = QLabeledSlider(QtCore.Qt.Orientation.Horizontal)
@@ -80,10 +83,9 @@ class Class3DPopup(QtW.QWidget):
             viewer.add_image_layer()
             flow_layout.addWidget(viewer)
 
-        self._iter_choice = QIntWidget("Iteration", label_width=60)
+        self._iter_choice = QIntChoiceWidget("Iteration", label_width=60)
         self._iter_choice.setMaximumWidth(200)
-        self._iter_choice.setValue(max(niter_choices))
-        self._iter_choice.setRange(min(niter_choices), max(niter_choices))
+        self._iter_choice.set_choices(niter_choices)
         self._mode_projection_mgui = ToggleButtons(
             value=self._mode_projection, choices=ProjectionMode
         )
@@ -115,13 +117,14 @@ class Class3DPopup(QtW.QWidget):
 
         layout.addWidget(self._viewer_container)
 
-        self._iter_choice.valueChanged.connect(self._on_iter_changed)
+        self._iter_choice.current_changed.connect(self._on_iter_changed)
         self._mode_projection_mgui.changed.connect(self._on_mode_projection_changed)
         self._mode_intensity_mgui.changed.connect(self._on_mode_intensity_changed)
         self._direction_mgui.changed.connect(self._on_direction_changed)
         self._dim_slider.valueChanged.connect(self._on_slider_changed)
 
         self.load_maps(max(niter_choices))
+        self._dim_slider.setVisible(self._mode_projection is ProjectionMode.SLICE)
 
     def load_maps(self, niter: int):
         imgs: list[np.ndarray] = []
@@ -164,6 +167,7 @@ class Class3DPopup(QtW.QWidget):
             img_proj = invert_y(fn(img_input, axis=axis))
             input_images.append(img_proj)
         input_images = np.stack(input_images)
+
         # prep LUT
         min0, max0 = np.quantile(input_images, [0.01, 0.99])
         match self._mode_intensity:
@@ -175,8 +179,14 @@ class Class3DPopup(QtW.QWidget):
                 abs_max = max(abs(min0), abs(max0))
                 _clim = (-abs_max, abs_max)
         input_images = np.clip((input_images - _clim[0]) / (_clim[1] - _clim[0]), 0, 1)
-        for img_proj, viewer in zip(input_images, self._viewers):
-            viewer.set_array(0, _cmap(img_proj, bytes=True))
+        for ith, (img_proj, viewer) in enumerate(zip(input_images, self._viewers)):
+            img_slice = _cmap(img_proj, bytes=True)
+            pil_img = Image.fromarray(img_slice)
+            draw = ImageDraw.Draw(pil_img)
+            font = ImageFont.load_default()
+            font.size = 11
+            draw.text((2, 2), f"{ith + 1}", fill=(0, 255, 0), font=font)
+            viewer.set_array(0, np.array(pil_img))
             viewer.auto_range()
 
     def _slice_image(self, img: np.ndarray, axis: int) -> np.ndarray:
@@ -185,7 +195,8 @@ class Class3DPopup(QtW.QWidget):
         return img[tuple(sl)]
 
     def _on_iter_changed(self, value: int):
-        self.load_maps(self._job_dir, value)
+        self.load_maps(value)
+        self.update_images()
 
     def _on_mode_changed(self):
         self.update_images()
