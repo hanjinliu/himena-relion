@@ -185,7 +185,7 @@ class Class3DPopup(QtW.QWidget):
         return img[tuple(sl)]
 
     def _on_iter_changed(self, value: int):
-        self.load_maps(self._job_dir, value)
+        self.load_maps(value)
 
     def _on_mode_changed(self):
         self.update_images()

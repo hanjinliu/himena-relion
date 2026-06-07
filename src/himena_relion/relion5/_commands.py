@@ -17,7 +17,7 @@ from himena_relion.io.job_utils import assert_job
     command_id="himena-relion:show-summary-panel",
 )
 def show_summary_panel(ui: MainWindow, model: WidgetDataModel):
-    """Show the summary of the metrics over iterations."""
+    """Show a table and plots of the metrics over iterations."""
     from himena_relion.relion5.popups._relion_refine import RefineJobPopup
 
     job_dir = assert_job(model)
@@ -30,6 +30,8 @@ def show_summary_panel(ui: MainWindow, model: WidgetDataModel):
     types=[
         "relion_job.relion.class3d",
         "relion_job.relion.class3d_tomo",
+        "relion_job.relion.initialmodel",
+        "relion_job.relion.initialmodel_tomo",
     ],
     title="Inspect Classes",
     command_id="himena-relion:inspect-classes",

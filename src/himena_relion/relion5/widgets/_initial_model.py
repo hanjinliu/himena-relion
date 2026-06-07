@@ -5,6 +5,9 @@ from pathlib import Path
 from qtpy import QtWidgets as QtW, QtCore
 from superqt.utils import thread_worker
 from himena.widgets import current_instance
+from himena_relion._utils import path_icon_svg
+from himena_relion._widgets._misc import QOptimiserInfoTextEdit
+from himena_relion._widgets._shared.label_with_button import QLabelWithButtons
 from himena_relion._widgets._shared.resizer import QResizer
 from himena_relion._widgets import (
     QJobScrollArea,
@@ -16,7 +19,6 @@ from himena_relion._widgets import (
     QSymmetryLabel,
 )
 from himena_relion import _job_dir
-from himena_relion.schemas import ModelStarModel
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -26,6 +28,7 @@ _LOGGER = logging.getLogger(__name__)
 class QInitialModelViewer(QJobScrollArea):
     def __init__(self, job_dir: _job_dir.InitialModel3DJobDirectory):
         super().__init__()
+        max_width = 400
         self._list_widget = QMicrographListWidget(
             [
                 "Class",
@@ -37,7 +40,7 @@ class QInitialModelViewer(QJobScrollArea):
         )
         self._list_widget.verticalHeader().setVisible(False)
         self._list_widget.setMinimumWidth(300)
-        self._list_widget.setMaximumWidth(400)
+        self._list_widget.setMaximumWidth(max_width)
 
         self._viewer = Q3DViewer()
         self._resizer = QResizer(self._viewer)
@@ -52,13 +55,32 @@ class QInitialModelViewer(QJobScrollArea):
         self._continue_from_here_btn.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
         self._continue_from_here_btn.clicked.connect(self._continue_from_here_clicked)
         self._num_particles_label = QNumParticlesLabel()
+
+        self._opt_label = QLabelWithButtons(
+            label="<b>&#9679; Optimisation results</b>",
+            buttons=[(path_icon_svg("plot"), self._show_summary_plot)],
+            width=max_width,
+        )
+        self._optimiser_info = QOptimiserInfoTextEdit()
+        for entry in [
+            ("rlnParticleDiameter", "Mask diameter", " Å"),
+            ("rlnOverallAccuracyRotations", "Rotation accuracy", "°"),
+            ("rlnOverallAccuracyTranslationsAngst", "Translation accuracy", " Å"),
+            ("rlnChangesOptimalClasses", "Changes in optimal classes"),
+            ("rlnChangesOptimalOrientations", "Changes in optimal orientations", "°"),
+            ("rlnChangesOptimalOffsets", "Changes in optimal offsets", " pixels"),
+        ]:
+            self._optimiser_info.add_entry(*entry)
+
+        self._optimiser_info.setMaximumWidth(max_width)
+
         self._symmetry_label = QSymmetryLabel()
         header = QtW.QWidget()
         header_layout = QtW.QHBoxLayout(header)
         header_layout.setContentsMargins(1, 0, 1, 0)
         header_layout.addWidget(QtW.QLabel("<b>&#9679; Initial Model Map</b>"))
         header_layout.addWidget(self._symmetry_label)
-        header.setMaximumWidth(400)
+        header.setMaximumWidth(max_width)
 
         self._layout.setSpacing(0)
         self._layout.addWidget(self._list_widget)
@@ -68,13 +90,16 @@ class QInitialModelViewer(QJobScrollArea):
         self._layout.addWidget(self._viewer)
         self._layout.addWidget(self._resizer)
         _container2 = QtW.QWidget()
-        _container2.setMaximumWidth(400)
+        _container2.setMaximumWidth(max_width)
         hlayout2 = QtW.QHBoxLayout(_container2)
         hlayout2.addWidget(self._iter_choice)
         hlayout2.addWidget(self._continue_from_here_btn)
         hlayout2.addWidget(self._num_particles_label)
         hlayout2.setContentsMargins(0, 0, 0, 0)
         self._layout.addWidget(_container2)
+        self._layout.addWidget(self._opt_label)
+        self._layout.addWidget(self._optimiser_info)
+
         self._iter_choice.current_changed.connect(self._on_iter_changed)
         self._list_widget.current_changed.connect(self._on_class_changed)
         self._index_start = 1
@@ -113,6 +138,10 @@ class QInitialModelViewer(QJobScrollArea):
     def _on_class_changed(self, value: tuple[str, str, str]):
         class_id = int(value[0])
         self._update_for_value(self._iter_choice.value(), class_id)
+
+    def _show_summary_plot(self):
+        """Show a table and plots of the metrics over iterations."""
+        return current_instance().exec_action("himena-relion:show-summary-panel")
 
     def _continue_from_here_clicked(self):
         if self._job_dir.is_tomo():
@@ -165,22 +194,19 @@ class QInitialModelViewer(QJobScrollArea):
     def _read_items(self, niter, class_id: int = 1):
         res = self._job_dir.get_result(niter)
 
-        res = self._job_dir.get_result(niter)
         map0, _ = res.class_map(class_id - self._index_start)
         yield self._viewer.set_image, map0
-        if self._num_particles_label.num_known():
-            return
-        starpath = self._job_dir.path / f"run_it{niter:0>3}_model.star"
-        if not starpath.exists():
-            yield self._num_particles_label.set_number, -1
-            return
-        try:
-            model = ModelStarModel.validate_file(starpath)
-            num_particles = model.groups.num_particles.sum()
-        except Exception as e:
-            num_particles = -1
-            raise e
-        yield self._num_particles_label.set_number, num_particles
+
+        ### Read current optimiser and sampling info ###
+        optimiser_star = self._job_dir.path / f"run_it{niter:0>3}_optimiser.star"
+        yield self._optimiser_info.read_optimiser_star, optimiser_star
+
+        ### Read number of particles if not known ###
+        if not self._num_particles_label.num_known():
+            yield (
+                self._num_particles_label.set_number,
+                _job_dir.try_get_particle_number(self._job_dir),
+            )
 
 
 def _format_float(value: float, unit: str) -> str:

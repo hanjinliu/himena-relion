@@ -6,6 +6,8 @@ from qtpy import QtWidgets as QtW, QtCore
 from superqt import QToggleSwitch
 from superqt.utils import thread_worker
 from himena.widgets import current_instance
+from himena_relion._utils import path_icon_svg
+from himena_relion._widgets._shared.label_with_button import QLabelWithButtons
 from himena_relion._widgets._shared.resizer import QResizer
 from himena_relion._widgets import (
     QJobScrollArea,
@@ -26,6 +28,7 @@ _LOGGER = logging.getLogger(__name__)
 class QClass3DViewer(QJobScrollArea):
     def __init__(self, job_dir: _job_dir.Class3DJobDirectory):
         super().__init__()
+        max_width = 400
         self._index_start = 1
         self._last_niter = 0
         self._job_dir = job_dir
@@ -41,7 +44,7 @@ class QClass3DViewer(QJobScrollArea):
         )
         self._list_widget.verticalHeader().setVisible(False)
         self._list_widget.setMinimumWidth(300)
-        self._list_widget.setMaximumWidth(400)
+        self._list_widget.setMaximumWidth(max_width)
 
         self._viewer = Q3DViewer()
         _arrow_visible_default = False
@@ -67,35 +70,34 @@ class QClass3DViewer(QJobScrollArea):
         self._continue_from_here_btn.clicked.connect(self._continue_from_here_clicked)
         self._num_particles_label = QNumParticlesLabel()
 
+        self._opt_label = QLabelWithButtons(
+            label="<b>&#9679; Optimisation results</b>",
+            buttons=[(path_icon_svg("plot"), self._show_summary_plot)],
+            width=max_width,
+        )
+
         self._optimiser_info = QOptimiserInfoTextEdit()
-        self._optimiser_info.add_entry("rlnParticleDiameter", "Mask diameter", " Å")
-        self._optimiser_info.add_entry("rlnSolventMaskName", "Solvent mask")
-        self._optimiser_info.add_entry(
-            "rlnOverallAccuracyRotations", "Rotation accuracy", "°"
-        )
-        self._optimiser_info.add_entry(
-            "rlnOverallAccuracyTranslationsAngst", "Translation accuracy", " Å"
-        )
-        self._optimiser_info.add_entry(
-            "rlnChangesOptimalClasses", "Changes in optimal classes"
-        )
-        self._optimiser_info.add_entry(
-            "rlnChangesOptimalOrientations", "Changes in optimal orientations", "°"
-        )
-        self._optimiser_info.add_entry(
-            "rlnChangesOptimalOffsets", "Changes in optimal offsets", " pixels"
-        )
-        self._optimiser_info.setMaximumWidth(400)
+        for entry in [
+            ("rlnParticleDiameter", "Mask diameter", " Å"),
+            ("rlnSolventMaskName", "Solvent mask"),
+            ("rlnOverallAccuracyRotations", "Rotation accuracy", "°"),
+            ("rlnOverallAccuracyTranslationsAngst", "Translation accuracy", " Å"),
+            ("rlnChangesOptimalClasses", "Changes in optimal classes"),
+            ("rlnChangesOptimalOrientations", "Changes in optimal orientations", "°"),
+            ("rlnChangesOptimalOffsets", "Changes in optimal offsets", " pixels"),
+        ]:
+            self._optimiser_info.add_entry(*entry)
+        self._optimiser_info.setMaximumWidth(max_width)
 
         hor1 = QtW.QWidget()
-        hor1.setMaximumWidth(400)
+        hor1.setMaximumWidth(max_width)
         hor1.setFixedHeight(26)
         hor_layout = QtW.QHBoxLayout(hor1)
         hor_layout.setContentsMargins(0, 0, 0, 0)
         hor_layout.addWidget(self._arrow_visible)
         hor_layout.addWidget(self._symmetry_label)
         hor2 = QtW.QWidget()
-        hor2.setMaximumWidth(400)
+        hor2.setMaximumWidth(max_width)
         hor_layout = QtW.QHBoxLayout(hor2)
         hor_layout.setContentsMargins(0, 0, 0, 0)
         hor_layout.addWidget(self._iter_choice)
@@ -109,7 +111,7 @@ class QClass3DViewer(QJobScrollArea):
         self._layout.addWidget(self._resizer)
         self._layout.addWidget(hor2)
         self._layout.addSpacing(5)
-        self._layout.addWidget(QtW.QLabel("<b>&#9679; optimiser.star</b>"))
+        self._layout.addWidget(QtW.QLabel("<b>&#9679; Refinement Results</b>"))
         self._layout.addWidget(self._optimiser_info)
 
         self._iter_choice.valueChanged.connect(self._on_iter_changed)
@@ -144,6 +146,10 @@ class QClass3DViewer(QJobScrollArea):
         self._update_for_value(value, class_id)
         self._update_summary_table(value)
         self._last_niter = value
+
+    def _show_summary_plot(self):
+        """Show a table and plots of the metrics over iterations."""
+        return current_instance().exec_action("himena-relion:show-summary-panel")
 
     def _continue_from_here_clicked(self):
         is_no_alignment = self._job_dir.get_job_param("dont_skip_align", "Yes") == "No"
