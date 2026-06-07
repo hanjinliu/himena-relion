@@ -31,9 +31,12 @@ class QPostProcessViewer(QJobScrollArea):
         self._use_mask = QToggleSwitch("Show masked map")
         self._use_mask.setChecked(True)
         self._num_particles_label = QNumParticlesLabel()
-        self._canvas = QPlotCanvas(self)
-        self._canvas.setMaximumSize(max_width, 280)
-        self._canvas.setMinimumSize(340, 200)
+        self._canvas_fsc = QPlotCanvas(self)
+        self._canvas_fsc.setMaximumSize(max_width, 280)
+        self._canvas_fsc.setMinimumSize(340, 200)
+        self._canvas_guinier = QPlotCanvas(self)
+        self._canvas_guinier.setMaximumSize(max_width, 280)
+        self._canvas_guinier.setMinimumSize(340, 200)
         self._layout.setSpacing(0)
         self._layout.addWidget(QtW.QLabel("<b>&#9679; Sharpened Map</b>"))
         self._layout.addWidget(self._viewer)
@@ -47,9 +50,12 @@ class QPostProcessViewer(QJobScrollArea):
             self._num_particles_label, alignment=QtCore.Qt.AlignmentFlag.AlignRight
         )
         self._layout.addWidget(hor)
-        self._layout.addSpacing(5)
+        self._layout.addSpacing(8)
         self._layout.addWidget(QtW.QLabel("<b>&#9679; Fourier Shell Correlation</b>"))
-        self._layout.addWidget(self._canvas)
+        self._layout.addWidget(self._canvas_fsc)
+        self._layout.addSpacing(8)
+        self._layout.addWidget(QtW.QLabel("<b>&#9679; Guinier Plot</b>"))
+        self._layout.addWidget(self._canvas_guinier)
         self._layout.addWidget(spacer_widget())
         self._job_dir = job_dir
         self._use_mask.toggled.connect(self._on_use_mask_toggled)
@@ -83,14 +89,19 @@ class QPostProcessViewer(QJobScrollArea):
                 self._num_particles_label.set_number(num)
         else:
             self._viewer.set_image(None)
+            self._canvas_fsc.clear()
+            self._canvas_guinier.clear()
             self._current_map_path = None
 
         # show FSC
         if wait_for_file(starpath := job_dir.path / "postprocess.star", delay=0.02):
             star_postprocess = read_star(starpath)
-            self._canvas.plot_fsc_postprocess(
+            self._canvas_fsc.plot_fsc_postprocess(
                 star_postprocess["fsc"].trust_loop().to_polars(),
                 star_postprocess["general"].trust_single().to_dict(),
+            )
+            self._canvas_guinier.plot_guinier_postprocess(
+                star_postprocess["guinier"].trust_loop().to_polars(),
             )
 
     def _on_use_mask_toggled(self, *_):
@@ -98,4 +109,5 @@ class QPostProcessViewer(QJobScrollArea):
         self.initialize(self._job_dir)
 
     def widget_added_callback(self):
-        self._canvas.widget_added_callback()
+        self._canvas_fsc.widget_added_callback()
+        self._canvas_guinier.widget_added_callback()

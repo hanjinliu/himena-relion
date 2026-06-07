@@ -55,6 +55,15 @@ _rlnCorrectedFourierShellCorrelationPhaseRandomizedMaskedMaps #8
            4     0.015432    64.800003     0.999841     0.999993     0.999929     0.999841     0.999835
            5     0.019290    51.840002     0.999806     0.999977     0.999749     0.999806     0.999803
            6     0.023148    43.200002     0.999749     0.999956     0.999526     0.999749     0.999757
+
+data_guinier
+loop_
+_rlnResolutionSquared
+_rlnLogAmplitudesOriginal
+_rlnLogAmplitudesWeighted
+0.00 -30.00 -30.00
+0.10 -9.00 -9.50
+0.20 -8.00 -99.00
 """
 
 def test_mask_create_widget(
