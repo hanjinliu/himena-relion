@@ -1,6 +1,10 @@
 from typing import Annotated
 from himena.qt.magicgui import ToggleButtons
-from himena_relion._widgets._magicgui import DoseRateEdit, PathDrop
+from himena_relion._widgets._magicgui import (
+    DoseRateEdit,
+    PathDrop,
+    AutoFillableFloatEdit,
+)
 
 FN_IN_RAW = Annotated[
     str,
@@ -59,7 +63,7 @@ FN_MTF = Annotated[
             "between their MTFs can no longer be absorbed in a single B-factor, and "
             "providing the MTF here is important!"
         ),
-        "group": "I/O",
+        "group": "Optics",
     },
 ]
 
@@ -67,9 +71,9 @@ ANGPIX = Annotated[
     float,
     {
         "label": "Pixel size (A)",
-        "min": 0.01,
+        "widget_type": AutoFillableFloatEdit,
         "tooltip": "Pixel size in Angstroms.",
-        "group": "I/O",
+        "group": "Optics",
     },
 ]
 

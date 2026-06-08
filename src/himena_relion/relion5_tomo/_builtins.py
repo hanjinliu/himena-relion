@@ -11,6 +11,7 @@ from himena_relion._adapt import (
     norm_extract_subtomo,
     norm_extract_subtomo_inv,
 )
+from himena_relion._widgets._magicgui import AutoFillableFloatEdit
 from himena_relion._utils import command_not_found_err_msg, extract_input_edges
 from himena_relion.relion5._builtins import (
     CtfEstimationJob,
@@ -133,6 +134,16 @@ class _ImportTomoJob(_ImportTomoOrCoordsJob):
         min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
+
+    @classmethod
+    def setup_widgets(cls, widgets):
+        angpix_widget: AutoFillableFloatEdit = widgets["angpix"]
+
+        @angpix_widget.button_clicked.connect
+        def _read_scale_clicked():
+            path_pattern = str(widgets["mdoc_files"].value)
+            if scale := AutoFillableFloatEdit.read_scale_from_pattern(path_pattern):
+                angpix_widget.set_value(scale)
 
 
 class ImportTomoJob(_ImportTomoJob):

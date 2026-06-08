@@ -4,6 +4,7 @@ from typing import Any
 from starfile_rs import read_star
 from magicgui.widgets.bases import ValueWidget
 from himena_relion._job_class import _Relion5BuiltinJob, parse_string, InvalidInputError
+from himena_relion._widgets._magicgui import AutoFillableFloatEdit
 from himena_relion._job_dir import JobDirectory
 from himena_relion import _configs, _annotated as _a
 from himena_relion._utils import command_not_found_err_msg, extract_input_edges
@@ -64,6 +65,16 @@ class _ImportMoviesJobBase(_ImportJobBase):
 
     def input_edges(self, **kwargs) -> list[str]:
         return []
+
+    @classmethod
+    def setup_widgets(cls, widgets):
+        angpix_widget: AutoFillableFloatEdit = widgets["angpix"]
+
+        @angpix_widget.button_clicked.connect
+        def _read_scale_clicked():
+            path_pattern = str(widgets["fn_in_raw"].value)
+            if scale := AutoFillableFloatEdit.read_scale_from_pattern(path_pattern):
+                angpix_widget.set_value(scale)
 
 
 class ImportMoviesJob(_ImportMoviesJobBase):
