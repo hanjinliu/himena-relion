@@ -1,8 +1,11 @@
 from __future__ import annotations
+import glob
+from pathlib import Path
 
 from magicgui.widgets.bases import ValuedContainerWidget
-from magicgui.widgets import LineEdit
+from magicgui.widgets import LineEdit, PushButton
 from magicgui.types import Undefined
+from psygnal import Signal
 from qtpy import QtWidgets as QtW, QtCore, QtGui
 from himena.qt.magicgui import FloatEdit, IntEdit, ToggleButtons
 
@@ -289,4 +292,54 @@ class GpuIdEdit(LineEdit):
             QtGui.QRegularExpressionValidator(
                 QtCore.QRegularExpression(r"^(\d+(,|:))*\d*$")
             )
+        )
+
+
+class AutoFillableFloatEdit(ValuedContainerWidget):
+    button_clicked = Signal()
+
+    def __init__(self, **kwargs):
+        self._scale = FloatEdit(value=1.6, min=0.1, max=50.0)
+        self._scale.max_width = 200
+        self._read_header_btn = PushButton(
+            text="Autofill",
+            tooltip="Read from image header or mdoc file",
+        )
+        self._read_header_btn.native.setStyleSheet("QPushButton { padding: 2px; }")
+        widgets = [self._scale, self._read_header_btn]
+        kwargs.setdefault("labels", False)
+        kwargs.setdefault("layout", "horizontal")
+        super().__init__(widgets=widgets, **kwargs)
+        self.margins = (0, 0, 0, 0)
+        self._read_header_btn.clicked.connect(self.button_clicked.emit)
+
+    def get_value(self):
+        return self._scale.value
+
+    def set_value(self, value):
+        self._scale.value = value
+
+    @classmethod
+    def read_scale_from_pattern(cls, pattern: str) -> float | None:
+        from himena_relion._image_readers import ArrayFilteredView
+
+        try:
+            first_path = next(iter(glob.glob(str(Path.cwd() / pattern))))
+        except StopIteration:
+            raise ValueError(f"No files found matching pattern: {pattern!r}")
+        first_path = Path(first_path)
+        if first_path.suffix in [".mrc", ".mrcs"]:
+            return ArrayFilteredView.from_mrc(first_path).get_scale()
+        elif first_path.suffix in [".tif", ".tiff", ".eer"]:
+            return ArrayFilteredView.from_tif(first_path).get_scale()
+        elif first_path.suffix == ".mdoc":
+            with open(first_path) as f:
+                for line in f:
+                    if line.startswith("PixelSpacing = "):
+                        try:
+                            return float(line.split(" = ")[1].strip())
+                        except ValueError:
+                            return None
+        raise ValueError(
+            f"Could not read scale from files matching pattern: {pattern!r}"
         )

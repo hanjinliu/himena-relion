@@ -183,7 +183,11 @@ class QJobScheduler(QtW.QWidget):
         self._buttons.setVisible(True)
 
     def _exec_action(self):
-        self._mode.exec(self)
+        self._exec_btn.setEnabled(False)
+        try:
+            self._mode.exec(self)
+        finally:
+            self._exec_btn.setEnabled(True)
 
     def _assert_job_class_selected(self) -> type[RelionJob]:
         if self._current_job_cls is None:

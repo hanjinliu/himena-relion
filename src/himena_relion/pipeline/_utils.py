@@ -13,9 +13,12 @@ def split_job_info(job: RelionJobInfo) -> tuple[str, str]:
     if jobxxx.startswith("job"):
         jobxxx = jobxxx[3:]
     if job.type_label == "relion.external":
-        title = ExternalJobDirectory(job.path).job_title()
+        try:
+            title = ExternalJobDirectory(job.path).job_title()
+        except Exception:
+            title = "!" + job.type_label
     else:
-        title = JOB_ID_MAP.get(job.type_label, job.type_label)
+        title = JOB_ID_MAP.get(job.type_label, "!" + job.type_label)
     return jobxxx, title
 
 
@@ -25,13 +28,7 @@ class RelionJobNodeItem(BaseNodeItem):
 
     def text(self) -> str:
         """Return the text of the node"""
-        jobxxx = self._job.path.stem
-        if jobxxx.startswith("job"):
-            jobxxx = jobxxx[3:]
-        if self._job.type_label == "relion.external":
-            title = ExternalJobDirectory(self._job.path).job_title()
-        else:
-            title = JOB_ID_MAP.get(self._job.type_label, self._job.type_label)
+        jobxxx, title = split_job_info(self._job)
         if alias := self._job.alias:
             return f"{jobxxx}: {alias}\n({title})"
         return f"{jobxxx}: {title}"
