@@ -192,7 +192,6 @@ def execute_job(
     cwd=None,
 ) -> RelionJobExecution:
     """Execute a RELION job named `job_name` (such as "Class3D/job012/")."""
-    assert "# version 50001" in Path("default_pipeline.star").read_text()
     job_name = normalize_job_id(job_name)
     try:
         job_dir = _job_dir.JobDirectory(Path(job_name).resolve())
