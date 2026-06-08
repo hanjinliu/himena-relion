@@ -93,12 +93,13 @@ class RelionPipelineModel(schema.StarModel):
     OutputEdges = RelionPipelineOutputEdges
 
     def to_string(self):
-        out = (
-            f"{self.general.to_string()}\n\n{self.processes.to_string()}\n\n"
-            f"{self.nodes.to_string()}"
-        )
-        if self.input_edges is not None:
+        out = self.general.to_string()
+        if self.processes.block.shape[0] > 0:
+            out += f"\n\n{self.processes.to_string()}\n\n"
+        if self.nodes.block.shape[0] > 0:
+            out += f"{self.nodes.to_string()}"
+        if self.input_edges is not None and self.input_edges.block.shape[0] > 0:
             out += f"\n\n{self.input_edges.to_string()}"
-        if self.output_edges is not None:
+        if self.output_edges is not None and self.output_edges.block.shape[0] > 0:
             out += f"\n\n{self.output_edges.to_string()}"
         return out
