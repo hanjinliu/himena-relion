@@ -1,14 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
   <!-- Axes -->
-  <line x1="16" y1="180" x2="180" y2="180" stroke="currentColor" stroke-width="8"/>
-  <line x1="20" y1="40" x2="20" y2="180" stroke="currentColor" stroke-width="8"/>
+  <line x1="15" y1="180" x2="180" y2="180" stroke="currentColor" stroke-width="11"/>
+  <line x1="20" y1="40" x2="20" y2="180" stroke="currentColor" stroke-width="11"/>
 
   <!-- Data points with markers -->
-  <circle cx="40" cy="80" r="12" fill="currentColor"/>
-  <line x1="40" y1="80" x2="80" y2="140" stroke="currentColor" stroke-width="8"/>
-  <circle cx="80" cy="140" r="12" fill="currentColor"/>
-  <line x1="80" y1="140" x2="120" y2="120" stroke="currentColor" stroke-width="8"/>
-  <circle cx="120" cy="120" r="12" fill="currentColor"/>
-  <line x1="120" y1="120" x2="160" y2="160" stroke="currentColor" stroke-width="8"/>
-  <circle cx="160" cy="160" r="12" fill="currentColor"/>
+  <circle cx="40" cy="80" r="16" fill="currentColor"/>
+  <line x1="40" y1="80" x2="80" y2="140" stroke="currentColor" stroke-width="11"/>
+  <circle cx="80" cy="140" r="16" fill="currentColor"/>
+  <line x1="80" y1="140" x2="120" y2="120" stroke="currentColor" stroke-width="11"/>
+  <circle cx="120" cy="120" r="16" fill="currentColor"/>
+  <line x1="120" y1="120" x2="160" y2="160" stroke="currentColor" stroke-width="11"/>
+  <circle cx="160" cy="160" r="16" fill="currentColor"/>
 </svg>

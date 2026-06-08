@@ -10,7 +10,7 @@ from qtpy import QtGui, QtCore, QtWidgets as QtW
 from himena.qt import QColoredToolButton
 from himena.qt.magicgui import ToggleButtons
 from himena_relion._utils import normalize_job_id
-from himena_relion._pipeline import RelionDefaultPipeline
+from himena_relion._pipeline import RelionDefaultPipeline, NodeStatus
 from himena_relion.pipeline._gui_state import HimenaRelionGuiState
 from himena_relion._utils import path_icon_svg
 from ._utils import split_job_info, RelionJobNodeItem
@@ -34,12 +34,13 @@ class QRelionPipelineTableView(QtW.QWidget):
 
         # prepare header
         self._sort_by_widget_mgui = ToggleButtons(
-            choices=["Job ID", "Time", "Job Name"],
-            value="Job ID",
+            choices=["ID", "Time", "Name", "Status"],
+            value="ID",
             tooltip="Specify how to sort the jobs in the table.\n"
-            " - 'Job ID': sort by the numbering (e.g. job001, job002, ...).\n"
+            " - 'ID': sort by the job numbering (e.g. job001, job002, ...).\n"
             " - 'Time': sort by the last modified time by checking the mtime of 'run.out' file\n"
-            " - 'Job Name': sort by the job type name (e.g. AlignTilts, CTF Refine, ...).",
+            " - 'Name': sort by the job type name (e.g. AlignTilts, CTF Refine, ...).\n"
+            " - 'Status': sort by the job status (e.g. Running, Scheduled, ...).\n",
         )
         self._sort_by_widget_mgui.changed.connect(self._on_sort_by_changed)
         self._sort_ascending_btn = QColoredToolButton(
@@ -119,12 +120,14 @@ class QRelionPipelineTableView(QtW.QWidget):
         if self._table_view._model is None:
             return
         match value:
-            case "Job ID":
+            case "ID":
                 new_proxy = IdentityProxy(self._table_view._model._pipeline)
             case "Time":
                 new_proxy = SortByTimeProxy(self._table_view._model._pipeline)
-            case "Job Name":
+            case "Name":
                 new_proxy = SortByNameProxy(self._table_view._model._pipeline)
+            case "Status":
+                new_proxy = SortByStatusProxy(self._table_view._model._pipeline)
             case _:
                 raise ValueError("Invalid sort index")
         self._table_view._model.set_proxy(new_proxy, ascending=self._sort_is_ascending)
@@ -392,6 +395,29 @@ class SortByTimeProxy(TableSortProxy):
 class SortByNameProxy(TableSortProxy):
     def _prep_sort_indices(self, pipeline: RelionDefaultPipeline) -> list[int]:
         return sorted(range(len(pipeline)), key=lambda i: pipeline[i].path)
+
+
+class SortByStatusProxy(TableSortProxy):
+    def _prep_sort_indices(self, pipeline: RelionDefaultPipeline) -> list[int]:
+        _mapping = {
+            NodeStatus.RUNNING: 0,
+            NodeStatus.SCHEDULED: 1,
+            NodeStatus.ABORTED: 2,
+            NodeStatus.FAILED: 3,
+            NodeStatus.SUCCEEDED: 4,
+        }
+        return sorted(
+            range(len(pipeline)), key=lambda i: _mapping.get(pipeline[i].status, 999)
+        )
+
+
+class SortByTagsProxy(TableSortProxy):
+    def _prep_sort_indices(self, pipeline: RelionDefaultPipeline) -> list[int]:
+        # This is a placeholder implementation. The actual sorting logic will depend on how you want to sort by tags.
+        return sorted(
+            range(len(pipeline)),
+            key=lambda i: len(pipeline[i].tags) if hasattr(pipeline[i], "tags") else 0,
+        )
 
 
 def _get_mtime(path: Path) -> float:
