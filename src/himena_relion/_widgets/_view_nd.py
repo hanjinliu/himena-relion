@@ -573,7 +573,7 @@ class Q3DViewer(Q3DViewerBase):
         if self._canvas._volume_visual.method == "iso":
             self.auto_threshold()
         else:
-            self._canvas.contrast_limits = self._canvas._lims
+            self._hist_view.set_clim(self._canvas._lims)
 
     def _on_iso_changed(self, value: float):
         self._canvas.set_iso_threshold(value)
@@ -596,10 +596,7 @@ class Q3DViewer(Q3DViewerBase):
 
     @validate_protocol
     def to_model(self) -> WidgetDataModel:
-        return WidgetDataModel(
-            value=self._canvas.image,
-            type=StandardType.IMAGE,
-        )
+        return WidgetDataModel(value=self._canvas.image, type=self.model_type())
 
     @validate_protocol
     def size_hint(self):
