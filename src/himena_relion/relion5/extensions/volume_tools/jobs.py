@@ -1,6 +1,7 @@
 from pathlib import Path
 import subprocess
 import time
+import os
 import shutil
 from typing import Annotated
 
@@ -115,6 +116,9 @@ class ManualMaskCreation(RelionExternalJob):
         time_0 = time.time()
         self.console.log("Waiting for user to create mask.")
 
+        env = os.environ.copy()
+        env.pop("QT_API", None)
+
         # volume onesmask #1.1 on_grid #1
         if use_app == "Chimera/ChimeraX":
             if (chimerax := _find_chimera_exec()) is None:
@@ -125,6 +129,7 @@ class ManualMaskCreation(RelionExternalJob):
                 [chimerax, input_path],
                 cwd=out_job_dir.path,
                 start_new_session=True,  # open in a new terminal on Linux
+                env=env,
             )
         elif use_app == "Napari":
             python_exe = relion_python_executable()
@@ -140,6 +145,7 @@ class ManualMaskCreation(RelionExternalJob):
                 ],
                 cwd=out_job_dir.path,
                 start_new_session=True,  # open in a new terminal on Linux
+                env=env,
             )
         # wait for user to create mask
         while not mask_path.exists() and not mask_base_path.exists():
@@ -149,6 +155,7 @@ class ManualMaskCreation(RelionExternalJob):
                 self.console.log("Mask creation timed out.")
                 raise TimeoutError("Mask creation timed out.")
         if mask_base_path.exists():
+            self.console.log("mask_base.mrc found. Applying soft edge.")
             with mrcfile.open(mask_base_path) as mrc:
                 mask_data = mrc.data
                 scale = mrc.voxel_size.x

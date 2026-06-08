@@ -229,4 +229,5 @@ class RelionExternalJob(RelionJob):
         if (mod := sys.modules.get(mod_str, None)) is not None:
             if _job_version := getattr(mod, "__version__", ""):
                 self.console.log(f"Using {mod_str} v{_job_version}")
+                return
         self.console.log("Version info not found for this job.")

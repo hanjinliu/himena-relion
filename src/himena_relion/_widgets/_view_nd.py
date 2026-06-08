@@ -2,6 +2,7 @@ from __future__ import annotations
 from concurrent.futures import Future, ThreadPoolExecutor
 from typing import Literal, NamedTuple
 from himena import StandardType, WidgetDataModel
+from cmap import Color, Colormap
 import numpy as np
 from numpy.typing import NDArray
 from qtpy import QtWidgets as QtW, QtCore, QtGui
@@ -49,10 +50,25 @@ class QViewer(QtW.QWidget):
             ("Auto Fit", lambda: self.auto_fit()),
             ("Copy Screenshot", lambda: self._canvas.copy_screenshot()),
             ("Save Screenshot", lambda: self._canvas.save_screenshot()),
+            ...,  # separator
+            ("Set Background Color", self._show_color_dialog),
         ]
 
     def set_background_color(self, color):
         self._canvas._scene.bgcolor = color
+
+    def _show_color_dialog(self):
+        if color := self._exec_choose_color_dialog("Select Background Color"):
+            self.set_background_color(color)
+
+    def _exec_choose_color_dialog(self, title: str) -> Color | None:
+        color = QtW.QColorDialog.getColor(
+            initial=QtGui.QColor.fromRgbF(*self._canvas._scene.bgcolor.rgba),
+            parent=self,
+            title=title,
+        )
+        if color.isValid():
+            return Color(color.getRgbF())
 
     def _show_usage(self):
         current_instance()._backend_main_window._add_whats_this(
@@ -63,8 +79,12 @@ class QViewer(QtW.QWidget):
 
     def _make_context_menu(self):
         menu = QtW.QMenu(self)
-        for text, callback in self._context_menu_actions:
-            menu.addAction(text, callback)
+        for val in self._context_menu_actions:
+            if val is Ellipsis:
+                menu.addSeparator()
+            else:
+                text, callback = val
+                menu.addAction(text, callback)
         return menu
 
     def _show_context_menu(self):
@@ -483,6 +503,8 @@ class Q3DViewer(Q3DViewerBase):
             + layout.spacing()
         )
 
+        self._context_menu_actions.append(("Set Map Color", self._set_map_color))
+
     @property
     def has_image(self) -> bool:
         return self._has_image
@@ -574,6 +596,10 @@ class Q3DViewer(Q3DViewerBase):
             self.auto_threshold()
         else:
             self._hist_view.set_clim(self._canvas._lims)
+
+    def _set_map_color(self):
+        if color := self._exec_choose_color_dialog("Select Background Color"):
+            self._canvas.image_visual.cmap = Colormap(["black", color]).to_vispy()
 
     def _on_iso_changed(self, value: float):
         self._canvas.set_iso_threshold(value)

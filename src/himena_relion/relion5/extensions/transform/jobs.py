@@ -96,7 +96,9 @@ class ShiftMapJob(RelionExternalJob):
         _shift_image(in_3dref, out_job_dir.path / _c.OUTPUT_MAP, new_center_pix)
         self.console.log(f"Write shifted map to {out_job_dir.path / _c.OUTPUT_MAP}")
         if in_mask:
-            _shift_image(in_mask, out_job_dir.path / _c.OUTPUT_MASK, new_center_pix)
+            _shift_image(
+                in_mask, out_job_dir.path / _c.OUTPUT_MASK, new_center_pix, clip=(0, 1)
+            )
             self.console.log(
                 f"Write shifted mask to {out_job_dir.path / _c.OUTPUT_MASK}"
             )
@@ -132,13 +134,15 @@ def _center_by_com(
     return out_pix, out_angst
 
 
-def _shift_image(path_in, path_out, shift_pix):
+def _shift_image(path_in, path_out, shift_pix, clip=None):
     """Shift image using scipy."""
     img, pixel_size = _read_image(path_in)
     shift_zyx = (shift_pix[2], shift_pix[1], shift_pix[0])
     img = img.astype(np.float32)
     cval = np.min(img)
     shifted = ndi.shift(img, shift=shift_zyx, order=3, mode="constant", cval=cval)
+    if clip:
+        shifted = np.clip(shifted, clip[0], clip[1])
     with mrcfile.new(path_out, overwrite=True) as mrc:
         mrc.set_data(shifted)
         mrc.voxel_size = pixel_size
