@@ -354,8 +354,12 @@ def restore_trashed_jobs(relion_project_dir: Path, job_ids: list[str]):
         pipeline = RelionPipelineModel.validate_text(f.read())
         all_processes = [pipeline.processes.dataframe]
         all_nodes = [pipeline.nodes.dataframe]
-        all_input_edges = [pipeline.input_edges.dataframe]
-        all_output_edges = [pipeline.output_edges.dataframe]
+        all_input_edges = []
+        all_output_edges = []
+        if pipeline.input_edges is not None:
+            all_input_edges.append(pipeline.input_edges.dataframe)
+        if pipeline.output_edges is not None:
+            all_output_edges.append(pipeline.output_edges.dataframe)
         for path_to_undo in all_jobs_to_undo:
             # RELION GUI also use the job_pipeline.star to undelete
             job_pipeline_star = path_to_undo / "job_pipeline.star"

@@ -175,7 +175,6 @@ def run_watcher_new_process(relion_dir: str | Path, locked_ok: bool = True):
     run_watcher_new_process._proc = subprocess.Popen(
         cmd,
         stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
         start_new_session=True,
     )
 
