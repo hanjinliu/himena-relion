@@ -125,10 +125,9 @@ class QTrashWidget(QtW.QSplitter):
             entries.append(job_path)
         # NOTE: `mv` will update ctime (st_birthtime) but not mtime
         if sys.version_info >= (3, 12) and sys.platform == "win32":
-            entries.sort(key=lambda x: x.stat().st_birthtime)
+            entries.sort(key=lambda x: x.stat().st_birthtime_ns)
         else:
-            print([x.stat().st_ctime for x in entries])  # ubuntu
-            entries.sort(key=lambda x: x.stat().st_ctime)
+            entries.sort(key=lambda x: x.stat().st_ctime_ns)
         for job_path in entries:
             job_id = f"{job_path.parent.name}/{job_path.name}/"
             item = QtW.QListWidgetItem(job_id)
