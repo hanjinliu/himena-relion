@@ -23,7 +23,7 @@ class QSelectJobBase(QJobScrollArea):
         self._text_edit = QImageViewTextEdit()
         self._layout.addWidget(self._text_edit)
 
-    def initialize(self, job_dir: _job_dir.JobDirectory):
+    def initialize(self, job_dir: _job_dir.SelectInteractiveJobDirectory):
         """Initialize the viewer with the job directory."""
         self._text_edit.clear()
         self._text_edit.setFixedHeight(400)
@@ -33,11 +33,11 @@ class QSelectJobBase(QJobScrollArea):
         self._start_worker()
 
     @thread_worker
-    def _read_items(self, job_dir: _job_dir.JobDirectory):
+    def _read_items(self, job_dir: _job_dir.SelectInteractiveJobDirectory):
         for html in self.insert_html(job_dir):
             yield self._cb_html_requested, html
 
-    def insert_html(self, job_dir: _job_dir.JobDirectory):
+    def insert_html(self, job_dir: _job_dir.SelectInteractiveJobDirectory):
         """Insert HTML into the text edit.
 
         This is a generator function that yields HTML strings or np.ndarray tables.
@@ -117,14 +117,14 @@ class QSelectInteractiveViewer(QSelectJobBase):
             self.initialize(job_dir)
             _LOGGER.debug("%s Updated", job_dir.job_number)
 
-    def insert_html(self, job_dir: _job_dir.JobDirectory):
+    def insert_html(self, job_dir: _job_dir.SelectInteractiveJobDirectory):
         is_2d = job_dir.path.joinpath("class_averages.star").exists()
         if is_2d:
             yield from self._insert_html_class2d(job_dir)
         else:
             yield from self._insert_html_class3d(job_dir)
 
-    def _insert_html_class2d(self, job_dir: _job_dir.JobDirectory):
+    def _insert_html_class2d(self, job_dir: _job_dir.SelectInteractiveJobDirectory):
         class_avg_path = job_dir.path.joinpath("class_averages.star")
         if not class_avg_path.exists():
             yield _NOT_ENOUGH_MSG
@@ -181,7 +181,7 @@ class QSelectInteractiveViewer(QSelectJobBase):
                 img_str = self._text_edit.image_to_base64(img, text)
                 yield f'<img src="data:image/png;base64,{img_str}"/>'
 
-    def _insert_html_class3d(self, job_dir: _job_dir.JobDirectory):
+    def _insert_html_class3d(self, job_dir: _job_dir.SelectInteractiveJobDirectory):
         path_all = get_particles_star_before(job_dir)
         path_sel = job_dir.path / "particles.star"
         if path_all is None or not (path_sel.exists() and path_all.exists()):
@@ -210,9 +210,7 @@ class QSelectInteractiveViewer(QSelectJobBase):
         images_selected: list[tuple[str, np.ndarray]] = []
         images_removed: list[tuple[str, np.ndarray]] = []
         texts = ["XY", "XZ", "YZ"]
-        for path, is_sel in zip(
-            class_map_paths(job_dir, is_selected.size), is_selected
-        ):
+        for path, is_sel in zip(job_dir.class_map_paths(is_selected.size), is_selected):
             if path is not None:
                 with mrcfile.open(path) as mrc:
                     array = np.asarray(mrc.data)
@@ -398,31 +396,3 @@ def read_subtomo_as_2d(image_name: str, relion_dir: Path) -> NDArray[np.float32]
             else:
                 return np.asarray(mrc.data, dtype=np.float32).max(0)
     return None
-
-
-def class_map_paths(
-    job_dir: _job_dir.JobDirectory, num_classes: int
-) -> list[Path | None]:
-    """Return the paths to the class maps."""
-    pipeline = RelionPipelineModel.validate_file(job_dir.path / "job_pipeline.star")
-    optimizer_star_path = Path(pipeline.input_edges.from_node[0])
-    new_stem = optimizer_star_path.stem[: -len("optimiser")] + "optimisation_set"
-    path_opt_star = (
-        job_dir.relion_project_dir / optimizer_star_path.parent / f"{new_stem}.star"
-    )
-
-    # path_opt_star is something like .../run_it0XX_optimisation_set.star
-    nchars = len("optimisation_set")
-    mrc_paths = []
-    prefix = path_opt_star.stem[:-nchars]
-    for i in range(num_classes):
-        path = (
-            job_dir.relion_project_dir
-            / path_opt_star.parent
-            / (prefix + f"class{i + 1:0>3}.mrc")
-        )
-        if path.exists():
-            mrc_paths.append(path)
-        else:
-            mrc_paths.append(None)
-    return mrc_paths

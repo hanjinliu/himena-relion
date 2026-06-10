@@ -680,7 +680,7 @@ class ReconstructTomoByAreTomo2(_AlignTiltSeriesJobBase):
 
     @classmethod
     def job_title(cls) -> str:
-        return "Recon. Tomos (AreTomo2)"
+        return "Reconstruct Tomos (AreTomo2)"
 
     @classmethod
     def normalize_kwargs(cls, **kwargs):
@@ -813,7 +813,7 @@ class ReconstructTomogramJob(_ReconstructTomogramBaseJob):
 
     @classmethod
     def job_title(cls) -> str:
-        return "Recon. Tomos"
+        return "Reconstruct Tomos"
 
     def run(
         self,
@@ -877,7 +877,7 @@ class ReconstructHalfTomogramJob(_ReconstructTomogramBaseJob):
 
     @classmethod
     def job_title(cls) -> str:
-        return "Recon. Tomos For Denoise"
+        return "Reconstruct Tomos For Denoise"
 
     @classmethod
     def param_matches(cls, job_params):

@@ -29,7 +29,6 @@ class QInitialModelViewer(QJobScrollArea):
     def __init__(self, job_dir: _job_dir.InitialModel3DJobDirectory):
         super().__init__()
         max_width = 400
-        self._last_niter = 0
         self._list_widget = QMicrographListWidget(
             [
                 "Class",
@@ -203,7 +202,7 @@ class QInitialModelViewer(QJobScrollArea):
         res = self._job_dir.get_result(niter)
 
         map0, _ = res.class_map(class_id - self._index_start)
-        yield self._set_image_no_clim_update, map0
+        yield self._viewer.set_image, map0
 
         ### Read current optimiser and sampling info ###
         optimiser_star = self._job_dir.path / f"run_it{niter:0>3}_optimiser.star"
@@ -215,9 +214,6 @@ class QInitialModelViewer(QJobScrollArea):
                 self._num_particles_label.set_number,
                 _job_dir.try_get_particle_number(self._job_dir),
             )
-
-    def _set_image_no_clim_update(self, img):
-        self._viewer.set_image(img, update_now=True, update_clim=self._last_niter == 0)
 
 
 def _format_float(value: float, unit: str) -> str:

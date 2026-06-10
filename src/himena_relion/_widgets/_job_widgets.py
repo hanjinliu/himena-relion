@@ -629,7 +629,7 @@ class QJobStateLabel(QtW.QWidget, JobWidgetBase):
         self._job_widget = parent
         layout = QtW.QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        self._job_desc = QtW.QLabel("")  # The job title (with alias if exists)
+        self._job_desc = QtW.QLabel("")
         self._job_desc.setSizePolicy(
             QtW.QSizePolicy.Policy.Minimum, QtW.QSizePolicy.Policy.Minimum
         )

@@ -297,16 +297,6 @@ connect_jobs(
 
 for class3d_job in [_tomo.Class3DTomoJob, _tomo.Class3DNoAlignmentTomoJob]:
     connect_jobs(
-        _tomo.ExtractParticlesTomoJob,
-        class3d_job,
-        node_mapping={
-            OPTIMISATION_SET_STAR: "in_optim.in_optimisation",
-        },
-        value_mapping={
-            _subtomo_diameter_a: "particle_diameter",
-        },
-    )
-    connect_jobs(
         _tomo.InitialModelTomoJob,
         class3d_job,
         node_mapping={
@@ -391,16 +381,6 @@ connect_jobs(
     _tomo.ReconstructParticlesJob,
     _spa.MaskCreationJob,
     node_mapping={"merged.mrc": "fn_in"},
-)
-connect_jobs(
-    _tomo.ReconstructParticlesJob,
-    _tomo.ExtractParticlesTomoJob,
-    node_mapping={OPTIMISATION_SET_STAR: "in_optim.in_optimisation"},
-    value_mapping={
-        _subtomo_binning: "binning",
-        _subtomo_box_size: "box_size",
-        _subtomo_crop_size: "crop_size",
-    },
 )
 
 connect_jobs(
