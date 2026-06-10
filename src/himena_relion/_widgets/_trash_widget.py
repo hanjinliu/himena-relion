@@ -120,14 +120,14 @@ class QTrashWidget(QtW.QSplitter):
             self._job_view.clear_tabs()
             return
         entries: list[Path] = []
-        for job_path in glob(str(trash_dir / "*" / "job*")):
+        for job_path in sorted(glob(str(trash_dir / "*" / "job*"))):
             job_path = Path(job_path)
             entries.append(job_path)
         # NOTE: `mv` will update ctime (st_birthtime) but not mtime
         if sys.version_info >= (3, 12) and sys.platform == "win32":
-            entries.sort(key=lambda x: x.stat().st_birthtime_ns)
+            entries.sort(key=lambda x: x.stat().st_birthtime)
         else:
-            entries.sort(key=lambda x: x.stat().st_ctime_ns)
+            entries.sort(key=lambda x: x.stat().st_ctime)
         for job_path in entries:
             job_id = f"{job_path.parent.name}/{job_path.name}/"
             item = QtW.QListWidgetItem(job_id)

@@ -184,7 +184,7 @@ class QPathDropWidget(QtW.QWidget):
     def _glob_paths(self):
         path = self.value().strip()
         path_abs = self.get_relion_directory().joinpath(path)
-        matched_paths = list(glob.glob(path_abs.as_posix()))
+        matched_paths = sorted(glob.glob(path_abs.as_posix()))
         text = f"{len(matched_paths)} files matched\n\n" + "\n".join(matched_paths)
         current_instance().add_object(text, type=StandardType.TEXT)
 

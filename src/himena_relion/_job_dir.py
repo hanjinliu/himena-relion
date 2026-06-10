@@ -567,11 +567,10 @@ class InitialModel3DJobDirectory(JobDirectory):
 
     def num_classes(self) -> int:
         """Return the current number of classes in the class 3D job."""
-        num_classes = 0
         for path in self.path.glob("run_it???_class???.mrc"):
             with suppress(Exception):
-                num_classes = max(num_classes, int(path.stem[-3:]))
-        return num_classes
+                return int(path.stem[-3:])
+        return 0
 
     def niter_list(self) -> list[int]:
         """Return the list of number of iterations."""
@@ -649,11 +648,10 @@ class Class3DJobDirectory(JobDirectory):
 
     def num_classes(self) -> int:
         """Return the current number of classes in the class 3D job."""
-        num_classes = 0
         for path in self.path.glob("run_it???_class???.mrc"):
             with suppress(Exception):
-                num_classes = max(num_classes, int(path.stem[-3:]))
-        return num_classes
+                return int(path.stem[-3:])
+        return 0
 
     def num_iters(self) -> int:
         """Return the number of iterations in the class 3D job."""
