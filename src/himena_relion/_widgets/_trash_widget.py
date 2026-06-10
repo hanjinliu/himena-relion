@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 import shutil
 from glob import glob
+import sys
 import threading
 from qtpy import QtCore, QtWidgets as QtW
 from watchfiles import watch
@@ -122,7 +123,11 @@ class QTrashWidget(QtW.QSplitter):
         for job_path in glob(str(trash_dir / "*" / "job*")):
             job_path = Path(job_path)
             entries.append(job_path)
-        entries.sort(key=_trash_sort_key)
+        # NOTE: `mv` will update ctime (st_birthtime) but not mtime
+        if sys.version_info >= (3, 12) and sys.platform == "win32":
+            entries.sort(key=lambda x: x.stat().st_birthtime)
+        else:
+            entries.sort(key=lambda x: x.stat().st_ctime)
         for job_path in entries:
             job_id = f"{job_path.parent.name}/{job_path.name}/"
             item = QtW.QListWidgetItem(job_id)
@@ -206,23 +211,6 @@ class QTrashWidget(QtW.QSplitter):
 def _copy_job_paths(job_ids: list[str], trash_dir: Path):
     paths = [str(trash_dir / job_id) for job_id in job_ids]
     current_instance().set_clipboard(text="\n".join(paths))
-
-
-def _trash_sort_key(job_path: Path) -> int:
-    """Return a sort key for a trashed job directory.
-
-    Prefers the ``.trash_time`` file written when trashing (a nanosecond
-    timestamp that is strictly increasing even when multiple jobs are trashed
-    in rapid succession).  Falls back to ``st_ctime`` so that entries that
-    pre-date this feature are still ordered sensibly.
-    """
-    trash_time_file = job_path / ".trash_time"
-    if trash_time_file.exists():
-        try:
-            return int(trash_time_file.read_text())
-        except ValueError:
-            pass
-    return int(job_path.stat().st_ctime * 1e9)
 
 
 def _delete_permanently(job_ids: list[str], trash_dir: Path, *, join: bool = False):

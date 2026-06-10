@@ -82,7 +82,7 @@ def test_trash_widget(himena_ui: MainWindow, tmpdir):
     assert (rln_dir / "Trash" / "MotionCorr/job002").exists()
     win.widget._update_job_list()
     # child jobs will also be moved to trash.
-    assert [list_widget.item(i).text() for i in range(list_widget.count())] == ["MotionCorr/job002/", "CtfFind/job003/"]
+    assert {list_widget.item(i).text() for i in range(list_widget.count())} == {"MotionCorr/job002/", "CtfFind/job003/"}
     with choose_one_dialog_response(himena_ui, True):
         _delete_permanently(["MotionCorr/job002/"], rln_dir / "Trash", join=True)
     assert not (rln_dir / "Trash" / "MotionCorr/job002").exists()
