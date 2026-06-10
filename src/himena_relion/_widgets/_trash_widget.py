@@ -220,7 +220,7 @@ def _trash_sort_key(job_path: Path) -> int:
     if trash_time_file.exists():
         try:
             return int(trash_time_file.read_text())
-        except ValueError:
+        except (ValueError, OSError):
             pass
     return int(job_path.stat().st_ctime * 1e9)
 
