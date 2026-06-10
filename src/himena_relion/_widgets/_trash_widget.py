@@ -127,6 +127,7 @@ class QTrashWidget(QtW.QSplitter):
         if sys.version_info >= (3, 12) and sys.platform == "win32":
             entries.sort(key=lambda x: x.stat().st_birthtime)
         else:
+            print([x.stat().st_ctime for x in entries])  # ubuntu
             entries.sort(key=lambda x: x.stat().st_ctime)
         for job_path in entries:
             job_id = f"{job_path.parent.name}/{job_path.name}/"

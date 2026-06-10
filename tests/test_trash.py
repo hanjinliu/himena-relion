@@ -65,7 +65,7 @@ def test_trash_untrash_with_alias(himena_ui: MainWindow, tmpdir):
     assert rln_dir.joinpath("MotionCorr/alias-0").resolve() == rln_dir.joinpath("MotionCorr/job002").resolve()
 
 def test_trash_widget(himena_ui: MainWindow, tmpdir):
-    rln_dir = prep_relion_project(tmpdir, delay_ms=5)
+    rln_dir = prep_relion_project(tmpdir)
     himena_ui.read_file(rln_dir / "default_pipeline.star")
     with choose_one_dialog_response(himena_ui, True):
         trash_job(himena_ui, JobDirectory(rln_dir / "MotionCorr/job002"))

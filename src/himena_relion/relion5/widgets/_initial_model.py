@@ -144,7 +144,7 @@ class QInitialModelViewer(QJobScrollArea):
         self._update_for_value(self._iter_choice.value(), class_id)
 
     def _show_inspect_classes(self):
-        """Show the class distribution and representative images."""
+        """Inspect classes in a popup panel."""
         return current_instance().exec_action("himena-relion:inspect-classes")
 
     def _show_summary_plot(self):
@@ -211,10 +211,8 @@ class QInitialModelViewer(QJobScrollArea):
 
         ### Read number of particles if not known ###
         if not self._num_particles_label.num_known():
-            yield (
-                self._num_particles_label.set_number,
-                _job_dir.try_get_particle_number(self._job_dir),
-            )
+            num = _job_dir.try_get_particle_number(self._job_dir)
+            yield self._num_particles_label.set_number_for_class3d, num
 
     def _set_image_no_clim_update(self, img):
         self._viewer.set_image(img, update_now=True, update_clim=self._last_niter == 0)

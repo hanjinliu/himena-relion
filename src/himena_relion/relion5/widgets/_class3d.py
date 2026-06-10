@@ -151,7 +151,7 @@ class QClass3DViewer(QJobScrollArea):
         self._last_niter = value
 
     def _show_inspect_classes(self):
-        """Show the class distribution and representative images."""
+        """Inspect classes in a popup panel."""
         return current_instance().exec_action("himena-relion:inspect-classes")
 
     def _show_summary_plot(self):
