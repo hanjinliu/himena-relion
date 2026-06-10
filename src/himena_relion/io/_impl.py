@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
+import time
 import warnings
 import polars as pl
 import subprocess
@@ -305,7 +306,8 @@ def trash_job(ui: MainWindow, job_dir: JobDirectory):
         # move the job to trash
         trash_dir = _trash_dir(rln_dir)
         trash_dir.mkdir(exist_ok=True)
-        for p in to_trash:
+        _base_time = time.time_ns()
+        for i, p in enumerate(to_trash):
             src = rln_dir / p
             if not src.exists():
                 _LOGGER.warning(f"Source {src} does not exist. Skipping.")
@@ -313,6 +315,10 @@ def trash_job(ui: MainWindow, job_dir: JobDirectory):
             dest = trash_dir / p
             dest.parent.mkdir(parents=True, exist_ok=True)
             _move_dir(src, dest)
+            # Write a monotonically increasing timestamp so that jobs trashed in
+            # the same operation can be sorted in the correct order on Linux,
+            # where st_ctime resolution may be too low to distinguish them.
+            (dest / ".trash_time").write_text(str(_base_time + i))
 
         # unlink aliases
         for alias in aliases_to_remove:
