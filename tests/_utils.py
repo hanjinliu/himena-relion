@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Iterable
 from himena_relion.schemas import RelionPipelineModel
 from himena_relion.io._impl import normalize_job_id
+import time
 
 def assert_param_name_match(a, b, allowed_diffs: Iterable[str] = ("other_args",)):
     a_set = set(a)
@@ -52,7 +53,7 @@ def _extract_job_pipeline(pipeline: RelionPipelineModel, job_name: str) -> Relio
         }
     )
 
-def prep_relion_project(tmpdir):
+def prep_relion_project(tmpdir, delay_ms=0):
     """Write default_pipeline.star and job directories, and return the RELION directory."""
     rln_dir = Path(tmpdir)
 
@@ -79,6 +80,8 @@ def prep_relion_project(tmpdir):
         filepath = rln_dir / ".Nodes" / type_label / to_node
         filepath.parent.mkdir(parents=True)
         filepath.touch()
+        if delay_ms > 0:
+            time.sleep(delay_ms / 1e3)
     assert (rln_dir / "Import/job001").exists()
     assert (rln_dir / "MotionCorr/job002").exists()
     assert (rln_dir / "CtfFind/job003").exists()
