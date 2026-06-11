@@ -1,6 +1,7 @@
 from __future__ import annotations
 import glob
 from pathlib import Path
+from typing import Callable
 
 from magicgui.widgets.bases import ValuedContainerWidget
 from magicgui.widgets import LineEdit, PushButton
@@ -306,12 +307,14 @@ class AutoFillableFloatEdit(ValuedContainerWidget):
             tooltip="Read from image header or mdoc file",
         )
         self._read_header_btn.native.setStyleSheet("QPushButton { padding: 2px; }")
+        self._read_header_btn.native.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
         widgets = [self._scale, self._read_header_btn]
         kwargs.setdefault("labels", False)
         kwargs.setdefault("layout", "horizontal")
         super().__init__(widgets=widgets, **kwargs)
         self.margins = (0, 0, 0, 0)
         self._read_header_btn.clicked.connect(self.button_clicked.emit)
+        self._scale.changed.connect(self.changed.emit)
 
     def get_value(self):
         return self._scale.value
@@ -343,3 +346,38 @@ class AutoFillableFloatEdit(ValuedContainerWidget):
         raise ValueError(
             f"Could not read scale from files matching pattern: {pattern!r}"
         )
+
+
+class SuggestableLineEdit(ValuedContainerWidget):
+    def __init__(self, **kwargs):
+        self._line = LineEdit()
+        self._suggestion_btn = PushButton(
+            text="...", tooltip="Click to get suggestions based on current input."
+        )
+        self._suggestion_btn.native.setStyleSheet("QPushButton { padding: 2px; }")
+        self._suggestion_btn.enabled = False
+        self._suggestion_btn.min_width = 25
+        self._suggestion_btn.max_width = 25
+        self._suggestion_btn.native.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
+        self._suggestion_func: Callable[[], str] = lambda: ""
+        kwargs.setdefault("labels", False)
+        kwargs.setdefault("layout", "horizontal")
+        super().__init__(widgets=[self._line, self._suggestion_btn], **kwargs)
+        self.margins = (0, 0, 0, 0)
+        self._suggestion_btn.clicked.connect(self._on_suggestion_btn_clicked)
+        self._line.changed.connect(self.changed.emit)
+
+    def get_value(self):
+        return self._line.value
+
+    def set_value(self, value):
+        self._line.value = value
+
+    def _on_suggestion_btn_clicked(self):
+        suggestion = self._suggestion_func()
+        if suggestion:
+            self._line.value = suggestion
+
+    def set_suggestion_function(self, func: Callable[[], str] | None):
+        self._suggestion_func = func
+        self._suggestion_btn.enabled = func is not None
