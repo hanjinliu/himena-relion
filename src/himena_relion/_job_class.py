@@ -339,7 +339,6 @@ class _Relion5BuiltinJob(RelionJob):
             kwargs.pop(key, None)
         if "scratch_dir" in kwargs:
             kwargs["use_scratch"] = kwargs.pop("scratch_dir", "").strip() != ""
-        kwargs.pop("other_args", None)
         kwargs.pop("use_gpu", None)
         return kwargs
 
