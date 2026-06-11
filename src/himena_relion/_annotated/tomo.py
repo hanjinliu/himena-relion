@@ -2,6 +2,7 @@ from typing import Annotated
 
 from himena.qt.magicgui import ToggleButtons
 from himena_relion._widgets._path_input import PathDrop
+from himena_relion._widgets._magicgui import SuggestableLineEdit
 
 EXCLUDETILT_CACHE_SIZE = Annotated[
     int,
@@ -245,6 +246,7 @@ TOMO_NAME = Annotated[
             "If not left empty, the program will only reconstruct this particular "
             "tomogram"
         ),
+        "widget_type": SuggestableLineEdit,
         "group": "Reconstruct",
     },
 ]
@@ -304,6 +306,7 @@ TOMOGRAMS_FOR_TRAINING = Annotated[
             "tomograms according to their rlnTomoName, and separate the tomograms "
             "using ':'. For exampple, input should look something like: TS_01:TS_02 "
         ),
+        "widget_type": SuggestableLineEdit,
         "group": "Train",
     },
 ]
@@ -323,6 +326,7 @@ SUBVOLUME_DIMENSIONS = Annotated[
     int,
     {
         "label": "Sub-volume dimensions (pix)",
+        "min": 8,
         "tooltip": (
             "Dimensions (XYZ) in pixels of the sub-volumes to be extracted from the "
             "training tomograms. Corresponds to patch_size in "
@@ -366,6 +370,7 @@ DENOISING_TOMO_NAME = Annotated[
             "If not left empty, the program will only reconstruct this particular "
             "tomogram. Use the name in <code>rlnTomoName</code> to specify tomogram."
         ),
+        "widget_type": SuggestableLineEdit,
         "group": "Predict",
     },
 ]

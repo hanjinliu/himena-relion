@@ -1,7 +1,8 @@
 from pathlib import Path
 import shutil
-from typing import Any
+from typing import Annotated, Any
 
+from himena.widgets import current_instance
 from himena_relion._job_class import _Relion5BuiltinJob, parse_string
 from himena_relion import _configs
 from himena_relion._pipeline import RelionPipeline
@@ -11,7 +12,8 @@ from himena_relion._adapt import (
     norm_extract_subtomo,
     norm_extract_subtomo_inv,
 )
-from himena_relion._widgets._magicgui import AutoFillableFloatEdit
+from himena_relion.schemas import TSGroupModel
+from himena_relion._widgets._magicgui import AutoFillableFloatEdit, SuggestableLineEdit
 from himena_relion._utils import command_not_found_err_msg, extract_input_edges
 from himena_relion.relion5._builtins import (
     CtfEstimationJob,
@@ -772,18 +774,11 @@ class _ReconstructTomogramBaseJob(_Relion5TomoJob):
 
         _on_do_proj_changed(widgets["do_proj"].value)
 
-        # TODO: the input path is relative, so it is not simple to get choices
-        # @widgets["in_tiltseries"].changed.connect
-        # def _on_in_tiltseries_changed(value: str):
-        #     choices = []
-        #     if Path(value).exists() and Path(value).is_file():
-        #         if star := read_star(value).try_first():
-        #             if loop := star.try_loop():
-        #                 choices = loop.to_polars()["rlnTomoName"].to_list()
+        tomo_name_widget: SuggestableLineEdit = widgets["tomo_name"]
 
-        #     widgets["tomo_name"].choices = [""] + choices
-
-        # _on_in_tiltseries_changed(widgets["in_tiltseries"].value)
+        @tomo_name_widget.set_suggestion_function
+        def _suggest_tomo_name() -> str:
+            _select_tomo_name(Path.cwd() / str(widgets["in_tiltseries"].value))
 
     def input_edges(self, **kwargs) -> list[str]:
         return extract_input_edges(kwargs, ["in_tiltseries"])
@@ -1093,6 +1088,26 @@ class DenoiseTrain(_DenoiseJobBase):
         raise NotImplementedError("This is a builtin job placeholder.")
 
     @classmethod
+    def setup_widgets(cls, widgets):
+        super().setup_widgets(widgets)
+        tomo_name_widget: SuggestableLineEdit = widgets["tomograms_for_training"]
+
+        @tomo_name_widget.set_suggestion_function
+        def _suggest_tomo_name() -> str:
+            ts_model = _get_ts_group_model(
+                Path.cwd() / str(widgets["in_tomoset"].value)
+            )
+            choices = list(ts_model.tomo_name)
+            typ = Annotated[list[str], {"choices": choices, "widget_type": "Select"}]
+            if selected := current_instance().exec_user_input_dialog(
+                {"tomo_names": typ},
+                title="Select Tomograms For Training",
+                show_parameter_labels=False,
+            ):
+                return ":".join(selected["tomo_names"])
+            return ""
+
+    @classmethod
     def prerun_check(cls, **kwargs) -> None:
         super().prerun_check(**kwargs)
         if (dim := kwargs.get("subvolume_dimensions", 8)) % 8 != 0:
@@ -1158,6 +1173,15 @@ class DenoisePredict(_DenoiseJobBase):
         min_dedicated: _a.running.MIN_DEDICATED = 1,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
+
+    @classmethod
+    def setup_widgets(cls, widgets):
+        super().setup_widgets(widgets)
+        tomo_name_widget: SuggestableLineEdit = widgets["denoising_tomo_name"]
+
+        @tomo_name_widget.set_suggestion_function
+        def _suggest_tomo_name() -> str:
+            _select_tomo_name(Path.cwd() / str(widgets["in_tomoset"].value))
 
 
 class InitialModelTomoJob(_Relion5TomoJob, InitialModelJob):
@@ -1669,3 +1693,30 @@ class FrameAlignTomoJob(_Relion5TomoJob):
 
 
 _OPTIM_KEYS = ["in_optimisation", "in_particles", "in_tomograms", "in_trajectories"]
+
+
+def _select_tomo_name(in_tilt_star: Path):
+    ts_model = _get_ts_group_model(in_tilt_star)
+    names = list(ts_model.tomo_name)
+    if names:
+        return (
+            current_instance().exec_choose_one_dialog(
+                message="Select a tomogram name ...",
+                choices=names,
+                how="palette",
+            )
+            or ""
+        )
+    raise ValueError(f"{in_tilt_star} is empty.")
+
+
+def _get_ts_group_model(in_tilt_star: Path) -> TSGroupModel:
+    if (
+        in_tilt_star.exists()
+        and in_tilt_star.is_file()
+        and in_tilt_star.suffix == ".star"
+    ):
+        return TSGroupModel.validate_file(in_tilt_star)
+    raise ValueError(
+        f"No tomogram name found in the input tilt series star file {in_tilt_star}."
+    )
