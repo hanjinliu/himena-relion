@@ -87,6 +87,13 @@ def _optimiser_last_iter(path: Path) -> str:
     return path / f"run_it{niter:03d}_optimiser.star"
 
 
+def _optimisation_set_last_iter(path: Path) -> str:
+    niter = get_nr_iter(path)
+    if niter is None:
+        return ""
+    return path / f"run_it{niter:03d}_optimisation_set.star"
+
+
 for _MotionCorJob in [_tomo.MotionCorr2TomoJob, _tomo.MotionCorrOwnTomoJob]:
     connect_jobs(
         _tomo.ImportTomoJob,
@@ -363,7 +370,7 @@ connect_jobs(
     _tomo.InitialModelTomoJob,
     _tomo.Refine3DTomoJob,
     node_mapping={
-        OPTIMISATION_SET_STAR: "in_optim.in_optimisation",
+        _optimisation_set_last_iter: "in_optim.in_optimisation",
         "initial_model.mrc": "fn_ref",
     },
     value_mapping={

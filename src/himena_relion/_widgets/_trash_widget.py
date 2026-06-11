@@ -120,7 +120,7 @@ class QTrashWidget(QtW.QSplitter):
             self._job_view.clear_tabs()
             return
         entries: list[Path] = []
-        for job_path in sorted(glob(str(trash_dir / "*" / "job*"))):
+        for job_path in glob(str(trash_dir / "*" / "job*")):
             job_path = Path(job_path)
             entries.append(job_path)
         # NOTE: `mv` will update ctime (st_birthtime) but not mtime

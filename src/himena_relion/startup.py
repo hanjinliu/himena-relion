@@ -6,7 +6,7 @@ from pathlib import Path
 import psutil
 from himena_relion._job_dir import JobDirectory
 from himena_relion._job_class import scheduler_widget
-from himena_relion._utils import get_pipeline_widgets
+from himena_relion._utils import get_pipeline_widgets, read_or_show_job
 from himena_relion.pipeline_watcher import (
     _WATCHER_FILE_NAME,
     read_pid_from_lock,
@@ -72,11 +72,8 @@ def on_himena_startup(ui: "MainWindow"):
 
 
 def _open_jobs(ui: "MainWindow", can_open: list[Path]):
-    ui.read_files(
-        can_open,
-        plugin="himena_relion.io.read_relion_job",
-        append_history=False,
-    )
+    for path in can_open:
+        read_or_show_job(ui, path)
 
 
 def on_himena_teardown(ui: "MainWindow"):

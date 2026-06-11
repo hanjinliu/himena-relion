@@ -120,7 +120,7 @@ class QInitialModelViewer(QJobScrollArea):
     def initialize(self, job_dir: _job_dir.InitialModel3DJobDirectory):
         """Initialize the viewer with the job directory."""
         self._job_dir = job_dir
-        nclasses = job_dir.num_classes()
+        nclasses = _job_dir.num_classes(job_dir)
         if nclasses == 0:
             return
         self._list_widget.setFixedHeight(min(nclasses * 22 + 18, 110))

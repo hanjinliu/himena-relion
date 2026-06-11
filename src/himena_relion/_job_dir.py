@@ -565,13 +565,6 @@ class InitialModel3DJobDirectory(JobDirectory):
     def get_result(self, niter: int) -> InitialModelResults:
         return InitialModelResults.from_niter(self.path, niter)
 
-    def num_classes(self) -> int:
-        """Return the current number of classes in the class 3D job."""
-        for path in self.path.glob("run_it???_class???.mrc"):
-            with suppress(Exception):
-                return int(path.stem[-3:])
-        return 0
-
     def niter_list(self) -> list[int]:
         """Return the list of number of iterations."""
         nums: list[int] = []
@@ -606,10 +599,6 @@ class Refine3DJobDirectory(JobDirectory):
     def get_final_result(self) -> Refine3DResults:
         """Return the final result of the refine 3D job."""
         return Refine3DResults(self.path, "")
-
-    def num_classes(self) -> int:
-        """Return the number of classes in the refine 3D job."""
-        return len(list(self.path.glob("run_it000_half1_model*.star")))
 
     def num_iters(self) -> int:
         """Return the number of iterations in the refine 3D job."""
@@ -646,13 +635,6 @@ class Class3DJobDirectory(JobDirectory):
     def get_result(self, niter: int) -> Class3DResults:
         return Class3DResults.from_niter(self.path, niter)
 
-    def num_classes(self) -> int:
-        """Return the current number of classes in the class 3D job."""
-        for path in self.path.glob("run_it???_class???.mrc"):
-            with suppress(Exception):
-                return int(path.stem[-3:])
-        return 0
-
     def num_iters(self) -> int:
         """Return the number of iterations in the class 3D job."""
         num_it = -1
@@ -680,6 +662,15 @@ def _read_tubes(full_path, map_scale: float) -> list[TubeObject]:
             )
             cylinders.append(cyl)
     return cylinders
+
+
+def num_classes(job_dir: JobDirectory) -> int:
+    """Try to get the number of classes."""
+    num_classes = 0
+    for path in job_dir.path.glob("run_it???_class???.mrc"):
+        with suppress(Exception):
+            num_classes = max(num_classes, int(path.stem[-3:]))
+    return num_classes
 
 
 def try_get_particle_number(job_dir: JobDirectory) -> int:
