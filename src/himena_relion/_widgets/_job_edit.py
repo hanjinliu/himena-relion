@@ -488,10 +488,8 @@ class QHTMLTextEdit(QtW.QTextEdit):
     def mouseReleaseEvent(self, e: QtGui.QMouseEvent):
         if e.button() == QtCore.Qt.MouseButton.LeftButton:
             _anchor = self.anchorAt(e.pos())
-            if self._anchor == _anchor:
+            # NOTE: text without a href also has an anchor of an empty string.
+            if _anchor.split() and self._anchor == _anchor:
                 _utils.open_url(self._anchor)
             self._anchor = None
         return super().mouseReleaseEvent(e)
-
-
-def _check_recursive_pipeline(): ...

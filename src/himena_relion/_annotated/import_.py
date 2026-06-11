@@ -353,3 +353,16 @@ ADD_FACTOR = Annotated[
         "group": "Coordinates",
     },
 ]
+OTHER_ARGS = Annotated[
+    str,
+    {
+        "label": "Additional arguments",
+        "tooltip": (
+            "In this box command-line arguments may be provided that are not generated "
+            "by the GUI. This may be useful for testing developmental options and/or "
+            "expert use of the program. To print a list of possible options, run the "
+            "corresponding program from the command line without any arguments."
+        ),
+        "group": "Running",
+    },
+]

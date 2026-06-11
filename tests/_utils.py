@@ -3,7 +3,7 @@ from typing import Iterable
 from himena_relion.schemas import RelionPipelineModel
 from himena_relion.io._impl import normalize_job_id
 
-def assert_param_name_match(a, b, allowed_diffs: Iterable[str] = ("other_args",)):
+def assert_param_name_match(a, b, allowed_diffs: Iterable[str] = ()):
     a_set = set(a)
     b_set = set(b)
     allowed_diffs_set = set(allowed_diffs)

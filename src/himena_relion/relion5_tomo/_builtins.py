@@ -134,6 +134,7 @@ class _ImportTomoJob(_ImportTomoOrCoordsJob):
         flip_tiltseries_hand: _a.import_.FLIP_TILTSERIES_HAND = True,
         # Running
         min_dedicated: _a.running.MIN_DEDICATED = 1,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -256,6 +257,7 @@ class ImportCoordinatesJob(_ImportTomoOrCoordsJob):
         # Running
         do_queue: _a.running.DO_QUEUE = False,
         min_dedicated: _a.running.MIN_DEDICATED = 1,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -282,6 +284,7 @@ class MotionCorr2TomoJob(_Relion5TomoJob, MotionCorr2Job):
         nr_threads: _a.running.NR_THREADS = 1,
         do_queue: _a.running.DO_QUEUE = False,
         min_dedicated: _a.running.MIN_DEDICATED = 1,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -316,6 +319,7 @@ class MotionCorrOwnTomoJob(_Relion5TomoJob, MotionCorrOwnJob):
         nr_threads: _a.running.NR_THREADS = 1,
         do_queue: _a.running.DO_QUEUE = False,
         min_dedicated: _a.running.MIN_DEDICATED = 1,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -342,6 +346,7 @@ class CtfEstimationTomoJob(_Relion5TomoJob, CtfEstimationJob):
         nr_mpi: _a.running.NR_MPI = 1,
         do_queue: _a.running.DO_QUEUE = False,
         min_dedicated: _a.running.MIN_DEDICATED = 1,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -399,6 +404,7 @@ class ExcludeTiltJob(_Relion5TomoJob):
         # Running
         do_queue: _a.running.DO_QUEUE = False,
         min_dedicated: _a.running.MIN_DEDICATED = 1,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -499,6 +505,7 @@ class AlignTiltSeriesImodFiducial(_AlignTiltSeriesJobBase):
         nr_mpi: _a.running.NR_MPI = 1,
         do_queue: _a.running.DO_QUEUE = False,
         min_dedicated: _a.running.MIN_DEDICATED = 1,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -563,6 +570,7 @@ class AlignTiltSeriesImodPatch(_AlignTiltSeriesJobBase):
         nr_mpi: _a.running.NR_MPI = 1,
         do_queue: _a.running.DO_QUEUE = False,
         min_dedicated: _a.running.MIN_DEDICATED = 1,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -636,6 +644,7 @@ class AlignTiltSeriesAreTomo2(_AlignTiltSeriesJobBase):
         nr_mpi: _a.running.NR_MPI = 1,
         do_queue: _a.running.DO_QUEUE = False,
         min_dedicated: _a.running.MIN_DEDICATED = 1,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -722,6 +731,7 @@ class ReconstructTomoByAreTomo2(_AlignTiltSeriesJobBase):
         nr_mpi: _a.running.NR_MPI = 1,
         do_queue: _a.running.DO_QUEUE = False,
         min_dedicated: _a.running.MIN_DEDICATED = 1,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -831,6 +841,7 @@ class ReconstructTomogramJob(_ReconstructTomogramBaseJob):
         nr_threads: _a.running.NR_THREADS = 1,
         do_queue: _a.running.DO_QUEUE = False,
         min_dedicated: _a.running.MIN_DEDICATED = 1,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -895,6 +906,7 @@ class ReconstructHalfTomogramJob(_ReconstructTomogramBaseJob):
         nr_threads: _a.running.NR_THREADS = 1,
         do_queue: _a.running.DO_QUEUE = False,
         min_dedicated: _a.running.MIN_DEDICATED = 1,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -935,6 +947,7 @@ class PickJob(_Relion5TomoJob):
         # Running
         do_queue: _a.running.DO_QUEUE = False,
         min_dedicated: _a.running.MIN_DEDICATED = 1,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -992,6 +1005,7 @@ class ExtractParticlesTomoJob(_Relion5TomoJob):
         nr_threads: _a.running.NR_THREADS = 1,
         do_queue: _a.running.DO_QUEUE = False,
         min_dedicated: _a.running.MIN_DEDICATED = 1,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -1084,6 +1098,7 @@ class DenoiseTrain(_DenoiseJobBase):
         # Running
         do_queue: _a.running.DO_QUEUE = False,
         min_dedicated: _a.running.MIN_DEDICATED = 1,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -1171,6 +1186,7 @@ class DenoisePredict(_DenoiseJobBase):
         # Running
         do_queue: _a.running.DO_QUEUE = False,
         min_dedicated: _a.running.MIN_DEDICATED = 1,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -1226,6 +1242,7 @@ class InitialModelTomoJob(_Relion5TomoJob, InitialModelJob):
         nr_threads: _a.running.NR_THREADS = 1,
         do_queue: _a.running.DO_QUEUE = False,
         min_dedicated: _a.running.MIN_DEDICATED = 1,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -1301,6 +1318,7 @@ class Class3DNoAlignmentTomoJob(_Relion5TomoJob, Class3DNoAlignmentJob):
         nr_threads: _a.running.NR_THREADS = 1,
         do_queue: _a.running.DO_QUEUE = False,
         min_dedicated: _a.running.MIN_DEDICATED = 1,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -1380,6 +1398,7 @@ class Class3DTomoJob(_Relion5TomoJob, Class3DJob):
         nr_threads: _a.running.NR_THREADS = 1,
         do_queue: _a.running.DO_QUEUE = False,
         min_dedicated: _a.running.MIN_DEDICATED = 1,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -1452,6 +1471,7 @@ class Refine3DTomoJob(_Relion5TomoJob, Refine3DJob):
         nr_threads: _a.running.NR_THREADS = 1,
         do_queue: _a.running.DO_QUEUE = False,
         min_dedicated: _a.running.MIN_DEDICATED = 1,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -1503,6 +1523,7 @@ class ReconstructParticlesJob(_Relion5TomoJob):
         nr_threads: _a.running.NR_THREADS = 1,
         do_queue: _a.running.DO_QUEUE = False,
         min_dedicated: _a.running.MIN_DEDICATED = 1,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -1598,6 +1619,7 @@ class CtfRefineTomoJob(_Relion5TomoJob):
         nr_threads: _a.running.NR_THREADS = 1,
         do_queue: _a.running.DO_QUEUE = False,
         min_dedicated: _a.running.MIN_DEDICATED = 1,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -1672,6 +1694,7 @@ class FrameAlignTomoJob(_Relion5TomoJob):
         nr_threads: _a.running.NR_THREADS = 1,
         do_queue: _a.running.DO_QUEUE = False,
         min_dedicated: _a.running.MIN_DEDICATED = 1,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 

@@ -108,6 +108,7 @@ class ImportMoviesJob(_ImportMoviesJobBase):
         Q0: _a.import_.Q0 = 0.1,
         beamtilt_x: _a.import_.BEAM_TILT_X = 0,
         beamtilt_y: _a.import_.BEAM_TILT_Y = 0,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -151,6 +152,7 @@ class ImportMicrographsJob(_ImportMoviesJobBase):
         Q0: _a.import_.Q0 = 0.1,
         beamtilt_x: _a.import_.BEAM_TILT_X = 0,
         beamtilt_y: _a.import_.BEAM_TILT_Y = 0,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -195,6 +197,7 @@ class ImportOthersJob(_ImportJobBase):
         fn_in_other: _a.import_.FN_IN_OTHER = "",
         node_type: _a.import_.NODE_TYPE = "Particle coordinates (*.box, *_pick.star)",
         optics_group_particles: _a.import_.OPTICS_GROUP_PARTICLES = "",
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -294,6 +297,7 @@ class MotionCorr2Job(_MotionCorrJobBase):
         nr_threads: _a.running.NR_THREADS = 1,
         do_queue: _a.running.DO_QUEUE = False,
         min_dedicated: _a.running.MIN_DEDICATED = 1,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -358,6 +362,7 @@ class MotionCorrOwnJob(_MotionCorrJobBase):
         nr_threads: _a.running.NR_THREADS = 1,
         do_queue: _a.running.DO_QUEUE = False,
         min_dedicated: _a.running.MIN_DEDICATED = 1,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -427,6 +432,7 @@ class CtfEstimationJob(_Relion5SpaJob):
         nr_mpi: _a.running.NR_MPI = 1,
         do_queue: _a.running.DO_QUEUE = False,
         min_dedicated: _a.running.MIN_DEDICATED = 1,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -515,6 +521,7 @@ class ManualPickJob(_Relion5SpaJob):
         fn_color: _a.manualpick.FN_COLOR = "",
         blue_value: _a.manualpick.BLUE_VALUE = 0,
         red_value: _a.manualpick.RED_VALUE = 2,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -671,6 +678,7 @@ class AutoPickLogJob(_AutoPickJob):
         nr_mpi: _a.running.NR_MPI = 1,
         do_queue: _a.running.DO_QUEUE = False,
         min_dedicated: _a.running.MIN_DEDICATED = 1,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -766,6 +774,7 @@ class AutoPickTemplate2DJob(_AutoPickJob):
         nr_mpi: _a.running.NR_MPI = 1,
         do_queue: _a.running.DO_QUEUE = False,
         min_dedicated: _a.running.MIN_DEDICATED = 1,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -854,6 +863,7 @@ class AutoPickTemplate3DJob(_AutoPickJob):
         nr_mpi: _a.running.NR_MPI = 1,
         do_queue: _a.running.DO_QUEUE = False,
         min_dedicated: _a.running.MIN_DEDICATED = 1,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -1038,6 +1048,7 @@ class AutoPickTopazPick(_AutoPickJob):
         nr_mpi: _a.running.NR_MPI = 1,
         do_queue: _a.running.DO_QUEUE = False,
         min_dedicated: _a.running.MIN_DEDICATED = 1,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -1181,6 +1192,7 @@ class ExtractJob(_ExtractJobBase):
         nr_mpi: _a.running.NR_MPI = 1,
         do_queue: _a.running.DO_QUEUE = False,
         min_dedicated: _a.running.MIN_DEDICATED = 1,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -1242,6 +1254,7 @@ class ReExtractJob(_ExtractJobBase):
         nr_mpi: _a.running.NR_MPI = 1,
         do_queue: _a.running.DO_QUEUE = False,
         min_dedicated: _a.running.MIN_DEDICATED = 1,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -1356,6 +1369,7 @@ class Class2DJob(_Relion5SpaJob):
         nr_threads: _a.running.NR_THREADS = 1,
         do_queue: _a.running.DO_QUEUE = False,
         min_dedicated: _a.running.MIN_DEDICATED = 1,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -1424,6 +1438,7 @@ class InitialModelJob(_Relion5SpaJob):
         nr_threads: _a.running.NR_THREADS = 1,
         do_queue: _a.running.DO_QUEUE = False,
         min_dedicated: _a.running.MIN_DEDICATED = 1,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -1618,6 +1633,7 @@ class Class3DNoAlignmentJob(_Class3DJobBase):
         nr_threads: _a.running.NR_THREADS = 1,
         do_queue: _a.running.DO_QUEUE = False,
         min_dedicated: _a.running.MIN_DEDICATED = 1,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -1710,6 +1726,7 @@ class Class3DJob(_Class3DJobBase):
         nr_threads: _a.running.NR_THREADS = 1,
         do_queue: _a.running.DO_QUEUE = False,
         min_dedicated: _a.running.MIN_DEDICATED = 1,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -1848,6 +1865,7 @@ class Refine3DJob(_Relion5SpaJob):
         nr_threads: _a.running.NR_THREADS = 1,
         do_queue: _a.running.DO_QUEUE = False,
         min_dedicated: _a.running.MIN_DEDICATED = 1,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -1933,6 +1951,7 @@ class MultiBodyJob(_Relion5SpaJob):
         nr_threads: _a.running.NR_THREADS = 1,
         do_queue: _a.running.DO_QUEUE = False,
         min_dedicated: _a.running.MIN_DEDICATED = 1,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -2041,7 +2060,11 @@ class SelectClassesInteractiveJob(_SelectClassesJob):
     def type_label(cls):
         return "relion.select.interactive"
 
-    def run(self, fn_model: _a.io.IN_OPTIMISER = ""):
+    def run(
+        self,
+        fn_model: _a.io.IN_OPTIMISER = "",
+        other_args: _a.import_.OTHER_ARGS = "",
+    ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
     @classmethod
@@ -2100,6 +2123,7 @@ class SelectClassesAutoJob(_SelectClassesJob):
         do_recenter: _a.select.DO_RECENTER = False,
         do_regroup: _a.select.DO_REGROUP = False,
         nr_groups: _a.select.NR_GROUPS = 1,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -2123,6 +2147,16 @@ class _SelectValuesJob(_SelectJob):
             return f"Filtered by {min0} ≤ {d['select_label']} ≤ {max0}"
         except Exception:
             return super().status_tip()
+
+    # TODO: add suggestions. This is a bit tricky because we have to correctly interpret
+    # the input star file format.
+    # @classmethod
+    # def setup_widgets(cls, widgets):
+    #     super().setup_widgets(widgets)
+    #     select_label_widget: SuggestableLineEdit = widgets["select_label"]
+    #     @select_label_widget.set_suggestion_function
+    #     def _suggest_label():
+    #         Path.cwd() / widgets[0].value
 
 
 class SelectParticlesJob(_SelectValuesJob):
@@ -2148,6 +2182,7 @@ class SelectParticlesJob(_SelectValuesJob):
         select_label: _a.select.SELECT_LABEL = "rlnCtfMaxResolution",
         select_minval: _a.select.SELECT_MINVAL = -9999,
         select_maxval: _a.select.SELECT_MAXVAL = 9999,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -2178,6 +2213,7 @@ class SelectMicrographsJob(_SelectValuesJob):
         select_label: _a.select.SELECT_LABEL = "rlnCtfMaxResolution",
         select_minval: _a.select.SELECT_MINVAL = -9999,
         select_maxval: _a.select.SELECT_MAXVAL = 9999,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -2207,6 +2243,7 @@ class SelectRemoveDuplicatesJob(_SelectJob):
         fn_data: _a.io.IN_PARTICLES = "",
         duplicate_threshold: _a.select.DUPLICATE_THRESHOLD = 30,
         image_angpix: _a.select.IMAGE_ANGPIX = None,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -2241,6 +2278,7 @@ class SelectDiscardJob(_SelectJob):
         fn_data: _a.io.IN_PARTICLES = "",
         discard_label: _a.select.DISCARD_LABEL = "rlnImageName",
         discard_sigma: _a.select.DISCARD_SIGMA = 4.0,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -2273,6 +2311,7 @@ class SelectSplitJob(_SelectJob):
         do_random: _a.select.DO_RANDOM = False,
         split_size: _a.select.SPLIT_SIZE = None,
         nr_split: _a.select.NR_SPLIT = None,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -2300,6 +2339,7 @@ class SelectFilamentsJob(_SelectJob):
         fn_model: _a.io.IN_OPTIMISER = "",
         dendrogram_threshold: _a.select.DENDROGRAM_THRESHOLD = 0.85,
         dendrogram_minclass: _a.select.DENDROGRAM_MINCLASS = -1000,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -2346,6 +2386,7 @@ class MaskCreationJob(_Relion5Job):
         nr_threads: _a.running.NR_THREADS = 1,
         do_queue: _a.running.DO_QUEUE = False,
         min_dedicated: _a.running.MIN_DEDICATED = 1,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -2415,6 +2456,7 @@ class PostProcessJob(_Relion5SpaJob):
         # Running
         do_queue: _a.running.DO_QUEUE = False,
         min_dedicated: _a.running.MIN_DEDICATED = 1,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -2502,6 +2544,7 @@ class CtfRefineJob(_CtfRefineJobBase):
         nr_threads: _a.running.NR_THREADS = 1,
         do_queue: _a.running.DO_QUEUE = False,
         min_dedicated: _a.running.MIN_DEDICATED = 1,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -2541,6 +2584,7 @@ class CtfRefineAnisoMagJob(_CtfRefineJobBase):
         nr_threads: _a.running.NR_THREADS = 1,
         do_queue: _a.running.DO_QUEUE = False,
         min_dedicated: _a.running.MIN_DEDICATED = 1,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -2596,6 +2640,7 @@ class JoinParticlesJob(_JoinStarBase):
         fn_part4: _a.io.IN_PARTICLES = "",
         do_queue: _a.running.DO_QUEUE = False,
         min_dedicated: _a.running.MIN_DEDICATED = 1,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -2626,6 +2671,7 @@ class JoinMicrographsJob(_JoinStarBase):
         fn_mic4: _a.io.IN_MICROGRAPHS = "",
         do_queue: _a.running.DO_QUEUE = False,
         min_dedicated: _a.running.MIN_DEDICATED = 1,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -2654,6 +2700,7 @@ class JoinMoviesJob(_JoinStarBase):
         fn_mov4: _a.io.IN_MOVIES = "",
         do_queue: _a.running.DO_QUEUE = False,
         min_dedicated: _a.running.MIN_DEDICATED = 1,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -2725,6 +2772,7 @@ class LocalResolutionResmapJob(_LocalResolutionJobBase):
         nr_mpi: _a.running.NR_MPI = 1,
         do_queue: _a.running.DO_QUEUE = False,
         min_dedicated: _a.running.MIN_DEDICATED = 1,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -2773,6 +2821,7 @@ class LocalResolutionOwnJob(_LocalResolutionJobBase):
         nr_mpi: _a.running.NR_MPI = 1,
         do_queue: _a.running.DO_QUEUE = False,
         min_dedicated: _a.running.MIN_DEDICATED = 1,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -2851,6 +2900,7 @@ class ParticleSubtractionJob(_Relion5SpaJob):
         nr_mpi: _a.running.NR_MPI = 1,
         do_queue: _a.running.DO_QUEUE = False,
         min_dedicated: _a.running.MIN_DEDICATED = 1,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -2938,6 +2988,7 @@ class BayesianPolishTrainJob(_Relion5SpaJob):
         nr_threads: _a.running.NR_THREADS = 1,
         do_queue: _a.running.DO_QUEUE = False,
         min_dedicated: _a.running.MIN_DEDICATED = 1,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -3006,6 +3057,7 @@ class BayesianPolishJob(_Relion5SpaJob):
         nr_threads: _a.running.NR_THREADS = 1,
         do_queue: _a.running.DO_QUEUE = False,
         min_dedicated: _a.running.MIN_DEDICATED = 1,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -3078,6 +3130,7 @@ class DynaMightJob(_Relion5Job):
         nr_threads: _a.running.NR_THREADS = 1,
         do_queue: _a.running.DO_QUEUE = False,
         min_dedicated: _a.running.MIN_DEDICATED = 1,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
@@ -3135,6 +3188,7 @@ class ModelAngeloJob(_Relion5Job):
         # Running
         do_queue: _a.running.DO_QUEUE = False,
         min_dedicated: _a.running.MIN_DEDICATED = 1,
+        other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 
