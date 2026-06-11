@@ -90,8 +90,6 @@ class JobDirectory:
 
     def job_title(self) -> str:
         """Get the job title (human readable name of this job)."""
-        if label := getattr(self, "_job_type", None):
-            return JOB_ID_MAP.get(label, label)
         if job_cls := self._to_job_class():
             return job_cls.job_title()
         try:
@@ -567,14 +565,6 @@ class InitialModel3DJobDirectory(JobDirectory):
     def get_result(self, niter: int) -> InitialModelResults:
         return InitialModelResults.from_niter(self.path, niter)
 
-    def num_classes(self) -> int:
-        """Return the current number of classes in the class 3D job."""
-        num_classes = 0
-        for path in self.path.glob("run_it???_class???.mrc"):
-            with suppress(Exception):
-                num_classes = max(num_classes, int(path.stem[-3:]))
-        return num_classes
-
     def niter_list(self) -> list[int]:
         """Return the list of number of iterations."""
         nums: list[int] = []
@@ -610,10 +600,6 @@ class Refine3DJobDirectory(JobDirectory):
         """Return the final result of the refine 3D job."""
         return Refine3DResults(self.path, "")
 
-    def num_classes(self) -> int:
-        """Return the number of classes in the refine 3D job."""
-        return len(list(self.path.glob("run_it000_half1_model*.star")))
-
     def num_iters(self) -> int:
         """Return the number of iterations in the refine 3D job."""
         num_it = -1
@@ -646,28 +632,8 @@ class Class3DJobDirectory(JobDirectory):
 
     _job_type = "relion.class3d"
 
-    def class_3d_mrc(self) -> list[Path]:
-        """Return the path to the class 3D model image."""
-        return list(self.path.glob("run_class*.mrc"))
-
     def get_result(self, niter: int) -> Class3DResults:
         return Class3DResults.from_niter(self.path, niter)
-
-    def iter_results(self) -> Iterator[Class3DResults]:
-        """Iterate over all class 3D results."""
-        for niter in range(1, 1000000):
-            try:
-                yield self.get_result(niter)
-            except FileNotFoundError:
-                break
-
-    def num_classes(self) -> int:
-        """Return the current number of classes in the class 3D job."""
-        num_classes = 0
-        for path in self.path.glob("run_it???_class???.mrc"):
-            with suppress(Exception):
-                num_classes = max(num_classes, int(path.stem[-3:]))
-        return num_classes
 
     def num_iters(self) -> int:
         """Return the number of iterations in the class 3D job."""
@@ -676,35 +642,6 @@ class Class3DJobDirectory(JobDirectory):
             with suppress(Exception):
                 num_it = max(num_it, int(path.stem[6:-6]))
         return num_it
-
-
-class SelectInteractiveJobDirectory(JobDirectory):
-    _job_type = "relion.select.interactive"
-
-    def class_map_paths(self, num_classes: int) -> list[Path | None]:
-        """Return the paths to the class maps."""
-        path_opt_star = self._opt_star()
-        # path_opt_star is something like .../run_it0XX_optimisation_set.star
-        nchars = len("optimisation_set")
-        mrc_paths = []
-        prefix = path_opt_star.stem[:-nchars]
-        for i in range(num_classes):
-            path = (
-                self.relion_project_dir
-                / path_opt_star.parent
-                / (prefix + f"class{i + 1:0>3}.mrc")
-            )
-            if path.exists():
-                mrc_paths.append(path)
-            else:
-                mrc_paths.append(None)
-        return mrc_paths
-
-    def _opt_star(self) -> Path:
-        pipeline = RelionPipelineModel.validate_file(self.path / "job_pipeline.star")
-        optimizer_star_path = Path(pipeline.input_edges.from_node[0])
-        new_stem = optimizer_star_path.stem[: -len("optimiser")] + "optimisation_set"
-        return self.relion_project_dir / optimizer_star_path.parent / f"{new_stem}.star"
 
 
 def _read_tubes(full_path, map_scale: float) -> list[TubeObject]:
@@ -725,6 +662,15 @@ def _read_tubes(full_path, map_scale: float) -> list[TubeObject]:
             )
             cylinders.append(cyl)
     return cylinders
+
+
+def num_classes(job_dir: JobDirectory) -> int:
+    """Try to get the number of classes."""
+    num_classes = 0
+    for path in job_dir.path.glob("run_it???_class???.mrc"):
+        with suppress(Exception):
+            num_classes = max(num_classes, int(path.stem[-3:]))
+    return num_classes
 
 
 def try_get_particle_number(job_dir: JobDirectory) -> int:

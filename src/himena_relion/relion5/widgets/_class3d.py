@@ -133,7 +133,7 @@ class QClass3DViewer(QJobScrollArea):
     def initialize(self, job_dir: _job_dir.Class3DJobDirectory):
         """Initialize the viewer with the job directory."""
         self._job_dir = job_dir
-        nclasses = job_dir.num_classes()
+        nclasses = _job_dir.num_classes(job_dir)
         if nclasses == 0:
             return
         self._list_widget.setFixedHeight(min(nclasses * 22 + 18, 110))
@@ -151,7 +151,7 @@ class QClass3DViewer(QJobScrollArea):
         self._last_niter = value
 
     def _show_inspect_classes(self):
-        """Show the class distribution and representative images."""
+        """Inspect classes in a popup panel."""
         return current_instance().exec_action("himena-relion:inspect-classes")
 
     def _show_summary_plot(self):

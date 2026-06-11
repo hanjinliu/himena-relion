@@ -1,3 +1,5 @@
+import sys
+
 from himena import MainWindow
 from himena.testing import choose_one_dialog_response
 from himena_relion._job_dir import JobDirectory
@@ -81,20 +83,29 @@ def test_trash_widget(himena_ui: MainWindow, tmpdir):
     _copy_job_paths(["MotionCorr/job002/"], rln_dir / "Trash")
     assert (rln_dir / "Trash" / "MotionCorr/job002").exists()
     win.widget._update_job_list()
+
+    def _assert_list_item_equal(jobs: list[str]):
+        if sys.platform == "linux":
+            # the ctime for linux in CI is not stable.
+            assert {list_widget.item(i).text() for i in range(list_widget.count())} == set(jobs)
+        else:
+            assert [list_widget.item(i).text() for i in range(list_widget.count())] == jobs
+
+
     # child jobs will also be moved to trash.
-    assert [list_widget.item(i).text() for i in range(list_widget.count())] == ["MotionCorr/job002/", "CtfFind/job003/"]
+    _assert_list_item_equal(["MotionCorr/job002/", "CtfFind/job003/"])
     with choose_one_dialog_response(himena_ui, True):
         _delete_permanently(["MotionCorr/job002/"], rln_dir / "Trash", join=True)
     assert not (rln_dir / "Trash" / "MotionCorr/job002").exists()
     win.widget._update_job_list()
-    assert [list_widget.item(i).text() for i in range(list_widget.count())] == ["CtfFind/job003/"]
+    _assert_list_item_equal(["CtfFind/job003/"])
 
     # Gentle/Harsh cleaned data will be move to Trash without job.star
     dir_clean = rln_dir / "Trash" / "Class3D" / "job003"
     dir_clean.mkdir(parents=True)
     dir_clean.joinpath("run_it001_data.star").write_text("")
     win.widget._update_job_list()
-    assert [list_widget.item(i).text() for i in range(list_widget.count())] == ["CtfFind/job003/", "Class3D/job003/"]
+    _assert_list_item_equal(["CtfFind/job003/", "Class3D/job003/"])
     list_widget.setCurrentRow(list_widget.count() - 1)
     with choose_one_dialog_response(himena_ui, True):
         win.widget._clear_trash(join=True)
