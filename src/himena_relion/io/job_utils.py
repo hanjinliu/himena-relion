@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import shutil
 from typing import TYPE_CHECKING
-from contextlib import nullcontext, suppress
+from contextlib import nullcontext, suppress, AbstractContextManager
 from himena import MainWindow, WidgetDataModel
 from himena.exceptions import Cancelled
 from himena.plugins import register_function
@@ -228,8 +228,6 @@ def open_trash_directory(ui: MainWindow):
 )
 def delete_all_subtomos(ui: MainWindow, model: WidgetDataModel):
     """Clean up all the extracted subtomograms."""
-    from himena_relion._widgets import QRelionJobWidget
-
     job_dir = assert_job(model)
     dirs = list(job_dir.path.joinpath("Subtomograms").iterdir())
     if len(dirs) == 0:
@@ -237,10 +235,7 @@ def delete_all_subtomos(ui: MainWindow, model: WidgetDataModel):
         return
 
     # cleanup causes a lot of file events, so we pause the watcher if possible.
-    _context = nullcontext
-    with suppress(Exception):
-        if isinstance(job_widget := ui.current_window.widget, QRelionJobWidget):
-            _context = job_widget.pause_watcher
+    _context = _prep_context(ui)
 
     if ui.exec_choose_one_dialog(
         title="Delete all?",
@@ -253,6 +248,68 @@ def delete_all_subtomos(ui: MainWindow, model: WidgetDataModel):
                 shutil.rmtree(each_dir)
 
 
+@register_function(
+    menus=[],
+    types=["relion_job.relion.aligntiltseries"],
+    title="Delete All Tomograms",
+    command_id="himena-relion:delete-all-aligntilts",
+    run_async=True,
+)
+def delete_all_aligntilts(ui: MainWindow, model: WidgetDataModel):
+    """Clean up all the mrc files used for tilt series alignment."""
+
+    job_dir = assert_job(model)
+    dirs = list(job_dir.path.joinpath("external").iterdir())
+    if len(dirs) == 0:
+        ui.show_notification("No subtomogram to delete.")
+        return
+    _context = _prep_context(ui)
+
+    if ui.exec_choose_one_dialog(
+        title="Delete mrc files?",
+        message="Are you sure you want to delete all the mrc files under `external/`? "
+        "This action cannot be undone.",
+        choices=[("Yes, delete all", True), ("No, cancel", False)],
+    ):
+        with _context():
+            for each_dir in dirs:
+                for mrc in each_dir.iterdir():
+                    if mrc.suffix == ".mrc":
+                        mrc.unlink()
+
+
+@register_function(
+    menus=[],
+    types=[
+        "relion_job.relion.reconstructtomograms",
+        "relion_job.relion.denoisetomopredict",
+    ],
+    title="Delete All Tomograms",
+    command_id="himena-relion:delete-all-tomos",
+    run_async=True,
+)
+def delete_all_tomograms(ui: MainWindow, model: WidgetDataModel):
+    """Clean up all the reconstructed tomograms"""
+
+    job_dir = assert_job(model)
+    mrcs = [
+        f for f in job_dir.path.joinpath("tomograms").iterdir() if f.suffix == ".mrc"
+    ]
+    if len(mrcs) == 0:
+        ui.show_notification("No tomograms to delete.")
+        return
+    _context = _prep_context(ui)
+    if ui.exec_choose_one_dialog(
+        title="Delete all?",
+        message="Are you sure you want to delete all the mrc files under "
+        "`tomograms/`? This action cannot be undone.",
+        choices=[("Yes, delete all", True), ("No, cancel", False)],
+    ):
+        with _context():
+            for mrc in mrcs:
+                mrc.unlink()
+
+
 def assert_job(model: WidgetDataModel) -> JobDirectory:
     from himena_relion._job_dir import JobDirectory
 
@@ -260,3 +317,13 @@ def assert_job(model: WidgetDataModel) -> JobDirectory:
     if not isinstance(value, JobDirectory):
         raise TypeError(f"Expected JobDirectory object, got {type(value)}")
     return value
+
+
+def _prep_context(ui: MainWindow) -> AbstractContextManager:
+    from himena_relion._widgets import QRelionJobWidget
+
+    _context = nullcontext
+    with suppress(Exception):
+        if isinstance(job_widget := ui.current_window.widget, QRelionJobWidget):
+            _context = job_widget.pause_watcher
+    return _context

@@ -352,6 +352,8 @@ def restore_trashed_jobs(relion_project_dir: Path, job_ids: list[str]):
 
     with open_with_lock(relion_project_dir / "default_pipeline.star") as f:
         pipeline = RelionPipelineModel.validate_text(f.read())
+
+        # initialize with the original pipeline
         all_processes = [pipeline.processes.dataframe]
         all_nodes = [pipeline.nodes.dataframe]
         all_input_edges = []
@@ -360,22 +362,19 @@ def restore_trashed_jobs(relion_project_dir: Path, job_ids: list[str]):
             all_input_edges.append(pipeline.input_edges.dataframe)
         if pipeline.output_edges is not None:
             all_output_edges.append(pipeline.output_edges.dataframe)
+
+        # move directory and merge pipeline information
         for path_to_undo in all_jobs_to_undo:
             # RELION GUI also use the job_pipeline.star to undelete
             job_pipeline_star = path_to_undo / "job_pipeline.star"
             path_dest = relion_project_dir / path_to_undo.relative_to(trash_dir)
-            if not job_pipeline_star.exists():
-                _LOGGER.warning(f"{job_pipeline_star} not found. Skipping.")
-                continue
-            if path_dest.exists():
-                _LOGGER.warning(f"Destination {path_dest} already exists. Skipping.")
-                continue
-            job_pipeline = RelionPipelineModel.validate_file(job_pipeline_star)
-            df_proc = _get_pipeline_process_df(job_pipeline, path_to_undo)
-            all_processes.append(df_proc)
-            all_nodes.append(job_pipeline.nodes.dataframe)
-            all_input_edges.append(job_pipeline.input_edges.dataframe)
-            all_output_edges.append(job_pipeline.output_edges.dataframe)
+            if job_pipeline_star.exists():
+                job_pipeline = RelionPipelineModel.validate_file(job_pipeline_star)
+                df_proc = _get_pipeline_process_df(job_pipeline, path_to_undo)
+                all_processes.append(df_proc)
+                all_nodes.append(job_pipeline.nodes.dataframe)
+                all_input_edges.append(job_pipeline.input_edges.dataframe)
+                all_output_edges.append(job_pipeline.output_edges.dataframe)
             path_dest.parent.mkdir(parents=True, exist_ok=True)
             _move_dir(path_to_undo, path_dest)
             alias = job_pipeline.processes.alias[0]
