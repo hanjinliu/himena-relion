@@ -4,14 +4,18 @@ import os
 import json
 from collections import defaultdict
 from contextlib import contextmanager
+import datetime
 from dataclasses import dataclass
 from pathlib import Path
 import subprocess
-import logging
 import time
 import warnings
 from watchfiles import watch, Change
-from himena_relion._utils import normalize_job_id, wait_for_file
+from himena_relion._utils import (
+    normalize_job_id,
+    update_default_pipeline,
+    open_with_lock,
+)
 from himena_relion._configs import get_relion_pipeliner_exe
 from himena_relion import _job_dir
 
@@ -20,10 +24,12 @@ from himena_relion._pipeline import (
     RelionDefaultPipeline,
     RelionJobInfo,
     is_all_inputs_ready,
+    ReadyState,
 )
+from himena_relion.consts import FileNames
 
-_LOGGER = logging.getLogger(__name__)
 _WATCHER_FILE_NAME = ".himena_pipeline_watcher.lock"
+_WATCHER_LOG_FILE_NAME = ".himena_pipeline_watcher.log"
 
 
 class RelionPipelineWatcher:
@@ -37,26 +43,38 @@ class RelionPipelineWatcher:
         path = self._relion_project_dir / "default_pipeline.star"
         if not path.exists():
             raise FileNotFoundError(f"Pipeline file not found at {path}")
+        _clear_log()
+        _print_log("Start pipeline watcher")
         with self._acquire_lock():
             pipeline = RelionDefaultPipeline.from_pipeline_star(path)
             self._on_job_state_changed(pipeline)
+            _timeout_count = 0
             for changes in watch(path, rust_timeout=400, yield_on_timeout=True):
                 if not self._lock_file_path().exists():
+                    _print_log("Lock file removed, exiting")
                     break
-                for change, fp in changes:
-                    if change == Change.deleted:
-                        continue
+                has_changes = any(ch != Change.deleted for ch, _ in changes)
+                if not has_changes:
+                    _timeout_count += 1
+                    if _timeout_count > 25:
+                        _timeout_count = 0
+                        has_changes = True
+                        _print_log("Timeout reached, force update")
+                else:
+                    _timeout_count = 0
+
+                if has_changes:
                     try:
                         pipeline = RelionDefaultPipeline.from_pipeline_star(path)
                     except Exception as e:
-                        _LOGGER.warning(
-                            "Failed to parse pipeline file: %s", e, exc_info=True
-                        )
+                        _print_log(f"Failed to parse pipeline file: {e}")
                     else:
                         # Update the internal data (thus, the flow chart)
                         self._on_job_state_changed(pipeline)
+        _print_log("End pipeline watcher")
 
     def _on_job_state_changed(self, pipeline: RelionDefaultPipeline):
+        _print_log("Job state change detected.")
         self._state_to_job_map.clear()
         for job in pipeline.iter_nodes():
             _dict = self._state_to_job_map[job.status]
@@ -64,35 +82,50 @@ class RelionPipelineWatcher:
 
         if len(self._state_to_job_map[NodeStatus.SCHEDULED]) == 0:
             # No more jobs to run. Stop watching and remove the lock file.
-            _LOGGER.info("No more jobs to run, exiting")
+            _print_log("No more jobs to run, exiting")
             return self._remove_lock()
 
         updated = False
+        files_to_touch: list[Path] = []
+        default_pipeline_path = self._relion_project_dir / "default_pipeline.star"
+        job_dir_path = self._relion_project_dir / job.path
         for job in self._state_to_job_map[NodeStatus.SCHEDULED].values():
             # run all the scheduled jobs whose dependencies are met
-            if is_all_inputs_ready(job.path):
-                _LOGGER.info("Job %s is ready to run, executing", job.path)
-                execute_job(
-                    job.path.as_posix(),
-                    cwd=pipeline.project_dir,
-                )
-                updated = True
-                path = self._relion_project_dir / job.path / "default_pipeline.star"
-                if wait_for_file(path, num_retry=10, delay=0.05):
-                    # This is required to trigger the on_job_updated callback in some
-                    # widgets (such as QJobStateLabel).
-                    path.touch()
+            match is_all_inputs_ready(job.path):
+                case ReadyState.READY:
+                    _print_log(f"Job {job.path} is ready to run, executing.")
+                    execute_job(
+                        job.path.as_posix(),
+                        cwd=pipeline.project_dir,
+                    )
+                    updated = True
+                    files_to_touch.append(job_dir_path / "default_pipeline.star")
+                case ReadyState.FILE_NOT_FOUND:
+                    _print_log(f"Job {job.path} cannot run because of missing inputs.")
+                    job_dir_path.joinpath("run.err").write_text(
+                        "himena-relion: Cannot run this job because some input files "
+                        "are not found even though parent jobs are finished."
+                    )
+                    job_dir_path.joinpath(FileNames.EXIT_FAILURE).touch()
+                    with open_with_lock(default_pipeline_path) as f:
+                        update_default_pipeline(f, normalize_job_id(job.path), "Failed")
+                    updated = True
+
         if updated:
-            path = self._relion_project_dir / "default_pipeline.star"
-            if path.exists():
-                path.touch()
+            time.sleep(0.5)
+            files_to_touch.append(default_pipeline_path)
+            for fp in files_to_touch:
+                if fp.exists():
+                    fp.touch()
+
         elif len(self._state_to_job_map[NodeStatus.RUNNING]) == 0:
             # All the scheduled jobs cannot be run until the user fixes the dependencies,
             # overwrites the failed jobs, or adds new jobs. Stop watching.
-            _LOGGER.info(
+            _print_log(
                 "None of the scheduled jobs can be automatically started, exiting"
             )
             return self._remove_lock()
+        _print_log("Job state change processed.")
 
     def _lock_file_path(self) -> Path:
         return self._relion_project_dir / _WATCHER_FILE_NAME
@@ -174,7 +207,8 @@ def run_watcher_new_process(relion_dir: str | Path, locked_ok: bool = True):
     # retain the process object.
     run_watcher_new_process._proc = subprocess.Popen(
         cmd,
-        stdout=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
         start_new_session=True,
     )
 
@@ -198,7 +232,7 @@ def execute_job(
     except FileNotFoundError as e:
         if not ignore_error:
             raise e
-        _LOGGER.warning("Error executing RELION job %s", job_name, exc_info=True)
+        _print_log(f"Error executing RELION job {job_name}: {e}")
         return None
     args = [get_relion_pipeliner_exe(), "--RunJobs", job_name]
     # NOTE: Because himena also uses Qt, RELION jobs that depend on napari (such as
@@ -208,6 +242,16 @@ def execute_job(
     env = os.environ.copy()
     env.pop("QT_API", None)
     proc = subprocess.Popen(args, start_new_session=True, env=env, cwd=cwd)
-    _LOGGER.info("Started RELION job %s with PID %d", job_name, proc.pid)
+    _print_log(f"Started RELION job {job_name} with PID {proc.pid}")
     execute_job._proc = proc  # retain the process object to prevent it from gc
     return RelionJobExecution(proc, job_dir)
+
+
+def _print_log(text: str):
+    with open(_WATCHER_LOG_FILE_NAME, "a") as f:
+        now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        print(f"[{now}] {text}", file=f)
+
+
+def _clear_log():
+    Path(_WATCHER_LOG_FILE_NAME).write_text("")

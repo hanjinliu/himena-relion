@@ -27,7 +27,7 @@ from himena.plugins import when_reader_used, register_function
 import numpy as np
 from himena_relion import _configs, _job_dir
 from himena_relion._configs import get_relion_pipeliner_exe
-from himena_relion._pipeline import is_all_inputs_ready
+from himena_relion._pipeline import is_all_inputs_ready, ReadyState
 from himena_relion.consts import Type, MenuId, JOB_ID_MAP
 from himena_relion._utils import (
     last_job_directory,
@@ -193,8 +193,11 @@ class RelionJob(ABC):
 
         d = last_job_directory(_cwd)  # FIXME: not thread-safe
         run_watcher_new_process(_cwd)
-        if is_all_inputs_ready(d):
-            return _cwd / d
+        match is_all_inputs_ready(d):
+            case ReadyState.READY:
+                return _cwd / d
+            case _:
+                return None
 
     @classmethod
     @abstractmethod

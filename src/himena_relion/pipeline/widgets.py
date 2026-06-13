@@ -217,7 +217,11 @@ class QRelionPipelineFlowChart(QtW.QWidget):
 
     def _refresh_flowchart(self):
         """Manually trigger a refresh of the pipeline data."""
-        self._on_pipeline_updated(self._pipeline())
+        self._on_pipeline_updated(
+            RelionDefaultPipeline.from_pipeline_star(
+                self._relion_project_dir / "default_pipeline.star"
+            )
+        )
 
     def _copy_project_path(self):
         """Copy the RELION project path to clipboard."""
@@ -370,15 +374,15 @@ class QRelionPipelineFlowChart(QtW.QWidget):
 
         to_notify: list[str] = []
         # Notify newly succeeded jobs and run scheduled jobs
-        if succeeded := (success_new - success_old) & running_old:
+        if succeeded := (success_new - success_old) & (running_old | scheduled_old):
             to_notify.append("\n".join(f"Job {job} succeeded." for job in succeeded))
 
         # Notify newly failed jobs
-        if failed := (failed_new - failed_old) & running_old:
+        if failed := (failed_new - failed_old) & (running_old | scheduled_old):
             to_notify.append("\n".join(f"Job {job} failed." for job in failed))
 
         # Notify newly aborted jobs
-        if aborted := (aborted_new - aborted_old) & running_old:
+        if aborted := (aborted_new - aborted_old) & (running_old | scheduled_old):
             to_notify.append("\n".join(f"Job {job} aborted." for job in aborted))
 
         _finished = success_old | failed_old | aborted_old

@@ -147,9 +147,16 @@ class RelionJobPipelineNode:
 
     def is_ready(self, relion_dir: Path) -> bool:
         return (
-            self.path_job is None
+            self.path_job is None  # this is an external file, not a job output
             or (relion_dir / self.path_job / FileNames.EXIT_SUCCESS).exists()
         )
+
+    def is_available_file(self, relion_dir: Path) -> bool:
+        """Check if the path is available (i.e., the file exists)."""
+        if self.path_job is None:
+            return relion_dir.joinpath(self.path_file).exists()
+        else:
+            return relion_dir.joinpath(self.path_job, self.path_file).exists()
 
     @classmethod
     def from_file_path(
@@ -276,7 +283,14 @@ class RelionPipeline:
         return star.write(path)
 
 
-def is_all_inputs_ready(d: str | Path) -> bool:
+class ReadyState(Enum):
+    READY = "ready"
+    NOT_READY = "not_ready"
+    FILE_NOT_FOUND = "file_not_found"
+    PIPELINE_NOT_FOUND = "pipeline_not_found"
+
+
+def is_all_inputs_ready(d: str | Path) -> ReadyState:
     """True if the job at directory `d` has all inputs ready."""
     fp = Path(d)
     if (ppath := fp / "job_pipeline.star").exists():
@@ -289,18 +303,16 @@ def is_all_inputs_ready(d: str | Path) -> bool:
             for input_ in pipeline.inputs
             if not input_.is_ready(rln_dir)
         ]
+        not_found = [
+            input_.path_job
+            for input_ in pipeline.inputs
+            if not input_.is_available_file(rln_dir)
+        ]
         if not_ready:
-            _LOGGER.info(
-                "Inputs %s are not ready to start job %s.",
-                [p.as_posix() for p in not_ready],
-                d,
-            )
+            return ReadyState.NOT_READY
+        elif not_found:
+            return ReadyState.FILE_NOT_FOUND
         else:
-            _LOGGER.info("All inputs are ready to start job %s.", d)
-        return len(not_ready) == 0
+            return ReadyState.READY
     else:
-        _LOGGER.warning(
-            "Job pipeline star file %s not found.",
-            ppath.as_posix(),
-        )
-    return False
+        return ReadyState.PIPELINE_NOT_FOUND
