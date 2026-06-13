@@ -38,15 +38,12 @@ class QRelionPipelineFlowChartView(QFlowChartView):
         self.clear_items()
         self._id_added.clear()
 
-        # Parents for filtering the flowchart
-        _allowed_parents = {node.path for node in pipeline._nodes}
-
         # If the flowchart has been dragged, item positions are different from default.
         # Restore old positions
         new_infos: list[RelionJobInfo] = []
         for info in pipeline._nodes:
             if info.path in old_positions:
-                self._add_job_node_item(info, _allowed_parents)
+                self._add_job_node_item(info)
             else:
                 new_infos.append(info)
         for new_item in self._node_map.values():
@@ -55,7 +52,7 @@ class QRelionPipelineFlowChartView(QFlowChartView):
         # new items should be added last to adjust their positions properly
         default_pos = next(iter(old_positions.values()), QtCore.QPointF(0, 0))
         for new_info in new_infos:
-            if new_item := self._add_job_node_item(new_info, _allowed_parents):
+            if new_item := self._add_job_node_item(new_info):
                 new_item.setPos(default_pos)
 
         # FIXME: Newly added node usually goes to a wrong place. Resetting positions
@@ -68,7 +65,7 @@ class QRelionPipelineFlowChartView(QFlowChartView):
 
         for info in pipeline._nodes:
             if info.path in old_positions:
-                self._add_job_node_item(info, _allowed_parents)
+                self._add_job_node_item(info)
         for new_item in self._node_map.values():
             if pos := old_positions.get(new_item.item().id()):
                 new_item.setPos(pos)
@@ -144,15 +141,17 @@ class QRelionPipelineFlowChartView(QFlowChartView):
     def _add_job_node_item(
         self,
         info: RelionJobInfo,
-        allowed_parents: set[Path],
+        paths_to_skip: set[Path] | None = None,
     ):
-        if info.path not in allowed_parents:
+        paths_to_skip = paths_to_skip or set()
+        if info.path in paths_to_skip:
             return None
         parents: list[Path] = []  # parent of incoming item
+        paths_to_skip.add(info.path)  # recursion guard
         for parent in info.parents:
             parent_info = parent.node
             if parent_info.path not in self._node_map:
-                self._add_job_node_item(parent_info, allowed_parents)
+                self._add_job_node_item(parent_info, paths_to_skip)
             if parent_info.path not in parents:
                 parents.append(parent_info.path)
         item = RelionJobNodeItem(info)
