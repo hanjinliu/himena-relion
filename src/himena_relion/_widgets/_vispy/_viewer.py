@@ -295,7 +295,7 @@ class _Vispy3DTomogramBase(_Vispy3DBase):
             interpolation="linear",
             method="minip",
         )
-        self._volume_visual.set_gl_state(preset="opaque")
+        self._volume_visual.set_gl_state(preset="translucent")
         self._volume_visual.visible = False
 
         self._scene.events.mouse_move.connect(self._on_mouse_move)

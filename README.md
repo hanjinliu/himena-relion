@@ -8,6 +8,9 @@
 
 `himena-relion` is a modern RELION GUI implemented as a [himena](https://github.com/hanjinliu/himena) plugin.
 
+:warning: `himena-relion` is mainly tested with RELION 5.0.x and may not work with other
+versions.
+
 (Original dataset is from [RELION SPA tutorial](https://relion.readthedocs.io/en/latest/SPA_tutorial/Introduction.html))
 
 ![](docs/images/main.png)
