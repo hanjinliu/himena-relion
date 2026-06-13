@@ -93,6 +93,14 @@ def test_reading_default_pipeline_during_filtering(himena_ui: MainWindow, tmpdir
     table_view._sort_ascending_btn.click()
     table_view._sort_ascending_btn.click()
 
+def test_recursive_pipeline(himena_ui: MainWindow, tmpdir):
+    path = Path(tmpdir) / "default_pipeline.star"
+    txt = (DEFAULT_PIPELINES_DIR / "recursive.star").read_text()
+    path.write_text(txt)
+    himena_ui.read_file(path)
+    pipeline_widget = get_pipeline_widget(himena_ui)
+    assert pipeline_widget._flow_chart._pipeline is not None
+
 def test_pipeline_watcher(tmpdir):
     rlndir = Path(tmpdir)
     path = rlndir / "default_pipeline.star"
