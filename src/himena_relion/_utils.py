@@ -446,10 +446,10 @@ def open_with_lock(
         with pipeline_path.open(mode) as f:
             yield f
     finally:
-        pipeline_path.touch()
         # remove the lock
         with suppress(Exception):
             lock_dir.rmdir()
+        pipeline_path.touch()
 
 
 def extract_input_edges(params: dict[str, str], keys: Iterable[str]) -> list[str]:

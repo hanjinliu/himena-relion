@@ -44,9 +44,9 @@ class RelionPipelineWatcher:
         path = self._relion_project_dir / "default_pipeline.star"
         if not path.exists():
             raise FileNotFoundError(f"Pipeline file not found at {path}")
-        _clear_log()
-        _print_log("Start pipeline watcher")
         with self._acquire_lock():
+            _clear_log()
+            _print_log("Start pipeline watcher")
             pipeline = RelionDefaultPipeline.from_pipeline_star(path)
             self._on_job_state_changed(pipeline)
             _timeout_count = 0
@@ -93,25 +93,19 @@ class RelionPipelineWatcher:
             # run all the scheduled jobs whose dependencies are met
             match is_all_inputs_ready(job.path):
                 case ReadyState.READY:
-                    for filename in [
-                        FileNames.EXIT_FAILURE,
-                        FileNames.EXIT_ABORTED,
-                        FileNames.EXIT_SUCCESS,
-                        FileNames.ABORT_NOW,
-                    ]:
-                        if (job_dir_path / filename).exists():
-                            _print_log(
-                                f"Job {job.path} is scheduled and ready to run but "
-                                f"contains {filename}. Skip."
-                            )
-                            continue
-                    _print_log(f"Job {job.path} is ready to run, executing.")
-                    execute_job(
-                        job.path.as_posix(),
-                        cwd=pipeline.project_dir,
-                    )
-                    updated = True
-                    files_to_touch.append(job_dir_path / "default_pipeline.star")
+                    if filename := _job_state_file(job_dir_path):
+                        _print_log(
+                            f"Job {job.path} is scheduled and ready to run but "
+                            f"contains {filename}. Skip."
+                        )
+                    else:
+                        _print_log(f"Job {job.path} is ready to run, executing.")
+                        execute_job(
+                            job.path.as_posix(),
+                            cwd=pipeline.project_dir,
+                        )
+                        updated = True
+                        files_to_touch.append(job_dir_path / "default_pipeline.star")
                 case ReadyState.FILE_NOT_FOUND:
                     _print_log(f"Job {job.path} cannot run because of missing inputs.")
                     job_dir_path.joinpath("run.err").write_text(
@@ -282,3 +276,15 @@ def _print_log(text: str):
 
 def _clear_log():
     Path(_WATCHER_LOG_FILE_NAME).write_text("")
+
+
+def _job_state_file(job: RelionJobInfo, job_dir_path: Path) -> str:
+    for filename in [
+        FileNames.EXIT_FAILURE,
+        FileNames.EXIT_ABORTED,
+        FileNames.EXIT_SUCCESS,
+        FileNames.ABORT_NOW,
+    ]:
+        if (job_dir_path / filename).exists():
+            return filename
+    return None
