@@ -87,7 +87,6 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         btn.add_separator()
         btn.add_action("Open Running Jobs", self._open_all_running_jobs)
         btn.add_action("Open Last Completed Job", self._open_last_completed_job)
-        btn.add_action("Close All Tabs", self._close_all_tabs)
         self._more_action_btn = btn
 
         self._stacked_widget = QtW.QStackedWidget()
@@ -228,12 +227,6 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         path = self._relion_project_dir.as_posix()
         self._ui().set_clipboard(text=path)
         self._ui().show_notification(f"Copied project path {path!r} to clipboard.")
-
-    def _close_all_tabs(self):
-        """Close all tabs in the main window that contain jobs from this pipeline."""
-        indices = self._tab_indices_from_this_pipeline()
-        for i in reversed(indices):
-            del self._ui().tabs[i]
 
     def _tab_indices_from_this_pipeline(self) -> list[int]:
         indices: list[int] = []
@@ -547,7 +540,7 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         if len(running_jobs) > 0:
             for job in self._state_to_job_map[NodeStatus.RUNNING].values():
                 self._center_on_item(job.path)
-                _utils.read_or_show_job(self._ui(), job.path)
+                _utils.read_or_show_job(self._ui(), self._relion_project_dir / job.path)
         else:
             self._ui().show_notification("No running jobs to open.")
 
@@ -558,7 +551,8 @@ class QRelionPipelineFlowChart(QtW.QWidget):
             last_job = max(succeeded_jobs, key=lambda job: _exit_success_time(job))
             if (path := self._relion_project_dir / last_job.path).exists():
                 self._center_on_item(last_job.path)
-                return _utils.read_or_show_job(self._ui(), path)
+                _utils.read_or_show_job(self._ui(), self._relion_project_dir / path)
+                return
         self._ui().show_notification("No completed jobs to open.")
 
     def _node_id_to_tags_map(self) -> dict[str, list[str]]:

@@ -45,8 +45,7 @@ class RelionPipelineWatcher:
         if not path.exists():
             raise FileNotFoundError(f"Pipeline file not found at {path}")
         with self._acquire_lock():
-            _clear_log()
-            _print_log("Start pipeline watcher")
+            _print_log("Start new pipeline watcher")
             pipeline = RelionDefaultPipeline.from_pipeline_star(path)
             self._on_job_state_changed(pipeline)
             _timeout_count = 0
@@ -89,6 +88,7 @@ class RelionPipelineWatcher:
         files_to_touch: list[Path] = []
         default_pipeline_path = self._relion_project_dir / "default_pipeline.star"
         job_dir_path = self._relion_project_dir / job.path
+        relion_lock_dir = self._relion_project_dir / ".relion_lock"
         for job in self._state_to_job_map[NodeStatus.SCHEDULED].values():
             # run all the scheduled jobs whose dependencies are met
             match is_all_inputs_ready(job.path):
@@ -97,6 +97,11 @@ class RelionPipelineWatcher:
                         _print_log(
                             f"Job {job.path} is scheduled and ready to run but "
                             f"contains {filename}. Skip."
+                        )
+                    elif relion_lock_dir.exists():
+                        _print_log(
+                            f"Job {job.path} is scheduled and ready to run but "
+                            "RELION lock file `.relion_lock/` exists. Skip."
                         )
                     else:
                         _print_log(f"Job {job.path} is ready to run, executing.")
@@ -272,10 +277,6 @@ def _print_log(text: str):
     with open(_WATCHER_LOG_FILE_NAME, "a") as f:
         now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         print(f"[{now}] {text}", file=f)
-
-
-def _clear_log():
-    Path(_WATCHER_LOG_FILE_NAME).write_text("")
 
 
 def _job_state_file(job_dir_path: Path) -> str:
