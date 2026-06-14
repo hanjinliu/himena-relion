@@ -7,7 +7,7 @@ from himena_relion._version import relion_version_info
 
 
 def norm_blush_reg(kwargs: dict[str, Any]) -> dict[str, Any]:
-    ver = relion_version_info("5.0.0").version
+    ver = relion_version_info(default_version="5.0.0").version
     if ver.major == 5:
         blush_reg = kwargs.pop("blush_reg", "No")
         if blush_reg not in ["No", "v1.0", "amy-v1.0"]:
@@ -42,7 +42,7 @@ def norm_blush_reg_inv(kwargs: dict[str, Any]) -> dict[str, Any]:
 
 
 def norm_extract_subtomo(kwargs: dict[str, Any]) -> dict[str, Any]:
-    ver = relion_version_info("5.0.0").version
+    ver = relion_version_info(default_version="5.0.0").version
     if ver.major == 5:
         if ver.minor == 0:
             subtomo_format = kwargs.pop("subtomo_format", "2D stacks")
@@ -54,11 +54,13 @@ def norm_extract_subtomo(kwargs: dict[str, Any]) -> dict[str, Any]:
                     stacklevel=1,
                 )
             kwargs["do_stack2d"] = subtomo_format == "2D stacks"
+        elif ver.minor >= 1:
+            raise ValueError("RELION 5.1 and later is not supported yet")
     return kwargs
 
 
 def norm_extract_subtomo_inv(kwargs: dict[str, Any]) -> dict[str, Any]:
-    ver = relion_version_info("5.0.0").version
+    ver = relion_version_info(default_version="5.0.0").version
     if ver.major == 5:
         if ver.minor == 0:
             do_stack2d = kwargs.pop("do_stack2d", True)
@@ -69,7 +71,7 @@ def norm_extract_subtomo_inv(kwargs: dict[str, Any]) -> dict[str, Any]:
 
 
 def norm_reconstruct_tomo(kwargs: dict[str, Any]) -> dict[str, Any]:
-    ver = relion_version_info("5.0.0").version
+    ver = relion_version_info(default_version="5.0.0").version
     if ver.major == 5:
         if ver.minor == 0:
             if kwargs.pop("do_skip_wiener", False):
@@ -83,7 +85,7 @@ def norm_reconstruct_tomo(kwargs: dict[str, Any]) -> dict[str, Any]:
 
 
 def norm_aligntilts(kwargs: dict[str, Any]) -> dict[str, Any]:
-    ver = relion_version_info("5.0.0").version
+    ver = relion_version_info(default_version="5.0.0").version
     if ver.major == 5:
         if ver.minor == 0:
             if kwargs.pop("do_aretomo_reconstruct", False):

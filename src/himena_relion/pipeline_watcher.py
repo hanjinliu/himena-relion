@@ -12,6 +12,7 @@ import time
 import warnings
 from watchfiles import watch, Change
 from himena_relion._utils import (
+    RelionPipelineLockError,
     normalize_job_id,
     update_default_pipeline,
     open_with_lock,
@@ -59,8 +60,8 @@ class RelionPipelineWatcher:
                     if _timeout_count > 25:
                         _timeout_count = 0
                         has_changes = True
-                        _print_log("Timeout reached, force update")
                 else:
+                    _print_log("Job state change detected.")
                     _timeout_count = 0
 
                 if has_changes:
@@ -74,7 +75,6 @@ class RelionPipelineWatcher:
         _print_log("End pipeline watcher")
 
     def _on_job_state_changed(self, pipeline: RelionDefaultPipeline):
-        _print_log("Job state change detected.")
         self._state_to_job_map.clear()
         for job in pipeline.iter_nodes():
             _dict = self._state_to_job_map[job.status]
@@ -93,6 +93,18 @@ class RelionPipelineWatcher:
             # run all the scheduled jobs whose dependencies are met
             match is_all_inputs_ready(job.path):
                 case ReadyState.READY:
+                    for filename in [
+                        FileNames.EXIT_FAILURE,
+                        FileNames.EXIT_ABORTED,
+                        FileNames.EXIT_SUCCESS,
+                        FileNames.ABORT_NOW,
+                    ]:
+                        if (job_dir_path / filename).exists():
+                            _print_log(
+                                f"Job {job.path} is scheduled and ready to run but "
+                                f"contains {filename}. Skip."
+                            )
+                            continue
                     _print_log(f"Job {job.path} is ready to run, executing.")
                     execute_job(
                         job.path.as_posix(),
@@ -107,9 +119,18 @@ class RelionPipelineWatcher:
                         "are not found even though parent jobs are finished."
                     )
                     job_dir_path.joinpath(FileNames.EXIT_FAILURE).touch()
-                    with open_with_lock(default_pipeline_path) as f:
-                        update_default_pipeline(f, normalize_job_id(job.path), "Failed")
-                    updated = True
+                    try:
+                        with open_with_lock(default_pipeline_path) as f:
+                            update_default_pipeline(
+                                f, normalize_job_id(job.path), "Failed"
+                            )
+                    except RelionPipelineLockError:
+                        _print_log(
+                            "Failed to update default_pipeline.star to mark job "
+                            f"{job.path} as Failed because `.relion_lock` exists."
+                        )
+                    else:
+                        updated = True
 
         if updated:
             time.sleep(0.5)
@@ -125,7 +146,6 @@ class RelionPipelineWatcher:
                 "None of the scheduled jobs can be automatically started, exiting"
             )
             return self._remove_lock()
-        _print_log("Job state change processed.")
 
     def _lock_file_path(self) -> Path:
         return self._relion_project_dir / _WATCHER_FILE_NAME
@@ -241,7 +261,14 @@ def execute_job(
     # like "pyqt6".
     env = os.environ.copy()
     env.pop("QT_API", None)
-    proc = subprocess.Popen(args, start_new_session=True, env=env, cwd=cwd)
+    proc = subprocess.Popen(
+        args,
+        start_new_session=True,
+        env=env,
+        cwd=cwd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
     _print_log(f"Started RELION job {job_name} with PID {proc.pid}")
     execute_job._proc = proc  # retain the process object to prevent it from gc
     return RelionJobExecution(proc, job_dir)

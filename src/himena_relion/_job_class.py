@@ -28,7 +28,7 @@ import numpy as np
 from himena_relion import _configs, _job_dir
 from himena_relion._configs import get_relion_pipeliner_exe
 from himena_relion._pipeline import is_all_inputs_ready, ReadyState
-from himena_relion.consts import Type, MenuId, JOB_ID_MAP
+from himena_relion.consts import FileNames, Type, MenuId, JOB_ID_MAP
 from himena_relion._utils import (
     last_job_directory,
     normalize_job_id,
@@ -232,6 +232,16 @@ class RelionJob(ABC):
         with open_with_lock(default_pipeline_star) as f:
             replace_input_edges(f, to_run, new_input_edges)
             update_default_pipeline(f, to_run, state="Scheduled")
+
+        for fname in [
+            FileNames.EXIT_FAILURE,
+            FileNames.EXIT_ABORTED,
+            FileNames.EXIT_SUCCESS,
+            FileNames.ABORT_NOW,
+        ]:
+            if (path := job_dir.path / fname).exists():
+                path.unlink()
+
         run_watcher_new_process(rln_dir)
         default_pipeline_star.touch()
 
