@@ -278,7 +278,7 @@ def _clear_log():
     Path(_WATCHER_LOG_FILE_NAME).write_text("")
 
 
-def _job_state_file(job: RelionJobInfo, job_dir_path: Path) -> str:
+def _job_state_file(job_dir_path: Path) -> str:
     for filename in [
         FileNames.EXIT_FAILURE,
         FileNames.EXIT_ABORTED,
