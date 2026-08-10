@@ -109,11 +109,12 @@ class QReconstructViewer(QJobScrollArea):
         # MPI = 1: sum_1_data_half?.mrc
         # MPI > 1: sum_rank_0_1_data_half?.mrc
         for impath in temp_dir.glob("sum_*_data_half?.mrc"):
-            with mrcfile.open(impath, mode="r") as mrc:
-                image_data.append(mrc.data)
-            ith_tomo = impath.stem.split("_data_half")[0].split("_")[-1]
+            with suppress(FileNotFoundError):
+                with mrcfile.open(impath, mode="r") as mrc:
+                    image_data.append(mrc.data)
+                ith_tomo = impath.stem.split("_data_half")[0].split("_")[-1]
         for ctfpath in temp_dir.glob("sum_*_ctf_half?.mrc"):
-            with mrcfile.open(ctfpath, mode="r") as mrc:
+            with suppress(FileNotFoundError), mrcfile.open(ctfpath, mode="r") as mrc:
                 ctf_data.append(mrc.data)
         if len(image_data) == 0:
             self._clear_image()

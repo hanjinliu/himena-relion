@@ -4,7 +4,7 @@ from typing import Annotated, Any
 
 from himena.widgets import current_instance
 from himena_relion._job_class import _Relion5BuiltinJob, parse_string
-from himena_relion import _configs
+from himena_relion import _configs, _job_dir
 from himena_relion._pipeline import RelionPipeline
 from himena_relion import _annotated as _a
 from himena_relion._adapt import (
@@ -1012,6 +1012,12 @@ class ExtractParticlesTomoJob(_Relion5TomoJob):
     def input_edges(self, **kwargs) -> list[str]:
         return extract_input_edges(kwargs, _OPTIM_KEYS)
 
+    def status_tip(self) -> str:
+        try:
+            return _get_extract_box_size(self.output_job_dir.path)
+        except Exception:
+            return super().status_tip()
+
 
 class _DenoiseJobBase(_Relion5TomoJob):
     @classmethod
@@ -1569,6 +1575,12 @@ class ReconstructParticlesJob(_Relion5TomoJob):
     def input_edges(self, **kwargs) -> list[str]:
         return extract_input_edges(kwargs, _OPTIM_KEYS)
 
+    def status_tip(self) -> str:
+        try:
+            return _get_extract_box_size(self.output_job_dir.path)
+        except Exception:
+            return super().status_tip()
+
 
 class CtfRefineTomoJob(_Relion5TomoJob):
     @classmethod
@@ -1743,3 +1755,16 @@ def _get_ts_group_model(in_tilt_star: Path) -> TSGroupModel:
     raise ValueError(
         f"No tomogram name found in the input tilt series star file {in_tilt_star}."
     )
+
+
+def _get_extract_box_size(path: Path) -> str:
+    job_dir = _job_dir.JobDirectory.from_job_star(path / "job.star")
+    params = job_dir.get_job_params_as_dict()
+    box_size = int(params.get("box_size", "-1"))
+    crop_size = int(params.get("crop_size", "-1"))
+    if box_size <= 0:
+        return "??? pixels"
+    if crop_size <= 0:
+        return f"{box_size} pixels"
+    else:
+        return f"{box_size} pixels -> {crop_size} pixels"
