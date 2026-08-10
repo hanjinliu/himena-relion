@@ -122,6 +122,7 @@ class QRelionJobWidget(QRelionJobWidgetBase):
     """
 
     job_updated = QtCore.Signal(Path)
+    __himena_ignore_file_updates__ = True
     _instances = set["QRelionJobWidget"]()
 
     def __init__(self, ui: MainWindow):
