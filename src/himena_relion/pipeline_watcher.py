@@ -93,12 +93,13 @@ class RelionPipelineWatcher:
             # run all the scheduled jobs whose dependencies are met
             match is_all_inputs_ready(job.path):
                 case ReadyState.READY:
-                    if filename := _job_state_file(job_dir_path):
-                        _print_log(
-                            f"Job {job.path} is scheduled and ready to run but "
-                            f"contains {filename}. Skip."
-                        )
-                    elif relion_lock_dir.exists():
+                    # This check may be needed?
+                    # if filename := _job_state_file(job_dir_path):
+                    #     _print_log(
+                    #         f"Job {job.path} is scheduled and ready to run but "
+                    #         f"contains {filename}. Skip."
+                    #     )
+                    if relion_lock_dir.exists():
                         _print_log(
                             f"Job {job.path} is scheduled and ready to run but "
                             "RELION lock file `.relion_lock/` exists. Skip."
