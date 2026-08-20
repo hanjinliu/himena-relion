@@ -749,8 +749,8 @@ subclasses must implement <code>output_nodes()</code> and <code>run()</code>.</p
 <span class="k">class</span><span class="w"> </span><span class="nc">MyJob</span><span class="p">(</span><span class="n">RelionExternalJob</span><span class="p">):</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">output_nodes</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="p">[</span>
-            <span class="p">(</span><span class="s2">&quot;output-particles.star&quot;</span><span class="p">,</span> <span class="s2">&quot;ParticleGroupMetadata.star&quot;</span><span class="p">),</span>
-            <span class="p">(</span><span class="s2">&quot;output-density.mrc&quot;</span><span class="p">,</span> <span class="s2">&quot;DensityMap.mrc&quot;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">"output-particles.star"</span><span class="p">,</span> <span class="s2">"ParticleGroupMetadata.star"</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">"output-density.mrc"</span><span class="p">,</span> <span class="s2">"DensityMap.mrc"</span><span class="p">),</span>
         <span class="p">]</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span>
@@ -784,7 +784,7 @@ subclasses must implement <code>output_nodes()</code> and <code>run()</code>.</p
 
     <span class="nd">@classmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">job_title</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
-        <span class="k">return</span> <span class="s2">&quot;My Job&quot;</span>
+        <span class="k">return</span> <span class="s2">"My Job"</span>
 </code></pre></div>
 <h3 id="parameter-types">Parameter types</h3>
 <p>To provide the user interface for the job parameters, <code>himena-relion</code> uses the type-to-widget mapping functionality built by <a href="https://pyapp-kit.github.io/magicgui/"><code>magicgui</code></a>, with restrictions on the types so that the job parameters can be safely
@@ -806,12 +806,12 @@ serialized to and deserialized from a job.star file.</p>
 <div class="highlight"><pre><span></span><code><span class="n">Annotated</span><span class="p">[</span>
     <span class="nb">int</span><span class="p">,</span>
     <span class="p">{</span>
-        <span class="s2">&quot;min&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>  <span class="c1"># specific to int and float types</span>
-        <span class="s2">&quot;max&quot;</span><span class="p">:</span> <span class="mi">100</span><span class="p">,</span>  <span class="c1"># specific to int and float types</span>
-        <span class="s2">&quot;step&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>  <span class="c1"># specific to int and float types</span>
-        <span class="s2">&quot;label&quot;</span><span class="p">:</span> <span class="s2">&quot;Parameter X&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;tooltip&quot;</span><span class="p">:</span> <span class="s2">&quot;This is an integer parameter.&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;group&quot;</span><span class="p">:</span> <span class="s2">&quot;Advanced Parameters&quot;</span><span class="p">,</span>
+        <span class="s2">"min"</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>  <span class="c1"># specific to int and float types</span>
+        <span class="s2">"max"</span><span class="p">:</span> <span class="mi">100</span><span class="p">,</span>  <span class="c1"># specific to int and float types</span>
+        <span class="s2">"step"</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>  <span class="c1"># specific to int and float types</span>
+        <span class="s2">"label"</span><span class="p">:</span> <span class="s2">"Parameter X"</span><span class="p">,</span>
+        <span class="s2">"tooltip"</span><span class="p">:</span> <span class="s2">"This is an integer parameter."</span><span class="p">,</span>
+        <span class="s2">"group"</span><span class="p">:</span> <span class="s2">"Advanced Parameters"</span><span class="p">,</span>
     <span class="p">}</span>
 <span class="p">]</span>
 </code></pre></div>
@@ -877,8 +877,8 @@ panel of the setting dialog (<span class="keys"><kbd class="key-control">Ctrl</k
 <p>Since your RELION plugin is just a Python module, you can distribute it as a
 <code>pip</code>-installable package. You need to specify the entry point in your <code>pyproject.toml</code>
 file as follows.</p>
-<div class="highlight"><span class="filename">pyproject.toml</span><pre><span></span><code><span class="k">[project.entry-points.</span><span class="s2">&quot;himena.plugin&quot;</span><span class="k">]</span>
-<span class="s2">&quot;My RELION Plugin&quot;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="err">mymodule.mysubmodule.myjob</span>
+<div class="highlight"><span class="filename">pyproject.toml</span><pre><span></span><code><span class="k">[project.entry-points.</span><span class="s2">"himena.plugin"</span><span class="k">]</span>
+<span class="s2">"My RELION Plugin"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="err">mymodule.mysubmodule.myjob</span>
 </code></pre></div>
 <p>Please refer to the <a href="https://hanjinliu.github.io/himena/dev/plugin_system/"><code>himena</code> plugin system</a> for more details.</p>
 
