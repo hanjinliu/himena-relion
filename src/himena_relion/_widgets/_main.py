@@ -1,6 +1,6 @@
 from __future__ import annotations
 from pathlib import Path
-from typing import Callable, Iterator, TypeVar, TYPE_CHECKING
+from typing import Callable, Iterator, TypeVar
 import logging
 import weakref
 
@@ -27,8 +27,6 @@ from himena_relion._widgets._misc import spacer_widget
 from himena_relion._impl_objects import RelionJobIsTesting
 from himena_relion.consts import RelionJobState
 
-if TYPE_CHECKING:
-    pass
 
 _LOGGER = logging.getLogger(__name__)
 _C = TypeVar("_C", bound=JobWidgetBase)
@@ -202,6 +200,7 @@ class QRelionJobWidget(QRelionJobWidgetBase):
     @thread_worker(start_thread=True)
     def _watch_job_directory(self, path: Path):
         """Watch the job directory for changes."""
+        was_scheduled = self._state_widget.is_scheduled()
         for changes in watch(path, step=160, rust_timeout=400, yield_on_timeout=True):
             if self._watcher is None:
                 return  # stopped
@@ -211,6 +210,13 @@ class QRelionJobWidget(QRelionJobWidgetBase):
                 if path not in updated_files:
                     updated_files.append(path)
             yield
+
+            if was_scheduled and not updated_files:
+                # re-initialize
+                was_scheduled = self._state_widget.is_scheduled()
+                if not was_scheduled:
+                    self.initialize_widgets(self._job_dir)
+
             for updated_file in updated_files:
                 self.job_updated.emit(updated_file)
                 yield

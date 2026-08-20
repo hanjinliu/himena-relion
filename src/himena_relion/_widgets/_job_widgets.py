@@ -719,6 +719,9 @@ class QJobStateLabel(QtW.QWidget, JobWidgetBase):
             with suppress(Cancelled):
                 _impl.set_job_alias(ui, job_widget._job_dir)
 
+    def is_scheduled(self) -> bool:
+        return self._state_label.text() == "Scheduled"
+
 
 class QFileLabel(QtW.QWidget):
     """A widget with label such as Import/job001/ that can be dragged."""

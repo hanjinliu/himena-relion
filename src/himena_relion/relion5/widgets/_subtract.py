@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Iterable, Iterator
+from typing import Iterable, Iterator, NamedTuple
 import uuid
 import mrcfile
 import mrcfile.mrcmemmap
@@ -119,15 +119,15 @@ class QSubtractViewer(QJobScrollArea):
             cutoff_a = float(self._lowpass_cutoff.text())
         except ValueError:
             return
-        for (mrc_orig, img_orig), (_, img_sub), ith in zip(
+        for (h_orig, img_orig), (_, img_sub), ith in zip(
             read_mrc_slices(self._image_orig[sl], self._job_dir),
             read_mrc_slices(self._image_sub[sl], self._job_dir),
             range(start_index + 1, end_index + 1),
             strict=False,
         ):
             if first:
-                angst = mrc_orig.voxel_size.x
-                size = mrc_orig.header.nx
+                angst = h_orig.angst
+                size = h_orig.size
                 msg = f"Image size: {size} pix ({size * angst:.1f} A)\nBefore --> After subtraction"
                 cutoff_rel = angst / cutoff_a
                 first = False
@@ -159,16 +159,22 @@ class QSubtractViewer(QJobScrollArea):
         return super().showEvent(a0)
 
 
+class MrcHeader(NamedTuple):
+    angst: float
+    size: int
+
+
 def read_mrc_slices(
     entries: Iterable[str],
     jobdir: _job_dir.JobDirectory,
-) -> Iterator[tuple[mrcfile.mrcmemmap.MrcMemmap, np.ndarray]]:
+) -> Iterator[tuple[MrcHeader, np.ndarray]]:
     last_path = ""
-    mrc = None
+    header = None
     for line in entries:
         ith, path = line.split("@")
         ith = int(ith)
-        if path != last_path or mrc is None:
+        if path != last_path or header is None:
             last_path = path
-            mrc = mrcfile.mmap(jobdir.resolve_path(path))
-        yield mrc, np.asarray(mrc.data[ith - 1], dtype=np.float32)
+            with mrcfile.mmap(jobdir.resolve_path(path)) as mrc:
+                header = MrcHeader(angst=mrc.voxel_size.x, size=mrc.header.nx)
+        yield header, np.asarray(mrc.data[ith - 1], dtype=np.float32)

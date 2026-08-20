@@ -239,6 +239,31 @@ B_FACTOR = Annotated[
     },
 ]
 
+B_FACTOR_TOMO = Annotated[
+    dict,
+    {
+        "label": "B-factor",
+        "widget_type": BfactorEdit,
+        "default_autob_lowres": 10.0,
+        "default_adhoc_bfactor": -200.0,
+        "tooltip": (
+            "If set to 'Automatic', then the program will use the automated procedure "
+            "described by <a href='https://www.sciencedirect.com/science/article/pii/S0022283603010222'>Rosenthal and Henderson (2003, JMB)</a> "
+            "to estimate an overall B-factor for your map, and sharpen it "
+            "accordingly. Note that your map must extend well beyond the lowest "
+            "resolution included in the procedure below, which should not be set "
+            "to resolutions much lower than 10 Angstroms. \n\n"
+            "Otherwise, instead of using the automated B-factor estimation, "
+            "provide your own value. Use negative values for sharpening the map. "
+            "This option is useful if your map does not extend beyond the 10A "
+            "needed for the automated procedure, or when the automated procedure "
+            "does not give a suitable value (e.g. in more disordered parts of the "
+            "map)."
+        ),
+        "group": "Sharpen",
+    },
+]
+
 # Particle subtract
 CENTER_METHOD = Annotated[
     str,
