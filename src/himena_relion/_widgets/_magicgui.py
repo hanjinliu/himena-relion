@@ -185,6 +185,8 @@ class BfactorEdit(ValuedContainerWidget):
                 "your map, you may end up interpreting noise for signal!"
             ),
         )
+        self._default_autob_lowres = kwargs.pop("default_autob_lowres", 10.0)
+        self._default_adhoc_bfactor = kwargs.pop("default_adhoc_bfactor", -1000.0)
 
         widgets = [self._toggle_switch, self._auto_lowres, self._user_bfactor]
         super().__init__(layout="vertical", labels=True, widgets=widgets, **kwargs)
@@ -208,13 +210,17 @@ class BfactorEdit(ValuedContainerWidget):
         with self.changed.blocked():
             if value == Undefined or value is None:
                 self._toggle_switch.value = False
-                self._auto_lowres.value = 10.0
-                self._user_bfactor.value = -1000.0
+                self._auto_lowres.value = self._default_autob_lowres
+                self._user_bfactor.value = self._default_adhoc_bfactor
             elif isinstance(value, dict):
                 do_auto = value.get("do_auto_bfac", True)
                 self._toggle_switch.value = not parse_string(do_auto, bool)
-                self._auto_lowres.value = value.get("autob_lowres", 10.0)
-                self._user_bfactor.value = value.get("adhoc_bfac", -1000.0)
+                self._auto_lowres.value = value.get(
+                    "autob_lowres", self._default_autob_lowres
+                )
+                self._user_bfactor.value = value.get(
+                    "adhoc_bfac", self._default_adhoc_bfactor
+                )
             else:
                 raise ValueError("Value must be a dict or Undefined.")
         self.changed.emit(self.get_value())

@@ -250,6 +250,7 @@ class QClass3DViewer(QJobScrollArea):
         res = self._job_dir.get_result(niter)
         map0, scale = res.class_map(class_id - self._index_start)
         was_empty = not self._viewer.has_image
+        yield self._viewer._canvas.set_arrows, []  # clear arrows first
         yield self._set_image_no_clim_update, map0
         if was_empty:
             yield self._auto_threshold_and_fit, None

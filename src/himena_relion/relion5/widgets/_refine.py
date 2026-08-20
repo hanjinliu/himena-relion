@@ -180,6 +180,7 @@ class QRefine3DViewer(QJobScrollArea):
     @thread_worker
     def _read_items(self, niter):
         is_final = self._show_run_class001_btn.isChecked()
+        yield self._viewer._canvas.set_arrows, []  # clear arrows first
 
         ### Read the map and update the viewer ###
         map_out = None

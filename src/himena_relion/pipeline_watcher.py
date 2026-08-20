@@ -87,10 +87,10 @@ class RelionPipelineWatcher:
         updated = False
         files_to_touch: list[Path] = []
         default_pipeline_path = self._relion_project_dir / "default_pipeline.star"
-        job_dir_path = self._relion_project_dir / job.path
         relion_lock_dir = self._relion_project_dir / ".relion_lock"
         for job in self._state_to_job_map[NodeStatus.SCHEDULED].values():
             # run all the scheduled jobs whose dependencies are met
+            job_dir_path = self._relion_project_dir / job.path
             match is_all_inputs_ready(job.path):
                 case ReadyState.READY:
                     # This check may be needed?
@@ -227,8 +227,8 @@ def run_watcher_new_process(relion_dir: str | Path, locked_ok: bool = True):
     # retain the process object.
     run_watcher_new_process._proc = subprocess.Popen(
         cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
         start_new_session=True,
     )
 
@@ -266,8 +266,8 @@ def execute_job(
         start_new_session=True,
         env=env,
         cwd=cwd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
     )
     _print_log(f"Started RELION job {job_name} with PID {proc.pid}")
     execute_job._proc = proc  # retain the process object to prevent it from gc

@@ -2097,6 +2097,8 @@ class SelectClassesInteractiveJob(_SelectClassesJob):
             if opt_path := params.get("in_optimisation", None):
                 opt_path = job_class3d.relion_project_dir / opt_path
                 opt = OptimisationSetModel.validate_file(opt_path)
+                if opt.trajectories_star == Path("."):
+                    return None
                 return opt.trajectories_star
             elif in_trajectories := params.get("in_trajectories", None):
                 return in_trajectories

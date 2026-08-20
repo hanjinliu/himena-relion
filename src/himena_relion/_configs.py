@@ -184,8 +184,8 @@ def open_in_external_app(path: str | Path, command: str, *more_args) -> None:
     subprocess.Popen(
         [command, str(path), *more_args],
         start_new_session=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
         env=env,
     )
 

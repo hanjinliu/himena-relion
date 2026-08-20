@@ -428,7 +428,7 @@ def open_with_lock(
     lock_dir = pipeline_path.parent / ".relion_lock"
     each_wait = 0.05
     num_trial = int(wait_sec / each_wait) + 1
-    existed = lock_dir.exists()
+    lock_acquired = False
     try:
         for _ in range(num_trial):
             try:
@@ -438,25 +438,23 @@ def open_with_lock(
             except OSError:
                 time.sleep(each_wait)
             else:
+                lock_acquired = True
                 break
-        else:
+        if not lock_acquired:
             raise RelionPipelineLockError(
                 f"Failed to acquire lock for {pipeline_path}. Another instance may be "
                 "editing the pipeline, or the previous run may have crashed. "
             )
-        try:
-            with pipeline_path.open(mode) as f:
-                yield f
-        finally:
-            # remove the lock
-            if not existed:
-                with suppress(Exception):
-                    lock_dir.rmdir()
-            pipeline_path.touch()
+
+        with pipeline_path.open(mode) as f:
+            yield f
+
     finally:
-        if not existed:
+        if lock_acquired:
             with suppress(Exception):
                 lock_dir.rmdir()
+            with suppress(Exception):
+                pipeline_path.touch()
 
 
 def extract_input_edges(params: dict[str, str], keys: Iterable[str]) -> list[str]:

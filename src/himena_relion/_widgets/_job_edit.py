@@ -5,6 +5,7 @@ from functools import cache
 import logging
 from pathlib import Path
 import time
+import shutil
 from typing import Any, Union
 
 from himena import MainWindow
@@ -303,7 +304,8 @@ class ScheduleMode(Mode):
     def exec(self, widget: QJobScheduler):
         job_cls = widget._assert_job_class_selected()
         params = widget.get_parameters()
-        _warn_relion_lock_exists(widget._ui, widget.cwd)
+        if _warn_relion_lock_exists(widget._ui, widget.cwd):
+            return
         jobdirpath = job_cls.create_job(**params, _cwd=widget._cwd)
         widget.clear_content()
         if jobdirpath:
@@ -333,7 +335,8 @@ class ContinueMode(Mode):
             raise RuntimeError(f"Cannot continue this job type {job_cls!r}.")
         params = self.orig_params.copy()
         params.update(widget.get_parameters())
-        _warn_relion_lock_exists(widget._ui, widget.cwd)
+        if _warn_relion_lock_exists(widget._ui, widget.cwd):
+            return
         proc = job_cls(self.job_dir).continue_job(**params)
         widget.clear_content()
         if isinstance(proc, RelionJobExecution):
@@ -377,7 +380,8 @@ class EditMode(Mode):
 
         # Update the scheduler widget with the parameters used to run this job
         params = widget.get_parameters()
-        _warn_relion_lock_exists(widget._ui, widget.cwd)
+        if _warn_relion_lock_exists(widget._ui, widget.cwd):
+            return
         job.edit_and_run_job(**params)
         widget.clear_content()
         widget._ui.show_notification(f"Job '{job_cls.job_title()}' overwritten.")
@@ -500,10 +504,14 @@ class QHTMLTextEdit(QtW.QTextEdit):
 
 def _warn_relion_lock_exists(ui: MainWindow, relion_job_dir: Path | None = None):
     """Warn the user if a RELION lock file exists in the job directory."""
-    if relion_job_dir is None:
-        return
-    if relion_job_dir.joinpath(".relion_lock").exists():
+    if (
+        relion_job_dir is not None
+        and (lock_dir := relion_job_dir / ".relion_lock").exists()
+    ):
         ui.show_notification(
             "RELION lock file `.relion_lock/` exists. You may want to check if this is "
-            "because of a crashed job and if so, manually delete it."
+            "because of a crashed job and if so, manually delete it.",
+            callback={"Delete lock": lambda: shutil.rmtree(lock_dir)},
         )
+        return True
+    return False

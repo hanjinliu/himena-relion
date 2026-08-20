@@ -1660,7 +1660,26 @@ class CtfRefineTomoJob(_Relion5TomoJob):
 class PostProcessTomoJob(_Relion5TomoJob, PostProcessJob):
     """Run post-processing on a subtomogram average."""
 
-    # parameters are the same
+    # parameter names are the same, but use larger (closer to zero) ad-hoc B-factor
+
+    def run(
+        self,
+        # I/O
+        fn_in: _a.io.HALFMAP_TYPE = "",
+        fn_mask: _a.io.IN_MASK = "",
+        angpix: _a.post.ANGPIX_POST = None,
+        # Sharpen
+        b_factor: _a.misc.B_FACTOR_TOMO = None,
+        do_skip_fsc_weighting: _a.post.DO_SKIP_FSC_WEIGHTING = False,
+        low_pass: _a.post.LOW_PASS = 5,
+        fn_mtf: _a.post.FN_MTF = "",
+        mtf_angpix: _a.post.MTF_ANGPIX = 1,
+        # Running
+        do_queue: _a.running.DO_QUEUE = False,
+        min_dedicated: _a.running.MIN_DEDICATED = 1,
+        other_args: _a.import_.OTHER_ARGS = "",
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")
 
 
 class FrameAlignTomoJob(_Relion5TomoJob):

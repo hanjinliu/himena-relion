@@ -156,6 +156,7 @@ class ManualMaskCreation(RelionExternalJob):
                 raise TimeoutError("Mask creation timed out.")
         if mask_base_path.exists():
             self.console.log("mask_base.mrc found. Applying soft edge.")
+            time.sleep(1)  # make sure that the file is fully writtencp
             with mrcfile.open(mask_base_path) as mrc:
                 mask_data = mrc.data
                 scale = mrc.voxel_size.x
