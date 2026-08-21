@@ -228,6 +228,10 @@ class JobDirectory:
                 _id = "/".join(path.parent.as_posix().split("/")[-2:]) + "/"
                 pos_sl = pipeline.processes.process_name == _id
                 out = pipeline.processes.status_label.filter(pos_sl)[0] == "Scheduled"
+            else:
+                # overwriting and then scheduling a job may not create
+                # default_pipeline.star.
+                out = True
         return out
 
     def parent_jobs(self) -> list[JobDirectory]:
