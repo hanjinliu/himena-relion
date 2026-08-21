@@ -119,6 +119,7 @@ class QRelionJobWidget(QRelionJobWidgetBase):
     when changed.
     """
 
+    job_init_required = QtCore.Signal(_job_dir.JobDirectory)
     job_updated = QtCore.Signal(Path)
     __himena_ignore_file_updates__ = True
     _instances = set["QRelionJobWidget"]()
@@ -129,6 +130,7 @@ class QRelionJobWidget(QRelionJobWidgetBase):
         self._control_widget: QRelionJobWidgetControl | None = None
         self._watcher: GeneratorWorker | None = None
         self.job_updated.connect(self._on_job_updated)
+        self.job_init_required.connect(self._on_init_required)
         self._instances.add(self)
 
     @validate_protocol
@@ -215,7 +217,8 @@ class QRelionJobWidget(QRelionJobWidgetBase):
                 # re-initialize
                 was_scheduled = self._state_widget.is_scheduled()
                 if not was_scheduled:
-                    self.initialize_widgets(self._job_dir)
+                    self.job_init_required.emit(self._job_dir)
+                    yield
 
             for updated_file in updated_files:
                 self.job_updated.emit(updated_file)
@@ -253,6 +256,10 @@ class QRelionJobWidget(QRelionJobWidgetBase):
             self._control_widget.set_msg(msg)
         else:
             self._control_widget.set_msg("")
+
+    def _on_init_required(self, job_dir: _job_dir.JobDirectory):
+        """Handle the case when the job directory needs to be re-initialized."""
+        self.initialize_widgets(job_dir)
 
 
 class RelionJobViewRegistry:
