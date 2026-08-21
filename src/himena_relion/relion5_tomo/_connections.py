@@ -101,6 +101,12 @@ for _MotionCorJob in [_tomo.MotionCorr2TomoJob, _tomo.MotionCorrOwnTomoJob]:
         node_mapping={"tilt_series.star": "input_star_mics"},
     )
 connect_jobs(
+    _tomo.ImportTomoMicrographsJob,
+    _tomo.CtfEstimationTomoJob,
+    node_mapping={"tilt_series.star": "input_star_mics"},
+    value_mapping={lambda _: False: "use_given_ps"},
+)
+connect_jobs(
     _tomo.MotionCorr2TomoJob,
     _tomo.CtfEstimationTomoJob,
     node_mapping={"corrected_tilt_series.star": "input_star_mics"},

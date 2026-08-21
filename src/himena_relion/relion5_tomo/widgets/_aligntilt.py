@@ -163,6 +163,9 @@ class QAlignTiltSeriesViewer(QJobScrollArea):
             self._align_log.setPlainText(log_file.read_text())
 
     def _update_fiducials(self, tomo_name: str, aligner: ImodImageAligner):
+        if self._is_imod_patchtrack:
+            # patch tracking puts grid points, which is not useful for visualization.
+            return
         # if tracked fiducials are available, display them
         job_dir = self._job_dir
         if (

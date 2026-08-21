@@ -17,7 +17,11 @@ IN_MICROGRAPHS = Annotated[
     {
         "label": "Input micrographs",
         "widget_type": PathDrop,
-        "type_label": ["MicrographsData", "MicrographGroupMetadata"],
+        "type_label": [
+            "MicrographsData",
+            "MicrographGroupMetadata",
+            "TomogramGroupMetadata",
+        ],
         "allowed_extensions": [".star"],
         "group": "I/O",
     },

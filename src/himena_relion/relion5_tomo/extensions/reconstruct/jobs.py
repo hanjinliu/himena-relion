@@ -478,6 +478,9 @@ def _run_rotx(
         output_path_f16.rename(output_path)
     else:
         output_path_rotx.rename(output_path)
+    # Update pixel size. Only the y pixel size is correct.
+    with mrcfile.open(output_path, header_only=True, mode="r+") as mrc:
+        mrc.voxel_size = (float(mrc.voxel_size.y),) * 3
     return out
 
 
