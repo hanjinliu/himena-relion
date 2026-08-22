@@ -157,6 +157,10 @@ class ImportTomoJob(_ImportTomoJob):
         return super().command_id() + ".movies"
 
     @classmethod
+    def himena_model_type(cls):
+        return super().himena_model_type() + ".movies"
+
+    @classmethod
     def param_matches(cls, job_params: dict[str, str]) -> bool:
         return (
             job_params.get("do_coords", "No") == "No"
@@ -182,6 +186,10 @@ class ImportTomoMicrographsJob(_ImportTomoJob):
         return super().command_id() + ".micrographs"
 
     @classmethod
+    def himena_model_type(cls):
+        return super().himena_model_type() + ".micrographs"
+
+    @classmethod
     def param_matches(cls, job_params: dict[str, str]) -> bool:
         return (
             job_params.get("do_coords", "No") == "No"
@@ -203,6 +211,10 @@ class ImportCoordinatesJob(_ImportTomoOrCoordsJob):
     @classmethod
     def command_id(cls):
         return super().command_id() + ".coords"
+
+    @classmethod
+    def himena_model_type(cls):
+        return super().himena_model_type() + ".coords"
 
     @classmethod
     def param_matches(cls, job_params: dict[str, str]) -> bool:
