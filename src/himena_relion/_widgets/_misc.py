@@ -66,6 +66,7 @@ class QMicrographListWidget(QtW.QTableView):
         )
         self.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
         self.selectionModel().selectionChanged.connect(self._on_selection_changed)
+
         self.verticalHeader().setDefaultSectionSize(20)
         self.setTextElideMode(QtCore.Qt.TextElideMode.ElideLeft)
 
