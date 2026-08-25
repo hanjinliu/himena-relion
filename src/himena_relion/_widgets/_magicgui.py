@@ -161,10 +161,12 @@ class BfactorEdit(ValuedContainerWidget):
             choices=[("Automatic", False), ("Provide a value", True)],
             value=False,
         )
+        self._default_autob_lowres = kwargs.pop("default_autob_lowres", 10.0)
+        self._default_adhoc_bfactor = kwargs.pop("default_adhoc_bfactor", -1000.0)
         self._toggle_switch.max_width = 270
         self._auto_lowres = FloatEdit(
             label="Lowest resolution (A)",
-            value=10.0,
+            value=self._default_autob_lowres,
             min=8,
             max=15,
             tooltip=(
@@ -177,7 +179,7 @@ class BfactorEdit(ValuedContainerWidget):
         )
         self._user_bfactor = FloatEdit(
             label="B-factor (A^2)",
-            value=-1000.0,
+            value=self._default_adhoc_bfactor,
             min=-2000,
             max=0,
             tooltip=(
@@ -185,8 +187,6 @@ class BfactorEdit(ValuedContainerWidget):
                 "your map, you may end up interpreting noise for signal!"
             ),
         )
-        self._default_autob_lowres = kwargs.pop("default_autob_lowres", 10.0)
-        self._default_adhoc_bfactor = kwargs.pop("default_adhoc_bfactor", -1000.0)
 
         widgets = [self._toggle_switch, self._auto_lowres, self._user_bfactor]
         super().__init__(layout="vertical", labels=True, widgets=widgets, **kwargs)
