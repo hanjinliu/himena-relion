@@ -532,6 +532,34 @@ def postprocess_search_refmask(path: Path) -> str | None:
     return None
 
 
+def refinement_cycle_search_size(path: Path) -> int | None:
+    job_dir = JobDirectory(path)
+    parents = job_dir.parent_jobs()
+    recon_job = None
+    for p1 in parents:
+        if p1.job_type_label().startswith("relion.postprocess"):
+            for p2 in p1.parent_jobs():
+                if p2.job_type_label().startswith("relion.reconstructparticletomo"):
+                    recon_job = p2
+                    break
+        elif p1.job_type_label().startswith("relion.reconstructparticletomo"):
+            recon_job = p1
+            break
+    if recon_job is not None:
+        params = recon_job.get_job_params_as_dict()
+        return params.get("crop_size", params.get("box_size", None))
+
+
+def _get_box_size(path: Path) -> int | None:
+    job_dir = JobDirectory(path)
+    params = job_dir.get_job_params_as_dict()
+    return params.get("crop_size", params.get("box_size", None))
+
+
+def _get_crop_size(path: Path) -> int | None:
+    return _get_box_size(path)
+
+
 connect_jobs(
     _tomo.PostProcessTomoJob,
     _tomo.CtfRefineTomoJob,
@@ -541,11 +569,18 @@ connect_jobs(
         postprocess_search_refmask: "in_refmask",
         "postprocess.star": "in_post",
     },
+    value_mapping={
+        refinement_cycle_search_size: "box_size",
+    },
 )
 connect_jobs(
     _tomo.CtfRefineTomoJob,
     _tomo.ReconstructParticlesJob,
     node_mapping={OPTIMISATION_SET_STAR: "in_optim.in_optimisation"},
+    value_mapping={
+        _get_box_size: "box_size",
+        _get_crop_size: "crop_size",
+    },
 )
 
 
@@ -582,6 +617,9 @@ connect_jobs(
         postprocess_search_refmask: "in_refmask",
         "postprocess.star": "in_post",
     },
+    value_mapping={
+        refinement_cycle_search_size: "box_size",
+    },
 )
 
 connect_jobs(
@@ -605,13 +643,21 @@ def _get_particles_from_frame_align(path: Path) -> str | None:
     return None
 
 
+def _get_motion_from_frame_align(path: Path) -> str | None:
+    job_dir = JobDirectory(path)
+    if job_dir.get_job_param("do_motion", "No") == "Yes":
+        return path / "motion.star"
+    else:
+        return None
+
+
 connect_jobs(
     _tomo.FrameAlignTomoJob,
     _tomo.ExtractParticlesTomoJob,
     node_mapping={
         _get_particles_from_frame_align: "in_optim.in_particles",
         "tomograms.star": "in_optim.in_tomograms",
-        "motion.star": "in_optim.in_trajectories",
+        _get_motion_from_frame_align: "in_optim.in_trajectories",
     },
 )
 
@@ -619,4 +665,8 @@ connect_jobs(
     _tomo.FrameAlignTomoJob,
     _tomo.ReconstructParticlesJob,
     node_mapping={OPTIMISATION_SET_STAR: "in_optim.in_optimisation"},
+    value_mapping={
+        _get_box_size: "box_size",
+        _get_crop_size: "crop_size",
+    },
 )
