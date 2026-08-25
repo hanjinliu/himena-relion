@@ -1793,9 +1793,10 @@ def _get_extract_box_size(path: Path) -> str:
     params = job_dir.get_job_params_as_dict()
     box_size = int(params.get("box_size", "-1"))
     crop_size = int(params.get("crop_size", "-1"))
+    bin_size = int(params.get("binning", "1"))
     if box_size <= 0:
         return "??? pixels"
     if crop_size <= 0:
-        return f"{box_size} pixels"
+        return f"{box_size} pixels (bin {bin_size})"
     else:
-        return f"{box_size} pixels -> {crop_size} pixels"
+        return f"{box_size} pixels -> {crop_size} pixels (bin {bin_size})"
