@@ -9,8 +9,9 @@ from qtpy import QtWidgets as QtW, QtCore
 from numpy.typing import NDArray
 from himena.qt.magicgui import ToggleButtons
 from himena_relion._widgets._vispy import MaskMesh
-from himena_relion._widgets import Q3DViewer, spacer_widget
+from himena_relion._widgets import Q3DViewer, spacer_widget, QLowpassParamWidget
 from himena_relion import _job_dir
+from himena_relion._utils import lowpass_filter
 from himena_relion._widgets._shared.resizer import QResizer
 from himena_relion.consts import RelionJobState
 
@@ -20,6 +21,9 @@ _LOGGER = logging.getLogger(__name__)
 class QMaskCreateViewer(QtW.QWidget):
     def __init__(self, job_dir: _job_dir.JobDirectory):
         super().__init__()
+        self._img_raw = None
+        self._img_raw_scale = 1.0
+
         self._viewer = Q3DViewer()
         self._resizer = QResizer(self._viewer)
         self._mask_level_slider = FloatSlider(
@@ -45,9 +49,12 @@ class QMaskCreateViewer(QtW.QWidget):
         self._message.setTextInteractionFlags(
             QtCore.Qt.TextInteractionFlag.TextSelectableByMouse
         )
+        self._lowpass_widget = QLowpassParamWidget()
+        self._lowpass_widget.value_changed.connect(self._on_lowpass_changed)
         _layout = QtW.QVBoxLayout(self)
         _layout.setSpacing(0)
         _layout.addWidget(self._message)
+        _layout.addWidget(self._lowpass_widget)
         _layout.addWidget(self._viewer)
         _layout.addWidget(mask_slider)
         _layout.addWidget(self._resizer)
@@ -70,10 +77,15 @@ class QMaskCreateViewer(QtW.QWidget):
         with suppress(Exception):
             with mrcfile.open(template_path, mode="r") as mrc:
                 in_map = mrc.data
+                in_map_scale = float(mrc.voxel_size.x)
         if in_map is not None:
+            self._img_raw = in_map
+            self._img_raw_scale = in_map_scale
             self._viewer.set_image(in_map, update_now=False)
             self._viewer.auto_threshold(update_now=False)
         else:
+            self._img_raw = None
+            self._img_raw_scale = 1.0
             self._viewer.set_image(None, update_now=False)
 
         mask = mask_mrc(job_dir)
@@ -108,6 +120,17 @@ class QMaskCreateViewer(QtW.QWidget):
     def _on_mask_mode_changed(self, mode):
         self._mesh_layer.set_mode(mode)
         self._viewer._canvas.update_canvas()
+
+    def _on_lowpass_changed(self):
+        self._viewer.set_image(self._get_image_filtered(), update_now=True)
+
+    def _get_image_filtered(self):
+        if (img := self._img_raw) is None:
+            return None
+        cutoff_a = self._lowpass_widget.value()
+        cutoff_rel = self._img_raw_scale / cutoff_a
+        img_filt = lowpass_filter(img, cutoff_rel)
+        return img_filt
 
 
 def template_mrc(job_dir: _job_dir.JobDirectory) -> NDArray[np.floating] | None:

@@ -12,9 +12,11 @@ from himena_relion._widgets import (
     Q3DViewer,
     register_job,
     spacer_widget,
+    QLowpassParamWidget,
 )
 from himena.qt.magicgui import ToggleButtons
 from himena_relion import _job_dir
+from himena_relion._utils import lowpass_filter
 from himena_relion._widgets._shared.resizer import QResizer
 
 _LOGGER = logging.getLogger(__name__)
@@ -26,6 +28,9 @@ class QMaskCreateViewer(QJobScrollArea):
         from himena_relion._widgets._vispy import MaskMesh
 
         super().__init__()
+        self._img_raw = None
+        self._img_raw_scale = 1.0
+
         self._viewer = Q3DViewer()
         self._resizer = QResizer(self._viewer)
         self._mask_level_slider = FloatSlider(
@@ -47,7 +52,10 @@ class QMaskCreateViewer(QJobScrollArea):
         hlayout.addWidget(self._step_size)
         hlayout.addWidget(self._mask_level_slider.native)
         mask_slider.setMaximumWidth(400)
+        self._lowpass_widget = QLowpassParamWidget()
+        self._lowpass_widget.value_changed.connect(self._on_lowpass_changed)
         self._layout.setSpacing(0)
+        self._layout.addWidget(self._lowpass_widget)
         self._layout.addWidget(self._viewer)
         self._layout.addWidget(mask_slider)
         self._layout.addWidget(self._resizer)
@@ -65,12 +73,12 @@ class QMaskCreateViewer(QJobScrollArea):
 
     def initialize(self, job_dir: _job_dir.JobDirectory):
         """Initialize the viewer with the job directory."""
-        in_map = template_mrc(job_dir)
+        in_map, in_scale = template_mrc_and_scale(job_dir)
+        self._img_raw = in_map
+        self._img_raw_scale = in_scale
+        self._viewer.set_image(None, update_now=False)
         if in_map is not None:
-            self._viewer.set_image(in_map, update_now=False)
             self._viewer.auto_threshold(update_now=False)
-        else:
-            self._viewer.set_image(None, update_now=False)
 
         mask = mask_mrc(job_dir)
         if mask is not None:
@@ -95,18 +103,34 @@ class QMaskCreateViewer(QJobScrollArea):
         self._mesh_layer.set_mode(mode)
         self._viewer._canvas.update_canvas()
 
+    def _on_lowpass_changed(self):
+        self._viewer.set_image(self._get_image_filtered(), update_now=True)
 
-def template_mrc(job_dir: _job_dir.JobDirectory) -> NDArray[np.floating] | None:
+    def _get_image_filtered(self):
+        if (img := self._img_raw) is None:
+            return None
+        cutoff_a = self._lowpass_widget.value()
+        cutoff_rel = self._img_raw_scale / cutoff_a
+        img_filt = lowpass_filter(img, cutoff_rel)
+        return img_filt
+
+
+def template_mrc_and_scale(
+    job_dir: _job_dir.JobDirectory,
+) -> tuple[NDArray[np.floating] | None, float]:
     """Return the template MRC file."""
     return _read_mrc(job_dir.resolve_path(job_dir.get_job_param("fn_in")))
 
 
 def mask_mrc(job_dir: _job_dir.JobDirectory) -> NDArray[np.floating] | None:
     """Return the mask MRC file."""
-    return _read_mrc(job_dir.resolve_path(job_dir.path / "mask.mrc"))
+    return _read_mrc(job_dir.resolve_path(job_dir.path / "mask.mrc"))[0]
 
 
-def _read_mrc(path: Path) -> NDArray[np.floating] | None:
+def _read_mrc(path: Path) -> tuple[NDArray[np.floating] | None, float]:
     with suppress(Exception):
         with mrcfile.open(path, mode="r") as mrc:
-            return np.array(mrc.data)
+            arr = np.array(mrc.data)
+            scale = float(mrc.voxel_size.x)
+            return arr, scale
+    return None, 1.0

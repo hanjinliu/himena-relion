@@ -895,7 +895,7 @@ class ReconstructHalfTomogramJob(_ReconstructTomogramBaseJob):
 
     @classmethod
     def job_title(cls) -> str:
-        return "Recon. Tomos For Denoise"
+        return "Recon. Tomo Halves"
 
     @classmethod
     def param_matches(cls, job_params):

@@ -26,13 +26,14 @@ from himena_relion._widgets import QRelionJobWidget
 from himena_relion._widgets._job_widgets import QJobPipelineViewer
 from himena_relion._widgets._misc import QMoreActionButton
 from himena_relion._widgets._content_info import QJobContentInfo
-from himena_relion.consts import Type, JOB_ID_MAP, FileNames
+from himena_relion.consts import Type, FileNames
 from himena_relion._pipeline import (
     NodeStatus,
     RelionDefaultPipeline,
     RelionJobInfo,
 )
 from himena_relion import _utils
+from himena_relion.pipeline._utils import split_job_info
 from himena_relion.pipeline._gui_state import HimenaRelionGuiState
 from himena_relion.pipeline._flowchart import (
     QRelionPipelineFlowChartView,
@@ -789,11 +790,8 @@ def _list_jobs_for_palette(
 ) -> list[tuple[str, RelionJobInfo]]:
     out = []
     for info in pipeline.iter_nodes():
-        jobxxx = info.path.stem
-        if jobxxx.startswith("job"):
-            jobxxx = jobxxx[3:]
+        jobxxx, title = split_job_info(info)
         state = info.status.value.title()
-        title = JOB_ID_MAP.get(info.type_label, info.type_label)
         if info.alias:
             title = f"{info.alias} ({title})"
         tags_str = " ".join(f"#{tag}" for tag in id_to_tags_map.get(info.path, []))

@@ -163,7 +163,7 @@ class ReconstructHalfTomoIMOD(RelionExternalJob):
 
     @classmethod
     def job_title(cls):
-        return "Recon. Tomos For Denoise (IMOD)"
+        return "Recon. Tomo Halves (IMOD)"
 
     @classmethod
     def menu_id(cls):

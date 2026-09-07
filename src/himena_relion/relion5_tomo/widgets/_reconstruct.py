@@ -6,14 +6,13 @@ import logging
 import mrcfile
 import numpy as np
 from qtpy import QtWidgets as QtW, QtCore
-from superqt import QToggleSwitch
-from himena.qt._qlineedit import QDoubleLineEdit
 from himena_relion._widgets import (
     QJobScrollArea,
     Q3DViewer,
     register_job,
     QNumParticlesLabel,
     QSymmetryLabel,
+    QLowpassParamWidget,
 )
 from himena_relion._widgets._shared.resizer import QResizer
 from himena_relion import _job_dir
@@ -182,50 +181,3 @@ class QReconstructViewer(QJobScrollArea):
         cutoff_rel = self._img_raw_scale / cutoff_a
         img_filt = lowpass_filter(img, cutoff_rel)
         return img_filt
-
-
-class QLowpassParamWidget(QtW.QWidget):
-    value_changed = QtCore.Signal(float)
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self._layout = QtW.QHBoxLayout(self)
-        self._layout.setContentsMargins(0, 0, 0, 0)
-        self._layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
-        self._do_lowpass_switch = QToggleSwitch("Apply lowpass filter")
-        self._do_lowpass_switch.setChecked(False)
-        self._cutoff = QDoubleLineEdit()
-        self._cutoff.setText("8.0")
-        self._cutoff.setMinimum(0.1)
-        self._cutoff.setFixedWidth(50)
-        self._layout.addWidget(self._do_lowpass_switch)
-        self._layout.addSpacing(3)
-        _cutoff_label = QtW.QLabel("Cutoff:")
-        _cutoff_label.setAlignment(
-            QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignVCenter
-        )
-        self._layout.addWidget(_cutoff_label)
-        self._layout.addWidget(self._cutoff)
-        self._layout.addWidget(QtW.QLabel("A"))
-        self._cutoff.setEnabled(False)
-        self._do_lowpass_switch.toggled.connect(self._switch_toggled)
-        self._cutoff.valueChanged.connect(self._emit_value)
-        self.setMaximumWidth(360)
-
-    def _switch_toggled(self, checked: bool):
-        self._cutoff.setEnabled(checked)
-        self._emit_value()
-
-    def value(self) -> float:
-        if self._do_lowpass_switch.isChecked():
-            try:
-                cutoff = float(self._cutoff.text())
-                return cutoff
-            except ValueError:
-                return -1.0
-        else:
-            return -1.0
-
-    def _emit_value(self):
-        cutoff = self.value()
-        self.value_changed.emit(cutoff)

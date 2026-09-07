@@ -12,7 +12,7 @@ from himena.qt.magicgui import ToggleButtons
 from himena_relion._job_class import connect_jobs
 from himena_relion.consts import MenuId
 from himena_relion.external import RelionExternalJob
-from himena_relion._utils import relion_python_executable
+from himena_relion._utils import relion_python_executable, lowpass_filter
 from himena_relion._annotated.io import MAP_TYPE
 from himena_relion.relion5.extensions.volume_tools.widgets import QMaskCreateViewer
 from himena_relion.relion5._connections import mask_create_search_halfmap
@@ -56,6 +56,17 @@ class ManualMaskCreation(RelionExternalJob):
                 "group": "I/O",
             },
         ] = "None",
+        pre_lowpass: Annotated[
+            float | None,
+            {
+                "label": "Pre lowpass filter (A)",
+                "tooltip": (
+                    "Apply a lowpass filter to the input volume before sending to the "
+                    "application. Filtered map will be created in the job directory."
+                ),
+                "group": "Volume",
+            },
+        ] = None,
         dilate_pixels: Annotated[
             int,
             {
@@ -112,7 +123,18 @@ class ManualMaskCreation(RelionExternalJob):
         else:
             raise ValueError(f"Unknown blur method: {blur_method}")
 
-        input_path = out_job_dir.resolve_path(in_3dref).as_posix()
+        if pre_lowpass is not None and pre_lowpass > 0:
+            with mrcfile.open(out_job_dir.resolve_path(in_3dref)) as mrc:
+                img = mrc.data
+                img_scale = mrc.voxel_size.x
+            cutoff_rel = img_scale / pre_lowpass
+            img = lowpass_filter(img, cutoff_rel)
+            input_path = out_job_dir.path / "map_filtered.mrc"
+            with mrcfile.open(input_path, "w") as mrc:
+                mrc.set_data(img.astype(np.float32))
+                mrc.voxel_size = img_scale
+        else:
+            input_path = out_job_dir.resolve_path(in_3dref).as_posix()
         time_0 = time.time()
         self.console.log("Waiting for user to create mask.")
 

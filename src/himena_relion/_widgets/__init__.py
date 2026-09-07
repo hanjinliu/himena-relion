@@ -15,6 +15,7 @@ from himena_relion._widgets._view_nd import (
     Q3DTomogramViewer,
     Q3DLocalResViewer,
     Q2DFilterWidget,
+    QLowpassParamWidget,
 )
 from himena_relion._widgets._spinbox import QIntWidget, QIntChoiceWidget
 from himena_relion._widgets._plot import QPlotCanvas
@@ -41,6 +42,7 @@ __all__ = [
     "Q3DTomogramViewer",
     "Q3DLocalResViewer",
     "Q2DFilterWidget",
+    "QLowpassParamWidget",
     "QIntWidget",
     "QIntChoiceWidget",
     "QRelionJobWidget",
