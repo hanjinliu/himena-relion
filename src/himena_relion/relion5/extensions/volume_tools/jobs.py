@@ -130,7 +130,7 @@ class ManualMaskCreation(RelionExternalJob):
             cutoff_rel = img_scale / pre_lowpass
             img = lowpass_filter(img, cutoff_rel)
             input_path = out_job_dir.path / "map_filtered.mrc"
-            with mrcfile.open(input_path, "w") as mrc:
+            with mrcfile.open(input_path, "w+") as mrc:
                 mrc.set_data(img.astype(np.float32))
                 mrc.voxel_size = img_scale
         else:

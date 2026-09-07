@@ -76,7 +76,7 @@ class QMaskCreateViewer(QJobScrollArea):
         in_map, in_scale = template_mrc_and_scale(job_dir)
         self._img_raw = in_map
         self._img_raw_scale = in_scale
-        self._viewer.set_image(None, update_now=False)
+        self._viewer.set_image(in_map, update_now=False)
         if in_map is not None:
             self._viewer.auto_threshold(update_now=False)
 
