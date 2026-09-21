@@ -8,12 +8,12 @@ from qtpy import QtWidgets as QtW, QtCore, QtGui
 from superqt import QElidingLabel
 from superqt.utils import thread_worker, GeneratorWorker
 from contextlib import contextmanager
-from watchfiles import watch
 from timeit import default_timer
 from himena import MainWindow, WidgetDataModel
 from himena.plugins import validate_protocol
 from himena.qt import QColoredToolButton
 from himena.consts import MonospaceFontFamily
+from himena_relion._watch import watch
 from himena_relion import _job_dir, _utils
 from himena_relion._widgets._job_widgets import (
     JobWidgetBase,
@@ -203,7 +203,7 @@ class QRelionJobWidget(QRelionJobWidgetBase):
     def _watch_job_directory(self, path: Path):
         """Watch the job directory for changes."""
         was_scheduled = self._state_widget.is_scheduled()
-        for changes in watch(path, step=160, rust_timeout=400, yield_on_timeout=True):
+        for changes in watch(path):
             if self._watcher is None:
                 return  # stopped
             updated_files: list[Path] = []

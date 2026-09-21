@@ -1,8 +1,10 @@
 import os
+from typing import Iterable
 from pathlib import Path
 import shutil
 from dataclasses import dataclass
 import subprocess
+from functools import lru_cache
 from himena.plugins import register_config, config_field, get_config
 
 
@@ -88,6 +90,20 @@ def get_relion_pipeliner_exe() -> str:
     # in the future, RELION may support using multiple executables from different
     # versions. For now, we just return the command name itself
     return "relion_pipeliner"
+
+
+def get_relion_pipeliner_args(
+    is_via_wsl: bool = False,
+    cwd: Path | str | None = None,
+) -> list[str]:
+    args = [get_relion_pipeliner_exe()]
+    if is_via_wsl:
+        env = _resolve_wsl_env()
+        prefix = ["wsl", "-e"]
+        if cwd is not None:
+            prefix += ["--cd", str(cwd)]
+        args = [*prefix, "env", *(f"{k}={v}" for k, v in env.items()), *args]
+    return args
 
 
 def get_motioncor2_exe() -> str:
@@ -209,3 +225,40 @@ def _pipeliner_path() -> Path | None:
         return Path(path)
     else:
         return None
+
+
+@lru_cache()
+def _resolve_wsl_env(
+    keys: Iterable[str] = ("PATH", "LD_LIBRARY_PATH"),
+) -> dict[str, str]:
+    """Resolve environment variables as seen by an interactive login shell in WSL.
+
+    Output of .bashrc (echo, warnings) is ignored by extracting only the text
+    between markers.
+    """
+    _marker_ = "__HIMENA_ENV_MARKER__"
+    printer = "; ".join(f'printf "%s=%s\\0" {k} "${k}"' for k in keys)
+    script = f'printf "{_marker_}"; {printer}; printf "{_marker_}"'
+    cmd = ["wsl"]
+    cmd += ["-e", "bash", "-lic", script]
+    out = subprocess.run(cmd, capture_output=True, timeout=30).stdout.decode(
+        "utf-8", "replace"
+    )
+    body = out.split(_marker_)[1]
+    env: dict[str, str] = {}
+    for item in body.split("\0"):
+        if "=" in item:
+            k, v = item.split("=", 1)
+            env[k] = v
+    return env
+
+
+def wsl_command(
+    args: list[str], env: dict[str, str], distro: str | None = None
+) -> list[str]:
+    """Build a wsl.exe command line that runs `args` directly with the resolved env."""
+    cmd: list[str] = ["wsl.exe"]
+    if distro:
+        cmd += ["-d", distro]
+    cmd += ["-e", "env", *(f"{k}={v}" for k, v in env.items()), *args]
+    return cmd

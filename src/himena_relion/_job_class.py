@@ -26,7 +26,7 @@ from himena.widgets import MainWindow
 from himena.plugins import when_reader_used, register_function
 import numpy as np
 from himena_relion import _configs, _job_dir
-from himena_relion._configs import get_relion_pipeliner_exe
+from himena_relion._configs import get_relion_pipeliner_args
 from himena_relion._pipeline import is_all_inputs_ready, ReadyState
 from himena_relion.consts import FileNames, Type, MenuId, JOB_ID_MAP
 from himena_relion._utils import (
@@ -782,7 +782,11 @@ def _run_relion_pipeliner_add_job_from_star(
     *,
     alias: str | None = None,
 ) -> None:
-    args = [get_relion_pipeliner_exe(), "--addJobFromStar", str(job_star_path)]
+    is_via_wsl = Path(cwd).drive.startswith(r"\\wsl")
+    args = get_relion_pipeliner_args(is_via_wsl) + [
+        "--addJobFromStar",
+        str(job_star_path),
+    ]
     if alias is not None:
         args += ["--setJobAlias", alias]
     proc = subprocess.run(args, cwd=cwd, capture_output=True, text=True)

@@ -3,6 +3,7 @@ from __future__ import annotations
 import subprocess
 from dataclasses import dataclass
 from typing import Sequence
+import shutil
 
 # Example output:
 # RELION version: 5.0.0-commit-85db73
@@ -51,16 +52,20 @@ class RelionVersionInfo:
 
 def relion_version() -> str:
     """Return the output of `relion_pipeliner --version`."""
-    from himena_relion._configs import get_relion_pipeliner_exe
+    from himena_relion._configs import get_relion_pipeliner_args
 
+    is_via_wsl = shutil.which("relion_pipeliner") is None
     res = subprocess.run(
-        [get_relion_pipeliner_exe(), "--version"],
+        get_relion_pipeliner_args(is_via_wsl) + ["--version"],
         capture_output=True,
         text=True,
     )
     if res.returncode != 0:
         raise RuntimeError("Failed to get RELION version info: " + res.stderr)
-    return res.stdout.strip()
+    out = res.stdout.strip()
+    if is_via_wsl:
+        out += "\n\n(in WSL)"
+    return out
 
 
 def relion_version_info(default_version: str | None = None) -> RelionVersionInfo:
