@@ -62,10 +62,7 @@ def relion_version() -> str:
     )
     if res.returncode != 0:
         raise RuntimeError("Failed to get RELION version info: " + res.stderr)
-    out = res.stdout.strip()
-    if is_via_wsl:
-        out += "\n\n(in WSL)"
-    return out
+    return res.stdout.strip()
 
 
 def relion_version_info(default_version: str | None = None) -> RelionVersionInfo:

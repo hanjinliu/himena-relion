@@ -99,10 +99,10 @@ def get_relion_pipeliner_args(
     args = [get_relion_pipeliner_exe()]
     if is_via_wsl:
         env = _resolve_wsl_env()
-        prefix = ["wsl", "-e"]
+        prefix = ["wsl"]
         if cwd is not None:
             prefix += ["--cd", str(cwd)]
-        args = [*prefix, "env", *(f"{k}={v}" for k, v in env.items()), *args]
+        args = [*prefix, "-e", "env", *(f'"{k}={v}"' for k, v in env.items()), *args]
     return args
 
 
