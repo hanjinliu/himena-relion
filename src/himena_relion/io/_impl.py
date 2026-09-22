@@ -14,6 +14,7 @@ from himena_relion._utils import (
     normalize_job_id,
     open_with_lock,
     update_default_pipeline,
+    write_star,
 )
 from himena_relion.schemas._pipeline import RelionPipelineModel
 
@@ -184,7 +185,7 @@ def set_job_alias(ui: MainWindow, job_dir: JobDirectory):
             job_pipe.processes = job_pipe.processes.dataframe.with_columns(
                 rlnPipeLineProcessAlias=pl.lit(alias)
             )
-            job_pipe_path.write_text(job_pipe.to_string())
+            write_star(job_pipe, job_pipe_path)
         else:
             warnings.warn(
                 f"{job_pipe_path} does not exist. This job directory might be broken.",

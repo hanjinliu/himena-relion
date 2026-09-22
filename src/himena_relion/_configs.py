@@ -102,7 +102,9 @@ def get_relion_pipeliner_args(
         prefix = ["wsl"]
         if cwd is not None:
             prefix += ["--cd", str(cwd)]
-        args = [*prefix, "-e", "env", *(f'"{k}={v}"' for k, v in env.items()), *args]
+        # NOTE: do not quote "k=v" here. Popen quotes arguments containing spaces
+        # by itself, and extra quotes would be passed literally to `env`.
+        args = [*prefix, "-e", "env", *(f"{k}={v}" for k, v in env.items()), *args]
     return args
 
 

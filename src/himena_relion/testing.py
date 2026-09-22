@@ -7,6 +7,7 @@ from himena_relion._widgets._job_widgets import JobWidgetBase
 from himena_relion._job_dir import ExternalJobDirectory, JobDirectory
 from himena_relion.external.job_class import RelionExternalJob
 from himena_relion.consts import ARG_NAME_REMAP
+from himena_relion._utils import write_text_lf
 
 
 _T = TypeVar("_T", bound=JobWidgetBase)
@@ -26,7 +27,7 @@ class JobWidgetTester(Generic[_T]):
 
     def write_text(self, path: str, text: str):
         fp = self.job_dir.path / path
-        fp.write_text(text)
+        write_text_lf(fp, text)
         self.widget.on_job_updated(self.job_dir, str(fp))
 
     def write_mrc(self, path: str, data: np.ndarray):
@@ -66,7 +67,7 @@ class ExternalJobTester:
 
     def prep_job_star(self, directory: Path, **kwargs) -> str:
         txt = self._job_cls.prep_job_star(**kwargs).to_string()
-        directory.joinpath("job.star").write_text(txt)
+        write_text_lf(directory.joinpath("job.star"), txt)
         return txt
 
     def create_job_instance(self, directory: Path) -> RelionExternalJob:

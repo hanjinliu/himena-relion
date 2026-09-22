@@ -52,14 +52,16 @@ class RelionPipelineWatcher:
                 if not self._lock_file_path().exists():
                     _print_log("Lock file removed, exiting")
                     break
-                has_changes = any(ch != Change.deleted for ch, _ in changes)
+                changed_files = [f for ch, f in changes if ch != Change.deleted]
+                has_changes = len(changed_files) > 0
                 if not has_changes:
                     _timeout_count += 1
                     if _timeout_count > 25:
                         _timeout_count = 0
                         has_changes = True
                 else:
-                    _print_log("Job state change detected.")
+                    _files = ";".join(f for f in changed_files)
+                    _print_log(f"Job state change detected: {_files}")
                     _timeout_count = 0
 
                 if has_changes:

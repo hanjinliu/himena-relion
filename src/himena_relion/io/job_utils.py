@@ -8,7 +8,7 @@ from himena.exceptions import Cancelled
 from himena.plugins import register_function
 from himena_relion.consts import Type, MenuId
 from himena_relion.io import _impl
-from himena_relion._utils import get_pipeline_widgets, open_url
+from himena_relion._utils import get_pipeline_widgets, open_url, write_text_lf
 
 if TYPE_CHECKING:
     from himena_relion._job_dir import JobDirectory
@@ -77,7 +77,7 @@ def mark_as_finished_relion_job(model: WidgetDataModel):
 @register_function(
     menus=[MenuId.RELION_UTILS, "/model_menu/job"],
     types=[Type.RELION_JOB],
-    title="Mark As Not Finished",
+    title="Mark As Failed",
     command_id="himena-relion:mark-as-failed",
 )
 def mark_as_failed_relion_job(model: WidgetDataModel):
@@ -189,7 +189,7 @@ def start_new_project(ui: MainWindow):
                 "Selected directory is already a RELION project. Opening existing file."
             )
         else:
-            path.write_text(text)
+            write_text_lf(path, text)
         ui.read_file(path)
     else:
         raise Cancelled

@@ -25,6 +25,20 @@ if TYPE_CHECKING:
 _LOGGER = logging.getLogger(__name__)
 
 
+def write_text_lf(path: str | Path, text: str) -> None:
+    """Write text with LF line endings, even on Windows.
+
+    RELION cannot read files with CRLF line endings, which is the default of
+    `Path.write_text` on Windows.
+    """
+    Path(path).write_text(text, newline="\n")
+
+
+def write_star(star: Any, path: str | Path) -> None:
+    """Write a StarDict or StarModel to a file with LF line endings."""
+    write_text_lf(path, star.to_string())
+
+
 def bin_image(img: np.ndarray, nbin: int) -> np.ndarray:
     """Bin a 2D or 3D image by an integer factor."""
     if img.ndim == 2:
@@ -446,7 +460,9 @@ def open_with_lock(
                 "editing the pipeline, or the previous run may have crashed. "
             )
 
-        with pipeline_path.open(mode) as f:
+        # newline="" disables newline translation, so that the file is written with
+        # LF even on Windows (RELION cannot read CRLF files).
+        with pipeline_path.open(mode, newline="") as f:
             yield f
 
     finally:

@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 import inspect
 import logging
+import os
 import subprocess
 import tempfile
 from types import NoneType, UnionType
@@ -37,6 +38,7 @@ from himena_relion._utils import (
     change_name_for_tomo,
     update_default_pipeline,
     replace_input_edges,
+    write_star,
 )
 from himena_relion.schemas import JobStarModel
 from himena_relion.pipeline_watcher import (
@@ -180,11 +182,14 @@ class RelionJob(ABC):
         cls.prerun_check(**kwargs)
         if _cwd is None:
             _cwd = Path.cwd()
-        with tempfile.TemporaryDirectory() as tmpdir:
+        # RELION in WSL cannot read files in the Windows temporary directory, so the
+        # temporary job.star is created inside the project directory in that case.
+        tmp_root = _cwd if _is_via_wsl(_cwd) else None
+        with tempfile.TemporaryDirectory(dir=tmp_root, prefix=".himena_") as tmpdir:
             tmpdir = Path(tmpdir)
             job_star_path = tmpdir / "job.star"
             job_star_model = cls.prep_job_star(**kwargs)
-            job_star_model.write(job_star_path)
+            write_star(job_star_model, job_star_path)
             # $ relion_pipeliner --addJobFromStar <job.star>
             # This reformats the input job.star and creates a new job directory.
             # The new job is scheduled but NOT run yet. To run the job, we need to
@@ -216,7 +221,7 @@ class RelionJob(ABC):
         self.prerun_check(**kwargs)
         job_dir = self.output_job_dir
         job_star_model = self.prep_job_star(**kwargs)
-        job_star_model.write(job_dir.job_star())
+        write_star(job_star_model, job_dir.job_star())
         job_star_params = job_dir.get_job_params_as_dict()
         new_input_edges = self.input_edges(**job_star_params)
         rln_dir = job_dir.relion_project_dir
@@ -532,7 +537,7 @@ class _Relion5BuiltinContinue(_Relion5BuiltinJob):
         # `kwargs` come from the scheduler widget. Argument names are not complete.
         self.prerun_check(**kwargs)
         job_star = self.make_job_star(**kwargs)
-        job_star.write(job_star_path)
+        write_star(job_star, job_star_path)
 
         job_star_params = job_dir.get_job_params_as_dict()
         new_input_edges = self.input_edges(**job_star_params)
@@ -776,16 +781,24 @@ def _node_mapping_to_context(
     return _func
 
 
+def _is_via_wsl(path: Path | str) -> bool:
+    return Path(path).drive.startswith(r"\\wsl")
+
+
 def _run_relion_pipeliner_add_job_from_star(
     job_star_path: Path,
     cwd: Path,
     *,
     alias: str | None = None,
 ) -> None:
-    is_via_wsl = Path(cwd).drive.startswith(r"\\wsl")
-    args = get_relion_pipeliner_args(is_via_wsl) + [
+    if is_via_wsl := _is_via_wsl(cwd):
+        # Windows paths cannot be used in WSL. Use the path relative to the project.
+        job_star_arg = Path(os.path.relpath(job_star_path, cwd)).as_posix()
+    else:
+        job_star_arg = str(job_star_path)
+    args = get_relion_pipeliner_args(is_via_wsl, cwd=cwd if is_via_wsl else None) + [
         "--addJobFromStar",
-        str(job_star_path),
+        job_star_arg,
     ]
     if alias is not None:
         args += ["--setJobAlias", alias]
