@@ -8,7 +8,6 @@ from starfile_rs.schema import ValidationError
 import polars as pl
 from himena_relion.consts import FileNames
 from himena_relion.schemas import RelionPipelineModel
-from himena_relion._utils import write_star
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -281,7 +280,7 @@ class RelionPipeline:
                 to_node=[node.path.as_posix() for node in self.outputs],
             ),
         )
-        return write_star(star, path)
+        return star.to_star_dict().write(path, newline="\n")
 
 
 class ReadyState(Enum):

@@ -35,11 +35,6 @@ def write_text_lf(path: str | Path, text: str) -> None:
     Path(path).write_text(text, newline="\n")
 
 
-def write_star(star: Any, path: str | Path) -> None:
-    """Write a StarDict or StarModel to a file with LF line endings."""
-    write_text_lf(path, star.to_string())
-
-
 def bin_image(img: np.ndarray, nbin: int) -> np.ndarray:
     """Bin a 2D or 3D image by an integer factor."""
     if img.ndim == 2:

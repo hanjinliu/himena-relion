@@ -38,7 +38,6 @@ from himena_relion._utils import (
     change_name_for_tomo,
     update_default_pipeline,
     replace_input_edges,
-    write_star,
 )
 from himena_relion.schemas import JobStarModel
 from himena_relion.pipeline_watcher import (
@@ -189,7 +188,7 @@ class RelionJob(ABC):
             tmpdir = Path(tmpdir)
             job_star_path = tmpdir / "job.star"
             job_star_model = cls.prep_job_star(**kwargs)
-            write_star(job_star_model, job_star_path)
+            job_star_model.to_star_dict().write(job_star_path, newline="\n")
             # $ relion_pipeliner --addJobFromStar <job.star>
             # This reformats the input job.star and creates a new job directory.
             # The new job is scheduled but NOT run yet. To run the job, we need to
@@ -221,7 +220,7 @@ class RelionJob(ABC):
         self.prerun_check(**kwargs)
         job_dir = self.output_job_dir
         job_star_model = self.prep_job_star(**kwargs)
-        write_star(job_star_model, job_dir.job_star())
+        job_star_model.to_star_dict().write(job_dir.job_star(), newline="\n")
         job_star_params = job_dir.get_job_params_as_dict()
         new_input_edges = self.input_edges(**job_star_params)
         rln_dir = job_dir.relion_project_dir
@@ -537,7 +536,7 @@ class _Relion5BuiltinContinue(_Relion5BuiltinJob):
         # `kwargs` come from the scheduler widget. Argument names are not complete.
         self.prerun_check(**kwargs)
         job_star = self.make_job_star(**kwargs)
-        write_star(job_star, job_star_path)
+        job_star.to_star_dict().write(job_star_path, newline="\n")
 
         job_star_params = job_dir.get_job_params_as_dict()
         new_input_edges = self.input_edges(**job_star_params)
