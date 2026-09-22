@@ -24,7 +24,7 @@ classifiers = [
   "Programming Language :: Python :: Implementation :: PyPy",
 ]
 dependencies = [
-  "starfile-rs>=0.1.9",
+  "starfile-rs>=0.1.12",
   "imodmodel>=0.1.0",
   "rich",
   "psutil",
@@ -50,9 +50,6 @@ testing = [
   "pytest",
   "pytest-qt",
   "pytest-cov",
-]
-pyqt5 = [
-  "himena[pyqt5]",
 ]
 pyqt6 = [
   "himena[pyqt6]",
@@ -99,11 +96,10 @@ run = "pytest -v --cov --cov-report=xml"
 addopts = ["--maxfail=5"]
 
 [[tool.hatch.envs.test.matrix]]
-backend = ["pyqt5", "pyqt6"]
+backend = ["pyqt6"]
 
 [tool.hatch.envs.test.overrides]
 matrix.backend.features = [
-  { value = "pyqt5", if = ["pyqt5"] },
   { value = "pyqt6", if = ["pyqt6"] },
 ]
 

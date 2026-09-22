@@ -280,7 +280,7 @@ class RelionPipeline:
                 to_node=[node.path.as_posix() for node in self.outputs],
             ),
         )
-        return star.write(path)
+        return star.to_star_dict().write(path, newline="\n")
 
 
 class ReadyState(Enum):

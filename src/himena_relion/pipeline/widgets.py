@@ -10,7 +10,6 @@ from qtpy import QtGui, QtWidgets as QtW, QtCore
 from cmap import Color
 from superqt import QElidingLabel
 from superqt.utils import thread_worker, GeneratorWorker
-from watchfiles import watch, Change
 
 from himena import MainWindow, WidgetDataModel
 from himena.plugins import validate_protocol
@@ -22,6 +21,7 @@ from himena.exceptions import Cancelled
 from himena.consts import MonospaceFontFamily
 from himena.workflow import LocalReaderMethod
 from himena_relion._job_dir import JobDirectory
+from himena_relion._watch import watch, Change
 from himena_relion._widgets import QRelionJobWidget
 from himena_relion._widgets._job_widgets import QJobPipelineViewer
 from himena_relion._widgets._misc import QMoreActionButton
@@ -320,7 +320,7 @@ class QRelionPipelineFlowChart(QtW.QWidget):
     @thread_worker(start_thread=True)
     def _watch_default_pipeline_star(self, path: Path):
         """Watch the job directory for changes."""
-        for changes in watch(path, rust_timeout=400, yield_on_timeout=True):
+        for changes in watch(path):
             if self._watcher is None:
                 _LOGGER.info("Pipeline watcher stopped.")
                 return  # stopped

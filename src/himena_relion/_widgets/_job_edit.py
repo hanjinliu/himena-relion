@@ -511,7 +511,7 @@ def _warn_relion_lock_exists(ui: MainWindow, relion_job_dir: Path | None = None)
         ui.show_notification(
             "RELION lock file `.relion_lock/` exists. You may want to check if this is "
             "because of a crashed job and if so, manually delete it.",
-            callback={"Delete lock": lambda: shutil.rmtree(lock_dir)},
+            callbacks={"Delete lock": lambda: shutil.rmtree(lock_dir)},
         )
         return True
     return False

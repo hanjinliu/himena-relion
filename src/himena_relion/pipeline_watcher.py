@@ -10,14 +10,14 @@ from pathlib import Path
 import subprocess
 import time
 import warnings
-from watchfiles import watch, Change
+from himena_relion._watch import watch, Change
 from himena_relion._utils import (
     RelionPipelineLockError,
     normalize_job_id,
     update_default_pipeline,
     open_with_lock,
 )
-from himena_relion._configs import get_relion_pipeliner_exe
+from himena_relion._configs import get_relion_pipeliner_args
 from himena_relion import _job_dir
 
 from himena_relion._pipeline import (
@@ -35,7 +35,6 @@ _WATCHER_LOG_FILE_NAME = ".himena_pipeline_watcher.log"
 
 class RelionPipelineWatcher:
     def __init__(self, relion_dir: str | Path):
-        super().__init__()
         self._relion_project_dir = Path(relion_dir).resolve()
         self._state_to_job_map = defaultdict[NodeStatus, dict[str, RelionJobInfo]](dict)
 
@@ -49,18 +48,20 @@ class RelionPipelineWatcher:
             pipeline = RelionDefaultPipeline.from_pipeline_star(path)
             self._on_job_state_changed(pipeline)
             _timeout_count = 0
-            for changes in watch(path, rust_timeout=400, yield_on_timeout=True):
+            for changes in watch(path):
                 if not self._lock_file_path().exists():
                     _print_log("Lock file removed, exiting")
                     break
-                has_changes = any(ch != Change.deleted for ch, _ in changes)
+                changed_files = [f for ch, f in changes if ch != Change.deleted]
+                has_changes = len(changed_files) > 0
                 if not has_changes:
                     _timeout_count += 1
                     if _timeout_count > 25:
                         _timeout_count = 0
                         has_changes = True
                 else:
-                    _print_log("Job state change detected.")
+                    _files = ";".join(f for f in changed_files)
+                    _print_log(f"Job state change detected: {_files}")
                     _timeout_count = 0
 
                 if has_changes:
@@ -254,7 +255,8 @@ def execute_job(
             raise e
         _print_log(f"Error executing RELION job {job_name}: {e}")
         return None
-    args = [get_relion_pipeliner_exe(), "--RunJobs", job_name]
+    is_via_wsl = job_dir.path.drive.startswith(r"\\wsl")
+    args = get_relion_pipeliner_args(is_via_wsl, cwd=cwd) + ["--RunJobs", job_name]
     # NOTE: Because himena also uses Qt, RELION jobs that depend on napari (such as
     # ExcludeTiltSeries) may fail to start, saying no Qt bindings are available. This
     # seems to be due to environment variable QT_API being set to incompatible value
@@ -280,13 +282,13 @@ def _print_log(text: str):
         print(f"[{now}] {text}", file=f)
 
 
-def _job_state_file(job_dir_path: Path) -> str:
-    for filename in [
-        FileNames.EXIT_FAILURE,
-        FileNames.EXIT_ABORTED,
-        FileNames.EXIT_SUCCESS,
-        FileNames.ABORT_NOW,
-    ]:
-        if (job_dir_path / filename).exists():
-            return filename
-    return None
+# def _job_state_file(job_dir_path: Path) -> str:
+#     for filename in [
+#         FileNames.EXIT_FAILURE,
+#         FileNames.EXIT_ABORTED,
+#         FileNames.EXIT_SUCCESS,
+#         FileNames.ABORT_NOW,
+#     ]:
+#         if (job_dir_path / filename).exists():
+#             return filename
+#     return None

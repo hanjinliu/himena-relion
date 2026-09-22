@@ -6,12 +6,12 @@ from glob import glob
 import sys
 import threading
 from qtpy import QtCore, QtWidgets as QtW
-from watchfiles import watch
 from superqt.utils import thread_worker
 from himena import WidgetDataModel
 from himena.widgets import current_instance
 from himena.plugins import register_widget_class, validate_protocol
 from himena_relion._job_dir import JobDirectory
+from himena_relion._watch import watch
 from himena_relion._widgets._main import QRelionJobWidgetBase
 from himena_relion._widgets._job_widgets import QNoteEdit, QJobPipelineViewer
 from himena_relion._widgets._content_info import QJobContentInfo
@@ -93,12 +93,7 @@ class QTrashWidget(QtW.QSplitter):
     @thread_worker(start_thread=True)
     def _watch_trash_dir(self):
         if trash_dir := self.trash_dir():
-            for changes in watch(
-                trash_dir,
-                step=160,
-                rust_timeout=400,
-                yield_on_timeout=True,
-            ):
+            for changes in watch(trash_dir, recursive=False):
                 if self._watcher is None:
                     return  # stopped
                 if changes:
