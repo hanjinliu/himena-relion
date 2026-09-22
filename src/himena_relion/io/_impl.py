@@ -12,7 +12,9 @@ from himena_relion.consts import RelionJobState, FileNames
 from himena_relion._configs import get_relion_pipeliner_args
 from himena_relion._utils import (
     normalize_job_id,
+    make_alias_link,
     open_with_lock,
+    remove_alias_link,
     update_default_pipeline,
     write_star,
 )
@@ -146,6 +148,8 @@ def set_job_alias(ui: MainWindow, job_dir: JobDirectory):
         # look for current alias
         _matched = pipeline.processes.process_name == job_dir.job_normal_id()
         matched = pipeline.processes.alias.filter(_matched)
+        old_alias = matched[0] if len(matched) == 1 else "None"
+        existing_aliases = set(pipeline.processes.alias)
         if len(matched) == 1:
             current_alias = matched[0]
             if current_alias == "None":
@@ -174,7 +178,10 @@ def set_job_alias(ui: MainWindow, job_dir: JobDirectory):
         raise ValueError(f"Alias contains invalid characters. Avoid: {invalid_chars}")
     if set(alias) == {"."}:
         raise ValueError("Alias cannot be '.' or '..'")
-    if (job_dir.path.parent / alias).exists():
+    # NOTE: symlinks in WSL are not visible from Windows, so also check the pipeline.
+    if (job_dir.path.parent / alias).exists() or normalize_job_id(
+        job_dir.path.parent / alias
+    ) in existing_aliases:
         raise FileExistsError(f"Alias '{alias}' already exists.")
 
     # Update the default_pipeline.star with the new alias, and create a symlink.
@@ -193,15 +200,13 @@ def set_job_alias(ui: MainWindow, job_dir: JobDirectory):
                 stacklevel=1,
             )
 
+        rln_dir = job_dir.relion_project_dir
         new_path = job_dir.path.parent / alias
-        for other_job in job_dir.path.parent.iterdir():
-            if other_job.is_symlink() and other_job.resolve() == job_dir.path:
-                # This is the old alias for this job. Rename it to the new alias.
-                other_job.rename(new_path)
-                break
-        else:
-            # No existing alias, create a new one
-            new_path.symlink_to(job_dir.path, target_is_directory=True)
+        job_id = job_dir.path.relative_to(rln_dir)
+        # Replace the old alias link (if any) with the new one.
+        if old_alias != "None":
+            remove_alias_link(rln_dir, old_alias)
+        make_alias_link(rln_dir, new_path.relative_to(rln_dir).as_posix(), job_id)
         update_default_pipeline(
             f,
             job_dir.path.relative_to(job_dir.relion_project_dir),
@@ -322,9 +327,7 @@ def trash_job(ui: MainWindow, job_dir: JobDirectory):
             alias = str(alias)
             if alias == "None":
                 continue
-            alias_path = rln_dir / alias
-            if alias_path.is_symlink():  # False if alias_path does not exist
-                alias_path.unlink()
+            remove_alias_link(rln_dir, alias)
 
         # remove nodes from directories like .Nodes/DensityMap/Reconstruct/job060
         node_to_type_map = _make_node_to_type_map(nodes_trashed)
@@ -389,7 +392,11 @@ def restore_trashed_jobs(relion_project_dir: Path, job_ids: list[str]):
                         f"Alias path {alias_path} already exists. Skipping alias creation."
                     )
                 else:
-                    alias_path.symlink_to(path_dest, target_is_directory=True)
+                    make_alias_link(
+                        relion_project_dir,
+                        alias,
+                        path_dest.relative_to(relion_project_dir),
+                    )
 
         df_processes = _concat_and_reorder(all_processes, "rlnPipeLineProcessName")
         df_nodes = _concat_and_reorder(all_nodes, "rlnPipeLineNodeName")

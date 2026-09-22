@@ -17,6 +17,16 @@ def import_all():
     set_is_testing(True)
     QViewer._always_force_sync = True
 
+@fixture(autouse=True)
+def fixed_relion_version(monkeypatch):
+    """Test data are created by RELION 5.0. Do not depend on the installed RELION
+    (or the one in WSL)."""
+    from himena_relion import _version
+
+    monkeypatch.setattr(
+        _version, "relion_version", lambda: "RELION version: 5.0.0-commit-000000"
+    )
+
 @fixture(scope="function")
 def make_job_directory(tmpdir) -> "Iterator[Callable[[str], JobDirectory]]":
     from himena_relion._job_dir import JobDirectory

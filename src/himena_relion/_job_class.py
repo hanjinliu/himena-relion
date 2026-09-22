@@ -27,7 +27,7 @@ from himena.widgets import MainWindow
 from himena.plugins import when_reader_used, register_function
 import numpy as np
 from himena_relion import _configs, _job_dir
-from himena_relion._configs import get_relion_pipeliner_args
+from himena_relion._configs import get_relion_pipeliner_args, is_wsl_path
 from himena_relion._pipeline import is_all_inputs_ready, ReadyState
 from himena_relion.consts import FileNames, Type, MenuId, JOB_ID_MAP
 from himena_relion._utils import (
@@ -184,7 +184,7 @@ class RelionJob(ABC):
             _cwd = Path.cwd()
         # RELION in WSL cannot read files in the Windows temporary directory, so the
         # temporary job.star is created inside the project directory in that case.
-        tmp_root = _cwd if _is_via_wsl(_cwd) else None
+        tmp_root = _cwd if is_wsl_path(_cwd) else None
         with tempfile.TemporaryDirectory(dir=tmp_root, prefix=".himena_") as tmpdir:
             tmpdir = Path(tmpdir)
             job_star_path = tmpdir / "job.star"
@@ -781,17 +781,13 @@ def _node_mapping_to_context(
     return _func
 
 
-def _is_via_wsl(path: Path | str) -> bool:
-    return Path(path).drive.startswith(r"\\wsl")
-
-
 def _run_relion_pipeliner_add_job_from_star(
     job_star_path: Path,
     cwd: Path,
     *,
     alias: str | None = None,
 ) -> None:
-    if is_via_wsl := _is_via_wsl(cwd):
+    if is_via_wsl := is_wsl_path(cwd):
         # Windows paths cannot be used in WSL. Use the path relative to the project.
         job_star_arg = Path(os.path.relpath(job_star_path, cwd)).as_posix()
     else:

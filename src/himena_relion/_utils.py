@@ -3,6 +3,7 @@ from __future__ import annotations
 from contextlib import contextmanager, suppress
 import os
 import shutil
+import subprocess
 from pathlib import Path
 import logging
 import time
@@ -15,7 +16,7 @@ import polars as pl
 from himena.types import is_subtype
 from himena_relion.consts import Type
 from himena_relion.schemas import RelionPipelineModel
-from himena_relion._configs import get_relion_pipeliner_exe
+from himena_relion._configs import get_relion_pipeliner_exe, is_wsl_path, wsl_prefix
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
@@ -222,6 +223,41 @@ def normalize_job_id(d: str | Path) -> str:
         # the last character is "/"
         d = "/".join(d.split("/")[-3:])
     return d
+
+
+def make_alias_link(rln_dir: Path, alias: str, job_id: str) -> None:
+    """Create a symlink for the job alias, such as "Select/split -> ../Select/job035/".
+
+    `alias` and `job_id` are the paths relative to the RELION project directory. The
+    link target is relative, as RELION does. For WSL projects, the link is created in
+    WSL because Windows cannot create symlinks in the WSL file system.
+    """
+    link = normalize_job_id(alias).rstrip("/")
+    target = f"../{normalize_job_id(job_id)}"
+    if is_wsl_path(rln_dir):
+        proc = subprocess.run(
+            [*wsl_prefix(rln_dir), "ln", "-s", target, link],
+            capture_output=True,
+        )
+        if proc.returncode != 0:
+            msg = proc.stderr.decode("utf-8", "replace").strip()
+            raise OSError(f"Failed to create alias link {link!r}: {msg}")
+    else:
+        rln_dir.joinpath(link).symlink_to(target, target_is_directory=True)
+
+
+def remove_alias_link(rln_dir: Path, alias: str) -> None:
+    """Remove the symlink for the job alias if exists."""
+    link = normalize_job_id(alias).rstrip("/")
+    if is_wsl_path(rln_dir):
+        # Symlinks in WSL are not recognized as symlinks from Windows.
+        subprocess.run(
+            [*wsl_prefix(rln_dir), "rm", link],
+            check=True,
+            capture_output=True,
+        )
+    elif (alias_path := rln_dir / link).is_symlink():
+        alias_path.unlink()
 
 
 def update_default_pipeline(

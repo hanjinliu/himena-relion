@@ -99,13 +99,23 @@ def get_relion_pipeliner_args(
     args = [get_relion_pipeliner_exe()]
     if is_via_wsl:
         env = _resolve_wsl_env()
-        prefix = ["wsl"]
-        if cwd is not None:
-            prefix += ["--cd", str(cwd)]
         # NOTE: do not quote "k=v" here. Popen quotes arguments containing spaces
         # by itself, and extra quotes would be passed literally to `env`.
-        args = [*prefix, "-e", "env", *(f"{k}={v}" for k, v in env.items()), *args]
+        args = [*wsl_prefix(cwd), "env", *(f"{k}={v}" for k, v in env.items()), *args]
     return args
+
+
+def is_wsl_path(path: Path | str) -> bool:
+    """True if the path is in the WSL file system (such as \\\\wsl.localhost\\...)."""
+    return Path(path).drive.startswith(r"\\wsl")
+
+
+def wsl_prefix(cwd: Path | str | None = None) -> list[str]:
+    """Command prefix to run a Linux command in WSL (at `cwd` if given)."""
+    prefix = ["wsl"]
+    if cwd is not None:
+        prefix += ["--cd", str(cwd)]
+    return [*prefix, "-e"]
 
 
 def get_motioncor2_exe() -> str:
