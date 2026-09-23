@@ -38,3 +38,20 @@ Now, you can launch the RELION GUI.
 himena relion
 himena relion &  # launch the GUI in the background
 ```
+
+!!! note title="Running RELION in WSL from native Windows"
+
+    :sparkles: *New in v0.0.13*
+
+    If you have RELION and `himena-relion` installed in WSL, of course you can start
+    by running `himena relion` in WSL. On top of that, `himena-relion` also has an
+    experimental feature to launch the RELION GUI from the Windows side. This allows
+    you to interact with the RELION jobs as if it were running natively on Windows
+    (which usually provides better user experience), while the actual computation is
+    performed in WSL.
+
+    To do this, you need to set up `himena-relion` as shown above in both WSL and
+    Windows environments. On the Windows side, you can open a "default_pipeline.star"
+    file saved in WSL using the native file dialog, or directly writing the path
+    starting with "\\wsl". `himena-relion` GUI will automatically detect the WSL
+    environment.

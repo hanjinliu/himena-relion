@@ -14,7 +14,7 @@ from superqt import QToggleSwitch
 from superqt.utils import qthrottled, GeneratorWorker
 from himena import create_text_model
 from himena.consts import MonospaceFontFamily
-from himena.widgets import current_instance, set_status_tip
+from himena.widgets import current_instance, set_status_tip, set_clipboard
 from himena.qt import drag_files, QColoredSVGIcon, QColoredToolButton
 from himena.exceptions import Cancelled
 from himena_relion import _job_class, _job_dir, _configs
@@ -827,10 +827,10 @@ class QFileLabel(QtW.QWidget):
         _configs.open_in_chimerax(self._path)
 
     def _copy_path(self):
-        current_instance().set_clipboard(text=str(self._path))
+        set_clipboard(text=str(self._path))
 
     def _copy_path_rel(self):
-        current_instance().set_clipboard(text=str(self._path_rel))
+        set_clipboard(text=str(self._path_rel))
 
 
 class QFileSystemModel(QtW.QFileSystemModel):
@@ -894,10 +894,8 @@ class QDirectoryTreeView(QtW.QTreeView, JobWidgetBase):
         path = Path(self.model().filePath(index))
         menu.addAction("Open", lambda: self._read_file(path))
         menu.addSeparator()
-        menu.addAction("Copy", lambda: current_instance().set_clipboard(files=[path]))
-        menu.addAction(
-            "Copy Path", lambda: current_instance().set_clipboard(text=str(path))
-        )
+        menu.addAction("Copy", lambda: set_clipboard(files=[path]))
+        menu.addAction("Copy Path", lambda: set_clipboard(text=str(path)))
         if path.is_file():
             if path.suffix in (".map", ".mrc", ".mrcs", ".tiff", ".tif"):
                 menu.addSeparator()
