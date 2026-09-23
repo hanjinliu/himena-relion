@@ -124,13 +124,3 @@ To run the next job, you can:
     because many RELION built-in jobs have incompatible input parameters that could be
     confusing for beginners (e.g. "Write output in float16" is incompatible with "Use RELION's own implementation"). In `himena-relion`, parameter fields are
     re-categorized so that running jobs is more straightforward.
-
-## Tagging Jobs
-
-:sparkles: *New in v0.0.4*
-
-![](images/01_tags.png){ width=200px loading=lazy }
-
-From right-click > Tag, you can add tags to each job. Tagging is useful for categorizing jobs, especially when you have different branches of jobs focusing on different
-structures. You can also use tags to quickly find jobs in the search palette. For
-example, you can type "#ribosome" to filter the results to only show the jobs tagged with "ribosome".

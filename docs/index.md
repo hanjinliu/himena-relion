@@ -15,6 +15,8 @@ For the details of the jobs and algorithms, please refer to the
 
 -   :material-rocket-launch: [**Getting Started**](getting_started.md)
 
+-   :material-star-outline: [**Useful Features**](features.md)
+
 -   :material-power-plug-outline: [**External Jobs**](external_jobs/index.md)
 
 </div>
