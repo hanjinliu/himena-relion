@@ -10,7 +10,7 @@ from qtpy import QtGui, QtCore, QtWidgets as QtW
 from himena.qt import QColoredToolButton
 from himena.qt.magicgui import ToggleButtons
 from himena_relion._utils import normalize_job_id
-from himena_relion._pipeline import RelionDefaultPipeline, NodeStatus
+from himena_relion._pipeline import RelionDefaultPipeline, RelionJobInfo, NodeStatus
 from himena_relion.pipeline._gui_state import HimenaRelionGuiState
 from himena_relion._utils import path_icon_svg
 from ._utils import split_job_info, RelionJobNodeItem
@@ -68,16 +68,24 @@ class QRelionPipelineTableView(QtW.QWidget):
     def set_pipeline(self, pipeline: RelionDefaultPipeline) -> None:
         if not isinstance(pipeline, RelionDefaultPipeline):
             raise TypeError("Model value must be a RelionDefaultPipeline.")
-        if self._table_view._model is None:
+        model_old = self._table_view._model
+        if model_old is None:
             proxy_old = IdentityProxy(pipeline)
         else:
             # need reconstruction of the proxy because the length changed.
-            proxy_old = type(self._table_view._model._proxy)(pipeline)
+            proxy_old = type(model_old._proxy)(pipeline)
         self._table_view._model = QRelionPipelineTableViewModel(
             self,
             pipeline,
             HimenaRelionGuiState.from_project_directory(pipeline.project_dir),
         )
+        if (
+            model_old is not None
+            and model_old._pipeline.project_dir == pipeline.project_dir
+        ):
+            # job titles never change, so the cache can be reused
+            cache = model_old._split_job_info_cache
+            self._table_view._model._split_job_info_cache = cache
         self._table_view._model.set_proxy(proxy_old, ascending=self._sort_is_ascending)
         self._table_view.setModel(self._table_view._model)
         self._table_view.setColumnWidth(0, 60)
@@ -207,6 +215,16 @@ class QRelionPipelineTableViewModel(QtCore.QAbstractTableModel):
         self._gui_state = gui_state
         self._proxy: TableProxy = IdentityProxy(pipeline)
         self._is_ascending = True
+        # split_job_info reads job.star for external jobs, which is very slow if the
+        # project is in WSL. Cache the results because data() is called repeatedly
+        # on scroll.
+        self._split_job_info_cache: dict[Path, tuple[str, str]] = {}
+
+    def _split_job_info(self, job_info: RelionJobInfo) -> tuple[str, str]:
+        if (out := self._split_job_info_cache.get(job_info.path)) is None:
+            out = split_job_info(job_info)
+            self._split_job_info_cache[job_info.path] = out
+        return out
 
     def relion_job_node_item(self, index: int) -> RelionJobNodeItem | None:
         if not self._is_ascending:
@@ -246,9 +264,9 @@ class QRelionPipelineTableViewModel(QtCore.QAbstractTableModel):
         column = index.column()
         if role == QtCore.Qt.ItemDataRole.DisplayRole:
             if column == 0:  # job012
-                return split_job_info(job_info)[0]
+                return self._split_job_info(job_info)[0]
             elif column == 1:
-                title = split_job_info(job_info)[1]
+                title = self._split_job_info(job_info)[1]
                 if job_info.alias:
                     return f"{job_info.alias} ({title})"
                 return title
@@ -257,7 +275,7 @@ class QRelionPipelineTableViewModel(QtCore.QAbstractTableModel):
                 stat = job_info.path.resolve().stat()
             except Exception:
                 return "<Job directory does not exist>"
-            job, title = split_job_info(job_info)
+            job, title = self._split_job_info(job_info)
             if job_info.alias:
                 first_line = f"{job}: {job_info.alias} ({title})"
             else:
