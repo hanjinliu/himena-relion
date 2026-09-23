@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import datetime
 import logging
 from contextlib import suppress
 from pathlib import Path
@@ -27,7 +26,9 @@ from himena_relion._utils import (
     read_or_show_job,
 )
 from himena_relion._pipeline import RelionPipeline
+from himena_relion._wsl import is_wsl_path
 from himena_relion._widgets._job_edit import QJobParameter
+from himena_relion._widgets._scandir_model import QScandirModel, path_tooltip
 from himena_relion._widgets._misc import spacer_widget
 from himena_relion.schemas._pipeline import RelionPipelineModel
 from himena_relion.io import _impl
@@ -340,6 +341,8 @@ class QJobPipelineViewer(QtW.QWidget, JobWidgetBase):
         a0.ignore()
 
     def on_job_updated(self, job_dir, fp):
+        if tree := self._tree_view:
+            tree.on_job_updated(job_dir, fp)
         if fp.name == "job_pipeline.star":
             self.initialize(job_dir)
         elif fp.suffix in [".mrc", ".star"]:
@@ -847,18 +850,7 @@ class QFileSystemModel(QtW.QFileSystemModel):
     def _tooltip_for_index(self, index: QtCore.QModelIndex) -> str:
         if not index.isValid():
             return ""
-        path = Path(self.filePath(index))
-        if path.exists():
-            stat = path.stat()
-            size_human_readable = QtCore.QLocale().formattedDataSize(stat.st_size, 2)
-            time_last_modified = datetime.fromtimestamp(stat.st_mtime)
-            return (
-                f"{path.as_posix()}\n"
-                f"Size: {size_human_readable}\n"
-                f"Last modified: {time_last_modified:%Y-%m-%d %H:%M:%S}"
-            )
-        else:
-            return "<Deleted>"
+        return path_tooltip(Path(self.filePath(index)))
 
 
 class QDirectoryTreeView(QtW.QTreeView, JobWidgetBase):
@@ -880,11 +872,20 @@ class QDirectoryTreeView(QtW.QTreeView, JobWidgetBase):
 
     def initialize(self, job_dir: _job_dir.JobDirectory):
         """Set the root directory to the given job directory."""
-        model = QFileSystemModel(self)
-        model.setRootPath(str(job_dir.path))
         self._job_dir = job_dir
-        self.setModel(model)
-        self.setRootIndex(model.index(str(job_dir.path)))
+        if is_wsl_path(job_dir.path):
+            # QFileSystemModel cannot show UNC paths of WSL (falls back to drives)
+            self.setModel(QScandirModel(job_dir.path, self))
+        else:
+            model = QFileSystemModel(self)
+            model.setRootPath(str(job_dir.path))
+            self.setModel(model)
+            self.setRootIndex(model.index(str(job_dir.path)))
+
+    def on_job_updated(self, job_dir: _job_dir.JobDirectory, fp: Path):
+        # QFileSystemModel watches the directory by itself, but QScandirModel doesn't.
+        if isinstance(model := self.model(), QScandirModel):
+            model.refresh(fp.parent)
 
     def tab_title(self) -> str:
         return "Content"
@@ -964,7 +965,7 @@ class QDirectoryTreeView(QtW.QTreeView, JobWidgetBase):
 
     if TYPE_CHECKING:
 
-        def model(self) -> QFileSystemModel | None: ...
+        def model(self) -> QFileSystemModel | QScandirModel | None: ...
 
     @staticmethod
     def _read_file(path: Path):
