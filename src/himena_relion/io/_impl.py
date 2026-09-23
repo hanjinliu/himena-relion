@@ -10,6 +10,7 @@ from himena import MainWindow
 from himena.exceptions import Cancelled
 from himena_relion.consts import RelionJobState, FileNames
 from himena_relion._configs import get_relion_pipeliner_args
+from himena_relion._wsl import is_wsl_path
 from himena_relion._utils import (
     normalize_job_id,
     make_alias_link,
@@ -62,7 +63,7 @@ def gentle_clean_relion_job(ui: MainWindow, job_dir: JobDirectory):
     job_num = int(job_dir.job_number)
     # Work like this:
     # $ relion_pipeliner --gentle_clean 5
-    is_via_wsl = job_dir.relion_project_dir.drive.startswith(r"\\wsl")
+    is_via_wsl = is_wsl_path(job_dir.relion_project_dir)
     subprocess.run(
         get_relion_pipeliner_args(is_via_wsl) + ["--gentle_clean", str(job_num)],
         check=True,
@@ -77,7 +78,7 @@ def harsh_clean_relion_job(ui: MainWindow, job_dir: JobDirectory):
     job_num = int(job_dir.job_number)
     # Work like this:
     # $ relion_pipeliner --harsh_clean 5
-    is_via_wsl = job_dir.relion_project_dir.drive.startswith(r"\\wsl")
+    is_via_wsl = is_wsl_path(job_dir.relion_project_dir)
     subprocess.run(
         get_relion_pipeliner_args(is_via_wsl) + ["--harsh_clean", str(job_num)],
         check=True,

@@ -18,6 +18,7 @@ from himena_relion._utils import (
     open_with_lock,
 )
 from himena_relion._configs import get_relion_pipeliner_args
+from himena_relion._wsl import is_wsl_path
 from himena_relion import _job_dir
 
 from himena_relion._pipeline import (
@@ -255,7 +256,7 @@ def execute_job(
             raise e
         _print_log(f"Error executing RELION job {job_name}: {e}")
         return None
-    is_via_wsl = job_dir.path.drive.startswith(r"\\wsl")
+    is_via_wsl = is_wsl_path(job_dir.path)
     args = get_relion_pipeliner_args(is_via_wsl, cwd=cwd) + ["--RunJobs", job_name]
     # NOTE: Because himena also uses Qt, RELION jobs that depend on napari (such as
     # ExcludeTiltSeries) may fail to start, saying no Qt bindings are available. This

@@ -16,7 +16,8 @@ import polars as pl
 from himena.types import is_subtype
 from himena_relion.consts import Type
 from himena_relion.schemas import RelionPipelineModel
-from himena_relion._configs import get_relion_pipeliner_exe, is_wsl_path, wsl_prefix
+from himena_relion._configs import get_relion_pipeliner_exe
+from himena_relion._wsl import is_wsl_path, wsl_prefix
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray

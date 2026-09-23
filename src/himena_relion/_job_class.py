@@ -27,7 +27,8 @@ from himena.widgets import MainWindow
 from himena.plugins import when_reader_used, register_function
 import numpy as np
 from himena_relion import _configs, _job_dir
-from himena_relion._configs import get_relion_pipeliner_args, is_wsl_path
+from himena_relion._configs import get_relion_pipeliner_args
+from himena_relion._wsl import is_wsl_path
 from himena_relion._pipeline import is_all_inputs_ready, ReadyState
 from himena_relion.consts import FileNames, Type, MenuId, JOB_ID_MAP
 from himena_relion._utils import (
