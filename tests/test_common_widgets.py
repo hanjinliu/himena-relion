@@ -164,3 +164,21 @@ def test_path_input(himena_ui: MainWindow, qtbot: QtBot, monkeypatch: pytest.Mon
     qwidget._open_path()
     widget.set_value("*.py")
     qwidget._glob_paths()
+
+def test_path_input_wsl(qtbot: QtBot, monkeypatch: pytest.MonkeyPatch):
+    from pathlib import PureWindowsPath
+    from himena_relion._widgets._path_input import QPathDropWidget
+
+    qwidget = QPathDropWidget()
+    qtbot.addWidget(qwidget)
+    rln_dir = PureWindowsPath(r"\\wsl.localhost\Ubuntu\home\user\project")
+    monkeypatch.setattr(qwidget, "get_relion_directory", lambda: rln_dir)
+
+    # paths are converted to the ones seen from WSL
+    for path, expected in [
+        (rln_dir / "Import" / "job001" / "a.star", "Import/job001/a.star"),
+        (r"\\wsl$\Ubuntu\home\user\project\Import\job001\a.star", "Import/job001/a.star"),
+        (r"\\wsl.localhost\Ubuntu\data\movies\a.tif", "/data/movies/a.tif"),
+        (r"C:\data\movies\a.tif", "/mnt/c/data/movies/a.tif"),
+    ]:
+        assert qwidget._path_to_value(PureWindowsPath(path)) == expected

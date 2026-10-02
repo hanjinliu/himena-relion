@@ -2,9 +2,16 @@
 
 import subprocess
 from functools import lru_cache
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 
-__all__ = ["wsl_prefix", "wsl_command", "resolve_wsl_env", "is_wsl_path"]
+__all__ = [
+    "wsl_prefix",
+    "wsl_command",
+    "wsl_which",
+    "resolve_wsl_env",
+    "is_wsl_path",
+    "to_wsl_path",
+]
 
 # Variables that describe the shell session rather than the configured environment.
 _WSL_ENV_EXCLUDE = frozenset(
@@ -62,9 +69,42 @@ def resolve_wsl_env() -> dict[str, str]:
     }
 
 
+def wsl_which(cmd: str) -> str | None:
+    """Find an executable in WSL like `shutil.which`, using the login shell PATH.
+
+    `cmd` is a command name or a path in WSL. "~/" is the home directory in WSL.
+    """
+    if cmd.startswith("~/"):
+        args = ["sh", "-c", 'which "$HOME/$1"', "sh", cmd[2:]]
+    else:
+        args = ["which", cmd]
+    out = subprocess.run(wsl_command(args), capture_output=True, timeout=30)
+    if out.returncode != 0:
+        return None
+    return out.stdout.decode("utf-8", "replace").strip() or None
+
+
 def is_wsl_path(path: Path | str) -> bool:
     """True if the path is in the WSL file system (such as \\\\wsl.localhost\\...)."""
-    return Path(path).drive.startswith(r"\\wsl")
+    return PureWindowsPath(path).drive.startswith(r"\\wsl")
+
+
+def to_wsl_path(path: Path | str) -> str:
+    r"""Convert a Windows path to the path seen from WSL.
+
+    >>> to_wsl_path(r"\\wsl.localhost\Ubuntu\home\user")
+    '/home/user'
+    >>> to_wsl_path(r"C:\Users\user")
+    '/mnt/c/Users/user'
+
+    Other paths (relative paths, network drives etc.) are returned in POSIX style.
+    """
+    path = PureWindowsPath(path)
+    if is_wsl_path(path):
+        return str(PurePosixPath("/", *path.parts[1:]))
+    if len(path.drive) == 2 and path.drive.endswith(":"):
+        return str(PurePosixPath("/mnt", path.drive[0].lower(), *path.parts[1:]))
+    return path.as_posix()
 
 
 def _run_wsl_capture(args: list[str]) -> str:
