@@ -4,7 +4,7 @@ import shutil
 from dataclasses import dataclass
 import subprocess
 from himena.plugins import register_config, config_field, get_config
-from himena_relion._wsl import wsl_command
+from himena_relion._wsl import wsl_command, wsl_which, is_wsl_path, to_wsl_path
 
 
 @dataclass
@@ -168,13 +168,13 @@ def open_in_chimerax(path: str | Path) -> None:
     """Open the given file in ChimeraX or Chimera.
 
     This function requires `himena` application."""
-    exe = get_chimera_exe()
-    if shutil.which(exe) is None:
+    exe = _get_himena_relion_config().chimera
+    if (exe_path := _which(exe, is_wsl_path(path))) is None:
         raise RuntimeError(
             f"ChimeraX/Chimera executable '{exe}' not found. Please check your RELION "
             "configuration in the setting dialog (Ctrl+,)."
         )
-    return open_in_external_app(path, exe)
+    return open_in_external_app(path, exe_path)
 
 
 def open_in_3dmod(path: str | Path) -> None:
@@ -182,23 +182,47 @@ def open_in_3dmod(path: str | Path) -> None:
 
 
 def open_in_imod_command(path: str | Path, exe: str) -> None:
-    if shutil.which(exe) is None:
-        exe = str(Path(get_batchruntomo_exe()).parent.joinpath(exe))
-        if shutil.which(exe) is None:
-            raise RuntimeError(f"{exe} executable not found.")
-    return open_in_external_app(path, exe)
+    # NOTE: IMOD command starts its own process, so we set new_process=False. Run in
+    # the directory of the file, as etomo writes log files in the current directory.
+    return open_in_external_app(path, exe, new_process=False, cwd=Path(path).parent)
 
 
-def open_in_external_app(path: str | Path, command: str, *more_args) -> None:
+def open_in_external_app(
+    path: str | Path,
+    command: str,
+    *more_args,
+    new_process: bool = True,
+    cwd: str | Path | None = None,
+) -> None:
+    """Open the file in an external app.
+
+    If the file is in WSL, `command` is the one installed in WSL."""
     env = os.environ.copy()
     env.pop("QT_API", None)
-    subprocess.Popen(
-        [command, str(path), *more_args],
-        start_new_session=True,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        env=env,
-    )
+    if is_wsl_path(path):
+        # NOTE: processes left in the session are killed by SIGHUP when wsl.exe exits.
+        # Run in a new session so that apps going to background (such as etomo, which
+        # starts java and exits) survive. "-w" is needed to keep wsl.exe alive until
+        # the command exits; otherwise its output to the closed terminal kills it.
+        if cwd:
+            cwd = to_wsl_path(cwd)
+        args = wsl_command(
+            ["setsid", "-w", command, to_wsl_path(path), *more_args], cwd
+        )
+        cwd = None  # already given to `wsl --cd`
+    else:
+        args = [command, str(path), *more_args]
+    if new_process:
+        subprocess.Popen(
+            args,
+            start_new_session=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            env=env,
+            cwd=cwd,
+        )
+    else:
+        subprocess.run(args, env=env, cwd=cwd)
 
 
 def _get_himena_relion_config() -> RelionConfig:
@@ -212,6 +236,13 @@ def _may_expand_user(path: str) -> str:
     if path.startswith("~/"):
         return str(Path(path).expanduser())
     return path
+
+
+def _which(exe: str, is_via_wsl: bool) -> str | None:
+    """Find the executable in WSL or in the local system."""
+    if is_via_wsl:
+        return wsl_which(exe)
+    return shutil.which(_may_expand_user(exe))
 
 
 def _pipeliner_path() -> Path | None:

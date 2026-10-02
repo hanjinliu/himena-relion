@@ -1,5 +1,5 @@
 from __future__ import annotations
-from pathlib import Path
+from pathlib import Path, PurePath, PurePosixPath
 from typing import cast
 import glob
 from himena import StandardType
@@ -11,6 +11,7 @@ from himena.qt import QColoredSVGIcon
 from himena.widgets import current_instance
 from himena_relion._utils import read_icon_svg_for_type
 from himena_relion._widgets import QRelionNodeItem, QJobScheduler
+from himena_relion._wsl import is_wsl_path, to_wsl_path
 
 
 class QPathDropWidget(QtW.QWidget):
@@ -91,12 +92,7 @@ class QPathDropWidget(QtW.QWidget):
             urls = a0.mimeData().urls()
             if urls:
                 path_abs = Path(urls[0].toLocalFile())
-                rln_dir = self.get_relion_directory()
-                if path_abs.is_relative_to(rln_dir):
-                    path_rel = path_abs.relative_to(rln_dir)
-                else:
-                    path_rel = path_abs
-                self._path_line_edit.setText(path_rel.as_posix())
+                self._path_line_edit.setText(self._path_to_value(path_abs))
                 self.valueChanged.emit(self._path_line_edit.text())
                 a0.accept()
 
@@ -138,12 +134,18 @@ class QPathDropWidget(QtW.QWidget):
                 path_real = Path(*parts[:node_index], *parts[node_index + 2 :])
                 if path_real.exists():
                     path_abs = path_real
-            rln_dir = self.get_relion_directory()
-            if path_abs.is_relative_to(rln_dir):
-                path_rel = path_abs.relative_to(rln_dir)
-            else:
-                path_rel = path_abs
-            self.setValue(path_rel.as_posix())
+            self.setValue(self._path_to_value(path_abs))
+
+    def _path_to_value(self, path_abs: PurePath) -> str:
+        """Convert an absolute path to the value, relative to the project if possible."""
+        rln_dir = self.get_relion_directory()
+        if is_wsl_path(rln_dir):
+            # RELION runs in WSL, so the path must be the one seen from WSL.
+            path_abs = PurePosixPath(to_wsl_path(path_abs))
+            rln_dir = PurePosixPath(to_wsl_path(rln_dir))
+        if path_abs.is_relative_to(rln_dir):
+            return path_abs.relative_to(rln_dir).as_posix()
+        return path_abs.as_posix()
 
     def _on_browse_right_click(self, pos):
         menu = self._make_menu()
