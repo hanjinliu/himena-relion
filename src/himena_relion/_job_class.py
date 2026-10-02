@@ -43,6 +43,7 @@ from himena_relion._utils import (
 from himena_relion.schemas import JobStarModel
 from himena_relion.pipeline_watcher import (
     run_watcher_new_process,
+    execute_job,
     RelionJobExecution,
 )
 
@@ -557,6 +558,33 @@ class _Relion5BuiltinContinue(_Relion5BuiltinJob):
     def input_edges(self, **kwargs) -> list[str]:
         """Continue job should have the same input edges as the original job."""
         return self.original_class(self.output_job_dir).input_edges(**kwargs)
+
+
+def continue_job_now(job_dir: _job_dir.JobDirectory) -> RelionJobExecution:
+    """Continue the existing job immediately with the same parameters.
+
+    Unlike other job execution, this function does not wait for the parent jobs to
+    finish. This is useful for jobs that needs manual intervention before continuing,
+    such as AlignTiltSeries jobs manually corrected in IMOD.
+    """
+    job_star_path = job_dir.job_star()
+    job_star = JobStarModel.validate_file(job_star_path)
+    job_star.job.job_is_continue = 1
+    job_star.to_star_dict().write(job_star_path, newline="\n")
+    for fname in [
+        FileNames.EXIT_FAILURE,
+        FileNames.EXIT_ABORTED,
+        FileNames.EXIT_SUCCESS,
+        FileNames.ABORT_NOW,
+    ]:
+        if (path := job_dir.path / fname).exists():
+            path.unlink()
+
+    rln_dir = job_dir.relion_project_dir
+    to_run = normalize_job_id(job_dir.path.relative_to(rln_dir))
+    with open_with_lock(rln_dir / "default_pipeline.star") as f:
+        update_default_pipeline(f, to_run, state="Scheduled")
+    return execute_job(to_run, cwd=rln_dir)
 
 
 def _keep_fn_cont(fn, kwargs):

@@ -25,3 +25,21 @@ def test_aligntilt_aretomo2(
     assert tester.widget._viewer.has_image
     assert tester.widget._ts_list.rowCount() == 1
     assert tester.widget._align_log.toPlainText() == "LOG"
+    assert not tester.widget._continue_btn.isVisibleTo(tester.widget)
+    tester.write_exit_with_success()
+    assert not tester.widget._continue_btn.isVisibleTo(tester.widget)
+
+
+def test_aligntilt_imod_continue_button(
+    qtbot,
+    make_job_directory: Callable[[str, str], JobDirectory],
+    jobs_dir_tomo,
+):
+    star_text = Path(jobs_dir_tomo / "AlignTiltSeries" / "job001" / "job.star").read_text()
+    job_dir = make_job_directory(star_text, "AlignTiltSeries")
+
+    tester = JobWidgetTester(QAlignTiltSeriesViewer(job_dir), job_dir)
+    qtbot.addWidget(tester.widget)
+    assert not tester.widget._continue_btn.isVisibleTo(tester.widget)
+    tester.write_exit_with_success()
+    assert tester.widget._continue_btn.isVisibleTo(tester.widget)
