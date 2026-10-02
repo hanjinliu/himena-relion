@@ -19,6 +19,8 @@ from himena_relion._widgets import (
     QMicrographListWidget,
 )
 from himena_relion import _job_dir, _utils, _configs
+from himena_relion._job_class import continue_job_now
+from himena_relion.consts import RelionJobState
 from himena_relion.relion5_tomo._tomo_utils import project_fiducials
 from himena_relion.schemas._movie_tilts import TSModel, TSGroupModel
 
@@ -54,13 +56,24 @@ class QAlignTiltSeriesViewer(QJobScrollArea):
         hlayout = QtW.QHBoxLayout()
         hlayout.setContentsMargins(0, 0, 0, 0)
         hlayout.addWidget(QtW.QLabel("<b>&#9679; Aligned tilt series</b>"))
+        hlayout.addStretch()
+        self._continue_btn = QtW.QPushButton("Apply Edits")
+        self._continue_btn.setToolTip(
+            "Continue this job to update the output files after manually fixing the\n"
+            "alignment in IMOD (Etomo)."
+        )
+        self._continue_btn.setFixedWidth(104)
+        self._continue_btn.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
+        self._continue_btn.clicked.connect(self._continue_job)
+        self._continue_btn.setVisible(False)
         if self._is_imod_fid or self._is_imod_patchtrack:
             etomo_btn = QtW.QPushButton("Open in Etomo")
             etomo_btn.setToolTip("Open the etomo project for this tilt series")
             etomo_btn.setFixedWidth(104)
             etomo_btn.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
             etomo_btn.clicked.connect(self._open_in_etomo)
-            hlayout.addWidget(etomo_btn, alignment=QtCore.Qt.AlignmentFlag.AlignRight)
+            hlayout.addWidget(etomo_btn)
+            hlayout.addWidget(self._continue_btn)
         self._layout.addLayout(hlayout)
         self._layout.addWidget(self._viewer)
         self._layout.addWidget(self._resizer)
@@ -101,6 +114,10 @@ class QAlignTiltSeriesViewer(QJobScrollArea):
                 choices.append((external_subdir.name,))
         choices.sort(key=lambda x: x[0])
         self._ts_list.set_choices(choices)
+        self._continue_btn.setVisible(
+            (self._is_imod_fid or self._is_imod_patchtrack)
+            and job_dir.state() is not RelionJobState.RUNNING
+        )
         if len(choices) == 0:
             self._viewer.clear()
 
@@ -204,6 +221,20 @@ class QAlignTiltSeriesViewer(QJobScrollArea):
     def _open_in_etomo(self):
         edf = edf_file(self._job_dir, self._ts_list.current_text())
         _configs.open_in_imod_command(edf, "etomo")
+
+    def _continue_job(self):
+        answer = QtW.QMessageBox.question(
+            self,
+            "Continue job",
+            f"Continue {self._job_dir.job_normal_id()} to update the output files "
+            "using the current IMOD alignments?",
+        )
+        if answer != QtW.QMessageBox.StandardButton.Yes:
+            return
+        continue_job_now(self._job_dir)
+        self._continue_btn.setVisible(False)
+        if current_text := self._ts_list.current_text():
+            self._ts_choice_changed((current_text,))
 
 
 class ImodImageAligner:
