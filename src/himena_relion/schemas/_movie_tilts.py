@@ -8,13 +8,17 @@ import starfile_rs.schema.polars as schema
 class OpticsModel(schema.LoopDataModel):
     optics_group_name: schema.Series[str] = schema.Field("rlnOpticsGroupName")
     optics_group: schema.Series[int] = schema.Field("rlnOpticsGroup")
-    mtf_file_name: schema.Series[str] = schema.Field("rlnMtfFileName", default=None)
-    mic_orig_pixel_size: schema.Series[float] = schema.Field(
+    mtf_file_name: schema.Series[str] | None = schema.Field(
+        "rlnMtfFileName", default=None
+    )
+    mic_orig_pixel_size: schema.Series[float] | None = schema.Field(
         "rlnMicrographOriginalPixelSize", default=None
     )
-    voltage: schema.Series[float] = schema.Field("rlnVoltage", default=None)
-    cs: schema.Series[float] = schema.Field("rlnSphericalAberration", default=None)
-    amplitude_contrast: schema.Series[float] = schema.Field(
+    voltage: schema.Series[float] | None = schema.Field("rlnVoltage", default=None)
+    cs: schema.Series[float] | None = schema.Field(
+        "rlnSphericalAberration", default=None
+    )
+    amplitude_contrast: schema.Series[float] | None = schema.Field(
         "rlnAmplitudeContrast", default=None
     )
 
@@ -40,7 +44,7 @@ class SingleOpticsModel(schema.SingleDataModel):
     optics_group_name: str = schema.Field("rlnOpticsGroupName")
     optics_group: int = schema.Field("rlnOpticsGroup")
     mtf_file_name: str = schema.Field("rlnMtfFileName", default="")
-    mic_orig_pixel_size: float = schema.Field(
+    mic_orig_pixel_size: float | None = schema.Field(
         "rlnMicrographOriginalPixelSize", default=None
     )
     voltage: float = schema.Field("rlnVoltage", default=300.0)
@@ -58,7 +62,7 @@ class MicrographsModel(schema.LoopDataModel):
     mic_name: schema.Series[str] = schema.Field("rlnMicrographName")
     """Path to the micrograph file."""
     optics_group: schema.Series[int] = schema.Field("rlnOpticsGroup")
-    ctf_image: schema.Series[str] = schema.Field("rlnCtfImage", default=None)
+    ctf_image: schema.Series[str] | None = schema.Field("rlnCtfImage", default=None)
 
 
 class MoviesStarModel(schema.StarModel):
@@ -96,25 +100,28 @@ class TSModel(schema.LoopDataModel):
     )
     pre_exposure: schema.Series[float] = schema.Field("rlnMicrographPreExposure")
     nominal_defocus: schema.Series[float] = schema.Field("rlnTomoNominalDefocus")
-    micrograph_name: schema.Series[str] = schema.Field(
+    micrograph_name: schema.Series[str] | None = schema.Field(
         "rlnMicrographName", default=None
     )
-    micrograph_name_even: schema.Series[str] = schema.Field(
+    micrograph_name_even: schema.Series[str] | None = schema.Field(
         "rlnMicrographNameEven", default=None
     )
-    micrograph_name_odd: schema.Series[str] = schema.Field(
+    micrograph_name_odd: schema.Series[str] | None = schema.Field(
         "rlnMicrographNameOdd", default=None
     )
-    ctf_image: schema.Series[str] = schema.Field("rlnCtfImage", default=None)
+    ctf_image: schema.Series[str] | None = schema.Field("rlnCtfImage", default=None)
 
-    tomo_xtilt: schema.Series[float] = schema.Field("rlnTomoXTilt", default=None)
-    tomo_ytilt: schema.Series[float] = schema.Field("rlnTomoYTilt", default=None)
-    tomo_zrot: schema.Series[float] = schema.Field("rlnTomoZRot", default=None)
-    tomo_xshift_angst: schema.Series[float] = schema.Field(
+    tomo_xtilt: schema.Series[float] | None = schema.Field("rlnTomoXTilt", default=None)
+    tomo_ytilt: schema.Series[float] | None = schema.Field("rlnTomoYTilt", default=None)
+    tomo_zrot: schema.Series[float] | None = schema.Field("rlnTomoZRot", default=None)
+    tomo_xshift_angst: schema.Series[float] | None = schema.Field(
         "rlnTomoXShiftAngst", default=None
     )
-    tomo_yshift_angst: schema.Series[float] = schema.Field(
+    tomo_yshift_angst: schema.Series[float] | None = schema.Field(
         "rlnTomoYShiftAngst", default=None
+    )
+    tomo_zshift_angst: schema.Series[float] | None = schema.Field(
+        "rlnTomoZShiftAngst", default=None
     )
 
     def ts_paths_sorted(self, rln_dir: Path | None = None) -> list[str]:
@@ -212,14 +219,14 @@ class TSGroupModel(schema.LoopDataModel):
         "rlnMicrographOriginalPixelSize"
     )
     tomo_hand: schema.Series[float] = schema.Field("rlnTomoHand")
-    optics_group_name: schema.Series[str] = schema.Field(
+    optics_group_name: schema.Series[str] | None = schema.Field(
         "rlnOpticsGroupName", default=None
     )
-    tomo_tilt_series_pixel_size: schema.Series[float] = schema.Field(
+    tomo_tilt_series_pixel_size: schema.Series[float] | None = schema.Field(
         "rlnTomoTiltSeriesPixelSize",
         default=None,
     )
-    etomo_directive_file: schema.Series[str] = schema.Field(
+    etomo_directive_file: schema.Series[str] | None = schema.Field(
         "rlnEtomoDirectiveFile", default=None
     )
 
@@ -279,7 +286,7 @@ class TomogramsGroupModel(schema.LoopDataModel):
         "rlnMicrographOriginalPixelSize"
     )
     tomo_hand: schema.Series[float] = schema.Field("rlnTomoHand")
-    optics_group_name: schema.Series[str] = schema.Field(
+    optics_group_name: schema.Series[str] | None = schema.Field(
         "rlnOpticsGroupName", default=None
     )
     tomo_tilt_series_pixel_size: schema.Series[float] = schema.Field(

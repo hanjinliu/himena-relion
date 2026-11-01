@@ -7,7 +7,9 @@ from himena_relion.schemas._movie_tilts import TomogramsGroupModel
 class OptimisationSetModel(schema.SingleDataModel):
     tomogram_star: Path = schema.Field("rlnTomoTomogramsFile")
     particles_star: Path = schema.Field("rlnTomoParticlesFile")
-    trajectories_star: Path = schema.Field("rlnTomoTrajectoriesFile", default=None)
+    trajectories_star: Path | None = schema.Field(
+        "rlnTomoTrajectoriesFile", default=None
+    )
 
     def read_tomogram_model(self) -> TomogramsGroupModel:
         return TomogramsGroupModel.validate_file(self.tomogram_star)
@@ -38,25 +40,27 @@ class JobStarModel(schema.StarModel):
 
 class ParticlesModel(schema.LoopDataModel):
     tomo_name: schema.Series[str] = schema.Field("rlnTomoName", default=None)
-    centered_x: schema.Series[float] = schema.Field(
+    centered_x: schema.Series[float] | None = schema.Field(
         "rlnCenteredCoordinateXAngst", default=None
     )
-    centered_y: schema.Series[float] = schema.Field(
+    centered_y: schema.Series[float] | None = schema.Field(
         "rlnCenteredCoordinateYAngst", default=None
     )
-    centered_z: schema.Series[float] = schema.Field(
+    centered_z: schema.Series[float] | None = schema.Field(
         "rlnCenteredCoordinateZAngst", default=None
     )
-    orig_x: schema.Series[float] = schema.Field("rlnOriginXAngst", default=None)
-    orig_y: schema.Series[float] = schema.Field("rlnOriginYAngst", default=None)
-    orig_z: schema.Series[float] = schema.Field("rlnOriginZAngst", default=None)
-    class_number: schema.Series[int] = schema.Field("rlnClassNumber", default=None)
-    angle_rot: schema.Series[float] = schema.Field("rlnAngleRot", default=None)
-    angle_tilt: schema.Series[float] = schema.Field("rlnAngleTilt", default=None)
-    angle_psi: schema.Series[float] = schema.Field("rlnAnglePsi", default=None)
+    orig_x: schema.Series[float] | None = schema.Field("rlnOriginXAngst", default=None)
+    orig_y: schema.Series[float] | None = schema.Field("rlnOriginYAngst", default=None)
+    orig_z: schema.Series[float] | None = schema.Field("rlnOriginZAngst", default=None)
+    class_number: schema.Series[int] | None = schema.Field(
+        "rlnClassNumber", default=None
+    )
+    angle_rot: schema.Series[float] | None = schema.Field("rlnAngleRot", default=None)
+    angle_tilt: schema.Series[float] | None = schema.Field("rlnAngleTilt", default=None)
+    angle_psi: schema.Series[float] | None = schema.Field("rlnAnglePsi", default=None)
 
     @classmethod
-    def example(cls, size: int) -> "ParticleMetaModel":
+    def example(cls, size: int) -> "ParticlesModel":
         s0 = size // 2
         s1 = size - s0
         return cls(
@@ -90,10 +94,10 @@ class ModelClasses(schema.LoopDataModel):
     """Reference image in 000000XXX@Class2D/jobXXX/*.mrcs format."""
     class_distribution: schema.Series[float] = schema.Field("rlnClassDistribution")
     resolution: schema.Series[float] = schema.Field("rlnEstimatedResolution")
-    accuracy_rotation: schema.Series[float] = schema.Field(
+    accuracy_rotation: schema.Series[float] | None = schema.Field(
         "rlnAccuracyRotations", default=None
     )
-    accyracy_translation: schema.Series[float] = schema.Field(
+    accyracy_translation: schema.Series[float] | None = schema.Field(
         "rlnAccuracyTranslationsAngst", default=None
     )
 
@@ -105,7 +109,7 @@ class ModelGroups(schema.LoopDataModel):
     """Name of this group."""
     num_particles: schema.Series[int] = schema.Field("rlnGroupNrParticles")
     """The number of particles assigned to this group."""
-    scale_correction: schema.Series[float] = schema.Field(
+    scale_correction: schema.Series[float] | None = schema.Field(
         "rlnGroupScaleCorrection", default=None
     )
 
@@ -154,13 +158,19 @@ class CoordsModel(schema.LoopDataModel):
 
     x: schema.Series[float] = schema.Field("rlnCoordinateX")
     y: schema.Series[float] = schema.Field("rlnCoordinateY")
-    fom: schema.Series[float] = schema.Field("rlnAutopickFigureOfMerit", default=None)
-    orig_x: schema.Series[float] = schema.Field("rlnOriginXAngst", default=None)
-    orig_y: schema.Series[float] = schema.Field("rlnOriginYAngst", default=None)
-    class_number: schema.Series[int] = schema.Field("rlnClassNumber", default=None)
-    angle_rot: schema.Series[float] = schema.Field("rlnAngleRot", default=None)
-    angle_tilt: schema.Series[float] = schema.Field("rlnAngleTilt", default=None)
-    image_name: schema.Series[str] = schema.Field("rlnImageName", default=None)
+    fom: schema.Series[float] | None = schema.Field(
+        "rlnAutopickFigureOfMerit", default=None
+    )
+    orig_x: schema.Series[float] | None = schema.Field("rlnOriginXAngst", default=None)
+    orig_y: schema.Series[float] | None = schema.Field("rlnOriginYAngst", default=None)
+    class_number: schema.Series[int] | None = schema.Field(
+        "rlnClassNumber", default=None
+    )
+    angle_rot: schema.Series[float] | None = schema.Field("rlnAngleRot", default=None)
+    angle_tilt: schema.Series[float] | None = schema.Field("rlnAngleTilt", default=None)
+    image_name: schema.Series[str] | None = schema.Field("rlnImageName", default=None)
     """Particle image, such as 00000113@Extract/job009/Movies/XYZ_frameImage.mrcs"""
-    mic_name: schema.Series[str] = schema.Field("rlnMicrographName", default=None)
+    mic_name: schema.Series[str] | None = schema.Field(
+        "rlnMicrographName", default=None
+    )
     """Micrograph, such as MotionCorr/job002/Movies/XYZ_frameImage.mrc"""
