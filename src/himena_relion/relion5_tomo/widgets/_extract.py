@@ -16,6 +16,7 @@ from himena_relion._widgets import (
     QMicrographListWidget,
 )
 from himena_relion import _job_dir
+from himena_relion.consts import YES
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -201,7 +202,7 @@ def _is_2d(job_dir: _job_dir.JobDirectory) -> bool:
     """Return whether the extraction is 2D stack or 3D subtomogram."""
     params = job_dir.get_job_params_as_dict()
     if "do_stack2d" in params:
-        return params["do_stack2d"] == "Yes"
+        return params["do_stack2d"] == YES
     elif "subtomo_format" in params:
         return params["subtomo_format"] == "2D stacks"
     return True

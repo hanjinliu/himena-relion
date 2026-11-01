@@ -14,6 +14,7 @@ from himena_relion._widgets import (
     QMicrographListWidget,
 )
 from himena_relion import _job_dir
+from himena_relion.consts import YES, NO
 from himena_relion.schemas import TSModel
 
 _LOGGER = logging.getLogger(__name__)
@@ -173,9 +174,9 @@ class QCtfRefineTomoViewer(QJobScrollArea):
         """Update the viewer when the selected tomogram changes."""
         job_dir = self._job_dir
         text = texts[0]
-        defocus_refined = self._job_dir.get_job_param("do_reg_def", "No") == "Yes"
-        scale_refined = self._job_dir.get_job_param("do_scale", "No") == "Yes"
-        # tomo_scale_refined = self._job_dir.get_job_param("do_tomo_scale", "No") == "Yes"
+        defocus_refined = self._job_dir.get_job_param("do_reg_def", NO) == YES
+        scale_refined = self._job_dir.get_job_param("do_scale", NO) == YES
+        # tomo_scale_refined = self._job_dir.get_job_param("do_tomo_scale", NO) == YES
         if job_dir.path.joinpath("tomograms.star").exists():
             # job finished
             ts_path = job_dir.path / "tilt_series" / f"{text}.star"

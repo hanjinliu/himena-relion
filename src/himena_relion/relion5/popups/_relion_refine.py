@@ -10,6 +10,7 @@ from himena.core import create_dataframe_model
 from himena_builtins.qt.dataframe import QDataFrameView
 from himena_relion._job_dir import JobDirectory
 from himena_relion._widgets import QPlotCanvas
+from himena_relion.consts import YES, NO
 
 
 class RefineJobPopup(QtW.QWidget):
@@ -80,7 +81,7 @@ def collect_for_iters(job_dir: JobDirectory) -> pl.DataFrame:
     ]
     if not (
         type_label.startswith("relion.class3d")
-        and job_dir.get_job_param("dont_skip_align", "Yes") == "No"
+        and job_dir.get_job_param("dont_skip_align", YES) == NO
     ):  # don't include alignment results for no-alignment 3D class
         columns += [
             pl.col("rlnChangesOptimalOrientations"),

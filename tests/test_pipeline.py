@@ -12,10 +12,11 @@ from himena_relion.pipeline.widgets import QRelionPipelineFlowChart, _list_jobs_
 from himena_relion.pipeline_watcher import run_watcher, _WATCHER_FILE_NAME
 from himena_relion._utils import update_default_pipeline
 from himena_relion.io import _impl
+from himena_relion.consts import DEFAULT_PIPELINE_STAR
 from ._utils import DEFAULT_PIPELINES_DIR, JOBS_DIR_TOMO, prep_relion_project
 
 def test_reading_default_pipeline(himena_ui: MainWindow, tmpdir):
-    path = Path(tmpdir) / "default_pipeline.star"
+    path = Path(tmpdir) / DEFAULT_PIPELINE_STAR
     txt = (DEFAULT_PIPELINES_DIR / "full.star").read_text()
     path.write_text(txt)
     himena_ui.read_file(path)
@@ -29,14 +30,14 @@ def test_reading_default_pipeline(himena_ui: MainWindow, tmpdir):
     assert flowchart._stacked_widget.currentWidget() == flowchart._flow_chart
 
 def test_empty_default_pipeline(himena_ui: MainWindow, tmpdir):
-    path = Path(tmpdir) / "default_pipeline.star"
+    path = Path(tmpdir) / DEFAULT_PIPELINE_STAR
     path.write_text("")
     himena_ui.read_file(path)
     flowchart = get_pipeline_widget(himena_ui)
     assert flowchart._stacked_widget.currentWidget() == flowchart._start_screen
 
 def test_item_click(himena_ui: MainWindow, tmpdir):
-    path = prep_relion_project(tmpdir) / "default_pipeline.star"
+    path = prep_relion_project(tmpdir) / DEFAULT_PIPELINE_STAR
     himena_ui.read_file(path)
     flowchart = get_pipeline_widget(himena_ui)
 
@@ -57,7 +58,7 @@ def get_pipeline_widget(himena_ui: MainWindow) -> QRelionPipelineFlowChart:
     raise RuntimeError("Pipeline widget not found")
 
 def test_reading_default_pipeline_during_filtering(himena_ui: MainWindow, tmpdir):
-    path = Path(tmpdir) / "default_pipeline.star"
+    path = Path(tmpdir) / DEFAULT_PIPELINE_STAR
     txt = (DEFAULT_PIPELINES_DIR / "full.star").read_text()
     path.write_text(txt)
     himena_ui.read_file(path)
@@ -94,7 +95,7 @@ def test_reading_default_pipeline_during_filtering(himena_ui: MainWindow, tmpdir
     table_view._sort_ascending_btn.click()
 
 def test_recursive_pipeline(himena_ui: MainWindow, tmpdir):
-    path = Path(tmpdir) / "default_pipeline.star"
+    path = Path(tmpdir) / DEFAULT_PIPELINE_STAR
     txt = (DEFAULT_PIPELINES_DIR / "recursive.star").read_text()
     path.write_text(txt)
     himena_ui.read_file(path)
@@ -103,7 +104,7 @@ def test_recursive_pipeline(himena_ui: MainWindow, tmpdir):
 
 def test_pipeline_watcher(tmpdir):
     rlndir = Path(tmpdir)
-    path = rlndir / "default_pipeline.star"
+    path = rlndir / DEFAULT_PIPELINE_STAR
     # NOTE: CtfFind/job003/ is scheduled
     txt = (DEFAULT_PIPELINES_DIR / "full.star").read_text()
     path.write_text(txt)
@@ -122,7 +123,7 @@ def test_pipeline_watcher(tmpdir):
 
 def test_pipeline_watcher_exit(tmpdir):
     rlndir = Path(tmpdir)
-    path = rlndir / "default_pipeline.star"
+    path = rlndir / DEFAULT_PIPELINE_STAR
     # NOTE: CtfFind/job003/ is scheduled
     txt = (DEFAULT_PIPELINES_DIR / "full.star").read_text()
     path.write_text(txt)
@@ -144,7 +145,7 @@ def test_schedule_job(
     monkeypatch.setattr("himena_relion.pipeline_watcher.execute_job", lambda *args, **kwargs: None)
     monkeypatch.setattr("himena_relion._job_class._run_relion_pipeliner_add_job_from_star", lambda *args, **kwargs: None)
     rln_dir = Path(tmpdir)
-    rln_dir.joinpath("default_pipeline.star").write_text((DEFAULT_PIPELINES_DIR / "full.star").read_text())
+    rln_dir.joinpath(DEFAULT_PIPELINE_STAR).write_text((DEFAULT_PIPELINES_DIR / "full.star").read_text())
     shutil.copytree(JOBS_DIR_TOMO / "Refine3D" / "job001", rln_dir / "Refine3D" / "job001")
     job_dir = JobDirectory(rln_dir / "Refine3D" / "job001")
     job_cls = job_dir._to_job_class()
@@ -160,7 +161,7 @@ def test_continue_job(
     monkeypatch.setattr("himena_relion.pipeline_watcher.execute_job", lambda *args, **kwargs: None)
 
     rln_dir = Path(tmpdir)
-    rln_dir.joinpath("default_pipeline.star").write_text((DEFAULT_PIPELINES_DIR / "full.star").read_text())
+    rln_dir.joinpath(DEFAULT_PIPELINE_STAR).write_text((DEFAULT_PIPELINES_DIR / "full.star").read_text())
     shutil.copytree(JOBS_DIR_TOMO / "Refine3D" / "job001", rln_dir / "Refine3D" / "job001")
     job_dir = JobDirectory(rln_dir / "Refine3D" / "job001")
     job_dir.path.joinpath("job_pipeline.star").write_text((DEFAULT_PIPELINES_DIR / "full.star").read_text())
@@ -184,7 +185,7 @@ def test_overwrite_job(
     monkeypatch.setattr("himena_relion.pipeline_watcher.execute_job", lambda *args, **kwargs: None)
 
     rln_dir = Path(tmpdir)
-    rln_dir.joinpath("default_pipeline.star").write_text((DEFAULT_PIPELINES_DIR / "full.star").read_text())
+    rln_dir.joinpath(DEFAULT_PIPELINE_STAR).write_text((DEFAULT_PIPELINES_DIR / "full.star").read_text())
     shutil.copytree(JOBS_DIR_TOMO / "Refine3D" / "job001", rln_dir / "Refine3D" / "job001")
     job_dir = JobDirectory(rln_dir / "Refine3D" / "job001")
     job_dir.path.joinpath("job_pipeline.star").write_text((DEFAULT_PIPELINES_DIR / "full.star").read_text())

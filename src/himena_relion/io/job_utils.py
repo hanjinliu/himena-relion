@@ -6,7 +6,7 @@ from contextlib import nullcontext, suppress, AbstractContextManager
 from himena import MainWindow, WidgetDataModel
 from himena.exceptions import Cancelled
 from himena.plugins import register_function
-from himena_relion.consts import Type, MenuId
+from himena_relion.consts import Type, MenuId, DEFAULT_PIPELINE_STAR
 from himena_relion.io import _impl
 from himena_relion._utils import get_pipeline_widgets, open_url, write_text_lf
 
@@ -183,7 +183,7 @@ def start_new_project(ui: MainWindow):
     """Start a new RELION project under the selected directory."""
     text = "\n\ndata_pipeline_general\n\n_rlnPipeLineJobCounter       1\n"
     if path_dir := ui.exec_file_dialog("d", caption="Select Project Directory"):
-        path = path_dir / "default_pipeline.star"
+        path = path_dir / DEFAULT_PIPELINE_STAR
         if path.exists():
             ui.show_notification(
                 "Selected directory is already a RELION project. Opening existing file."

@@ -7,7 +7,7 @@ import numpy as np
 from himena import StandardType, WidgetDataModel, create_image_model
 from himena.standards.model_meta import DimAxis
 from himena.plugins import register_reader_plugin
-from himena_relion.consts import Type
+from himena_relion.consts import Type, DEFAULT_PIPELINE_STAR
 
 
 @register_reader_plugin(priority=0, module="himena_relion.io")
@@ -142,7 +142,7 @@ def _(path: Path):
     if (
         path.is_dir()
         and path.name == "Trash"
-        and path.parent.joinpath("default_pipeline.star").exists()
+        and path.parent.joinpath(DEFAULT_PIPELINE_STAR).exists()
     ):
         return Type.RELION_TRASH
 
@@ -154,7 +154,7 @@ def _get_job_star(path: Path) -> Path | None:
 
 def _get_default_pipeline_star(path: Path) -> Path | None:
     """Get the path to the default pipeline.star file."""
-    return _get_star(path, "default_pipeline.star")
+    return _get_star(path, DEFAULT_PIPELINE_STAR)
 
 
 def _get_star(path: Path, name: str) -> Path | None:

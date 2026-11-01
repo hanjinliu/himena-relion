@@ -14,6 +14,7 @@ from himena_relion.pipeline_watcher import (
 )
 from himena_relion.pipeline import QRelionPipelineFlowChart
 from himena_relion.pipeline._gui_state import HimenaRelionGuiState
+from himena_relion.consts import DEFAULT_PIPELINE_STAR
 
 if TYPE_CHECKING:
     from himena.widgets import MainWindow
@@ -22,7 +23,7 @@ if TYPE_CHECKING:
 def on_himena_startup(ui: "MainWindow"):
     """This function is called on himena startup."""
     cwd = Path.cwd()
-    if (starpath := cwd.joinpath("default_pipeline.star")).exists():
+    if (starpath := cwd.joinpath(DEFAULT_PIPELINE_STAR)).exists():
         if get_pipeline_widgets(ui) is None:
             ui.read_file(starpath, plugin="himena_relion.io.read_relion_pipeline")
         scheduler = scheduler_widget(ui)

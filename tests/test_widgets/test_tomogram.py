@@ -4,6 +4,7 @@ from himena_relion._job_dir import JobDirectory
 from himena_relion.relion5_tomo.widgets._aligntilt import aligntilt_viewer, QAreTomo2TomogramViewer
 from himena_relion.relion5_tomo.widgets._tomogram import QTomogramViewer, QDenoiseTrainViewer, QDenoiseTomogramViewer
 from himena_relion.testing import JobWidgetTester
+from himena_relion.consts import YES, NO
 
 def test_reconstruct_tomo_widget(
     qtbot,
@@ -161,7 +162,7 @@ def test_denoise_widget(
 
 def _replace_is_halfset(star_text: str, is_halfset: bool) -> str:
     lines = []
-    value = "Yes" if is_halfset else "No"
+    value = YES if is_halfset else NO
     for line in star_text.splitlines():
         if line.strip().startswith("generate_split_tomograms"):
             line = f"generate_split_tomograms   {value}"

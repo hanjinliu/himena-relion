@@ -17,6 +17,7 @@ from himena.widgets import current_instance, set_status_tip, set_clipboard
 from himena.qt import drag_files, QColoredSVGIcon, QColoredToolButton
 from himena.exceptions import Cancelled
 from himena_relion import _job_class, _job_dir, _configs
+from himena_relion.consts import DEFAULT_PIPELINE_STAR
 from himena_relion._impl_objects import start_worker
 from himena_relion._utils import (
     normalize_job_id,
@@ -361,7 +362,7 @@ class QJobPipelineViewer(QtW.QWidget, JobWidgetBase):
 
         job_pipeline = RelionPipeline.from_star(path)
 
-        default_pipeline_star = rln_dir / "default_pipeline.star"
+        default_pipeline_star = rln_dir / DEFAULT_PIPELINE_STAR
         if len(job_pipeline.inputs) == 0 and default_pipeline_star.exists():
             # After job continue, job_pipeline.star will lose input nodes
             default = RelionPipeline.from_star(default_pipeline_star)
@@ -669,7 +670,7 @@ class QJobStateLabel(QtW.QWidget, JobWidgetBase):
 
     def on_job_updated(self, job_dir, fp):
         if (
-            fp.name == "default_pipeline.star"
+            fp.name == DEFAULT_PIPELINE_STAR
             or fp.suffix == ""  # RELION_JOB_XXXX
             or self._state_label.text() == "Scheduled"
             and fp.name == "run.out"
@@ -678,7 +679,7 @@ class QJobStateLabel(QtW.QWidget, JobWidgetBase):
 
     def initialize(self, job_dir):
         self._on_job_updated(job_dir)
-        default_pipeline_star = job_dir.relion_project_dir / "default_pipeline.star"
+        default_pipeline_star = job_dir.relion_project_dir / DEFAULT_PIPELINE_STAR
         title = job_dir.job_title()
         # NOTE: project default_pipeline.star may not exist if the job is copied from
         # somewhere.
@@ -967,7 +968,7 @@ class QDirectoryTreeView(QtW.QTreeView, JobWidgetBase):
 
     @staticmethod
     def _read_file(path: Path):
-        if path.name in ("job.star", "run.out", "run.err", "default_pipeline.star"):
+        if path.name in ("job.star", "run.out", "run.err", DEFAULT_PIPELINE_STAR):
             plugin = "himena_builtins.io.read_as_text_anyway"
         else:
             plugin = None

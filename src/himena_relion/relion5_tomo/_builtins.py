@@ -25,7 +25,7 @@ from himena_relion.relion5._builtins import (
     InitialModelJob,
     Refine3DJob,
 )
-from himena_relion.consts import MenuId
+from himena_relion.consts import MenuId, YES, NO
 
 
 def norm_optim(kwargs: dict[str, Any]) -> dict[str, Any]:
@@ -163,8 +163,8 @@ class ImportTomoJob(_ImportTomoJob):
     @classmethod
     def param_matches(cls, job_params: dict[str, str]) -> bool:
         return (
-            job_params.get("do_coords", "No") == "No"
-            and job_params.get("images_are_motion_corrected", "No") == "No"
+            job_params.get("do_coords", NO) == NO
+            and job_params.get("images_are_motion_corrected", NO) == NO
         )
 
     @classmethod
@@ -192,8 +192,8 @@ class ImportTomoMicrographsJob(_ImportTomoJob):
     @classmethod
     def param_matches(cls, job_params: dict[str, str]) -> bool:
         return (
-            job_params.get("do_coords", "No") == "No"
-            and job_params.get("images_are_motion_corrected", "No") == "Yes"
+            job_params.get("do_coords", NO) == NO
+            and job_params.get("images_are_motion_corrected", NO) == YES
         )
 
     @classmethod
@@ -218,7 +218,7 @@ class ImportCoordinatesJob(_ImportTomoOrCoordsJob):
 
     @classmethod
     def param_matches(cls, job_params: dict[str, str]) -> bool:
-        return job_params.get("do_coords", "No") == "Yes"
+        return job_params.get("do_coords", NO) == YES
 
     @classmethod
     def job_title(cls) -> str:
@@ -476,7 +476,7 @@ class AlignTiltSeriesImodFiducial(_AlignTiltSeriesJobBase):
 
     @classmethod
     def param_matches(cls, job_params: dict[str, str]) -> bool:
-        return job_params.get("do_imod_fiducials", "No") == "Yes"
+        return job_params.get("do_imod_fiducials", NO) == YES
 
     @classmethod
     def job_title(cls) -> str:
@@ -542,7 +542,7 @@ class AlignTiltSeriesImodPatch(_AlignTiltSeriesJobBase):
 
     @classmethod
     def param_matches(cls, job_params: dict[str, str]) -> bool:
-        return job_params.get("do_imod_patchtrack", "No") == "Yes"
+        return job_params.get("do_imod_patchtrack", NO) == YES
 
     @classmethod
     def job_title(cls) -> str:
@@ -607,8 +607,8 @@ class AlignTiltSeriesAreTomo2(_AlignTiltSeriesJobBase):
 
     @classmethod
     def param_matches(cls, job_params: dict[str, str]) -> bool:
-        is_aretomo = job_params.get("do_aretomo2", "No") == "Yes"
-        is_skip_align = job_params.get("do_skip_aretomo_align", "No") == "Yes"
+        is_aretomo = job_params.get("do_aretomo2", NO) == YES
+        is_skip_align = job_params.get("do_skip_aretomo_align", NO) == YES
         return is_aretomo and not is_skip_align
 
     @classmethod
@@ -696,9 +696,9 @@ class ReconstructTomoByAreTomo2(_AlignTiltSeriesJobBase):
 
     @classmethod
     def param_matches(cls, job_params: dict[str, str]) -> bool:
-        is_aretomo = job_params.get("do_aretomo2", "No") == "Yes"
-        is_skip_align = job_params.get("do_skip_aretomo_align", "No") == "Yes"
-        is_rec = job_params.get("do_aretomo_reconstruct", "No") == "Yes"
+        is_aretomo = job_params.get("do_aretomo2", NO) == YES
+        is_skip_align = job_params.get("do_skip_aretomo_align", NO) == YES
+        is_rec = job_params.get("do_aretomo_reconstruct", NO) == YES
         return is_aretomo and is_skip_align and is_rec
 
     @classmethod
@@ -826,7 +826,7 @@ class ReconstructTomogramJob(_ReconstructTomogramBaseJob):
 
     @classmethod
     def param_matches(cls, job_params):
-        return job_params.get("generate_split_tomograms", "No") == "No"
+        return job_params.get("generate_split_tomograms", NO) == NO
 
     @classmethod
     def job_title(cls) -> str:
@@ -899,7 +899,7 @@ class ReconstructHalfTomogramJob(_ReconstructTomogramBaseJob):
 
     @classmethod
     def param_matches(cls, job_params):
-        return job_params.get("generate_split_tomograms", "No") == "Yes"
+        return job_params.get("generate_split_tomograms", NO) == YES
 
     def run(
         self,
@@ -1078,7 +1078,7 @@ class DenoiseTrain(_DenoiseJobBase):
 
     @classmethod
     def param_matches(cls, job_params: dict[str, str]) -> bool:
-        return job_params.get("do_cryocare_train", "No") == "Yes"
+        return job_params.get("do_cryocare_train", NO) == YES
 
     @classmethod
     def job_title(cls) -> str:
@@ -1160,7 +1160,7 @@ class DenoisePredict(_DenoiseJobBase):
 
     @classmethod
     def param_matches(cls, job_params: dict[str, str]) -> bool:
-        return job_params.get("do_cryocare_predict", "No") == "Yes"
+        return job_params.get("do_cryocare_predict", NO) == YES
 
     @classmethod
     def job_title(cls) -> str:
@@ -1312,7 +1312,7 @@ class Class3DNoAlignmentTomoJob(_Relion5TomoJob, Class3DNoAlignmentJob):
         tau_fudge: _a.misc.TAU_FUDGE = 1,
         particle_diameter: _a.misc.MASK_DIAMETER = 200,
         do_zero_mask: _a.misc.MASK_WITH_ZEROS = True,
-        blush_reg: _a.misc.BLUSH_REGULARISATION = "No",
+        blush_reg: _a.misc.BLUSH_REGULARISATION = NO,
         # Helix
         do_helix: _a.helix.DO_HELIX = False,
         helical_tube_diameter_range: _a.helix.HELICAL_TUBE_DIAMETER_RANGE = (-1, -1),
@@ -1379,7 +1379,7 @@ class Class3DTomoJob(_Relion5TomoJob, Class3DJob):
         particle_diameter: _a.misc.MASK_DIAMETER = 200,
         do_zero_mask: _a.misc.MASK_WITH_ZEROS = True,
         highres_limit: _a.class_.HIGH_RES_LIMIT = None,
-        blush_reg: _a.misc.BLUSH_REGULARISATION = "No",
+        blush_reg: _a.misc.BLUSH_REGULARISATION = NO,
         # Sampling
         sampling: _a.sampling.ANG_SAMPLING = "7.5 degrees",
         offset_range_step: _a.sampling.OFFSET_RANGE_STEP = (5, 1),
@@ -1454,7 +1454,7 @@ class Refine3DTomoJob(_Relion5TomoJob, Refine3DJob):
         particle_diameter: _a.misc.MASK_DIAMETER = 200,
         do_zero_mask: _a.misc.MASK_WITH_ZEROS = True,
         do_solvent_fsc: _a.misc.SOLVENT_FLATTEN_FSC = False,
-        blush_reg: _a.misc.BLUSH_REGULARISATION = "No",
+        blush_reg: _a.misc.BLUSH_REGULARISATION = NO,
         # Sampling
         sampling: _a.sampling.ANG_SAMPLING = "7.5 degrees",
         offset_range_step: _a.sampling.OFFSET_RANGE_STEP = (5, 1),

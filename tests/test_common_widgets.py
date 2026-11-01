@@ -9,6 +9,7 @@ from himena import MainWindow
 from himena.testing import file_dialog_response
 from himena_relion._widgets._job_widgets import QNoteEdit, QRunOutLog, QRunErrLog, QJobPipelineViewer
 from himena_relion._job_dir import JobDirectory
+from himena_relion.consts import DEFAULT_PIPELINE_STAR
 from ._utils import read_sample_job_pipeline_star, JOBS_DIR_SPA
 
 def test_text_edit(qtbot: QtBot, tmpdir):
@@ -132,7 +133,7 @@ def test_flowchart(himena_ui: MainWindow, qtbot: QtBot, tmpdir):
         "_rlnPipeLineEdgeToNode #2\n"
         "Import/job001/	Import/job001/movies.star\n"
     )
-    star = _proj_dir / "default_pipeline.star"
+    star = _proj_dir / DEFAULT_PIPELINE_STAR
     star.write_text(default_pipeline_star_content)
     himena_ui.read_file(star)
     dock = himena_ui.dock_widgets[0]

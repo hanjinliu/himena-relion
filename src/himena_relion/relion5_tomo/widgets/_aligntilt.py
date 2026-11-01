@@ -20,7 +20,7 @@ from himena_relion._widgets import (
 )
 from himena_relion import _job_dir, _utils, _configs
 from himena_relion._job_class import continue_job_now
-from himena_relion.consts import RelionJobState
+from himena_relion.consts import RelionJobState, YES, NO
 from himena_relion.relion5_tomo._tomo_utils import project_fiducials
 from himena_relion.schemas._movie_tilts import TSModel, TSGroupModel
 
@@ -30,7 +30,7 @@ _EXTERNAL = "external"
 
 @register_job("relion.aligntiltseries", is_tomo=True)
 def aligntilt_viewer(job_dir: _job_dir.JobDirectory):
-    if job_dir.get_job_param("do_aretomo_reconstruct", default="No") == "Yes":
+    if job_dir.get_job_param("do_aretomo_reconstruct", default=NO) == YES:
         return QAreTomo2TomogramViewer(job_dir)
     else:
         return QAlignTiltSeriesViewer(job_dir)
@@ -42,9 +42,9 @@ class QAlignTiltSeriesViewer(QJobScrollArea):
         self._job_dir = job_dir
 
         job_params = job_dir.get_job_params_as_dict()
-        self._is_imod_fid = job_params.get("do_imod_fiducials", "No") == "Yes"
-        self._is_imod_patchtrack = job_params.get("do_imod_patchtrack", "No") == "Yes"
-        self._is_aretomo2 = job_params.get("do_aretomo2", "No") == "Yes"
+        self._is_imod_fid = job_params.get("do_imod_fiducials", NO) == YES
+        self._is_imod_patchtrack = job_params.get("do_imod_patchtrack", NO) == YES
+        self._is_aretomo2 = job_params.get("do_aretomo2", NO) == YES
 
         self._viewer = Q2DViewer(zlabel="Tilt index")
         self._viewer.setMinimumHeight(420)
