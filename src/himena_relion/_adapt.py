@@ -4,21 +4,22 @@ from __future__ import annotations
 from typing import Any
 import warnings
 from himena_relion._version import relion_version_info
+from himena_relion.consts import YES, NO
 
 
 def norm_blush_reg(kwargs: dict[str, Any]) -> dict[str, Any]:
     ver = relion_version_info(default_version="5.0.0").version
     if ver.major == 5:
-        blush_reg = kwargs.pop("blush_reg", "No")
-        if blush_reg not in ["No", "v1.0", "amy-v1.0"]:
+        blush_reg = kwargs.pop("blush_reg", NO)
+        if blush_reg not in [NO, "v1.0", "amy-v1.0"]:
             warnings.warn(
                 f"Blush regularisation method {blush_reg!r} is not recognised. "
-                "Defaulting to 'No'.",
+                f"Defaulting to {NO!r}.",
                 UserWarning,
                 stacklevel=1,
             )
-            blush_reg = "No"
-        kwargs["do_blush"] = blush_reg != "No"
+            blush_reg = NO
+        kwargs["do_blush"] = blush_reg != NO
         if ver.minor == 0:
             if blush_reg == "amy-v1.0":
                 warnings.warn(
@@ -28,16 +29,16 @@ def norm_blush_reg(kwargs: dict[str, Any]) -> dict[str, Any]:
                     stacklevel=1,
                 )
         elif ver.minor >= 1:
-            kwargs["blush_version"] = blush_reg if blush_reg != "No" else "v1.0"
+            kwargs["blush_version"] = blush_reg if blush_reg != NO else "v1.0"
     return kwargs
 
 
 def norm_blush_reg_inv(kwargs: dict[str, Any]) -> dict[str, Any]:
     do_blush = kwargs.pop("do_blush", False)
     if isinstance(do_blush, str):
-        do_blush = do_blush == "Yes"
+        do_blush = do_blush == YES
     blush_version = kwargs.pop("blush_version", "v1.0")
-    kwargs["blush_reg"] = "No" if not do_blush else blush_version
+    kwargs["blush_reg"] = NO if not do_blush else blush_version
     return kwargs
 
 

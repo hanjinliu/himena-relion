@@ -12,6 +12,7 @@ from himena_relion.relion5._connections import (
 from himena_relion.relion5_tomo import _builtins as _tomo
 from himena_relion._job_dir import JobDirectory
 from himena_relion._job_class import connect_jobs
+from himena_relion.consts import YES, NO
 from himena_relion.schemas import OptimisationSetModel, TomogramsGroupModel
 
 _LOGGER = logging.getLogger(__name__)
@@ -631,7 +632,7 @@ connect_jobs(
 
 def _get_particles_from_frame_align(path: Path) -> str | None:
     job_dir = JobDirectory(path)
-    if job_dir.get_job_param("do_motion", "No") == "Yes":
+    if job_dir.get_job_param("do_motion", NO) == YES:
         return path / "particles.star"
     elif in_opt := job_dir.get_job_param("in_optimisation", ""):
         if (in_opt := job_dir.resolve_path(in_opt)).exists():
@@ -645,7 +646,7 @@ def _get_particles_from_frame_align(path: Path) -> str | None:
 
 def _get_motion_from_frame_align(path: Path) -> str | None:
     job_dir = JobDirectory(path)
-    if job_dir.get_job_param("do_motion", "No") == "Yes":
+    if job_dir.get_job_param("do_motion", NO) == YES:
         return path / "motion.star"
     else:
         return None

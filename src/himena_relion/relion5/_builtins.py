@@ -9,7 +9,7 @@ from himena_relion._job_dir import JobDirectory
 from himena_relion import _configs, _annotated as _a
 from himena_relion._utils import command_not_found_err_msg, extract_input_edges
 from himena_relion.schemas import OptimisationSetModel
-from himena_relion.consts import MenuId
+from himena_relion.consts import MenuId, YES, NO
 from himena_relion._adapt import norm_blush_reg, norm_blush_reg_inv
 
 
@@ -83,8 +83,7 @@ class ImportMoviesJob(_ImportMoviesJobBase):
     @classmethod
     def param_matches(cls, job_params):
         return (
-            job_params.get("do_raw") == "Yes"
-            and job_params.get("is_multiframe") == "Yes"
+            job_params.get("do_raw") == YES and job_params.get("is_multiframe") == YES
         )
 
     @classmethod
@@ -118,10 +117,7 @@ class ImportMicrographsJob(_ImportMoviesJobBase):
 
     @classmethod
     def param_matches(cls, job_params):
-        return (
-            job_params.get("do_raw") == "Yes"
-            and job_params.get("is_multiframe") == "No"
-        )
+        return job_params.get("do_raw") == YES and job_params.get("is_multiframe") == NO
 
     @classmethod
     def job_title(cls):
@@ -491,7 +487,7 @@ class ManualPickJob(_Relion5SpaJob):
         kwargs["filter_method"] = (
             "Topaz" if kwargs.pop("do_topaz_denoise", False) else "Band-pass"
         )
-        if kwargs.pop("do_fom_threshold", "No") == "No":
+        if kwargs.pop("do_fom_threshold", NO) == NO:
             kwargs["minimum_pick_fom"] = None
         for name in ["do_queue", "min_dedicated"]:
             kwargs.pop(name, None)
@@ -897,7 +893,7 @@ class AutoPickTopazTrain(_AutoPickJob):
         kwargs["do_topaz_train"] = True
         kwargs["fn_topaz_exe"] = _configs.get_topaz_exe()
         if isinstance(kwargs["do_topaz_train_parts"], str):
-            kwargs["do_topaz_train_parts"] = kwargs["do_topaz_train_parts"] == "Yes"
+            kwargs["do_topaz_train_parts"] = kwargs["do_topaz_train_parts"] == YES
         do_parts = kwargs["do_topaz_train_parts"]
         # RELION 5 gives a very confusing error message here by default.
         if not do_parts and kwargs["topaz_train_picks"] == "":
@@ -1114,7 +1110,7 @@ class _ExtractJobBase(_Relion5SpaJob):
     @classmethod
     def normalize_kwargs_inv(cls, **kwargs):
         kwargs = super().normalize_kwargs_inv(**kwargs)
-        if kwargs.pop("do_fom_threshold", "No") == "No":
+        if kwargs.pop("do_fom_threshold", NO) == NO:
             kwargs["minimum_pick_fom"] = None
         if not kwargs.get("do_rescale", False):
             kwargs["rescale"] = None
@@ -1308,7 +1304,7 @@ class Class2DJob(_Relion5SpaJob):
         kwargs = super().normalize_kwargs_inv(**kwargs)
         nr_iter_em = kwargs.pop("nr_iter_em", 25)
         nr_iter_grad = kwargs.pop("nr_iter_grad", 200)
-        if kwargs.pop("do_em", "No") == "Yes":
+        if kwargs.pop("do_em", NO) == YES:
             kwargs["algorithm"] = {
                 "algorithm": "EM",
                 "niter": nr_iter_em,
@@ -1550,7 +1546,7 @@ class Class3DNoAlignmentJob(_Class3DJobBase):
 
     @classmethod
     def param_matches(cls, job_params: dict[str, str]) -> bool:
-        return job_params.get("dont_skip_align", "Yes") == "No"
+        return job_params.get("dont_skip_align", YES) == NO
 
     @classmethod
     def job_title(cls):
@@ -1609,7 +1605,7 @@ class Class3DNoAlignmentJob(_Class3DJobBase):
         tau_fudge: _a.misc.TAU_FUDGE = 1,
         particle_diameter: _a.misc.MASK_DIAMETER = 200,
         do_zero_mask: _a.misc.MASK_WITH_ZEROS = True,
-        blush_reg: _a.misc.BLUSH_REGULARISATION = "No",
+        blush_reg: _a.misc.BLUSH_REGULARISATION = NO,
         # Helix
         do_helix: _a.helix.DO_HELIX = False,
         helical_tube_diameter_range: _a.helix.HELICAL_TUBE_DIAMETER_RANGE = (-1, -1),
@@ -1649,7 +1645,7 @@ class Class3DJob(_Class3DJobBase):
 
     @classmethod
     def param_matches(cls, job_params: dict[str, str]) -> bool:
-        return job_params.get("dont_skip_align", "Yes") == "Yes"
+        return job_params.get("dont_skip_align", YES) == YES
 
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
@@ -1690,7 +1686,7 @@ class Class3DJob(_Class3DJobBase):
         particle_diameter: _a.misc.MASK_DIAMETER = 200,
         do_zero_mask: _a.misc.MASK_WITH_ZEROS = True,
         highres_limit: _a.class_.HIGH_RES_LIMIT = None,
-        blush_reg: _a.misc.BLUSH_REGULARISATION = "No",
+        blush_reg: _a.misc.BLUSH_REGULARISATION = NO,
         # Sampling
         sampling: _a.sampling.ANG_SAMPLING = "7.5 degrees",
         offset_range_step: _a.sampling.OFFSET_RANGE_STEP = (5, 1),
@@ -1831,7 +1827,7 @@ class Refine3DJob(_Relion5SpaJob):
         particle_diameter: _a.misc.MASK_DIAMETER = 200,
         do_zero_mask: _a.misc.MASK_WITH_ZEROS = True,
         do_solvent_fsc: _a.misc.SOLVENT_FLATTEN_FSC = False,
-        blush_reg: _a.misc.BLUSH_REGULARISATION = "No",
+        blush_reg: _a.misc.BLUSH_REGULARISATION = NO,
         # Sampling
         sampling: _a.sampling.ANG_SAMPLING = "7.5 degrees",
         offset_range_step: _a.sampling.OFFSET_RANGE_STEP = (5, 1),
@@ -1929,7 +1925,7 @@ class MultiBodyJob(_Relion5SpaJob):
         fn_in: _a.multibody.FN_IN = "",
         fn_bodies: _a.multibody.FN_BODIES = "",
         do_subtracted_bodies: _a.multibody.DO_SUBTRACTED_BODIES = True,
-        blush_reg: _a.misc.BLUSH_REGULARISATION = "No",
+        blush_reg: _a.misc.BLUSH_REGULARISATION = NO,
         # Auto-sampling
         sampling: _a.multibody.SAMPING = "1.8 degrees",
         offset_range: _a.multibody.OFFSET_RANGE = 3,
@@ -2499,9 +2495,7 @@ class _CtfRefineJobBase(_Relion5SpaJob):
     @classmethod
     def normalize_kwargs(cls, **kwargs):
         kwargs = super().normalize_kwargs(**kwargs)
-        kwargs["do_ctf"] = any(
-            kwargs.get(name, "No") != "No" for name in cls._do_ctf_args
-        )
+        kwargs["do_ctf"] = any(kwargs.get(name, NO) != NO for name in cls._do_ctf_args)
         return kwargs
 
     @classmethod
@@ -2510,7 +2504,7 @@ class _CtfRefineJobBase(_Relion5SpaJob):
         do_ctf = kwargs.pop("do_ctf", False)
         if not do_ctf:
             for name in cls._do_ctf_args:
-                kwargs[name] = "No"
+                kwargs[name] = NO
         return kwargs
 
     def input_edges(self, **kwargs) -> list[str]:
@@ -2536,9 +2530,9 @@ class CtfRefineJob(_CtfRefineJobBase):
         fn_post: _a.io.PROCESS_TYPE = "",
         # Fit
         do_defocus: _a.ctfrefine.DO_DEFOCUS = "Per-micrograph",
-        do_astig: _a.ctfrefine.DO_ASTIG = "No",
-        do_bfactor: _a.ctfrefine.DO_BFACTOR = "No",
-        do_phase: _a.ctfrefine.DO_PHASE = "No",
+        do_astig: _a.ctfrefine.DO_ASTIG = NO,
+        do_bfactor: _a.ctfrefine.DO_BFACTOR = NO,
+        do_phase: _a.ctfrefine.DO_PHASE = NO,
         do_tilt: _a.ctfrefine.DO_TILT = False,
         do_trefoil: _a.ctfrefine.DO_TREFOIL = False,
         do_4thorder: _a.ctfrefine.DO_4THORDER = False,
@@ -2566,7 +2560,7 @@ class CtfRefineAnisoMagJob(_CtfRefineJobBase):
         kwargs = super().normalize_kwargs(**kwargs)
         kwargs["do_aniso_mag"] = True
         for name in cls._not_used:
-            kwargs[name] = "No"
+            kwargs[name] = NO
         return kwargs
 
     @classmethod
@@ -2850,14 +2844,14 @@ class ParticleSubtractionJob(_Relion5SpaJob):
         kwargs["do_data"] = kwargs["fn_data"].strip() != ""
         center_method = kwargs.pop("center_method", "")
         if center_method == "Mask center":
-            kwargs["do_center_mask"] = "Yes"
-            kwargs["do_center_xyz"] = "No"
+            kwargs["do_center_mask"] = YES
+            kwargs["do_center_xyz"] = NO
         elif center_method == "User-defined":
-            kwargs["do_center_mask"] = "No"
-            kwargs["do_center_xyz"] = "Yes"
+            kwargs["do_center_mask"] = NO
+            kwargs["do_center_xyz"] = YES
         else:
-            kwargs["do_center_mask"] = "No"
-            kwargs["do_center_xyz"] = "No"
+            kwargs["do_center_mask"] = NO
+            kwargs["do_center_xyz"] = NO
         if kwargs.get("new_box", None) is None:
             kwargs["new_box"] = -1
         kwargs["do_fliplabel"] = False
@@ -2875,8 +2869,8 @@ class ParticleSubtractionJob(_Relion5SpaJob):
             kwargs.pop("center_y", 0),
             kwargs.pop("center_z", 0),
         )
-        do_center_mask = kwargs.pop("do_center_mask", "Yes") == "Yes"
-        do_center_xyz = kwargs.pop("do_center_xyz", "No") == "Yes"
+        do_center_mask = kwargs.pop("do_center_mask", YES) == YES
+        do_center_xyz = kwargs.pop("do_center_xyz", NO) == YES
         if do_center_mask:
             kwargs["center_method"] = "Mask center"
             kwargs["center"] = (0.0, 0.0, 0.0)
@@ -2884,7 +2878,7 @@ class ParticleSubtractionJob(_Relion5SpaJob):
             kwargs["center_method"] = "User-defined"
             kwargs["center"] = center
         else:
-            kwargs["center_method"] = "No"
+            kwargs["center_method"] = NO
             kwargs["center"] = (0.0, 0.0, 0.0)
         if "new_box" in kwargs and float(kwargs["new_box"]) < 0:
             kwargs["new_box"] = None
@@ -2897,7 +2891,7 @@ class ParticleSubtractionJob(_Relion5SpaJob):
         fn_data: _a.io.IN_PARTICELS_SUBTRACT = "",
         do_float16: _a.io.DO_F16 = True,
         # Centering
-        center_method: _a.misc.CENTER_METHOD = "No",
+        center_method: _a.misc.CENTER_METHOD = NO,
         center: _a.misc.CENTER = (0.0, 0.0, 0.0),
         new_box: _a.misc.NEW_BOX = None,
         # Running

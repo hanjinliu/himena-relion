@@ -20,6 +20,7 @@ from himena_relion._widgets import (
     QOptimiserInfoTextEdit,
 )
 from himena_relion import _job_dir
+from himena_relion.consts import YES, NO
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -159,7 +160,7 @@ class QClass3DViewer(QJobScrollArea):
         return current_instance().exec_action("himena-relion:show-summary-panel")
 
     def _continue_from_here_clicked(self):
-        is_no_alignment = self._job_dir.get_job_param("dont_skip_align", "Yes") == "No"
+        is_no_alignment = self._job_dir.get_job_param("dont_skip_align", YES) == NO
         if self._job_dir.is_tomo():
             if is_no_alignment:
                 from himena_relion.relion5_tomo._continues import (

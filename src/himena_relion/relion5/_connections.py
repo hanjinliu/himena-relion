@@ -5,6 +5,7 @@ from himena_relion._job_class import connect_jobs
 from himena_relion._job_dir import JobDirectory
 from himena_relion.relion5 import _builtins as _spa
 from himena_relion.schemas import ModelClasses
+from himena_relion.consts import YES, NO
 
 
 def inherit_particle_diameter(path: Path) -> float:
@@ -160,9 +161,9 @@ def get_nr_iter(path: Path) -> int | None:
     params = JobDirectory(path).get_job_params_as_dict()
     if "nr_iter" in params:
         return int(params["nr_iter"])
-    elif params.get("do_em", "No") == "Yes":
+    elif params.get("do_em", NO) == YES:
         return int(params["nr_iter_em"])
-    elif params.get("do_grad", "No") == "Yes":
+    elif params.get("do_grad", NO) == YES:
         return int(params["nr_iter_grad"])
     return None
 

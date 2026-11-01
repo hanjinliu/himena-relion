@@ -17,6 +17,7 @@ from himena_relion import _job_dir
 from himena_relion._image_readers import ArrayFilteredView
 from himena_relion._widgets._plot import QPlotCanvas
 from himena_relion._widgets._shared.resizer import QResizer
+from himena_relion.consts import YES, NO
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -55,7 +56,7 @@ class QTomogramViewer(QJobScrollArea):
             _LOGGER.debug("%s Updated", job_dir.job_number)
 
     def _has_tomogram_splits(self, job_dir: _job_dir.JobDirectory) -> bool:
-        return job_dir.get_job_param("generate_split_tomograms") == "Yes"
+        return job_dir.get_job_param("generate_split_tomograms", default=NO) == YES
 
     def _get_binned_angpix(self, job_dir: _job_dir.JobDirectory) -> float:
         return float(job_dir.get_job_param("binned_angpix"))
@@ -111,7 +112,7 @@ class QTomogramViewer(QJobScrollArea):
 
 @register_job("relion.denoisetomo", is_tomo=True)
 def denoise_tomogram_viewer(job_dir: _job_dir.JobDirectory):
-    if job_dir.get_job_param("do_cryocare_train") == "Yes":
+    if job_dir.get_job_param("do_cryocare_train", default=NO) == YES:
         return QDenoiseTrainViewer(job_dir)
     else:
         return QDenoiseTomogramViewer(job_dir)

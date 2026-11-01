@@ -30,7 +30,7 @@ from himena_relion import _configs, _job_dir
 from himena_relion.consts import DEFAULT_PIPELINE_STAR
 from himena_relion._wsl import is_wsl_path
 from himena_relion._pipeline import is_all_inputs_ready, ReadyState
-from himena_relion.consts import FileNames, Type, MenuId, JOB_ID_MAP
+from himena_relion.consts import FileNames, Type, MenuId, JOB_ID_MAP, YES, NO
 from himena_relion._utils import (
     last_job_directory,
     normalize_job_id,
@@ -648,9 +648,9 @@ def parse_string(s: Any, typ: Any) -> Any:
     elif typ is float:
         return float(s)
     elif typ is bool:
-        if s in ["0", "False", "false", "No"]:
+        if s in ["0", "False", "false", NO]:
             return False
-        elif s in ["1", "True", "true", "Yes"]:
+        elif s in ["1", "True", "true", YES]:
             return True
         else:
             return bool(s)
@@ -684,7 +684,7 @@ def to_string(value) -> str:
     if isinstance(value, Path):
         value = str(value)
     elif isinstance(value, bool):
-        value = "Yes" if value else "No"
+        value = YES if value else NO
     elif isinstance(value, (list, tuple)):
         value = ",".join(to_string(v) for v in value)
     return str(value)

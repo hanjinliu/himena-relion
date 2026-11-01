@@ -18,6 +18,7 @@ from himena_relion._widgets import (
 )
 from himena_relion import _job_dir
 from himena_relion._widgets._shared.resizer import QResizer
+from himena_relion.consts import YES, NO
 from himena_relion.schemas import TSModel, TSGroupModel
 
 _LOGGER = logging.getLogger(__name__)
@@ -25,13 +26,13 @@ _LOGGER = logging.getLogger(__name__)
 
 @register_job("relion.importtomo", is_tomo=True)
 def import_tilt_series_viewer(job_dir: _job_dir.JobDirectory):
-    if job_dir.get_job_param("do_coords", default="No") == "Yes":
+    if job_dir.get_job_param("do_coords", default=NO) == YES:
         return QImportCoordsViewer(job_dir)
     return QImportTiltSeriesViewer(job_dir)
 
 
 def _is_import_micrographs(job_dir: _job_dir.JobDirectory) -> bool:
-    return job_dir.get_job_param("images_are_motion_corrected", default="No") == "Yes"
+    return job_dir.get_job_param("images_are_motion_corrected", default=NO) == YES
 
 
 class QImportTiltSeriesViewer(QJobScrollArea):
