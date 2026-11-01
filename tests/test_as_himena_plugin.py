@@ -4,6 +4,7 @@ from himena import MainWindow
 from pathlib import Path
 from himena_relion.pipeline._gui_state import HimenaRelionGuiState
 from himena_relion.startup import on_himena_startup, on_himena_teardown, _WATCHER_FILE_NAME
+from himena_relion.consts import DEFAULT_PIPELINE_STAR
 
 _GUI_STATE_TEXT = """{
   "jobs": {
@@ -25,7 +26,7 @@ def test_startup(make_himena_ui: Callable[[], MainWindow], tmpdir):
     Path(tmpdir).joinpath(_WATCHER_FILE_NAME).write_text(
         '{"pid": 999999, "user": "test_user"}'
     )
-    Path(tmpdir).joinpath("default_pipeline.star").write_text("")
+    Path(tmpdir).joinpath(DEFAULT_PIPELINE_STAR).write_text("")
     state = HimenaRelionGuiState.model_validate_json(_GUI_STATE_TEXT)
     state.dump_to_project_directory(tmpdir)
     ui = make_himena_ui("qt")

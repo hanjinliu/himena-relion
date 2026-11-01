@@ -8,6 +8,7 @@ from cmap import Color
 from pydantic import BaseModel, Field, PrivateAttr
 
 from himena_relion import __version__
+from himena_relion.consts import DEFAULT_PIPELINE_STAR
 
 _GUI_STATE_FILENAME = ".himena_gui_state.json"
 
@@ -90,7 +91,7 @@ class HimenaRelionGuiState(BaseModel):
         """Dump the GUI state to a JSON file in the given project directory."""
 
         rln_dir = Path(project_directory)
-        if not rln_dir.joinpath("default_pipeline.star").exists():
+        if not rln_dir.joinpath(DEFAULT_PIPELINE_STAR).exists():
             raise FileNotFoundError(
                 f"The directory {project_directory} does not appear to be a RELION "
                 "project directory."

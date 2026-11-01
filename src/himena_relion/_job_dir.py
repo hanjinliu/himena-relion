@@ -16,6 +16,7 @@ from himena_relion.consts import (
     RelionJobState,
     JOB_ID_MAP,
     Type,
+    DEFAULT_PIPELINE_STAR,
 )
 from himena_relion._impl_objects import TubeObject
 from himena_relion._pipeline import RelionPipeline
@@ -223,7 +224,7 @@ class JobDirectory:
         """Check if the job is in the scheduled state."""
         out = False
         with suppress(Exception):
-            if (path := self.path.joinpath("default_pipeline.star")).exists():
+            if (path := self.path.joinpath(DEFAULT_PIPELINE_STAR)).exists():
                 pipeline = RelionPipelineModel.validate_file(path)
                 _id = "/".join(path.parent.as_posix().split("/")[-2:]) + "/"
                 pos_sl = pipeline.processes.process_name == _id

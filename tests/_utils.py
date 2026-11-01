@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Iterable
 from himena_relion.schemas import RelionPipelineModel
 from himena_relion.io._impl import normalize_job_id
+from himena_relion.consts import NODES_DIR, DEFAULT_PIPELINE_STAR
 
 def assert_param_name_match(a, b, allowed_diffs: Iterable[str] = ()):
     a_set = set(a)
@@ -57,7 +58,7 @@ def prep_relion_project(tmpdir):
     rln_dir = Path(tmpdir)
 
     # prepare default_pipeline.star
-    path = Path(tmpdir) / "default_pipeline.star"
+    path = Path(tmpdir) / DEFAULT_PIPELINE_STAR
     txt = (DEFAULT_PIPELINES_DIR / "full.star").read_text()
     path.write_text(txt)
 
@@ -71,12 +72,12 @@ def prep_relion_project(tmpdir):
         _extract_job_pipeline(pipeline, pname).write(job_dir / "job_pipeline.star")
 
     # prepare .Nodes directory
-    (rln_dir / ".Nodes").mkdir()
+    (rln_dir / NODES_DIR).mkdir()
     typemap = pipeline.nodes.make_type_map(depth=1)
 
     for to_node in pipeline.output_edges.to_node:
         type_label = typemap[to_node]
-        filepath = rln_dir / ".Nodes" / type_label / to_node
+        filepath = rln_dir / NODES_DIR / type_label / to_node
         filepath.parent.mkdir(parents=True)
         filepath.touch()
     assert (rln_dir / "Import/job001").exists()

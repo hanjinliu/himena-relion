@@ -6,6 +6,7 @@ import pytest
 from himena_relion import _utils
 from himena_relion._version import RelionVersion
 from himena_relion.schemas import RelionPipelineModel
+from himena_relion.consts import DEFAULT_PIPELINE_STAR
 from ._utils import prep_relion_project
 
 def test_util_functions():
@@ -50,7 +51,7 @@ def test_get_relion_version_info(monkeypatch: pytest.MonkeyPatch):
 
 def test_lock(tmpdir):
     tmpdir = Path(tmpdir)
-    pipeline_star = tmpdir / "default_pipeline.star"
+    pipeline_star = tmpdir / DEFAULT_PIPELINE_STAR
     pipeline_star.write_text("pipeline_general\n_rlnPipeLineJobCounter 5\n")
     with _utils.open_with_lock(pipeline_star) as f:
         assert tmpdir.joinpath(".relion_lock").exists()
@@ -77,10 +78,10 @@ def test_lock(tmpdir):
 
 def test_replace_input_edges(tmpdir):
     # Import/job001/tilt_series.star MotionCorr/job002/
-    path = Path(tmpdir) / "default_pipeline.star"
+    path = Path(tmpdir) / DEFAULT_PIPELINE_STAR
 
     rln_dir = prep_relion_project(tmpdir)
-    star_path = rln_dir / "default_pipeline.star"
+    star_path = rln_dir / DEFAULT_PIPELINE_STAR
     assert star_path.exists()
     assert "Import/job001/tilt_series.star MotionCorr/job002/" in star_path.read_text()
     assert "MotionCorr/job002/corrected_tilt_series.star CtfFind/job003/" in star_path.read_text()
@@ -122,10 +123,10 @@ CtfFind/job003/ CtfFind/job003/tilt_series_ctf.star
 """
 
 def test_replace_input_edges_with_default_pipeline(tmpdir):
-    default_pipeline = Path(tmpdir) / "default_pipeline.star"
+    default_pipeline = Path(tmpdir) / DEFAULT_PIPELINE_STAR
 
     rln_dir = prep_relion_project(tmpdir)
-    star_path = rln_dir / "default_pipeline.star"
+    star_path = rln_dir / DEFAULT_PIPELINE_STAR
     assert star_path.exists()
 
     pipeline_path = Path(tmpdir) / "job_pipeline.star"

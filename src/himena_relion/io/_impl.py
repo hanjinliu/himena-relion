@@ -8,7 +8,12 @@ import subprocess
 from typing import TYPE_CHECKING
 from himena import MainWindow
 from himena.exceptions import Cancelled
-from himena_relion.consts import RelionJobState, FileNames
+from himena_relion.consts import (
+    RelionJobState,
+    FileNames,
+    NODES_DIR,
+    DEFAULT_PIPELINE_STAR,
+)
 from himena_relion._configs import get_relion_pipeliner_args
 from himena_relion._wsl import is_wsl_path
 from himena_relion._utils import (
@@ -143,7 +148,7 @@ def set_job_alias(ui: MainWindow, job_dir: JobDirectory):
     """Set alias for this RELION job."""
     from himena_relion._widgets._main import QRelionJobWidget
 
-    with open_with_lock(job_dir.relion_project_dir / "default_pipeline.star") as f:
+    with open_with_lock(job_dir.relion_project_dir / DEFAULT_PIPELINE_STAR) as f:
         pipeline = RelionPipelineModel.validate_text(f.read())
         # look for current alias
         _matched = pipeline.processes.process_name == job_dir.job_normal_id()
@@ -185,7 +190,7 @@ def set_job_alias(ui: MainWindow, job_dir: JobDirectory):
         raise FileExistsError(f"Alias '{alias}' already exists.")
 
     # Update the default_pipeline.star with the new alias, and create a symlink.
-    with open_with_lock(job_dir.relion_project_dir / "default_pipeline.star") as f:
+    with open_with_lock(job_dir.relion_project_dir / DEFAULT_PIPELINE_STAR) as f:
         # Update job_pipeline.star with the new alias.
         if (job_pipe_path := job_dir.path.joinpath("job_pipeline.star")).exists():
             job_pipe = RelionPipelineModel.validate_file(job_pipe_path)
@@ -227,7 +232,7 @@ def trash_job(ui: MainWindow, job_dir: JobDirectory):
 
     rln_dir = job_dir.relion_project_dir
 
-    with open_with_lock(rln_dir / "default_pipeline.star") as f:
+    with open_with_lock(rln_dir / DEFAULT_PIPELINE_STAR) as f:
         pipeline = RelionPipelineModel.validate_text(f.read())
         input_indices_to_remove: list[bool] = []
         # to_trash is all the relative paths to be moved to trash
@@ -334,7 +339,7 @@ def trash_job(ui: MainWindow, job_dir: JobDirectory):
         to_node_list = output_edges_trashed["rlnPipeLineEdgeToNode"]
         for to_node in to_node_list:
             if type_label := node_to_type_map.get(to_node):
-                file_in_node = rln_dir.joinpath(".Nodes", type_label, to_node)
+                file_in_node = rln_dir.joinpath(NODES_DIR, type_label, to_node)
                 if file_in_node.exists():
                     file_in_node.unlink()
                 # remove directory if empty
@@ -342,7 +347,7 @@ def trash_job(ui: MainWindow, job_dir: JobDirectory):
                 if node_dir.exists() and not any(node_dir.iterdir()):
                     node_dir.rmdir()
 
-    rln_dir.joinpath("default_pipeline.star").touch()
+    rln_dir.joinpath(DEFAULT_PIPELINE_STAR).touch()
 
 
 def restore_trashed_jobs(relion_project_dir: Path, job_ids: list[str]):
@@ -356,7 +361,7 @@ def restore_trashed_jobs(relion_project_dir: Path, job_ids: list[str]):
             continue
         all_jobs_to_undo.append(job_path_in_trash)
 
-    with open_with_lock(relion_project_dir / "default_pipeline.star") as f:
+    with open_with_lock(relion_project_dir / DEFAULT_PIPELINE_STAR) as f:
         pipeline = RelionPipelineModel.validate_text(f.read())
 
         # initialize with the original pipeline
@@ -424,7 +429,7 @@ def restore_trashed_jobs(relion_project_dir: Path, job_ids: list[str]):
             node_to_type_map.update(_make_node_to_type_map(df_node))
 
         # restore .Nodes/
-        node_dir = relion_project_dir.joinpath(".Nodes")
+        node_dir = relion_project_dir.joinpath(NODES_DIR)
         for df_output_edge in all_output_edges[1:]:  # skip the original pipeline
             # e.g.
             # _rlnPipeLineEdgeProcess
@@ -456,7 +461,7 @@ def new_job(ui: MainWindow, ignore_cancelled: bool = False):
 
 def mark_as_finished(job_dir: JobDirectory):
     """Mark this RELION job as finished."""
-    with open_with_lock(job_dir.relion_project_dir / "default_pipeline.star") as f:
+    with open_with_lock(job_dir.relion_project_dir / DEFAULT_PIPELINE_STAR) as f:
         update_default_pipeline(f, normalize_job_id(job_dir.path), state="Succeeded")
         job_dir.path.joinpath(FileNames.EXIT_SUCCESS).touch(exist_ok=True)
         for fname in [
@@ -471,7 +476,7 @@ def mark_as_finished(job_dir: JobDirectory):
 
 def mark_as_failed(job_dir: JobDirectory):
     """Mark this RELION job as failed."""
-    with open_with_lock(job_dir.relion_project_dir / "default_pipeline.star") as f:
+    with open_with_lock(job_dir.relion_project_dir / DEFAULT_PIPELINE_STAR) as f:
         update_default_pipeline(f, normalize_job_id(job_dir.path), state="Failed")
         job_dir.path.joinpath(FileNames.EXIT_FAILURE).touch(exist_ok=True)
         for fname in [

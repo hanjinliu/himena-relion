@@ -28,7 +28,7 @@ from himena_relion._pipeline import (
     is_all_inputs_ready,
     ReadyState,
 )
-from himena_relion.consts import FileNames
+from himena_relion.consts import FileNames, DEFAULT_PIPELINE_STAR
 
 _WATCHER_FILE_NAME = ".himena_pipeline_watcher.lock"
 _WATCHER_LOG_FILE_NAME = ".himena_pipeline_watcher.log"
@@ -41,7 +41,7 @@ class RelionPipelineWatcher:
 
     def run(self):
         """Watch the job directory for changes."""
-        path = self._relion_project_dir / "default_pipeline.star"
+        path = self._relion_project_dir / DEFAULT_PIPELINE_STAR
         if not path.exists():
             raise FileNotFoundError(f"Pipeline file not found at {path}")
         with self._acquire_lock():
@@ -88,7 +88,7 @@ class RelionPipelineWatcher:
 
         updated = False
         files_to_touch: list[Path] = []
-        default_pipeline_path = self._relion_project_dir / "default_pipeline.star"
+        default_pipeline_path = self._relion_project_dir / DEFAULT_PIPELINE_STAR
         relion_lock_dir = self._relion_project_dir / ".relion_lock"
         for job in self._state_to_job_map[NodeStatus.SCHEDULED].values():
             # run all the scheduled jobs whose dependencies are met
@@ -113,7 +113,7 @@ class RelionPipelineWatcher:
                             cwd=pipeline.project_dir,
                         )
                         updated = True
-                        files_to_touch.append(job_dir_path / "default_pipeline.star")
+                        files_to_touch.append(job_dir_path / DEFAULT_PIPELINE_STAR)
                 case ReadyState.FILE_NOT_FOUND:
                     _print_log(f"Job {job.path} cannot run because of missing inputs.")
                     job_dir_path.joinpath("run.err").write_text(

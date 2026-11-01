@@ -52,6 +52,9 @@ class RelionNodeTypeLabels:
     PROCESSED_DATA = "ProcessData"
 
 
+NODES_DIR = ".Nodes"
+DEFAULT_PIPELINE_STAR = "default_pipeline.star"
+
 JOB_ID_MAP = {
     # SPA
     "relion.import.movies": "Import Movies",

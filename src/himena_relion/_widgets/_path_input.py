@@ -12,6 +12,7 @@ from himena.widgets import current_instance
 from himena_relion._utils import read_icon_svg_for_type
 from himena_relion._widgets import QRelionNodeItem, QJobScheduler
 from himena_relion._wsl import is_wsl_path, to_wsl_path
+from himena_relion.consts import NODES_DIR
 
 
 class QPathDropWidget(QtW.QWidget):
@@ -111,12 +112,17 @@ class QPathDropWidget(QtW.QWidget):
         else:
             caption = f"Select {' or '.join(self._type_labels)} file"
         # look for .Nodes/<type_label>/ directory.
-        start_dir = self.get_relion_directory().joinpath(".Nodes")
+        relion_dir = self.get_relion_directory()
+        start_dir = relion_dir.joinpath(NODES_DIR)
+        _type_dir_found = False
         for type_label in self._type_labels:
             candidate_dir = start_dir.joinpath(type_label)
-            if candidate_dir.is_dir() and candidate_dir.exists():
+            if type_label and candidate_dir.is_dir() and candidate_dir.exists():
                 start_dir = candidate_dir
+                _type_dir_found = True
                 break
+        if not _type_dir_found:
+            start_dir = relion_dir
         path = current_instance().exec_file_dialog(
             caption=caption,
             start_path=start_dir,
@@ -125,12 +131,12 @@ class QPathDropWidget(QtW.QWidget):
         if path:
             path_abs = Path(path).resolve()
             # .Nodes/ is not resolved yet
-            if ".Nodes" in path_abs.parts:
+            if NODES_DIR in path_abs.parts:
                 # path/to/.Nodes/<type label>/DIR/JOB/file.ext
                 # should be reformatted to
                 # path/to/DIR/JOB/file.ext
                 parts = path_abs.parts
-                node_index = parts.index(".Nodes")
+                node_index = parts.index(NODES_DIR)
                 path_real = Path(*parts[:node_index], *parts[node_index + 2 :])
                 if path_real.exists():
                     path_abs = path_real

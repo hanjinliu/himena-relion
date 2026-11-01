@@ -11,6 +11,9 @@ from typing import Any, Union
 from himena import MainWindow
 from qtpy import QtWidgets as QtW, QtCore, QtGui
 from magicgui.widgets import ComboBox
+from starfile_rs.schema import ValidationError
+from magicgui.widgets.bases import ValueWidget
+from magicgui.signature import MagicParameter
 from himena.qt import magicgui as _mgui, QColoredSVGIcon
 from himena_relion import _job_dir, _utils
 from himena_relion._job_class import (
@@ -19,11 +22,8 @@ from himena_relion._job_class import (
     parse_string,
     _Relion5BuiltinContinue,
 )
-from starfile_rs.schema import ValidationError
 from himena_relion._widgets._misc import QMoreActionButton
-from magicgui.widgets.bases import ValueWidget
-from magicgui.signature import MagicParameter
-
+from himena_relion.consts import DEFAULT_PIPELINE_STAR
 from himena_relion.schemas import JobStarModel
 from himena_relion.schemas._pipeline import RelionPipelineModel
 
@@ -356,7 +356,7 @@ class EditMode(Mode):
 
         # check children of this job, if there are any, warn the user.
         pipeline_model = RelionPipelineModel.validate_file(
-            self.job_dir.relion_project_dir / "default_pipeline.star"
+            self.job_dir.relion_project_dir / DEFAULT_PIPELINE_STAR
         )
         job_id = self.job_dir.job_normal_id()
         need_warn = False

@@ -26,7 +26,7 @@ from himena_relion._widgets import QRelionJobWidget
 from himena_relion._widgets._job_widgets import QJobPipelineViewer
 from himena_relion._widgets._misc import QMoreActionButton
 from himena_relion._widgets._content_info import QJobContentInfo
-from himena_relion.consts import Type, FileNames
+from himena_relion.consts import Type, FileNames, DEFAULT_PIPELINE_STAR
 from himena_relion._pipeline import (
     NodeStatus,
     RelionDefaultPipeline,
@@ -198,7 +198,7 @@ class QRelionPipelineFlowChart(QtW.QWidget):
 
     def _open_as_raw_text(self):
         """Open the default_pipeline.star file as a raw text file."""
-        path = self._relion_project_dir / "default_pipeline.star"
+        path = self._relion_project_dir / DEFAULT_PIPELINE_STAR
         if not path.exists():
             _LOGGER.warning("default_pipeline.star not found at %s.", path.as_posix())
             return
@@ -219,7 +219,7 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         """Manually trigger a refresh of the pipeline data."""
         self._on_pipeline_updated(
             RelionDefaultPipeline.from_pipeline_star(
-                self._relion_project_dir / "default_pipeline.star"
+                self._relion_project_dir / DEFAULT_PIPELINE_STAR
             )
         )
 
@@ -749,7 +749,7 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         """Run this scheduled job immediately."""
         from himena_relion.pipeline_watcher import execute_job
 
-        path = self._relion_project_dir / "default_pipeline.star"
+        path = self._relion_project_dir / DEFAULT_PIPELINE_STAR
         job_id = _utils.normalize_job_id(job_id)
         with _utils.open_with_lock(path) as f:
             _utils.replace_input_edges(f, job_id)

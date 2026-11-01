@@ -27,7 +27,7 @@ from himena.widgets import MainWindow
 from himena.plugins import when_reader_used, register_function
 import numpy as np
 from himena_relion import _configs, _job_dir
-from himena_relion._configs import get_relion_pipeliner_args
+from himena_relion.consts import DEFAULT_PIPELINE_STAR
 from himena_relion._wsl import is_wsl_path
 from himena_relion._pipeline import is_all_inputs_ready, ReadyState
 from himena_relion.consts import FileNames, Type, MenuId, JOB_ID_MAP
@@ -232,7 +232,7 @@ class RelionJob(ABC):
         #   Extract/job012/particles Select/job013/
         # should be updated to the new input edges.
         to_run = normalize_job_id(job_dir.path.relative_to(rln_dir))
-        default_pipeline_star = rln_dir / "default_pipeline.star"
+        default_pipeline_star = rln_dir / DEFAULT_PIPELINE_STAR
         with job_dir.path.joinpath("job_pipeline.star").open("r+") as f:
             replace_input_edges(f, to_run, new_input_edges, default_pipeline_star)
         with open_with_lock(default_pipeline_star) as f:
@@ -546,7 +546,7 @@ class _Relion5BuiltinContinue(_Relion5BuiltinJob):
 
         # Old connections should be updated. See `edit_and_run_job`.
         to_run = normalize_job_id(job_dir.path.relative_to(rln_dir))
-        default_pipeline_star = rln_dir / "default_pipeline.star"
+        default_pipeline_star = rln_dir / DEFAULT_PIPELINE_STAR
         with job_dir.path.joinpath("job_pipeline.star").open("r+") as f:
             replace_input_edges(f, to_run, new_input_edges, default_pipeline_star)
         with open_with_lock(default_pipeline_star) as f:
@@ -582,7 +582,7 @@ def continue_job_now(job_dir: _job_dir.JobDirectory) -> RelionJobExecution:
 
     rln_dir = job_dir.relion_project_dir
     to_run = normalize_job_id(job_dir.path.relative_to(rln_dir))
-    with open_with_lock(rln_dir / "default_pipeline.star") as f:
+    with open_with_lock(rln_dir / DEFAULT_PIPELINE_STAR) as f:
         update_default_pipeline(f, to_run, state="Scheduled")
     return execute_job(to_run, cwd=rln_dir)
 
@@ -820,7 +820,9 @@ def _run_relion_pipeliner_add_job_from_star(
         job_star_arg = Path(os.path.relpath(job_star_path, cwd)).as_posix()
     else:
         job_star_arg = str(job_star_path)
-    args = get_relion_pipeliner_args(is_via_wsl, cwd=cwd if is_via_wsl else None) + [
+    args = _configs.get_relion_pipeliner_args(
+        is_via_wsl, cwd=cwd if is_via_wsl else None
+    ) + [
         "--addJobFromStar",
         job_star_arg,
     ]

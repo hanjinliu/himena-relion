@@ -14,7 +14,7 @@ import numpy as np
 import polars as pl
 
 from himena.types import is_subtype
-from himena_relion.consts import Type
+from himena_relion.consts import Type, DEFAULT_PIPELINE_STAR
 from himena_relion.schemas import RelionPipelineModel
 from himena_relion._configs import get_relion_pipeliner_exe
 from himena_relion._wsl import is_wsl_path, wsl_prefix
@@ -181,7 +181,7 @@ def last_job_directory(cwd: Path | None = None) -> str:
     """Get the identifier of the latest job."""
     if cwd is None:
         cwd = Path.cwd()
-    pipeline = RelionPipelineModel.validate_file(cwd / "default_pipeline.star")
+    pipeline = RelionPipelineModel.validate_file(cwd / DEFAULT_PIPELINE_STAR)
     return pipeline.processes.process_name[-1]
 
 
