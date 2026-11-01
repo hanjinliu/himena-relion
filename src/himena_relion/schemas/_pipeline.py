@@ -34,7 +34,7 @@ class RelionPipelineProcesses(schema.LoopDataModel):
 class RelionPipelineNodes(schema.LoopDataModel):
     name: schema.Series[str] = schema.Field("rlnPipeLineNodeName")
     type_label: schema.Series[str] = schema.Field("rlnPipeLineNodeTypeLabel")
-    type_label_depth: schema.Series[int] = schema.Field(
+    type_label_depth: schema.Series[int] | None = schema.Field(
         "rlnPipeLineNodeTypeLabelDepth", default=None
     )
 
@@ -79,10 +79,10 @@ class RelionPipelineModel(schema.StarModel):
     general: RelionPipelineGeneral = schema.Field("pipeline_general")
     processes: RelionPipelineProcesses = schema.Field("pipeline_processes")
     nodes: RelionPipelineNodes = schema.Field("pipeline_nodes")
-    input_edges: RelionPipelineInputEdges = schema.Field(
+    input_edges: RelionPipelineInputEdges | None = schema.Field(
         "pipeline_input_edges", default=None
     )
-    output_edges: RelionPipelineOutputEdges = schema.Field(
+    output_edges: RelionPipelineOutputEdges | None = schema.Field(
         "pipeline_output_edges", default=None
     )
 
