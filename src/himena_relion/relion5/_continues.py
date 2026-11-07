@@ -17,6 +17,7 @@ from himena_relion.relion5._builtins import (
     AutoPickTemplate2DJob,
     AutoPickTemplate3DJob,
     AutoPickTopazPick,
+    SelectClassesInteractiveJob,
 )
 from himena_relion import _annotated as _a
 
@@ -99,6 +100,20 @@ class ManualPickContinue(_Relion5BuiltinContinue):
         fn_color: _a.manualpick.FN_COLOR = "",
         blue_value: _a.manualpick.BLUE_VALUE = 0,
         red_value: _a.manualpick.RED_VALUE = 2,
+    ):
+        raise NotImplementedError("This is a builtin job placeholder.")
+
+
+class SelectClassesInteractiveContinue(_Relion5BuiltinContinue):
+    """Select classes again, starting from the previous selection."""
+
+    original_class = SelectClassesInteractiveJob
+
+    def run(
+        self,
+        do_recenter: _a.select.DO_RECENTER = False,
+        nr_groups: _a.select.NR_GROUPS = None,
+        use_relion_gui: _a.misc.USE_RELION_GUI = False,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 

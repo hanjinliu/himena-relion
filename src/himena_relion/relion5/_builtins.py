@@ -1534,6 +1534,10 @@ class _Class3DJobBase(_Relion5SpaJob):
     def input_edges(self, **kwargs) -> list[str]:
         return extract_input_edges(kwargs, ["fn_img", "fn_ref", "fn_mask"])
 
+    def status_tip(self) -> str:
+        ncls = int(self.output_job_dir.get_job_param("nr_classes"))
+        return f"{ncls} classes"
+
 
 class Class3DNoAlignmentJob(_Class3DJobBase):
     @classmethod
@@ -2054,6 +2058,12 @@ class _SelectClassesJob(_SelectJob):
 
 
 class SelectClassesInteractiveJob(_SelectClassesJob):
+    """Select 2D/3D classes interactively.
+
+    When run from himena-relion, classes are selected in the himena-relion GUI instead
+    of `relion_display`. The job and its outputs are the same as RELION's.
+    """
+
     @classmethod
     def type_label(cls):
         return "relion.select.interactive"
@@ -2061,9 +2071,28 @@ class SelectClassesInteractiveJob(_SelectClassesJob):
     def run(
         self,
         fn_model: _a.io.IN_OPTIMISER = "",
+        do_recenter: _a.select.DO_RECENTER = False,
+        nr_groups: _a.select.NR_GROUPS = None,
+        use_relion_gui: _a.misc.USE_RELION_GUI = False,
         other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
+
+    @classmethod
+    def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
+        # do_regroup is "Yes" only when the number of groups is given
+        nr_groups = kwargs.pop("nr_groups", None)
+        kwargs["do_regroup"] = nr_groups is not None
+        kwargs["nr_groups"] = 1 if nr_groups is None else nr_groups
+        return super().normalize_kwargs(**kwargs)
+
+    @classmethod
+    def normalize_kwargs_inv(cls, **kwargs) -> dict[str, Any]:
+        do_regroup = kwargs.get("do_regroup", None)
+        kwargs = super().normalize_kwargs_inv(**kwargs)
+        if do_regroup is not None and not parse_string(do_regroup, bool):
+            kwargs["nr_groups"] = None
+        return kwargs
 
     @classmethod
     def _search_parent_class3d(cls, path: Path) -> JobDirectory | None:
@@ -2120,11 +2149,10 @@ class SelectClassesAutoJob(_SelectClassesJob):
         rank_threshold: _a.select.RANK_THRESHOLD = 0.5,
         select_nr_parts: _a.select.SELECT_NR_PARTS = None,
         select_nr_classes: _a.select.SELECT_NR_CLASSES = None,
-        do_recenter: _a.select.DO_RECENTER = False,
-        do_regroup: _a.select.DO_REGROUP = False,
-        nr_groups: _a.select.NR_GROUPS = 1,
         other_args: _a.import_.OTHER_ARGS = "",
     ):
+        # NOTE: do_recenter and do_regroup are not supported by relion_class_ranker
+        # (RELION refuses to create the job). They are set to "No" in job.star.
         raise NotImplementedError("This is a builtin job placeholder.")
 
 

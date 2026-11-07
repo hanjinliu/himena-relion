@@ -302,3 +302,16 @@ NEW_BOX = Annotated[
         "group": "Centering",
     },
 ]
+USE_RELION_GUI = Annotated[
+    bool,
+    {
+        "label": "Use RELION GUI",
+        "tooltip": (
+            "If set to Yes, this job is run by RELION as usual (e.g. classes are "
+            "selected in relion_display). Otherwise, the job is run in the himena-relion "
+            "window: open the running job and use its Results tab. The output files are "
+            "the same in both cases. This option is not written in job.star."
+        ),
+        "group": "Running",
+    },
+]

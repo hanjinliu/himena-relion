@@ -332,9 +332,7 @@ class Q2DViewer(Q2DViewerBase):
             return None
         slice_image = np.asarray(_sliced)
         if self._last_clim is None:
-            min_ = slice_image.min()
-            max_ = slice_image.max()
-            self._last_clim = (min_, max_)
+            self._last_clim = min_, max_ = quick_min_max_2d(slice_image)
         else:
             min_, max_ = self._last_clim
 
@@ -1098,3 +1096,15 @@ def auto_contrast_by_hist(
         changed = True
     if changed or force_update_view_range:
         hist_view.set_view_range(range_min, range_max)
+
+
+def quick_min_max_2d(arr: np.ndarray, every: int = 500) -> tuple[float, float]:
+    """Quickly compute the minimum and maximum of a 2D array."""
+    ny = arr.shape[0]
+    if ny < every * 2:
+        return float(arr.min()), float(arr.max())
+    # For large arrays, use a faster method
+    arr_ref = arr[::every]
+    min_val = float(arr_ref.min())
+    max_val = float(arr_ref.max())
+    return min_val, max_val

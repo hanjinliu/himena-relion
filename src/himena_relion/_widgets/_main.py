@@ -129,6 +129,8 @@ class QRelionJobWidget(QRelionJobWidgetBase):
         self._ui_ref = weakref.ref(ui)
         self._control_widget: QRelionJobWidgetControl | None = None
         self._watcher: GeneratorWorker | None = None
+        self._results_widget: JobWidgetBase | None = None
+        self._results_by_himena_impl = False
         self.job_updated.connect(self._on_job_updated)
         self.job_init_required.connect(self._on_init_required)
         self._instances.add(self)
@@ -148,12 +150,63 @@ class QRelionJobWidget(QRelionJobWidgetBase):
 
         self.clear_tabs()
 
-        if wcls := RelionJobViewRegistry.instance().get_widget_class(job_dir):
-            _LOGGER.info(f"Adding job widget for {job_dir.path}: {wcls!r}")
-            wdt = wcls(job_dir)
+        if wdt := self._create_results_widget(job_dir):
             self.add_job_widget(wdt)
 
         self.update_job(job_dir)
+
+    def _create_results_widget(
+        self, job_dir: _job_dir.JobDirectory
+    ) -> JobWidgetBase | None:
+        """Create the widget of the Results tab.
+
+        While a job is running with himena-relion's own implementation (such as the
+        interactive class selection), its GUI is shown instead of the results.
+        """
+        from himena_relion import hijack
+
+        self._results_widget = None
+        self._results_by_himena_impl = False
+        if hijacker := hijack.running_hijacker(job_dir):
+            _LOGGER.info(f"Adding {hijacker.import_path()} widget for {job_dir.path}")
+            wdt = hijacker.create_widget(job_dir)
+            if (sig := getattr(wdt, "job_finished", None)) is not None:
+                sig.connect(self.refresh_results_widget)
+            self._results_by_himena_impl = True
+        elif wcls := RelionJobViewRegistry.instance().get_widget_class(job_dir):
+            _LOGGER.info(f"Adding job widget for {job_dir.path}: {wcls!r}")
+            wdt = wcls(job_dir)
+        else:
+            return None
+        self._results_widget = wdt
+        return wdt
+
+    def refresh_results_widget(self):
+        """Switch the Results tab if the job started/stopped running in himena."""
+        from himena_relion import hijack
+
+        if (job_dir := self._job_dir) is None:
+            return
+        is_himena_impl = hijack.running_hijacker(job_dir) is not None
+        if is_himena_impl == self._results_by_himena_impl:
+            return
+        if (old := self._results_widget) is not None:
+            if (index := self._tab_widget.indexOf(old)) >= 0:
+                self._tab_widget.removeTab(index)
+            if callback := getattr(old, "window_closed_callback", None):
+                callback()
+            old.deleteLater()
+        if wdt := self._create_results_widget(job_dir):
+            self._tab_widget.insertTab(0, wdt, wdt.tab_title())
+            self._tab_widget.setCurrentIndex(0)
+            try:
+                wdt.initialize(job_dir)
+                wdt.widget_added_callback()
+            except Exception:
+                _LOGGER.error(
+                    f"Failed to initialize job widget {type(wdt).__name__!r}",
+                    exc_info=True,
+                )
 
     @validate_protocol
     def to_model(self) -> WidgetDataModel:
@@ -252,6 +305,7 @@ class QRelionJobWidget(QRelionJobWidgetBase):
             wdt.on_job_updated(self._job_dir, Path(path))
             if isinstance(wdt, QRunOutErrLog):
                 msg = wdt.last_lines()
+        self.refresh_results_widget()
         if self._job_dir.state() in _STATES_TO_SHOW_MSG:
             self._control_widget.set_msg(msg)
         else:
@@ -260,6 +314,7 @@ class QRelionJobWidget(QRelionJobWidgetBase):
     def _on_init_required(self, job_dir: _job_dir.JobDirectory):
         """Handle the case when the job directory needs to be re-initialized."""
         self.initialize_widgets(job_dir)
+        self.refresh_results_widget()
 
 
 class RelionJobViewRegistry:

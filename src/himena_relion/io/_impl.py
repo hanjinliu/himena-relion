@@ -103,11 +103,19 @@ def abort_relion_job(ui: MainWindow, job_dir: JobDirectory):
         choices=[("Yes, abort", True), ("Cancel", False)],
         how="buttons",
     ):
-        job_dir.path.joinpath(FileNames.ABORT_NOW).touch()
+        from himena_relion import hijack
+
+        if hijack.uses_himena_impl(job_dir):
+            # No process is running. The job is run in the main window.
+            hijack.finish_job(job_dir, "Aborted")
+        else:
+            job_dir.path.joinpath(FileNames.ABORT_NOW).touch()
 
 
 def overwrite_relion_job(ui: MainWindow, job_dir: JobDirectory):
     """Overwrite this RELION job's parameters and execute again."""
+    from himena_relion import hijack
+
     job_cls = job_dir._to_job_class()
     if job_cls is None:
         raise RuntimeError("Cannot determine job class.")
@@ -119,7 +127,7 @@ def overwrite_relion_job(ui: MainWindow, job_dir: JobDirectory):
         subtitle=f"Overwriting {job_dir.job_normal_id()}",
     )
     scheduler.set_edit_mode(job_dir)
-    scheduler.set_parameters(job_dir.get_job_params_as_dict())
+    scheduler.set_parameters(hijack.job_params_with_marker(job_dir))
     return scheduler
 
 
@@ -130,6 +138,8 @@ def clone_relion_job(ui: MainWindow, job_dir: JobDirectory):
     the clone operation in cryoSPARC. Parameters from this job will be copied to the
     job runner widget to facilitate creating a new job with the same parameters.
     """
+    from himena_relion import hijack
+
     job_cls = job_dir._to_job_class()
     if job_cls is None:
         raise RuntimeError("Cannot determine job class.")
@@ -139,7 +149,7 @@ def clone_relion_job(ui: MainWindow, job_dir: JobDirectory):
         cwd=job_dir.relion_project_dir,
         subtitle=f"Clone of {job_dir.job_normal_id()}",
     )
-    scheduler.set_parameters(job_dir.get_job_params_as_dict())
+    scheduler.set_parameters(hijack.job_params_with_marker(job_dir))
     scheduler.set_schedule_mode()
     return scheduler
 
