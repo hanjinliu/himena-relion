@@ -36,12 +36,19 @@ from himena_relion.consts import FileNames, DEFAULT_PIPELINE_STAR
 
 _WATCHER_FILE_NAME = ".himena_pipeline_watcher.lock"
 _WATCHER_LOG_FILE_NAME = ".himena_pipeline_watcher.log"
+# Increase this when the watcher behaves differently, so that a running watcher of an
+# older himena-relion is replaced by a new one (see `stop_outdated_watcher`).
+# 0: no "protocol" in the lock file
+# 1: jobs with USE_HIMENA_IMPL are not run by relion_pipeliner
+WATCHER_PROTOCOL = 1
 
 
 class RelionPipelineWatcher:
     def __init__(self, relion_dir: str | Path):
         self._relion_project_dir = Path(relion_dir).resolve()
         self._state_to_job_map = defaultdict[NodeStatus, dict[str, RelionJobInfo]](dict)
+        # time.monotonic() when each scheduled job was found by this watcher
+        self._found_at: dict[str, float] = {}
 
     def run(self):
         """Watch the job directory for changes."""
@@ -84,6 +91,11 @@ class RelionPipelineWatcher:
         for job in pipeline.iter_nodes():
             _dict = self._state_to_job_map[job.status]
             _dict[job.path.as_posix()] = job
+        now = time.monotonic()
+        self._found_at = {
+            path: self._found_at.get(path, now)
+            for path in self._state_to_job_map[NodeStatus.SCHEDULED]
+        }
 
         if len(self._state_to_job_map[NodeStatus.SCHEDULED]) == 0:
             # No more jobs to run. Stop watching and remove the lock file.
@@ -116,6 +128,7 @@ class RelionPipelineWatcher:
                             execute_job(
                                 job.path.as_posix(),
                                 cwd=pipeline.project_dir,
+                                found_at=self._found_at[job.path.as_posix()],
                             )
                         except RelionPipelineLockError:
                             # Jobs run by himena-relion (USE_HIMENA_IMPL) update the
@@ -187,15 +200,22 @@ class RelionPipelineWatcher:
                 path.unlink(missing_ok=True)
             else:
                 if alive:
-                    raise WatcherAlreadyRunningError(
-                        f"Failed to acquire lock after {num_retry} retries. Another "
-                        f"watcher at PID {pid} is running."
-                    )
-                # The previous watcher was killed without removing the lock (e.g.
-                # when the himena window was closed). If the lock is kept, no watcher
-                # can start and scheduled jobs are never run.
-                _print_log(f"Removed the lock of a watcher not running (PID {pid})")
-                path.unlink(missing_ok=True)
+                    try:
+                        stopped = stop_outdated_watcher(self._relion_project_dir)
+                    except OutdatedWatcherError as e:
+                        _print_log(str(e))
+                        stopped = False
+                    if not stopped:
+                        raise WatcherAlreadyRunningError(
+                            f"Failed to acquire lock after {num_retry} retries. "
+                            f"Another watcher at PID {pid} is running."
+                        )
+                else:
+                    # The previous watcher was killed without removing the lock (e.g.
+                    # when the himena window was closed). If the lock is kept, no
+                    # watcher can start and scheduled jobs are never run.
+                    _print_log(f"Removed the lock of a watcher not running (PID {pid})")
+                    path.unlink(missing_ok=True)
         path.write_text(json.dumps(_lock_info(), indent=2))
         try:
             yield
@@ -224,6 +244,8 @@ def read_pid_from_lock(lock_path: Path) -> int:
 
 def _lock_info() -> dict[str, Any]:
     """Information of this process written in the lock file."""
+    from himena_relion import __version__
+
     return {
         "pid": os.getpid(),
         "user": get_user(),
@@ -231,7 +253,19 @@ def _lock_info() -> dict[str, Any]:
         "platform": sys.platform,
         # to detect that the PID is reused by another process
         "create_time": psutil.Process().create_time(),
+        # to detect watchers of older himena-relion
+        "version": __version__,
+        "protocol": WATCHER_PROTOCOL,
+        "executable": sys.executable,
     }
+
+
+def _is_this_machine(info: dict[str, Any]) -> bool:
+    """True if the lock file was written on this machine (old ones are assumed so)."""
+    return (
+        info.get("host", socket.gethostname()) == socket.gethostname()
+        and info.get("platform", sys.platform) == sys.platform
+    )
 
 
 def is_lock_owner_alive(lock_path: Path) -> bool:
@@ -243,10 +277,7 @@ def is_lock_owner_alive(lock_path: Path) -> bool:
     pid = info["pid"]
     if not isinstance(pid, int):
         raise TypeError(f"Invalid PID in the lock file: {pid!r}")
-    if (
-        info.get("host", socket.gethostname()) != socket.gethostname()
-        or info.get("platform", sys.platform) != sys.platform
-    ):
+    if not _is_this_machine(info):
         # processes of other machines (or Windows/WSL) cannot be checked
         return True
     try:
@@ -265,6 +296,86 @@ class WatcherAlreadyRunningError(RuntimeError):
     """Raised when the process failed to acquire a lock."""
 
 
+class OutdatedWatcherError(RuntimeError):
+    """Raised when a watcher of an older himena-relion cannot be stopped."""
+
+
+def stop_outdated_watcher(relion_dir: str | Path, timeout: float = 5.0) -> bool:
+    """Stop the running watcher of an older himena-relion, if any.
+
+    A watcher keeps running (with the code of the time it started) while there are
+    scheduled jobs, even after himena-relion is updated. New watchers cannot start
+    while it holds the lock, so the old one would run the jobs in its own way (e.g.
+    jobs to be run in the himena main window are run by RELION). This function must be
+    called before jobs are scheduled. The caller is responsible for starting a new
+    watcher if True is returned.
+
+    Returns True if a watcher was stopped (or the lock was found to be stale). Raises
+    `OutdatedWatcherError` if an outdated watcher is running but cannot be stopped.
+    """
+    lock_path = Path(relion_dir) / _WATCHER_FILE_NAME
+    try:
+        info = json.loads(lock_path.read_text())
+        pid = info["pid"]
+        alive = is_lock_owner_alive(lock_path)
+    except Exception:
+        return False  # no lock, or broken lock (removed when a watcher starts)
+    if not alive or info.get("protocol", 0) >= WATCHER_PROTOCOL:
+        return False
+    desc = (
+        f"pipeline watcher of an older himena-relion (version "
+        f"{info.get('version', 'unknown')}, PID {pid}, host "
+        f"{info.get('host', 'unknown')})"
+    )
+    message = f"Stopped the {desc}"
+    try:
+        if not _is_this_machine(info):
+            raise OutdatedWatcherError("it is running on another machine")
+        proc = psutil.Process(pid)
+        if _is_watcher_process(proc):
+            # the watcher should not be killed while editing default_pipeline.star
+            _wait_relion_lock_released(Path(relion_dir))
+            proc.terminate()
+            try:
+                proc.wait(timeout)
+            except psutil.TimeoutExpired:
+                proc.kill()
+                proc.wait(timeout)
+        else:
+            # Old lock files have no "create_time", so a reused PID looks alive.
+            message = f"Removed the lock of a {desc}, whose PID is reused"
+    except psutil.NoSuchProcess:
+        message = f"Removed the lock of a {desc}, which already exited"
+    except (psutil.Error, OutdatedWatcherError) as e:
+        reason = str(e) or type(e).__name__
+        raise OutdatedWatcherError(
+            f"A {desc} is running but could not be stopped ({reason}). Jobs may not be "
+            "run correctly (e.g. jobs to be run in the himena main window are run by "
+            "RELION). Please stop this process manually."
+        ) from None
+    # The killed watcher could not remove its lock.
+    try:
+        if json.loads(lock_path.read_text()).get("pid") == pid:
+            lock_path.unlink(missing_ok=True)
+    except Exception:
+        pass
+    _print_log(message)
+    return True
+
+
+def _is_watcher_process(proc: psutil.Process) -> bool:
+    """True if the process is `himena-relion watch ...` (not a reused PID)."""
+    cmdline = proc.cmdline()
+    return "watch" in cmdline and any("himena" in arg.lower() for arg in cmdline)
+
+
+def _wait_relion_lock_released(relion_dir: Path, timeout: float = 2.0):
+    lock_dir = relion_dir / ".relion_lock"
+    deadline = time.monotonic() + timeout
+    while lock_dir.exists() and time.monotonic() < deadline:
+        time.sleep(0.05)
+
+
 def run_watcher(relion_dir: str | Path, locked_ok: bool = True):
     watcher = RelionPipelineWatcher(relion_dir=relion_dir)
     try:
@@ -278,7 +389,7 @@ def run_watcher(relion_dir: str | Path, locked_ok: bool = True):
 
 
 def run_watcher_new_process(relion_dir: str | Path, locked_ok: bool = True):
-    cmd = ["himena-relion", "watch", str(relion_dir)]
+    cmd = _watcher_command() + ["watch", str(relion_dir)]
     if locked_ok:
         cmd.append("--lock-ok")
     # retain the process object.
@@ -288,6 +399,18 @@ def run_watcher_new_process(relion_dir: str | Path, locked_ok: bool = True):
         stderr=subprocess.DEVNULL,
         **_detached_process_kwargs(),
     )
+
+
+def _watcher_command() -> list[str]:
+    """Command to run himena-relion with the same Python as this process.
+
+    The `himena-relion` command in PATH may be of another environment (possibly an
+    older version that does not know, for example, the jobs run in the himena main
+    window). `-P` is needed not to import modules from the current directory.
+    """
+    if sys.executable:
+        return [sys.executable, "-P", "-m", "himena_relion"]
+    return ["himena-relion"]  # embedded Python etc.
 
 
 def _detached_process_kwargs() -> dict[str, Any]:
@@ -315,12 +438,15 @@ def execute_job(
     ignore_error: bool = False,
     *,
     cwd=None,
+    found_at: float | None = None,
 ) -> RelionJobExecution | None:
     """Execute a RELION job named `job_name` (such as "Class3D/job012/").
 
     Jobs marked with USE_HIMENA_IMPL are not executed by `relion_pipeliner`. They are
     only marked as running, and will be run in the himena main window. None is
-    returned in this case.
+    returned in this case. `found_at` is the `time.monotonic()` when the pipeline
+    watcher found the job; USE_HIMENA_IMPL of a job just added may not be written yet,
+    so it is waited for a while after this time (see `hijack.wait_for_marker`).
     """
     job_name = normalize_job_id(job_name)
     try:
@@ -334,7 +460,7 @@ def execute_job(
 
     from himena_relion import hijack
 
-    if hijack.wait_for_marker(job_dir):
+    if hijack.wait_for_marker(job_dir, found_at=found_at):
         hijack.start_job(job_dir)
         _print_log(f"Job {job_name} uses himena-relion implementation. Marked running.")
         return None

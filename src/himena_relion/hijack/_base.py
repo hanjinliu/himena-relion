@@ -58,9 +58,10 @@ _PIPELINE_CONTROL_FILES = [
     FileNames.EXIT_SUCCESS,
     FileNames.EXIT_FAILURE,
 ]
-# Seconds to wait for USE_HIMENA_IMPL to be written after the job is added by
-# relion_pipeliner (see `wait_for_marker`).
-_MARKER_GRACE_SEC = 2.0
+# Seconds to wait for USE_HIMENA_IMPL to be written after the pipeline watcher found a
+# new job added by relion_pipeliner (see `wait_for_marker`).
+_MARKER_GRACE_SEC = 5.0
+_MARKER_POLL_SEC = 0.1
 # Job parameter to run a job by RELION even if it can be hijacked. It is a parameter
 # of the job widgets only and is not written in job.star; USE_HIMENA_IMPL is written
 # only when it is false.
@@ -115,10 +116,19 @@ def iter_hijackers() -> list[type[HijackedJob]]:
 
 def find_hijacker(job_dir: JobDirectory) -> type[HijackedJob] | None:
     """Find the hijacker class that can run the job, from its job.star."""
+    if (job_star := _read_job_star(job_dir)) is None:
+        return None
+    return _find_hijacker_for(job_star)
+
+
+def _read_job_star(job_dir: JobDirectory) -> JobStarModel | None:
     try:
-        job_star = JobStarModel.validate_file(job_dir.job_star())
+        return JobStarModel.validate_file(job_dir.job_star())
     except Exception:
         return None
+
+
+def _find_hijacker_for(job_star: JobStarModel) -> type[HijackedJob] | None:
     type_label = job_star.job.job_type_label
     params = job_star.joboptions_values.to_dict()
     for hijacker in iter_hijackers():
@@ -238,24 +248,32 @@ def running_hijacker(job_dir: JobDirectory) -> type[HijackedJob] | None:
     return marked_hijacker(job_dir)
 
 
-def wait_for_marker(job_dir: JobDirectory) -> bool:
+def wait_for_marker(job_dir: JobDirectory, found_at: float | None = None) -> bool:
     """Wait for USE_HIMENA_IMPL of a job that was just added to the pipeline.
 
     `relion_pipeliner --addJobFromStar` adds the job to the pipeline before the main
     window writes USE_HIMENA_IMPL. A pipeline watcher that is already running could
-    find the job in this short period, so wait a moment for jobs that can be hijacked.
+    find the job in this short period, so it waits for the marker of the jobs that can
+    be hijacked, until `_MARKER_GRACE_SEC` seconds after `found_at`, the
+    `time.monotonic()` when the watcher found the job. The time must not be compared
+    with the modification time of the files, because the clock of the file server
+    (e.g. NFS) may differ from that of this machine.
+
+    If `found_at` is None, the marker is not waited for (the caller must have written
+    it already, if needed).
     """
-    if uses_himena_impl(job_dir):
-        return True
-    if find_hijacker(job_dir) is None:
-        return False
-    try:
-        age = time.time() - job_dir.job_star().stat().st_mtime
-    except OSError:
-        return False
-    if age < _MARKER_GRACE_SEC:
-        time.sleep(min(_MARKER_GRACE_SEC - age, _MARKER_GRACE_SEC))
-    return uses_himena_impl(job_dir)
+    if found_at is None:
+        deadline = -float("inf")
+    else:
+        deadline = found_at + _MARKER_GRACE_SEC
+    can_hijack: bool | None = None  # None if job.star cannot be read yet
+    while not uses_himena_impl(job_dir):
+        if can_hijack is None and (job_star := _read_job_star(job_dir)) is not None:
+            can_hijack = _find_hijacker_for(job_star) is not None
+        if can_hijack is False or time.monotonic() >= deadline:
+            return False
+        time.sleep(_MARKER_POLL_SEC)
+    return True
 
 
 ### Pipeline bookkeeping ###
