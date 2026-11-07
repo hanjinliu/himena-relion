@@ -1534,6 +1534,10 @@ class _Class3DJobBase(_Relion5SpaJob):
     def input_edges(self, **kwargs) -> list[str]:
         return extract_input_edges(kwargs, ["fn_img", "fn_ref", "fn_mask"])
 
+    def status_tip(self) -> str:
+        ncls = int(self.output_job_dir.get_job_param("nr_classes"))
+        return f"{ncls} classes"
+
 
 class Class3DNoAlignmentJob(_Class3DJobBase):
     @classmethod
