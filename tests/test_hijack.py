@@ -17,7 +17,13 @@ from himena_relion import pipeline_watcher
 from himena_relion._job_dir import JobDirectory
 from himena_relion._pipeline import RelionDefaultPipeline
 from himena_relion._widgets import QRelionJobWidget
-from himena_relion.consts import DEFAULT_PIPELINE_STAR, NODES_DIR, FileNames
+from himena_relion.consts import (
+    DEFAULT_PIPELINE_STAR,
+    NODES_DIR,
+    FileNames,
+    Plane,
+    ProjectionMode,
+)
 from himena_relion.hijack import _base, find_hijacker, start_job, update_marker
 from himena_relion.hijack import select_interactive as _sel
 from himena_relion.hijack._select_gui import (
@@ -25,6 +31,7 @@ from himena_relion.hijack._select_gui import (
     QClassSelectionJobWidget,
     QClassSelector,
     SortBy,
+    _to_qimage,
 )
 from himena_relion.io import _impl
 from himena_relion.relion5.widgets._select import QSelectInteractiveViewer
@@ -151,7 +158,7 @@ def _make_project(
             iptcl += 1
             rows.append(
                 f"{iptcl:06d}@Extract/job008/Movies/mic.mrcs  {icls + 1}  "
-                f"{iptcl % 4 + 1}  1  4.084572e+05  -1.2345e-07  \"\""
+                f'{iptcl % 4 + 1}  1  4.084572e+05  -1.2345e-07  ""'
             )
     # shuffle so that particles of the same class are not contiguous
     order = rng.permutation(len(rows))
@@ -162,9 +169,7 @@ def _make_project(
         "\n# version 50001\n\ndata_particles\n\nloop_\n_rlnImageName #1\n"
         "_rlnClassNumber #2\n_rlnGroupNumber #3\n_rlnOpticsGroup #4\n"
         "_rlnLogLikeliContribution #5\n_rlnMaxValueProbDistribution #6\n"
-        "_rlnMicrographOriginalName #7\n"
-        + "\n".join(rows[i] for i in order)
-        + "\n",
+        "_rlnMicrographOriginalName #7\n" + "\n".join(rows[i] for i in order) + "\n",
     )
     cdir.joinpath(FileNames.EXIT_SUCCESS).touch()
 
@@ -194,7 +199,9 @@ def _make_project(
         sdir / "job_pipeline.star",
         _pipeline_text(classify_job, outputs, "Scheduled", with_classify_process=False),
     )
-    _write(sdir / DEFAULT_PIPELINE_STAR, _pipeline_text(classify_job, outputs, "Scheduled"))
+    _write(
+        sdir / DEFAULT_PIPELINE_STAR, _pipeline_text(classify_job, outputs, "Scheduled")
+    )
     (sdir / "note.txt").write_text("")
     return JobDirectory(sdir)
 
@@ -238,9 +245,9 @@ def test_find_hijacker(tmp_path: Path):
     assert find_hijacker(job_dir) is _sel.SelectClassesInteractive
     # not hijacked if fn_model is not given (selection of micrographs/particles)
     job_dir.job_star().write_text(
-        job_dir.job_star().read_text().replace(
-            "Class2D/job009/run_it025_optimiser.star", '""'
-        )
+        job_dir.job_star()
+        .read_text()
+        .replace("Class2D/job009/run_it025_optimiser.star", '""')
     )
     assert find_hijacker(job_dir) is None
     # not hijacked for other job types
@@ -342,7 +349,9 @@ def test_write_selection_3d(tmp_path: Path):
         log=lambda _: None,
     )
     assert not job_dir.path.joinpath("class_averages.star").exists()
-    df = read_star(job_dir.path / "particles.star")["particles"].trust_loop().to_polars()
+    df = (
+        read_star(job_dir.path / "particles.star")["particles"].trust_loop().to_polars()
+    )
     assert df.height == 30 + 6
 
 
@@ -486,10 +495,12 @@ def test_class_selector_3d(qtbot, tmp_path: Path):
     images = [ClassImages(img) for img in source.iter_class_images()]
     selector = QClassSelector(source, images)
     qtbot.addWidget(selector)
-    for plane in ["XY", "XZ", "YZ"]:
-        for proj in ["Mean", "Max", "Central slice"]:
-            selector._plane.setCurrentText(plane)
-            selector._projection.setCurrentText(proj)
+    for plane in Plane:
+        for proj in ProjectionMode:
+            selector._plane_mgui.value = plane
+            selector._projection_mgui.value = proj
+            shown = selector._model.index(0).data(QtCore.Qt.ItemDataRole.DecorationRole)
+            assert shown == _to_qimage(images[0].get(plane, proj))
     selector._size_slider.setValue(200)
     assert not selector._view_options.isHidden()
 
@@ -514,9 +525,9 @@ def test_update_marker(tmp_path: Path):
     update_marker(job_dir)
     # the marker is removed if the job cannot be hijacked any more
     job_dir.job_star().write_text(
-        job_dir.job_star().read_text().replace(
-            "Class2D/job009/run_it025_optimiser.star", '""'
-        )
+        job_dir.job_star()
+        .read_text()
+        .replace("Class2D/job009/run_it025_optimiser.star", '""')
     )
     assert update_marker(job_dir) is None
     assert not marker.exists()
@@ -557,7 +568,9 @@ def test_watcher_leaves_marked_job(in_project: Path, no_relion):
     job_dir = _make_project(in_project)
     update_marker(job_dir)
     watcher = pipeline_watcher.RelionPipelineWatcher(in_project)
-    pipeline = RelionDefaultPipeline.from_pipeline_star(in_project / DEFAULT_PIPELINE_STAR)
+    pipeline = RelionDefaultPipeline.from_pipeline_star(
+        in_project / DEFAULT_PIPELINE_STAR
+    )
     watcher._on_job_state_changed(pipeline)
     assert no_relion == []
     assert _status(in_project) == "Running"
@@ -573,7 +586,9 @@ def test_watcher_runs_unmarked_job_with_relion(in_project: Path, monkeypatch):
         pid = 0
 
     monkeypatch.setattr(
-        pipeline_watcher.subprocess, "Popen", lambda args, **_: calls.append(args) or _Proc()
+        pipeline_watcher.subprocess,
+        "Popen",
+        lambda args, **_: calls.append(args) or _Proc(),
     )
     pipeline_watcher.execute_job(SELECT_JOB, cwd=in_project)
     assert len(calls) == 1
@@ -667,7 +682,9 @@ def test_results_tab_switches(himena_ui: MainWindow, in_project: Path, qtbot):
     assert results.selector().selection().tolist() == [True, True, False, False, False]
 
 
-def test_save_without_selection(himena_ui: MainWindow, in_project: Path, qtbot, monkeypatch):
+def test_save_without_selection(
+    himena_ui: MainWindow, in_project: Path, qtbot, monkeypatch
+):
     job_dir = _make_project(in_project)
     update_marker(job_dir)
     start_job(job_dir)
@@ -694,7 +711,9 @@ def test_load_failure_is_shown(himena_ui: MainWindow, in_project: Path):
     assert "run_it025_data.star" in err
 
 
-def test_save_failure_is_logged(himena_ui: MainWindow, in_project: Path, qtbot, monkeypatch):
+def test_save_failure_is_logged(
+    himena_ui: MainWindow, in_project: Path, qtbot, monkeypatch
+):
     job_dir = _make_project(in_project)
     update_marker(job_dir)
     start_job(job_dir)
@@ -704,7 +723,9 @@ def test_save_failure_is_logged(himena_ui: MainWindow, in_project: Path, qtbot, 
     results.selector().set_selection(np.array([0, 0, 1, 0, 0], dtype=bool))  # empty
     monkeypatch.setattr(QtW.QMessageBox, "critical", lambda *_, **__: None)
     assert not results.save()
-    assert "do not contain any particles" in job_dir.path.joinpath("run.err").read_text()
+    assert (
+        "do not contain any particles" in job_dir.path.joinpath("run.err").read_text()
+    )
     assert _status(in_project) == "Running"
 
 
@@ -753,9 +774,9 @@ def test_create_job_writes_marker(himena_ui: MainWindow, in_project: Path, monke
     monkeypatch.setattr(
         _job_class,
         "run_watcher_new_process",
-        lambda *_: watcher_started.append(job_dir.path.joinpath(
-            FileNames.USE_HIMENA_IMPL
-        ).exists()),
+        lambda *_: watcher_started.append(
+            job_dir.path.joinpath(FileNames.USE_HIMENA_IMPL).exists()
+        ),
     )
     SelectClassesInteractiveJob.create_job(
         fn_model="Class2D/job009/run_it025_optimiser.star", _cwd=in_project
