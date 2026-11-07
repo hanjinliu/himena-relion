@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import Enum, StrEnum
 from himena.plugins import configure_submenu
 
 
@@ -52,6 +52,23 @@ class RelionNodeTypeLabels:
     DENSITY_MAP = "DensityMap"
     MASK = "Mask3D"
     PROCESSED_DATA = "ProcessData"
+
+
+class ProjectionMode(StrEnum):
+    MAX = "max"
+    MEAN = "mean"
+    SLICE = "slice"
+
+
+class IntensityMode(StrEnum):
+    ORIGINAL = "original"
+    DIFF = "diff"
+
+
+class Plane(StrEnum):
+    XY = "xy"
+    XZ = "xz"
+    YZ = "yz"
 
 
 NODES_DIR = ".Nodes"

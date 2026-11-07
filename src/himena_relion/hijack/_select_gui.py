@@ -15,7 +15,7 @@ from himena.qt.magicgui import ToggleButtons
 from himena_relion._impl_objects import start_worker
 from himena_relion._job_dir import JobDirectory
 from himena_relion._widgets._job_widgets import JobWidgetBase
-from himena_relion.consts import FileNames
+from himena_relion.consts import FileNames, Plane, ProjectionMode
 from himena_relion.hijack._base import (
     append_run_err,
     append_run_out,
@@ -44,36 +44,28 @@ class SortBy(Enum):
     RESOLUTION = "Resolution"
 
 
-class Plane(Enum):
-    XY = "XY"
-    XZ = "XZ"
-    YZ = "YZ"
-
-
-class Projection(Enum):
-    MEAN = "Mean"
-    MAX = "Max"
-    SLICE = "Central slice"
-
-
 class ClassImages:
     """Images to display for a class (projections for 3D maps)."""
 
     def __init__(self, img: NDArray[np.floating] | None, recenter: bool = False):
-        self._images: dict[tuple[Plane, Projection] | None, NDArray[np.float32]] = {}
+        self._images: dict[
+            tuple[Plane, ProjectionMode] | None, NDArray[np.float32]
+        ] = {}
         if img is None:
             return
         if img.ndim == 2:
             self._images[None] = recenter_image(img) if recenter else img
         else:
             for axis, plane in enumerate(Plane):
-                self._images[(plane, Projection.MEAN)] = img.mean(axis=axis)
-                self._images[(plane, Projection.MAX)] = img.max(axis=axis)
-                self._images[(plane, Projection.SLICE)] = np.take(
+                self._images[(plane, ProjectionMode.MEAN)] = img.mean(axis=axis)
+                self._images[(plane, ProjectionMode.MAX)] = img.max(axis=axis)
+                self._images[(plane, ProjectionMode.SLICE)] = np.take(
                     img, img.shape[axis] // 2, axis=axis
                 )
 
-    def get(self, plane: Plane, projection: Projection) -> NDArray[np.float32] | None:
+    def get(
+        self, plane: Plane, projection: ProjectionMode
+    ) -> NDArray[np.float32] | None:
         if None in self._images:
             return self._images[None]
         return self._images.get((plane, projection))
@@ -274,7 +266,9 @@ class QClassSelector(QtW.QWidget):
         self._sort_by.addItems([s.value for s in SortBy])
         self._sort_by.setCurrentText(SortBy.CLASS_NUMBER.value)
         self._plane_mgui = ToggleButtons(value=Plane.XY, choices=Plane)
-        self._projection_mgui = ToggleButtons(value=Projection.MEAN, choices=Projection)
+        self._projection_mgui = ToggleButtons(
+            value=ProjectionMode.MEAN, choices=ProjectionMode
+        )
         self._size_slider = QtW.QSlider(QtCore.Qt.Orientation.Horizontal, self)
         self._size_slider.setRange(48, 400)
         self._size_slider.setValue(self._delegate.image_size())
@@ -317,6 +311,9 @@ class QClassSelector(QtW.QWidget):
         view_options.addWidget(QtW.QLabel("Projection:"))
         view_options.addWidget(self._projection_mgui.native)
         view_options.addStretch()
+        view_options.addWidget(select_all_btn)
+        view_options.addWidget(clear_btn)
+        view_options.addWidget(invert_btn)
         self._view_options = QtW.QWidget(self)
         self._view_options.setLayout(view_options)
         view_options.setContentsMargins(0, 0, 0, 0)
@@ -329,9 +326,6 @@ class QClassSelector(QtW.QWidget):
         hint.setStyleSheet("color: gray;")
         layout.addWidget(hint)
         bottom = QtW.QHBoxLayout()
-        bottom.addWidget(select_all_btn)
-        bottom.addWidget(clear_btn)
-        bottom.addWidget(invert_btn)
         bottom.addStretch()
         bottom.addWidget(self._save_btn)
         layout.addLayout(bottom)
@@ -406,7 +400,7 @@ class QClassSelector(QtW.QWidget):
 
     def _update_images(self):
         plane = Plane(self._plane_mgui.value)
-        projection = Projection(self._projection_mgui.value)
+        projection = ProjectionMode(self._projection_mgui.value)
         qimages = [_to_qimage(ci.get(plane, projection)) for ci in self._class_images]
         self._model.set_images(qimages)
 

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from qtpy import QtWidgets as QtW, QtCore
-from enum import StrEnum
 from PIL import Image, ImageDraw, ImageFont
 from cmap import Colormap
 from starfile_rs import read_star
@@ -13,23 +12,7 @@ from himena_builtins.qt.image import QImageGraphicsView
 from himena_relion._job_dir import JobDirectory
 from himena_relion._widgets import QIntChoiceWidget
 from himena_relion._utils import invert_y
-
-
-class ProjectionMode(StrEnum):
-    MAX = "max"
-    MEAN = "mean"
-    SLICE = "slice"
-
-
-class IntensityMode(StrEnum):
-    ORIGINAL = "original"
-    DIFF = "diff"
-
-
-class Direction(StrEnum):
-    XY = "xy"
-    XZ = "xz"
-    YZ = "yz"
+from himena_relion.consts import ProjectionMode, IntensityMode, Plane
 
 
 class Class3DPopup(QtW.QWidget):
@@ -67,7 +50,7 @@ class Class3DPopup(QtW.QWidget):
 
         self._mode_projection = ProjectionMode(default_mode_projection)
         self._mode_intensity = IntensityMode(default_mode_intensity)
-        self._direction = Direction.XY
+        self._plane = Plane.XY
 
         self._dim_slider = QLabeledSlider(QtCore.Qt.Orientation.Horizontal)
         self._dim_slider.setMaximumWidth(320)
@@ -92,7 +75,7 @@ class Class3DPopup(QtW.QWidget):
         self._mode_intensity_mgui = ToggleButtons(
             value=self._mode_intensity, choices=IntensityMode
         )
-        self._direction_mgui = ToggleButtons(value=self._direction, choices=Direction)
+        self._plane_mgui = ToggleButtons(value=self._plane, choices=Plane)
 
         mode_controls = QtW.QHBoxLayout()
         mode_controls.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
@@ -102,7 +85,7 @@ class Class3DPopup(QtW.QWidget):
         mode_controls.addWidget(QtW.QLabel("Show:"))
         mode_controls.addWidget(self._mode_intensity_mgui.native)
         mode_controls.addWidget(QtW.QLabel("Plane:"))
-        mode_controls.addWidget(self._direction_mgui.native)
+        mode_controls.addWidget(self._plane_mgui.native)
         layout.addLayout(mode_controls)
 
         data_controls = QtW.QHBoxLayout()
@@ -120,7 +103,7 @@ class Class3DPopup(QtW.QWidget):
         self._iter_choice.current_changed.connect(self._on_iter_changed)
         self._mode_projection_mgui.changed.connect(self._on_mode_projection_changed)
         self._mode_intensity_mgui.changed.connect(self._on_mode_intensity_changed)
-        self._direction_mgui.changed.connect(self._on_direction_changed)
+        self._plane_mgui.changed.connect(self._on_direction_changed)
         self._dim_slider.valueChanged.connect(self._on_slider_changed)
 
         self.load_maps(max(niter_choices))
@@ -145,12 +128,12 @@ class Class3DPopup(QtW.QWidget):
     def update_images(self):
         input_images = []
         for img in self._images:
-            match self._direction:
-                case Direction.XY:
+            match self._plane:
+                case Plane.XY:
                     axis = 0
-                case Direction.XZ:
+                case Plane.XZ:
                     axis = 1
-                case Direction.YZ:
+                case Plane.YZ:
                     axis = 2
             match self._mode_projection:
                 case ProjectionMode.MAX:
@@ -210,8 +193,8 @@ class Class3DPopup(QtW.QWidget):
         self._mode_intensity = value
         self._on_mode_changed()
 
-    def _on_direction_changed(self, value: Direction):
-        self._direction = value
+    def _on_direction_changed(self, value: Plane):
+        self._plane = value
         self._on_mode_changed()
 
     def _on_slider_changed(self, value: int):
