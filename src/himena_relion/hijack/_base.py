@@ -9,7 +9,8 @@ with the original RELION.
 The flow of a hijacked job is:
 
 1. When the job is created (or overwritten/continued) from himena-relion, the file
-   `USE_HIMENA_IMPL` is written in the job directory.
+   `USE_HIMENA_IMPL` is written in the job directory, unless the "Use RELION GUI"
+   parameter (`use_relion_gui`, not written in job.star) is checked.
 2. When the job is ready to run, the pipeline watcher does not call
    `relion_pipeliner --RunJobs`. It only marks the job as "Running" (`start_job`).
 3. The himena main window opens the running job, and its Results tab shows the widget
@@ -38,7 +39,9 @@ from himena_relion._utils import (
 )
 from himena_relion.consts import (
     DEFAULT_PIPELINE_STAR,
+    NO,
     NODES_DIR,
+    YES,
     FileNames,
     RelionJobState,
 )
@@ -58,6 +61,10 @@ _PIPELINE_CONTROL_FILES = [
 # Seconds to wait for USE_HIMENA_IMPL to be written after the job is added by
 # relion_pipeliner (see `wait_for_marker`).
 _MARKER_GRACE_SEC = 2.0
+# Job parameter to run a job by RELION even if it can be hijacked. It is a parameter
+# of the job widgets only and is not written in job.star; USE_HIMENA_IMPL is written
+# only when it is false.
+USE_RELION_GUI = "use_relion_gui"
 
 
 class HijackedJob(ABC):
@@ -146,18 +153,39 @@ def uses_himena_impl(job_dir: JobDirectory) -> bool:
     return job_dir.path.joinpath(FileNames.USE_HIMENA_IMPL).exists()
 
 
-def update_marker(job_dir: JobDirectory) -> type[HijackedJob] | None:
+def update_marker(
+    job_dir: JobDirectory, use_relion_gui: bool = False
+) -> type[HijackedJob] | None:
     """Write USE_HIMENA_IMPL if the job can be hijacked, otherwise remove it.
 
     This must be called before the job is scheduled, so that the pipeline watcher
-    never runs the job with `relion_pipeliner`.
+    never runs the job with `relion_pipeliner`. If `use_relion_gui` is true, the
+    marker is removed so that the job is run by RELION as usual.
     """
     marker = job_dir.path / FileNames.USE_HIMENA_IMPL
-    if hijacker := find_hijacker(job_dir):
+    if not use_relion_gui and (hijacker := find_hijacker(job_dir)):
         write_marker(job_dir, {"himena_class": hijacker.import_path()})
-    else:
-        marker.unlink(missing_ok=True)
-    return hijacker
+        return hijacker
+    marker.unlink(missing_ok=True)
+    return None
+
+
+def has_hijacker(type_label: str) -> bool:
+    """True if some jobs of this type can be run by himena-relion."""
+    return any(h.type_label() == type_label for h in iter_hijackers())
+
+
+def job_params_with_marker(job_dir: JobDirectory) -> dict[str, Any]:
+    """Parameters of an existing job, for the job parameter widgets.
+
+    These are the parameters in job.star, plus `use_relion_gui` for job types that
+    can be hijacked. `use_relion_gui` is not written in job.star; it is "Yes" when the
+    job has no USE_HIMENA_IMPL.
+    """
+    params: dict[str, Any] = job_dir.get_job_params_as_dict()
+    if has_hijacker(job_dir.job_type_label()):
+        params[USE_RELION_GUI] = NO if uses_himena_impl(job_dir) else YES
+    return params
 
 
 def write_marker(job_dir: JobDirectory, fields: dict[str, str]) -> Path:

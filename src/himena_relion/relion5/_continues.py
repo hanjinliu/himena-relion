@@ -113,6 +113,7 @@ class SelectClassesInteractiveContinue(_Relion5BuiltinContinue):
         self,
         do_recenter: _a.select.DO_RECENTER = False,
         nr_groups: _a.select.NR_GROUPS = None,
+        use_relion_gui: _a.misc.USE_RELION_GUI = False,
     ):
         raise NotImplementedError("This is a builtin job placeholder.")
 

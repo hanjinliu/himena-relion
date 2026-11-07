@@ -17,7 +17,7 @@ from himena.widgets import current_instance, set_status_tip, set_clipboard
 from himena.qt import drag_files, QColoredSVGIcon, QColoredToolButton
 from himena.exceptions import Cancelled
 from himena_relion import _job_class, _job_dir, _configs
-from himena_relion.consts import DEFAULT_PIPELINE_STAR
+from himena_relion.consts import DEFAULT_PIPELINE_STAR, FileNames
 from himena_relion._impl_objects import start_worker
 from himena_relion._utils import (
     normalize_job_id,
@@ -486,7 +486,8 @@ class QJobParameterView(QtW.QWidget, JobWidgetBase):
             )
 
     def on_job_updated(self, job_dir, fp):
-        if fp.name == "job.star":
+        # "Use RELION GUI" is shown from the existence of USE_HIMENA_IMPL
+        if fp.name in ("job.star", FileNames.USE_HIMENA_IMPL):
             if job_cls := job_dir._to_job_class():
                 self._update_params(job_dir, job_cls)
 
@@ -495,8 +496,10 @@ class QJobParameterView(QtW.QWidget, JobWidgetBase):
         job_dir: _job_dir.JobDirectory,
         job_cls: type[_job_class.RelionJob],
     ):
+        from himena_relion.hijack import job_params_with_marker
+
         self._param_widget.set_parameters(
-            job_cls.normalize_kwargs_inv(**job_dir.get_job_params_as_dict()),
+            job_cls.normalize_kwargs_inv(**job_params_with_marker(job_dir)),
             enabled=False,
         )
 

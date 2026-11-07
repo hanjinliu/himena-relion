@@ -33,7 +33,7 @@ from himena_relion.hijack.select_interactive import (
 
 _LOGGER = logging.getLogger(__name__)
 _CLASS_INDEX_ROLE = QtCore.Qt.ItemDataRole.UserRole + 1
-_SELECTED_COLOR = QtGui.QColor("#ff3b30")
+_SELECTED_COLOR = QtGui.QColor("#fd544b")
 _TEXT_LINE_HEIGHT = 14
 _HOVER_FRAME_WIDTH = 3
 

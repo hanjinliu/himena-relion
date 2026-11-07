@@ -7,9 +7,13 @@ from contextlib import contextmanager
 import datetime
 from dataclasses import dataclass
 from pathlib import Path
+import socket
 import subprocess
+import sys
 import time
+from typing import Any
 import warnings
+import psutil
 from himena_relion._watch import watch, Change
 from himena_relion._utils import (
     RelionPipelineLockError,
@@ -172,6 +176,7 @@ class RelionPipelineWatcher:
         else:
             try:
                 pid = read_pid_from_lock(path)
+                alive = is_lock_owner_alive(path)
             except Exception:
                 warnings.warn(
                     f"Pipeline watcher lock file {_WATCHER_FILE_NAME} seems broken. "
@@ -179,17 +184,19 @@ class RelionPipelineWatcher:
                     RuntimeWarning,
                     stacklevel=1,
                 )
-                path.unlink()
+                path.unlink(missing_ok=True)
             else:
-                raise WatcherAlreadyRunningError(
-                    f"Failed to acquire lock after {num_retry} retries. Another "
-                    f"watcher at PID {pid} is running."
-                )
-        lock_info = {
-            "pid": os.getpid(),
-            "user": get_user(),
-        }
-        path.write_text(json.dumps(lock_info, indent=2))
+                if alive:
+                    raise WatcherAlreadyRunningError(
+                        f"Failed to acquire lock after {num_retry} retries. Another "
+                        f"watcher at PID {pid} is running."
+                    )
+                # The previous watcher was killed without removing the lock (e.g.
+                # when the himena window was closed). If the lock is kept, no watcher
+                # can start and scheduled jobs are never run.
+                _print_log(f"Removed the lock of a watcher not running (PID {pid})")
+                path.unlink(missing_ok=True)
+        path.write_text(json.dumps(_lock_info(), indent=2))
         try:
             yield
         finally:
@@ -213,6 +220,45 @@ def read_pid_from_lock(lock_path: Path) -> int:
     """Get the PID of the current watcher process"""
     js = json.loads(lock_path.read_text())
     return js["pid"]
+
+
+def _lock_info() -> dict[str, Any]:
+    """Information of this process written in the lock file."""
+    return {
+        "pid": os.getpid(),
+        "user": get_user(),
+        "host": socket.gethostname(),
+        "platform": sys.platform,
+        # to detect that the PID is reused by another process
+        "create_time": psutil.Process().create_time(),
+    }
+
+
+def is_lock_owner_alive(lock_path: Path) -> bool:
+    """True if the watcher process that wrote the lock file may be still running.
+
+    Raises an exception if the lock file is broken.
+    """
+    info = json.loads(lock_path.read_text())
+    pid = info["pid"]
+    if not isinstance(pid, int):
+        raise TypeError(f"Invalid PID in the lock file: {pid!r}")
+    if (
+        info.get("host", socket.gethostname()) != socket.gethostname()
+        or info.get("platform", sys.platform) != sys.platform
+    ):
+        # processes of other machines (or Windows/WSL) cannot be checked
+        return True
+    try:
+        create_time = psutil.Process(pid).create_time()
+    except psutil.NoSuchProcess:
+        return False
+    except psutil.AccessDenied:
+        return True
+    if (create_time_lock := info.get("create_time")) is not None:
+        # after the watcher died, the PID may be used by another process
+        return abs(create_time - create_time_lock) < 1.0
+    return True
 
 
 class WatcherAlreadyRunningError(RuntimeError):
@@ -240,8 +286,22 @@ def run_watcher_new_process(relion_dir: str | Path, locked_ok: bool = True):
         cmd,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
-        start_new_session=True,
+        **_detached_process_kwargs(),
     )
+
+
+def _detached_process_kwargs() -> dict[str, Any]:
+    """Popen arguments to keep the watcher running after the himena window is closed.
+
+    `start_new_session` does nothing on Windows. Without a console of its own, the
+    watcher is killed when the console of himena is closed, leaving the lock file.
+    """
+    if sys.platform == "win32":
+        return {
+            "creationflags": subprocess.CREATE_NEW_PROCESS_GROUP
+            | subprocess.CREATE_NO_WINDOW
+        }
+    return {"start_new_session": True}
 
 
 @dataclass

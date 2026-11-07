@@ -200,7 +200,7 @@ class RelionJob(ABC):
         d = last_job_directory(_cwd)  # FIXME: not thread-safe
         # Some standard jobs are run in the himena main window. This must be done
         # before starting the watcher.
-        _update_himena_impl_marker(_cwd / d)
+        _update_himena_impl_marker(_cwd / d, kwargs)
         run_watcher_new_process(_cwd)
         match is_all_inputs_ready(d):
             case ReadyState.READY:
@@ -226,7 +226,7 @@ class RelionJob(ABC):
         job_dir = self.output_job_dir
         job_star_model = self.prep_job_star(**kwargs)
         job_star_model.to_star_dict().write(job_dir.job_star(), newline="\n")
-        _update_himena_impl_marker(job_dir)
+        _update_himena_impl_marker(job_dir, kwargs)
         job_star_params = job_dir.get_job_params_as_dict()
         new_input_edges = self.input_edges(**job_star_params)
         rln_dir = job_dir.relion_project_dir
@@ -344,6 +344,10 @@ class _Relion5BuiltinJob(RelionJob):
 
         This is used to convert python objects to job.star.
         """
+        from himena_relion.hijack import USE_RELION_GUI
+
+        # Not a RELION parameter. It decides whether USE_HIMENA_IMPL is written.
+        kwargs.pop(USE_RELION_GUI, None)
         kwargs.update(_configs.get_queue_dict())
         if "gpu_ids" in kwargs:
             gpu_ids = kwargs["gpu_ids"]
@@ -495,7 +499,9 @@ class _Relion5BuiltinContinue(_Relion5BuiltinJob):
             cwd=job_dir.relion_project_dir,
             subtitle=f"In {job_dir.job_normal_id()}",
         )
-        orig_params_raw = job_dir.get_job_params_as_dict()
+        from himena_relion.hijack import job_params_with_marker
+
+        orig_params_raw = job_params_with_marker(job_dir)
         orig_params = cls.original_class.normalize_kwargs_inv(**orig_params_raw)
         try:
             sig = cls._signature()
@@ -543,7 +549,7 @@ class _Relion5BuiltinContinue(_Relion5BuiltinJob):
         self.prerun_check(**kwargs)
         job_star = self.make_job_star(**kwargs)
         job_star.to_star_dict().write(job_star_path, newline="\n")
-        _update_himena_impl_marker(job_dir)
+        _update_himena_impl_marker(job_dir, kwargs)
 
         job_star_params = job_dir.get_job_params_as_dict()
         new_input_edges = self.input_edges(**job_star_params)
@@ -592,15 +598,22 @@ def continue_job_now(job_dir: _job_dir.JobDirectory) -> RelionJobExecution:
     return execute_job(to_run, cwd=rln_dir)
 
 
-def _update_himena_impl_marker(job_dir: _job_dir.JobDirectory | Path) -> None:
-    """Write USE_HIMENA_IMPL if the job is run in the himena main window."""
-    from himena_relion.hijack import update_marker
+def _update_himena_impl_marker(
+    job_dir: _job_dir.JobDirectory | Path, params: dict[str, Any]
+) -> None:
+    """Write USE_HIMENA_IMPL if the job is run in the himena main window.
+
+    `params` are the job parameters from the widgets. The marker is not written if
+    "Use RELION GUI" is checked.
+    """
+    from himena_relion.hijack import USE_RELION_GUI, update_marker
 
     if not isinstance(job_dir, _job_dir.JobDirectory):
         if not Path(job_dir).joinpath("job.star").exists():
             return
         job_dir = _job_dir.JobDirectory(job_dir)
-    update_marker(job_dir)
+    use_relion_gui = parse_string(params.get(USE_RELION_GUI, False), bool)
+    update_marker(job_dir, use_relion_gui=use_relion_gui)
 
 
 def _keep_fn_cont(fn, kwargs):

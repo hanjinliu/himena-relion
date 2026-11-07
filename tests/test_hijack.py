@@ -17,6 +17,7 @@ from himena_relion import pipeline_watcher
 from himena_relion._job_dir import JobDirectory
 from himena_relion._pipeline import RelionDefaultPipeline
 from himena_relion._widgets import QRelionJobWidget
+from himena_relion._widgets._job_widgets import QJobParameterView
 from himena_relion.consts import (
     DEFAULT_PIPELINE_STAR,
     NODES_DIR,
@@ -24,7 +25,13 @@ from himena_relion.consts import (
     Plane,
     ProjectionMode,
 )
-from himena_relion.hijack import _base, find_hijacker, start_job, update_marker
+from himena_relion.hijack import (
+    USE_RELION_GUI,
+    _base,
+    find_hijacker,
+    start_job,
+    update_marker,
+)
 from himena_relion.hijack import select_interactive as _sel
 from himena_relion.hijack._select_gui import (
     ClassImages,
@@ -533,6 +540,30 @@ def test_update_marker(tmp_path: Path):
     assert not marker.exists()
 
 
+def test_update_marker_use_relion_gui(tmp_path: Path):
+    job_dir = _make_project(tmp_path)
+    marker = job_dir.path / FileNames.USE_HIMENA_IMPL
+    job_star_text = job_dir.job_star().read_text()
+    update_marker(job_dir)
+    assert marker.exists()
+    assert _base.job_params_with_marker(job_dir)[USE_RELION_GUI] == "No"
+    # "Use RELION GUI" removes the marker, so the job is run by RELION
+    assert update_marker(job_dir, use_relion_gui=True) is None
+    assert not marker.exists()
+    assert _base.job_params_with_marker(job_dir)[USE_RELION_GUI] == "Yes"
+    # the parameter is not in job.star
+    assert job_dir.job_star().read_text() == job_star_text
+    assert USE_RELION_GUI not in job_dir.get_job_params_as_dict()
+
+
+def test_job_params_with_marker_other_jobs():
+    # jobs that cannot be hijacked do not have the parameter
+    job_dir = JobDirectory(JOBS_DIR_SPA / "Refine3D" / "job001")
+    params = _base.job_params_with_marker(job_dir)
+    assert params == job_dir.get_job_params_as_dict()
+    assert USE_RELION_GUI not in params
+
+
 def test_execute_marked_job(in_project: Path, no_relion):
     job_dir = _make_project(in_project)
     update_marker(job_dir)
@@ -761,7 +792,10 @@ def test_flowchart_opens_started_job(himena_ui: MainWindow, in_project: Path):
     assert isinstance(widget._results_widget, QClassSelectionJobWidget)
 
 
-def test_create_job_writes_marker(himena_ui: MainWindow, in_project: Path, monkeypatch):
+@pytest.mark.parametrize("use_relion_gui", [False, True])
+def test_create_job_writes_marker(
+    himena_ui: MainWindow, in_project: Path, monkeypatch, use_relion_gui: bool
+):
     from himena_relion import _job_class
     from himena_relion.relion5._builtins import SelectClassesInteractiveJob
 
@@ -779,7 +813,65 @@ def test_create_job_writes_marker(himena_ui: MainWindow, in_project: Path, monke
         ),
     )
     SelectClassesInteractiveJob.create_job(
-        fn_model="Class2D/job009/run_it025_optimiser.star", _cwd=in_project
+        fn_model="Class2D/job009/run_it025_optimiser.star",
+        use_relion_gui=use_relion_gui,
+        _cwd=in_project,
     )
-    # the marker must be written before the watcher starts
-    assert watcher_started == [True]
+    # the marker must be written before the watcher starts, and only when the job is
+    # not run by RELION GUI
+    assert watcher_started == [not use_relion_gui]
+
+
+@pytest.mark.parametrize("use_relion_gui", [False, True])
+def test_overwrite_and_continue_use_relion_gui(
+    himena_ui: MainWindow, in_project: Path, monkeypatch, use_relion_gui: bool
+):
+    from himena_relion import _job_class
+    from himena_relion.relion5._builtins import SelectClassesInteractiveJob
+    from himena_relion.relion5._continues import SelectClassesInteractiveContinue
+
+    monkeypatch.setattr(_job_class, "run_watcher_new_process", lambda *_: None)
+    job_dir = _make_project(in_project)
+    marker = job_dir.path / FileNames.USE_HIMENA_IMPL
+
+    # overwrite: start from the opposite state
+    update_marker(job_dir, use_relion_gui=not use_relion_gui)
+    SelectClassesInteractiveJob(job_dir).edit_and_run_job(
+        fn_model="Class2D/job009/run_it025_optimiser.star",
+        use_relion_gui=use_relion_gui,
+    )
+    assert marker.exists() is (not use_relion_gui)
+    assert USE_RELION_GUI not in job_dir.get_job_params_as_dict()
+
+    # continue
+    update_marker(job_dir, use_relion_gui=not use_relion_gui)
+    SelectClassesInteractiveContinue(job_dir).continue_job(
+        use_relion_gui=use_relion_gui
+    )
+    assert marker.exists() is (not use_relion_gui)
+    assert USE_RELION_GUI not in job_dir.get_job_params_as_dict()
+
+
+def test_use_relion_gui_in_widgets(himena_ui: MainWindow, in_project: Path):
+    job_dir = _make_project(in_project)
+    update_marker(job_dir)
+    himena_ui.read_file(job_dir.job_star())
+    widget = _job_widget(himena_ui, job_dir)
+    param_view = next(
+        w for w in widget._iter_job_widgets() if isinstance(w, QJobParameterView)
+    )
+    toggle = param_view._param_widget._mgui_widgets[USE_RELION_GUI]
+    assert toggle.value is False
+
+    # overwrite/clone start from the current value
+    for open_scheduler in [_impl.overwrite_relion_job, _impl.clone_relion_job]:
+        scheduler = open_scheduler(himena_ui, job_dir)
+        assert scheduler.get_parameters()[USE_RELION_GUI] is False
+
+    # the job that was run by RELION
+    update_marker(job_dir, use_relion_gui=True)
+    param_view.on_job_updated(job_dir, job_dir.path / FileNames.USE_HIMENA_IMPL)
+    assert toggle.value is True
+    for open_scheduler in [_impl.overwrite_relion_job, _impl.clone_relion_job]:
+        scheduler = open_scheduler(himena_ui, job_dir)
+        assert scheduler.get_parameters()[USE_RELION_GUI] is True

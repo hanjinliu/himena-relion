@@ -2069,6 +2069,7 @@ class SelectClassesInteractiveJob(_SelectClassesJob):
         fn_model: _a.io.IN_OPTIMISER = "",
         do_recenter: _a.select.DO_RECENTER = False,
         nr_groups: _a.select.NR_GROUPS = None,
+        use_relion_gui: _a.misc.USE_RELION_GUI = False,
         other_args: _a.import_.OTHER_ARGS = "",
     ):
         raise NotImplementedError("This is a builtin job placeholder.")

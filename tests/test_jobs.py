@@ -14,6 +14,16 @@ from ._utils import (
     JOBS_DIR_TOMO,
 )
 
+
+def _not_in_job_star(job_cls) -> tuple[str, ...]:
+    """Parameters of run() that are intentionally not written in job.star."""
+    from himena_relion import hijack
+
+    if hijack.has_hijacker(job_cls.type_label()):
+        return (hijack.USE_RELION_GUI,)
+    return ()
+
+
 @pytest.mark.parametrize(
     "job_str",
     list(iter_spa_job_dirs())
@@ -40,6 +50,7 @@ def test_spa_job_match(job_str: str, make_himena_ui: Callable[[], MainWindow]):
         allowed_diffs = ("other_args",)
     else:
         allowed_diffs = ()
+    allowed_diffs += _not_in_job_star(job_cls)
 
     # run() vs params loaded from job.star to Python
     assert_param_name_match(job_cls._signature().parameters.keys(), params_py.keys(), allowed_diffs)
@@ -87,6 +98,7 @@ def test_tomo_job_match(job_str: str, make_himena_ui: Callable[[], MainWindow]):
         allowed_diffs = ("do_stack2d",)
     else:
         allowed_diffs = ()
+    allowed_diffs += _not_in_job_star(job_cls)
     # run() vs params loaded from job.star to Python
     assert_param_name_match(
         job_cls._signature().parameters.keys(),
@@ -236,3 +248,42 @@ def test_select_interactive_regroup_param(
     assert values_cont["do_regroup"] == ("Yes" if new_nr_groups else "No")
     assert values_cont["nr_groups"] == ("3" if new_nr_groups else "1")
     assert values_cont["fn_model"] == "Class2D/job009/run_it025_optimiser.star"
+
+
+def test_hijacked_jobs_have_use_relion_gui(himena_ui):
+    """Jobs that can be run by himena-relion have the "Use RELION GUI" toggle."""
+    from himena.qt.magicgui import ToggleSwitch
+    from himena_relion import hijack
+    from himena_relion._job_class import iter_relion_jobs
+    from himena_relion.relion5._builtins import SelectClassesInteractiveJob
+
+    job_classes = []
+    for job_cls in iter_relion_jobs():
+        if job_cls.__name__.startswith("_"):
+            continue
+        try:
+            type_label = job_cls.type_label()
+        except Exception:
+            continue
+        if hijack.has_hijacker(type_label):
+            job_classes.append(job_cls)
+    assert {c.__name__ for c in job_classes} == {
+        "SelectClassesInteractiveJob",
+        "SelectClassesInteractiveContinue",
+    }
+    for job_cls in job_classes:
+        param = job_cls._signature().parameters[hijack.USE_RELION_GUI]
+        assert param.default is False  # run in himena-relion by default
+        scheduler = QJobScheduler(himena_ui)
+        scheduler.update_by_job(job_cls)
+        toggle = scheduler._job_param_widget._mgui_widgets[hijack.USE_RELION_GUI]
+        assert isinstance(toggle, ToggleSwitch)
+        assert toggle.label == "Use RELION GUI"
+
+    # not written in job.star
+    for use_relion_gui in [False, True]:
+        job_star = SelectClassesInteractiveJob.prep_job_star(
+            fn_model="Class2D/job009/run_it025_optimiser.star",
+            use_relion_gui=use_relion_gui,
+        )
+        assert hijack.USE_RELION_GUI not in job_star.joboptions_values.to_dict()
