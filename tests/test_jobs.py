@@ -186,3 +186,53 @@ def test_continue_job(
     assert "fn_cont" in params
     kwargs = ref_job.normalize_kwargs_inv(**params)
     ref_job.prerun_check(**kwargs)
+
+def test_class_ranker_has_no_recenter_regroup(himena_ui):
+    """relion_class_ranker does not support recentering/regrouping (RELION refuses
+    to create the job), so they must be "No" in job.star."""
+    from himena_relion.relion5._builtins import SelectClassesAutoJob
+
+    params = SelectClassesAutoJob._signature().parameters
+    assert "do_recenter" not in params
+    assert "do_regroup" not in params
+    job_star = SelectClassesAutoJob.prep_job_star(fn_model="Class2D/job009/run_it025_optimiser.star")
+    values = job_star.joboptions_values.to_dict()
+    assert values["do_class_ranker"] == "Yes"
+    assert values["do_recenter"] == "No"
+    assert values["do_regroup"] == "No"
+
+
+@pytest.mark.parametrize(
+    "nr_groups, do_regroup, nr_groups_star",
+    [(None, "No", "1"), (5, "Yes", "5")],
+)
+def test_select_interactive_regroup_param(
+    himena_ui, tmp_path, nr_groups, do_regroup, nr_groups_star
+):
+    """do_regroup is not a parameter in GUI. It is "Yes" only when nr_groups is given."""
+    from himena_relion.relion5._builtins import SelectClassesInteractiveJob
+    from himena_relion.relion5._continues import SelectClassesInteractiveContinue
+
+    job_cls = SelectClassesInteractiveJob
+    assert "do_regroup" not in job_cls._signature().parameters
+    job_star = job_cls.prep_job_star(
+        fn_model="Class2D/job009/run_it025_optimiser.star", nr_groups=nr_groups
+    )
+    values = job_star.joboptions_values.to_dict()
+    assert values["do_regroup"] == do_regroup
+    assert values["nr_groups"] == nr_groups_star
+    # job.star -> python
+    params_py = job_cls.normalize_kwargs_inv(**values)
+    assert "do_regroup" not in params_py
+    assert params_py["nr_groups"] == (None if nr_groups is None else nr_groups_star)
+
+    # continue job can change the regrouping
+    job_dir = tmp_path / "Select" / "job010"
+    job_dir.mkdir(parents=True)
+    job_star.to_star_dict().write(job_dir / "job.star", newline="\n")
+    cont = SelectClassesInteractiveContinue(JobDirectory(job_dir))
+    new_nr_groups = 3 if nr_groups is None else None
+    values_cont = cont.make_job_star(nr_groups=new_nr_groups).joboptions_values.to_dict()
+    assert values_cont["do_regroup"] == ("Yes" if new_nr_groups else "No")
+    assert values_cont["nr_groups"] == ("3" if new_nr_groups else "1")
+    assert values_cont["fn_model"] == "Class2D/job009/run_it025_optimiser.star"

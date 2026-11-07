@@ -108,10 +108,19 @@ class RelionPipelineWatcher:
                         )
                     else:
                         _print_log(f"Job {job.path} is ready to run, executing.")
-                        execute_job(
-                            job.path.as_posix(),
-                            cwd=pipeline.project_dir,
-                        )
+                        try:
+                            execute_job(
+                                job.path.as_posix(),
+                                cwd=pipeline.project_dir,
+                            )
+                        except RelionPipelineLockError:
+                            # Jobs run by himena-relion (USE_HIMENA_IMPL) update the
+                            # pipeline when starting. The job is still scheduled and
+                            # will be started at the next check (`updated` keeps the
+                            # watcher alive).
+                            _print_log(
+                                f"Pipeline is locked. Could not start {job.path}."
+                            )
                         updated = True
                         files_to_touch.append(job_dir_path / DEFAULT_PIPELINE_STAR)
                 case ReadyState.FILE_NOT_FOUND:
@@ -246,16 +255,30 @@ def execute_job(
     ignore_error: bool = False,
     *,
     cwd=None,
-) -> RelionJobExecution:
-    """Execute a RELION job named `job_name` (such as "Class3D/job012/")."""
+) -> RelionJobExecution | None:
+    """Execute a RELION job named `job_name` (such as "Class3D/job012/").
+
+    Jobs marked with USE_HIMENA_IMPL are not executed by `relion_pipeliner`. They are
+    only marked as running, and will be run in the himena main window. None is
+    returned in this case.
+    """
     job_name = normalize_job_id(job_name)
     try:
-        job_dir = _job_dir.JobDirectory(Path(job_name).resolve())
+        job_path = Path(cwd, job_name) if cwd is not None else Path(job_name)
+        job_dir = _job_dir.JobDirectory(job_path.resolve())
     except FileNotFoundError as e:
         if not ignore_error:
             raise e
         _print_log(f"Error executing RELION job {job_name}: {e}")
         return None
+
+    from himena_relion import hijack
+
+    if hijack.wait_for_marker(job_dir):
+        hijack.start_job(job_dir)
+        _print_log(f"Job {job_name} uses himena-relion implementation. Marked running.")
+        return None
+
     is_via_wsl = is_wsl_path(job_dir.path)
     args = get_relion_pipeliner_args(is_via_wsl, cwd=cwd) + ["--RunJobs", job_name]
     # NOTE: Because himena also uses Qt, RELION jobs that depend on napari (such as

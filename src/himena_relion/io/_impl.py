@@ -103,7 +103,13 @@ def abort_relion_job(ui: MainWindow, job_dir: JobDirectory):
         choices=[("Yes, abort", True), ("Cancel", False)],
         how="buttons",
     ):
-        job_dir.path.joinpath(FileNames.ABORT_NOW).touch()
+        from himena_relion import hijack
+
+        if hijack.uses_himena_impl(job_dir):
+            # No process is running. The job is run in the main window.
+            hijack.finish_job(job_dir, "Aborted")
+        else:
+            job_dir.path.joinpath(FileNames.ABORT_NOW).touch()
 
 
 def overwrite_relion_job(ui: MainWindow, job_dir: JobDirectory):

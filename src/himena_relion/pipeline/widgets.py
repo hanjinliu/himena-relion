@@ -390,12 +390,22 @@ class QRelionPipelineFlowChart(QtW.QWidget):
 
             # if job is opened, force update (because this may not trigger any file
             # change)
+            started_ids = {_utils.normalize_job_id(job) for job in started}
             for window in self._ui().iter_windows():
                 if (
                     isinstance(widget := window.widget, QRelionJobWidget)
-                    and widget._job_dir.job_normal_id() in started
+                    and widget._job_dir is not None
+                    and widget._job_dir.job_normal_id() in started_ids
                 ):
                     widget._state_widget.initialize(widget._job_dir)
+                    widget.refresh_results_widget()
+
+            # Jobs run in the main window (USE_HIMENA_IMPL) need user interaction, so
+            # open them automatically.
+            for job in sorted(started):
+                job_path = self._relion_project_dir / job
+                if job_path.joinpath(FileNames.USE_HIMENA_IMPL).exists():
+                    _utils.read_or_show_job(ui, job_path)
 
         if to_notify:
             ui.show_notification("\n".join(to_notify), title="Pipeline Updates")

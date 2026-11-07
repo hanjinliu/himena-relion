@@ -41,6 +41,8 @@ class FileNames:
     EXIT_FAILURE = "RELION_JOB_EXIT_FAILURE"
     EXIT_ABORTED = "RELION_JOB_EXIT_ABORTED"
     ABORT_NOW = "RELION_JOB_ABORT_NOW"
+    # Marker file of standard jobs that are run by himena-relion's own implementation
+    USE_HIMENA_IMPL = "USE_HIMENA_IMPL"
 
 
 class RelionNodeTypeLabels:

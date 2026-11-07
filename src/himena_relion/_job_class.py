@@ -198,6 +198,9 @@ class RelionJob(ABC):
             _run_relion_pipeliner_add_job_from_star(job_star_path, _cwd)
 
         d = last_job_directory(_cwd)  # FIXME: not thread-safe
+        # Some standard jobs are run in the himena main window. This must be done
+        # before starting the watcher.
+        _update_himena_impl_marker(_cwd / d)
         run_watcher_new_process(_cwd)
         match is_all_inputs_ready(d):
             case ReadyState.READY:
@@ -223,6 +226,7 @@ class RelionJob(ABC):
         job_dir = self.output_job_dir
         job_star_model = self.prep_job_star(**kwargs)
         job_star_model.to_star_dict().write(job_dir.job_star(), newline="\n")
+        _update_himena_impl_marker(job_dir)
         job_star_params = job_dir.get_job_params_as_dict()
         new_input_edges = self.input_edges(**job_star_params)
         rln_dir = job_dir.relion_project_dir
@@ -539,6 +543,7 @@ class _Relion5BuiltinContinue(_Relion5BuiltinJob):
         self.prerun_check(**kwargs)
         job_star = self.make_job_star(**kwargs)
         job_star.to_star_dict().write(job_star_path, newline="\n")
+        _update_himena_impl_marker(job_dir)
 
         job_star_params = job_dir.get_job_params_as_dict()
         new_input_edges = self.input_edges(**job_star_params)
@@ -585,6 +590,17 @@ def continue_job_now(job_dir: _job_dir.JobDirectory) -> RelionJobExecution:
     with open_with_lock(rln_dir / DEFAULT_PIPELINE_STAR) as f:
         update_default_pipeline(f, to_run, state="Scheduled")
     return execute_job(to_run, cwd=rln_dir)
+
+
+def _update_himena_impl_marker(job_dir: _job_dir.JobDirectory | Path) -> None:
+    """Write USE_HIMENA_IMPL if the job is run in the himena main window."""
+    from himena_relion.hijack import update_marker
+
+    if not isinstance(job_dir, _job_dir.JobDirectory):
+        if not Path(job_dir).joinpath("job.star").exists():
+            return
+        job_dir = _job_dir.JobDirectory(job_dir)
+    update_marker(job_dir)
 
 
 def _keep_fn_cont(fn, kwargs):
