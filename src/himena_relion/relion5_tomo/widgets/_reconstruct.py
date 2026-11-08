@@ -20,6 +20,10 @@ from himena_relion._utils import lowpass_filter
 from himena_relion.schemas import OptimisationSetModel, TomogramsGroupModel
 
 _LOGGER = logging.getLogger(__name__)
+# Reading a reconstruction is retried if it failed, such as when RELION has not finished
+# writing the file yet.
+_RETRY_INTERVAL_MSEC = 1000
+_MAX_RETRY = 5
 
 
 @register_job("relion.reconstructparticletomo", is_tomo=True)
@@ -55,6 +59,14 @@ class QReconstructViewer(QJobScrollArea):
         self._img_raw = None
         self._img_raw_scale = 1.0
 
+        # A file event may come before RELION finishes writing a large file.
+        self._num_retry = 0
+        self._job_dir_to_retry: _job_dir.JobDirectory | None = None
+        self._retry_timer = QtCore.QTimer(self)
+        self._retry_timer.setSingleShot(True)
+        self._retry_timer.setInterval(_RETRY_INTERVAL_MSEC)
+        self._retry_timer.timeout.connect(self._retry_load_result)
+
     def on_job_updated(self, job_dir: _job_dir.JobDirectory, path: str):
         """Handle changes to the job directory."""
         fp = Path(path)
@@ -69,12 +81,50 @@ class QReconstructViewer(QJobScrollArea):
 
     def initialize(self, job_dir: _job_dir.JobDirectory):
         """Initialize the viewer with the job directory."""
+        self._num_retry = 0
+        self._load_result(job_dir)
+
+    def window_closed_callback(self):
+        self._retry_timer.stop()
+        self._job_dir_to_retry = None
+        super().window_closed_callback()
+
+    def _retry_load_result(self):
+        if (job_dir := self._job_dir_to_retry) is not None:
+            self._load_result(job_dir)
+
+    def _load_result(self, job_dir: _job_dir.JobDirectory):
+        # this attempt replaces the pending retry
+        self._retry_timer.stop()
+        self._job_dir_to_retry = None
         merged_mrc_path = job_dir.path / "merged.mrc"
-        if not merged_mrc_path.exists():
-            result_found = self._open_intermediate_result(job_dir)
-        else:
-            self._open_final_result(merged_mrc_path)
-            result_found = True
+        try:
+            if not merged_mrc_path.exists():
+                result_found = self._open_intermediate_result(job_dir)
+            else:
+                self._open_final_result(merged_mrc_path)
+                result_found = True
+        except Exception:
+            if self._num_retry < _MAX_RETRY:
+                self._num_retry += 1
+                _LOGGER.debug(
+                    "Failed to read the reconstruction of %s. Retry in %d ms (%d/%d).",
+                    job_dir.job_number,
+                    _RETRY_INTERVAL_MSEC,
+                    self._num_retry,
+                    _MAX_RETRY,
+                    exc_info=True,
+                )
+                self._job_dir_to_retry = job_dir
+                self._retry_timer.start()
+            else:
+                _LOGGER.warning(
+                    "Failed to read the reconstruction of %s.",
+                    job_dir.job_number,
+                    exc_info=True,
+                )
+            return
+        self._num_retry = 0
 
         if not result_found:
             return
@@ -86,10 +136,12 @@ class QReconstructViewer(QJobScrollArea):
         self._sym_label.set_symmetry(sym_name)
 
     def _open_final_result(self, merged_mrc_path: Path):
-        with mrcfile.open(merged_mrc_path, permissive=True) as mrc:
-            self._img_raw = np.array(mrc.data)
-            self._img_raw_scale = float(mrc.voxel_size.x)
+        with mrcfile.open(merged_mrc_path) as mrc:
+            img_raw = np.array(mrc.data)
+            img_raw_scale = float(mrc.voxel_size.x)
 
+        self._img_raw = img_raw
+        self._img_raw_scale = img_raw_scale
         self._file_name_label.setText(merged_mrc_path.name)
         self._viewer.set_image(self._get_image_filtered(), update_now=False)
         self._viewer.auto_threshold(update_now=False)
@@ -135,13 +187,14 @@ class QReconstructViewer(QJobScrollArea):
             wiener_filter = np.conj(ctf_c) / (np.abs(ctf_c) ** 2 + noise_power)
             merged_ft = merged_ft * wiener_filter
 
-        self._img_raw = np.fft.ifftshift(np.fft.irfftn(merged_ft))
+        img_raw = np.fft.ifftshift(np.fft.irfftn(merged_ft))
 
         # Try to get the pixel size. Pixel size is not set in the sum_X_data_halfX.mrc
         # files, so we need to retrieve it from the input parameters.
         params = job_dir.get_job_params_as_dict()
 
         tomo_star = None
+        binning = 1
         with suppress(Exception):
             binning = int(params["binning"])
             if in_opt := params["in_optimisation"]:
@@ -153,10 +206,12 @@ class QReconstructViewer(QJobScrollArea):
 
         if tomo_star:
             tomo_model = TomogramsGroupModel.validate_file(tomo_star)
-            self._img_raw_scale: float = tomo_model.original_pixel_size.mean() * binning
+            img_raw_scale = float(tomo_model.original_pixel_size.mean()) * binning
         else:
-            self._img_raw_scale = 0.3 * binning  # fallback
+            img_raw_scale = 0.3 * binning  # fallback
 
+        self._img_raw = img_raw
+        self._img_raw_scale = img_raw_scale
         self._file_name_label.setText(
             f"Intermediate reconstruction ({int(ith_tomo) + 1})"
         )

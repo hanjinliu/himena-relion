@@ -1,6 +1,7 @@
 from typing import Callable
 from pathlib import Path
 import polars as pl
+from qtpy import QtGui
 from starfile_rs import as_star
 from himena_relion._job_dir import JobDirectory
 from himena_relion.relion5.widgets._select import QRemoveDuplicatesViewer, QDiscardParticlesViewer, QSplitParticlesViewer
@@ -145,3 +146,35 @@ def test_join_widget(
     # The combobox should have the block name as an item
     assert tester.widget._combobox.count() == 1
     assert tester.widget._combobox.itemText(0) == "particles"
+
+
+def test_select_widget_insert_order(
+    qtbot,
+    make_job_directory: Callable[[str, str], JobDirectory],
+    jobs_dir_spa,
+):
+    star_text = Path(jobs_dir_spa / "Select" / "job002" / "job.star").read_text()
+    job_dir = make_job_directory(star_text, "Select")
+
+    tester = JobWidgetTester(QRemoveDuplicatesViewer(job_dir), job_dir)
+    widget = tester.widget
+    qtbot.addWidget(widget)
+    tester.write_text("particles.star", ParticleMetaModel.example(60).to_string())
+    tester.write_text("particles_removed.star", ParticlesModel.example(20).to_string())
+    old_session_id = widget._session_id
+    tester.initialize()
+    text_edit = widget._text_edit
+    plain_text = text_edit.toPlainText()
+    assert plain_text.count("Summary") == 1
+
+    # items yielded by the old worker are ignored
+    widget._cb_html_requested(("<b>OLD ITEM</b>", old_session_id))
+    assert text_edit.toPlainText() == plain_text
+
+    # items are inserted at the end even if the cursor is in the table
+    table = text_edit.document().rootFrame().childFrames()[0]
+    assert isinstance(table, QtGui.QTextTable)
+    text_edit.setTextCursor(table.cellAt(0, 0).firstCursorPosition())
+    widget._cb_html_requested(("<b>NEW ITEM</b>", widget._session_id))
+    assert text_edit.toPlainText().rstrip().endswith("NEW ITEM")
+    assert table.cellAt(0, 0).firstCursorPosition().block().text() == "Selected"

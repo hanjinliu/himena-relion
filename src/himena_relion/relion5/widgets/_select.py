@@ -22,20 +22,26 @@ class QSelectJobBase(QJobScrollArea):
         self._job_dir = job_dir
         self._text_edit = QImageViewTextEdit()
         self._layout.addWidget(self._text_edit)
+        # ID of the current worker. Items yielded by an old worker may arrive after the
+        # text edit is cleared (initialize can be called many times in a short period
+        # when output files are written), so they are ignored by checking this ID.
+        self._session_id = 0
 
     def initialize(self, job_dir: _job_dir.JobDirectory):
         """Initialize the viewer with the job directory."""
-        self._text_edit.clear()
-        self._text_edit.setFixedHeight(400)
         if self._worker:
             self._worker.quit()
-        self._worker = self._read_items(job_dir)
+            self._worker = None
+        self._session_id += 1
+        self._text_edit.clear()
+        self._text_edit.setFixedHeight(400)
+        self._worker = self._read_items(job_dir, self._session_id)
         self._start_worker()
 
     @thread_worker
-    def _read_items(self, job_dir: _job_dir.JobDirectory):
+    def _read_items(self, job_dir: _job_dir.JobDirectory, session_id: int):
         for html in self.insert_html(job_dir):
-            yield self._cb_html_requested, html
+            yield self._cb_html_requested, (html, session_id)
 
     def insert_html(self, job_dir: _job_dir.JobDirectory):
         """Insert HTML into the text edit.
@@ -70,9 +76,15 @@ class QSelectJobBase(QJobScrollArea):
         )
         return data
 
-    def _cb_html_requested(self, html):
+    def _cb_html_requested(self, value: tuple[str | np.ndarray, int]):
         """Handle HTML requested signal."""
-        cursor = self._text_edit.textCursor()
+        html, session_id = value
+        if session_id != self._session_id:
+            return  # yielded by an old worker
+        # Always insert at the end. The cursor of the text edit is not used because it
+        # may be inside a table or moved by the user.
+        cursor = QtGui.QTextCursor(self._text_edit.document())
+        cursor.movePosition(QtGui.QTextCursor.MoveOperation.End)
         if isinstance(html, str):
             cursor.insertHtml(html)
         elif isinstance(html, np.ndarray):
