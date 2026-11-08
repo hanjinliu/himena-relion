@@ -891,6 +891,10 @@ when the <code>path</code> file under the <code>job_dir</code> is updated.</p>
         <span class="c1"># updated.</span>
         <span class="o">...</span>
 </code></pre></div>
+<p>If your job writes many files in a short time, updating the widget for each file may
+be slow. In this case, implement <code>on_job_files_updated(job_dir, paths)</code> instead. It is
+called with the list of all the files updated since the last call, so that the widget
+can be updated only once.</p>
 <h2 id="run-your-job">Run Your Job</h2>
 <p><code>himena</code> can also install a .py file as a plugin. You can run the following command for
 testing and actually running your jobs.</p>
