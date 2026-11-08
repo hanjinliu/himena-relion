@@ -60,7 +60,7 @@ _PIPELINE_CONTROL_FILES = [
 ]
 # Seconds to wait for USE_HIMENA_IMPL to be written after the pipeline watcher found a
 # new job added by relion_pipeliner (see `wait_for_marker`).
-_MARKER_GRACE_SEC = 5.0
+_MARKER_GRACE_SEC = 2.0
 _MARKER_POLL_SEC = 0.1
 # Job parameter to run a job by RELION even if it can be hijacked. It is a parameter
 # of the job widgets only and is not written in job.star; USE_HIMENA_IMPL is written
