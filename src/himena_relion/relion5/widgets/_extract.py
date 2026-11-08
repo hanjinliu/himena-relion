@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 import uuid
 import mrcfile
@@ -54,32 +55,42 @@ class QExtractViewer(QJobScrollArea):
 
     def on_job_updated(self, job_dir: _job_dir.JobDirectory, path: str):
         """Handle changes to the job directory."""
-        fp = Path(path)
-        if fp.name.startswith("RELION_JOB_") or fp.suffix == ".star":
-            self._process_update(force=fp.name.startswith("RELION_JOB_"))
+        self.on_job_files_updated(job_dir, [Path(path)])
+
+    def on_job_files_updated(self, job_dir: _job_dir.JobDirectory, fps: list[Path]):
+        """Handle a batch of changes to the job directory."""
+        # Extraction writes .mrcs and .star files for each micrograph. Update the list
+        # only once for all of them.
+        if any(fp.name.startswith("RELION_JOB_") or fp.suffix == ".star" for fp in fps):
+            self._process_update()
             _LOGGER.debug("%s Updated", job_dir.job_number)
 
     def initialize(self, job_dir: _job_dir.JobDirectory):
         """Initialize the viewer with the job directory."""
-        self._process_update(force=True)
+        self._process_update()
 
-    def _process_update(self, force: bool = False):
+    def _process_update(self):
         choices = []
         num_total = 0
+        # This is called very frequently while the job is running. Avoid using Path
+        # methods such as `resolve` for each file, which is very slow for thousands of
+        # files, especially on network file systems.
+        job_path = self._job_dir.path
+        job_rel = self._job_dir.make_relative_path(job_path).as_posix()
         # TODO: when finished job is opened, mrcfile.open happens for all the mrcs files
         # which may be slow for large datasets.
-        for mrcs_path in sorted(self._job_dir.glob_in_subdirs("*.mrcs")):
-            fp = self._job_dir.make_relative_path(mrcs_path)
-            rel_path = fp.as_posix()
+        for subdir, fname in _list_mrcs_in_subdirs(job_path):
+            rel_path = f"{job_rel}/{subdir}/{fname}"
             nparticles = self._nparticles_cache.get(rel_path)
             if nparticles is None or nparticles == 0:
-                with mrcfile.open(mrcs_path, header_only=True) as mrc:
-                    nparticles = mrc.header.nz
+                with mrcfile.open(job_path / subdir / fname, header_only=True) as mrc:
+                    nparticles = int(mrc.header.nz)
                 self._nparticles_cache[rel_path] = nparticles
-            choices.append((fp.name, str(nparticles), rel_path))
+            choices.append((fname, str(nparticles), rel_path))
             num_total += nparticles
 
-        self._mic_list.set_choices(choices)
+        if choices != self._mic_list._model._data:
+            self._mic_list.set_choices(choices)
         num_mic = len(choices)
         self._num_mic_part_label.setText(
             f"Total: <b>{num_mic}</b> micrographs, <b>{num_total}</b> particles"
@@ -148,3 +159,22 @@ class QExtractViewer(QJobScrollArea):
     def showEvent(self, a0):
         self._slider_value_changed(self._slider.value(), udpate_slider=False)
         return super().showEvent(a0)
+
+
+def _list_mrcs_in_subdirs(job_path: Path) -> list[tuple[str, str]]:
+    """List (subdirectory name, file name) of the .mrcs files, sorted."""
+    out: list[tuple[str, str]] = []
+    with os.scandir(job_path) as it:
+        subdirs = [entry.name for entry in it if entry.is_dir()]
+    for subdir in subdirs:
+        try:
+            with os.scandir(job_path / subdir) as it:
+                out.extend(
+                    (subdir, entry.name)
+                    for entry in it
+                    if entry.name.endswith(".mrcs") and entry.is_file()
+                )
+        except OSError:  # deleted or not accessible
+            continue
+    out.sort()
+    return out
