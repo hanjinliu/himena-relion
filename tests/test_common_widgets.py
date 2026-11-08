@@ -183,3 +183,45 @@ def test_path_input_wsl(qtbot: QtBot, monkeypatch: pytest.MonkeyPatch):
         (r"C:\data\movies\a.tif", "/mnt/c/data/movies/a.tif"),
     ]:
         assert qwidget._path_to_value(PureWindowsPath(path)) == expected
+
+
+def test_job_updates_are_throttled(himena_ui: MainWindow, qtbot: QtBot, tmpdir):
+    """Updated files are passed to the widgets at once, not once for each file."""
+    from himena import WidgetDataModel
+    from himena_relion._impl_objects import RelionJobIsTesting
+    from himena_relion._widgets import QRelionJobWidget
+
+    src = JOBS_DIR_SPA / "Extract" / "job001" / "job.star"
+    job_path = Path(tmpdir, "Extract", "job001")
+    job_path.mkdir(parents=True)
+    shutil.copy(src, job_path / "job.star")
+    job_dir = JobDirectory(job_path)
+    widget = QRelionJobWidget(himena_ui)
+    qtbot.addWidget(widget)
+    widget.update_model(
+        WidgetDataModel(
+            value=job_dir,
+            type=job_dir.himena_model_type(),
+            metadata=RelionJobIsTesting(),
+        )
+    )
+    calls: list[list[Path]] = []
+    widget._update_widgets = calls.append
+    widget._update_timer.setInterval(50)
+    a, b, c = (job_path / name for name in ["a.mrcs", "b.mrcs", "c.mrcs"])
+
+    # the first update is processed immediately
+    widget._on_job_updated([a])
+    assert calls == [[a]]
+    # the following updates are accumulated
+    widget._on_job_updated([b])
+    widget._on_job_updated([c, b])
+    assert calls == [[a]]
+    qtbot.waitUntil(lambda: len(calls) == 2, timeout=1000)
+    assert calls[1] == [b, c]
+
+    # pending updates are discarded when the widget is closed
+    widget._on_job_updated([a])
+    widget.widget_closed_callback()
+    assert not widget._update_timer.isActive()
+    assert widget._pending_updates == {}

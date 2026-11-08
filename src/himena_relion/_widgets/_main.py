@@ -30,6 +30,10 @@ from himena_relion.consts import RelionJobState
 
 _LOGGER = logging.getLogger(__name__)
 _C = TypeVar("_C", bound=JobWidgetBase)
+# Minimum interval between two updates of the job widgets. Running jobs (especially
+# particle extraction) may write a lot of files in a short time. Updating widgets for
+# each file keeps the main thread busy.
+_UPDATE_INTERVAL_MSEC = 1000
 
 
 class QRelionJobWidgetBase(QtW.QWidget):
@@ -120,7 +124,7 @@ class QRelionJobWidget(QRelionJobWidgetBase):
     """
 
     job_init_required = QtCore.Signal(_job_dir.JobDirectory)
-    job_updated = QtCore.Signal(Path)
+    job_updated = QtCore.Signal(list)  # list of updated file paths
     __himena_ignore_file_updates__ = True
     _instances = set["QRelionJobWidget"]()
 
@@ -131,6 +135,12 @@ class QRelionJobWidget(QRelionJobWidgetBase):
         self._watcher: GeneratorWorker | None = None
         self._results_widget: JobWidgetBase | None = None
         self._results_by_himena_impl = False
+        # updated files not yet passed to the job widgets (dict as an ordered set)
+        self._pending_updates: dict[Path, None] = {}
+        self._update_timer = QtCore.QTimer(self)
+        self._update_timer.setSingleShot(True)
+        self._update_timer.setInterval(_UPDATE_INTERVAL_MSEC)
+        self._update_timer.timeout.connect(self._on_update_timer_timeout)
         self.job_updated.connect(self._on_job_updated)
         self.job_init_required.connect(self._on_init_required)
         self._instances.add(self)
@@ -140,6 +150,7 @@ class QRelionJobWidget(QRelionJobWidgetBase):
         """Update the widget with a new model."""
         if self._watcher:
             self._watcher.quit()
+        self._pending_updates.clear()
         job_dir = model.value
         if not isinstance(job_dir, _job_dir.JobDirectory):
             raise TypeError(f"Expected JobDirectory, got {type(job_dir)}")
@@ -251,6 +262,8 @@ class QRelionJobWidget(QRelionJobWidgetBase):
         if self._watcher is not None:
             self._watcher.quit()
             self._watcher = None
+        self._update_timer.stop()
+        self._pending_updates.clear()
 
     @thread_worker(start_thread=True)
     def _watch_job_directory(self, path: Path):
@@ -259,11 +272,8 @@ class QRelionJobWidget(QRelionJobWidgetBase):
         for changes in watch(path):
             if self._watcher is None:
                 return  # stopped
-            updated_files: list[Path] = []
-            for _, fp in changes:
-                path = Path(fp)
-                if path not in updated_files:
-                    updated_files.append(path)
+            # a file usually appears several times (added, modified, ...)
+            updated_files = list(dict.fromkeys(Path(fp) for _, fp in changes))
             yield
 
             if was_scheduled and not updated_files:
@@ -273,8 +283,10 @@ class QRelionJobWidget(QRelionJobWidgetBase):
                     self.job_init_required.emit(self._job_dir)
                     yield
 
-            for updated_file in updated_files:
-                self.job_updated.emit(updated_file)
+            if updated_files:
+                # emit all the files at once. Emitting one signal for each file floods
+                # the event loop of the main thread.
+                self.job_updated.emit(updated_files)
                 yield
 
     @contextmanager
@@ -290,8 +302,39 @@ class QRelionJobWidget(QRelionJobWidgetBase):
             if self._job_dir is not None and self._watcher is None:
                 self._watcher = self._watch_job_directory(self._job_dir.path)
 
-    def _on_job_updated(self, path: Path):
-        """Handle changes to the job directory."""
+    def _on_job_updated(self, paths: list[Path]):
+        """Handle changes to the job directory.
+
+        Widgets are updated immediately if they were not updated recently. Otherwise,
+        the updated files are accumulated and passed to the widgets at once, so that the
+        widgets are updated at most once per `_UPDATE_INTERVAL_MSEC`.
+        """
+        for path in paths:
+            self._pending_updates[Path(path)] = None
+        if not self._update_timer.isActive():
+            self._flush_job_updates()
+
+    def _on_update_timer_timeout(self):
+        if self._pending_updates:
+            self._flush_job_updates()
+
+    def _flush_job_updates(self):
+        paths = list(self._pending_updates)
+        self._pending_updates.clear()
+        if self._job_dir is None or not paths:
+            return
+        # Start the timer before updating, so that the next update is postponed even
+        # if updating raises an error. Because the timer is restarted after the update,
+        # the main thread is always free for a while between two updates.
+        self._update_timer.start()
+        try:
+            self._update_widgets(paths)
+        finally:
+            # timer is stopped if the widget was closed during the update
+            if self._update_timer.isActive():
+                self._update_timer.start()
+
+    def _update_widgets(self, paths: list[Path]):
         if self._job_dir is None:
             return
         if not self._job_dir.path.exists():
@@ -302,7 +345,7 @@ class QRelionJobWidget(QRelionJobWidgetBase):
             )
         msg = ""
         for wdt in self._iter_job_widgets():
-            wdt.on_job_updated(self._job_dir, Path(path))
+            wdt.on_job_files_updated(self._job_dir, paths)
             if isinstance(wdt, QRunOutErrLog):
                 msg = wdt.last_lines()
         self.refresh_results_widget()

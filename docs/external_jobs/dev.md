@@ -151,6 +151,11 @@ class QMyJobWidget(QtW.QWidget):
         ...
 ```
 
+If your job writes many files in a short time, updating the widget for each file may
+be slow. In this case, implement `on_job_files_updated(job_dir, paths)` instead. It is
+called with the list of all the files updated since the last call, so that the widget
+can be updated only once.
+
 ## Run Your Job
 
 `himena` can also install a .py file as a plugin. You can run the following command for

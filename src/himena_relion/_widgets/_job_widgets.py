@@ -46,6 +46,16 @@ class JobWidgetBase:
     def on_job_updated(self, job_dir: _job_dir.JobDirectory, fp: Path):
         """Handle updates to the job directory."""
 
+    def on_job_files_updated(self, job_dir: _job_dir.JobDirectory, fps: list[Path]):
+        """Handle a batch of updated files in the job directory.
+
+        Jobs such as particle extraction write thousands of files in a short time.
+        Override this method to refresh the widget only once for all the files, instead
+        of once for each file in `on_job_updated`.
+        """
+        for fp in fps:
+            self.on_job_updated(job_dir, fp)
+
     def initialize(self, job_dir: _job_dir.JobDirectory):
         """Initialize the widget with the job directory."""
 
@@ -215,12 +225,14 @@ class QRunOutErrLog(QtW.QSplitter, JobWidgetBase):
         self.setSizes([600, 300])
 
     def on_job_updated(self, job_dir: _job_dir.JobDirectory, fp: Path):
-        if fp.name == "run.out":
+        self.on_job_files_updated(job_dir, [fp])
+
+    def on_job_files_updated(self, job_dir: _job_dir.JobDirectory, fps: list[Path]):
+        names = {fp.name for fp in fps}
+        is_finished = any(name.startswith("RELION_JOB_") for name in names)
+        if is_finished or "run.out" in names:
             self._out_log.initialize(job_dir)
-        elif fp.name == "run.err":
-            self._err_log.initialize(job_dir)
-        elif fp.name.startswith("RELION_JOB_"):
-            self._out_log.initialize(job_dir)
+        if is_finished or "run.err" in names:
             self._err_log.initialize(job_dir)
 
     def initialize(self, job_dir: _job_dir.JobDirectory):
@@ -342,11 +354,14 @@ class QJobPipelineViewer(QtW.QWidget, JobWidgetBase):
         a0.ignore()
 
     def on_job_updated(self, job_dir, fp):
+        self.on_job_files_updated(job_dir, [fp])
+
+    def on_job_files_updated(self, job_dir, fps):
         if tree := self._tree_view:
-            tree.on_job_updated(job_dir, fp)
-        if fp.name == "job_pipeline.star":
+            tree.on_job_files_updated(job_dir, fps)
+        if any(fp.name == "job_pipeline.star" for fp in fps):
             self.initialize(job_dir)
-        elif fp.suffix in [".mrc", ".star"]:
+        elif any(fp.suffix in (".mrc", ".star") for fp in fps):
             self.update_item_colors(job_dir)
 
     def clear_in_out(self):
@@ -422,9 +437,12 @@ class QJobPipelineViewer(QtW.QWidget, JobWidgetBase):
         for item_widget in self._iter_output_node_items():
             for labels in item_widget.draggable_widgets:
                 if labels.path_exists(rln_dir):
-                    labels.label_widget.setStyleSheet(f"color: {text_color};")
+                    style = f"color: {text_color};"
                 else:
-                    labels.label_widget.setStyleSheet("color: gray;")
+                    style = "color: gray;"
+                # setting a style sheet is expensive even if it is not changed
+                if labels.label_widget.styleSheet() != style:
+                    labels.label_widget.setStyleSheet(style)
 
     def _iter_output_node_items(self) -> Iterator[QRelionNodeItem]:
         for i in range(self._list_widget_out.count()):
@@ -672,13 +690,19 @@ class QJobStateLabel(QtW.QWidget, JobWidgetBase):
         self._state_label.setText("")
 
     def on_job_updated(self, job_dir, fp):
-        if (
-            fp.name == DEFAULT_PIPELINE_STAR
-            or fp.suffix == ""  # RELION_JOB_XXXX
-            or self._state_label.text() == "Scheduled"
-            and fp.name == "run.out"
-        ):
-            self._on_job_updated(job_dir)
+        self.on_job_files_updated(job_dir, [fp])
+
+    def on_job_files_updated(self, job_dir, fps):
+        is_scheduled = self._state_label.text() == "Scheduled"
+        for fp in fps:
+            if (
+                fp.name == DEFAULT_PIPELINE_STAR
+                or fp.suffix == ""  # RELION_JOB_XXXX
+                or is_scheduled
+                and fp.name == "run.out"
+            ):
+                self._on_job_updated(job_dir)
+                return
 
     def initialize(self, job_dir):
         self._on_job_updated(job_dir)
@@ -887,9 +911,13 @@ class QDirectoryTreeView(QtW.QTreeView, JobWidgetBase):
             self.setRootIndex(model.index(str(job_dir.path)))
 
     def on_job_updated(self, job_dir: _job_dir.JobDirectory, fp: Path):
+        self.on_job_files_updated(job_dir, [fp])
+
+    def on_job_files_updated(self, job_dir: _job_dir.JobDirectory, fps: list[Path]):
         # QFileSystemModel watches the directory by itself, but QScandirModel doesn't.
         if isinstance(model := self.model(), QScandirModel):
-            model.refresh(fp.parent)
+            for parent in dict.fromkeys(fp.parent for fp in fps):
+                model.refresh(parent)
 
     def tab_title(self) -> str:
         return "Content"

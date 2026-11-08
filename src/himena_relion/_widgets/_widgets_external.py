@@ -16,6 +16,15 @@ class QExternalJobView(QtW.QScrollArea, JobWidgetBase):
             if hasattr(widget, "on_job_updated"):
                 widget.on_job_updated(job_dir, path)
 
+    def on_job_files_updated(self, job_dir: _job_dir.ExternalJobDirectory, fps):
+        """Handle a batch of updated files in the job directory."""
+        if widget := self.widget():
+            if hasattr(widget, "on_job_files_updated"):
+                widget.on_job_files_updated(job_dir, fps)
+            elif hasattr(widget, "on_job_updated"):
+                for fp in fps:
+                    widget.on_job_updated(job_dir, fp)
+
     def initialize(self, job_dir: _job_dir.ExternalJobDirectory):
         """Initialize the viewer with the job directory."""
         fn_exe = job_dir.get_job_param("fn_exe")
