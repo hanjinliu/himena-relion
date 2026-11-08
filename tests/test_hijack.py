@@ -607,10 +607,7 @@ def test_watcher_leaves_marked_job(in_project: Path, no_relion):
     assert _status(in_project) == "Running"
 
 
-def test_watcher_runs_unmarked_job_with_relion(in_project: Path, monkeypatch):
-    job_dir = _make_project(in_project)
-    old = time.time() - 60
-    os.utime(job_dir.job_star(), (old, old))  # not a job that was just created
+def _record_popen(monkeypatch) -> list[list[str]]:
     calls = []
 
     class _Proc:
@@ -621,7 +618,57 @@ def test_watcher_runs_unmarked_job_with_relion(in_project: Path, monkeypatch):
         "Popen",
         lambda args, **_: calls.append(args) or _Proc(),
     )
+    return calls
+
+
+def _write_marker_later(job_dir: JobDirectory, delay: float = 0.2):
+    timer = threading.Timer(
+        delay, lambda: _base.write_marker(job_dir, {"himena_class": IMPORT_PATH})
+    )
+    timer.start()
+    return timer
+
+
+def test_watcher_runs_unmarked_job_with_relion(in_project: Path, monkeypatch):
+    _make_project(in_project)
+    calls = _record_popen(monkeypatch)
+    t0 = time.monotonic()
+    # the marker is not waited for, because `found_at` is not given
     pipeline_watcher.execute_job(SELECT_JOB, cwd=in_project)
+    assert time.monotonic() - t0 < 0.5
+    assert len(calls) == 1
+    assert "--RunJobs" in calls[0]
+
+
+def test_watcher_waits_for_marker_of_new_job(in_project: Path, no_relion, monkeypatch):
+    # The job is added while the watcher is running. The main window writes the
+    # marker after relion_pipeliner added the job.
+    monkeypatch.setattr(_base, "_MARKER_GRACE_SEC", 3.0)
+    job_dir = _make_project(in_project)
+    watcher = pipeline_watcher.RelionPipelineWatcher(in_project)
+    pipeline = RelionDefaultPipeline.from_pipeline_star(
+        in_project / DEFAULT_PIPELINE_STAR
+    )
+    timer = _write_marker_later(job_dir)
+    watcher._on_job_state_changed(pipeline)
+    timer.join()
+    assert no_relion == []
+    assert _status(in_project) == "Running"
+
+
+def test_watcher_does_not_wait_for_old_job(in_project: Path, monkeypatch):
+    monkeypatch.setattr(_base, "_MARKER_GRACE_SEC", 60.0)
+    _make_project(in_project)
+    calls = _record_popen(monkeypatch)
+    watcher = pipeline_watcher.RelionPipelineWatcher(in_project)
+    # the job was found long ago (e.g. it was waiting for the parent job)
+    watcher._found_at[SELECT_JOB.rstrip("/")] = time.monotonic() - 120
+    pipeline = RelionDefaultPipeline.from_pipeline_star(
+        in_project / DEFAULT_PIPELINE_STAR
+    )
+    t0 = time.monotonic()
+    watcher._on_job_state_changed(pipeline)
+    assert time.monotonic() - t0 < 5.0
     assert len(calls) == 1
     assert "--RunJobs" in calls[0]
 
@@ -631,22 +678,62 @@ def test_wait_for_marker(tmp_path: Path, monkeypatch):
     job_dir = _make_project(tmp_path)
     marker = job_dir.path / FileNames.USE_HIMENA_IMPL
 
-    # the main window writes the marker shortly after the job is added
-    timer = threading.Timer(
-        0.2, lambda: _base.write_marker(job_dir, {"himena_class": IMPORT_PATH})
-    )
-    timer.start()
-    t0 = time.time()
-    assert _base.wait_for_marker(job_dir)
+    # the main window writes the marker shortly after the watcher found the job
+    timer = _write_marker_later(job_dir)
+    assert _base.wait_for_marker(job_dir, found_at=time.monotonic())
     timer.join()
 
-    # no marker, and old job.star: no need to wait
+    # no marker: wait until the end of the grace period
     marker.unlink()
-    old = time.time() - 60
-    os.utime(job_dir.job_star(), (old, old))
-    t0 = time.time()
+    t0 = time.monotonic()
+    assert not _base.wait_for_marker(job_dir, found_at=t0)
+    assert time.monotonic() - t0 >= 0.9
+
+    # found long ago, or not found by the watcher: no need to wait
+    t0 = time.monotonic()
+    assert not _base.wait_for_marker(job_dir, found_at=t0 - 60)
     assert not _base.wait_for_marker(job_dir)
-    assert time.time() - t0 < 0.5
+    assert time.monotonic() - t0 < 0.5
+
+
+def test_wait_for_marker_ignores_file_time(tmp_path: Path, monkeypatch):
+    # The clock of the file server (e.g. NFS) may be different from that of this
+    # machine, so that a job just added may look old.
+    monkeypatch.setattr(_base, "_MARKER_GRACE_SEC", 3.0)
+    job_dir = _make_project(tmp_path)
+    old = time.time() - 3600
+    os.utime(job_dir.job_star(), (old, old))
+    timer = _write_marker_later(job_dir)
+    assert _base.wait_for_marker(job_dir, found_at=time.monotonic())
+    timer.join()
+
+
+def test_wait_for_marker_before_job_star(tmp_path: Path, monkeypatch):
+    # job.star may not be readable yet when the watcher found the job
+    monkeypatch.setattr(_base, "_MARKER_GRACE_SEC", 3.0)
+    job_dir = _make_project(tmp_path)
+    job_star = job_dir.job_star()
+    backup = job_star.with_name("job.star.bak")
+    job_star.rename(backup)
+    timer = threading.Timer(0.2, lambda: backup.rename(job_star))
+    timer.start()
+    timer_marker = _write_marker_later(job_dir, delay=0.5)
+    assert _base.wait_for_marker(job_dir, found_at=time.monotonic())
+    timer.join()
+    timer_marker.join()
+
+
+def test_wait_for_marker_not_hijacked(tmp_path: Path, monkeypatch):
+    monkeypatch.setattr(_base, "_MARKER_GRACE_SEC", 60.0)
+    job_dir = _make_project(tmp_path)
+    job_dir.job_star().write_text(
+        job_dir.job_star()
+        .read_text()
+        .replace("Class2D/job009/run_it025_optimiser.star", '""')
+    )
+    t0 = time.monotonic()
+    assert not _base.wait_for_marker(job_dir, found_at=t0)
+    assert time.monotonic() - t0 < 0.5
 
 
 def test_finish_job(in_project: Path):
@@ -820,6 +907,42 @@ def test_create_job_writes_marker(
     # the marker must be written before the watcher starts, and only when the job is
     # not run by RELION GUI
     assert watcher_started == [not use_relion_gui]
+
+
+def test_create_job_stops_outdated_watcher(
+    himena_ui: MainWindow, in_project: Path, monkeypatch
+):
+    from himena_relion import _job_class
+    from himena_relion.relion5._builtins import SelectClassesInteractiveJob
+
+    _make_project(in_project)
+    calls = []
+    monkeypatch.setattr(
+        _job_class, "stop_outdated_watcher", lambda *_: calls.append("stop") or True
+    )
+    monkeypatch.setattr(
+        _job_class,
+        "_run_relion_pipeliner_add_job_from_star",
+        lambda *_, **__: calls.append("add"),
+    )
+    monkeypatch.setattr(
+        _job_class, "run_watcher_new_process", lambda *_: calls.append("start")
+    )
+    fn_model = "Class2D/job009/run_it025_optimiser.star"
+    # an outdated watcher would run the new job in its own way
+    SelectClassesInteractiveJob.create_job(fn_model=fn_model, _cwd=in_project)
+    assert calls == ["stop", "add", "start"]
+
+    # the jobs handled by the stopped watcher must be run even if the job could not
+    # be added
+    def _fail(*_, **__):
+        raise RuntimeError("relion_pipeliner failed")
+
+    calls.clear()
+    monkeypatch.setattr(_job_class, "_run_relion_pipeliner_add_job_from_star", _fail)
+    with pytest.raises(RuntimeError):
+        SelectClassesInteractiveJob.create_job(fn_model=fn_model, _cwd=in_project)
+    assert calls == ["stop", "start"]
 
 
 @pytest.mark.parametrize("use_relion_gui", [False, True])

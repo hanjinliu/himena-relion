@@ -8,8 +8,11 @@ from himena_relion._job_class import scheduler_widget
 from himena_relion._utils import get_pipeline_widgets, read_or_show_job
 from himena_relion.pipeline_watcher import (
     _WATCHER_FILE_NAME,
+    OutdatedWatcherError,
     is_lock_owner_alive,
     get_user,
+    run_watcher_new_process,
+    stop_outdated_watcher,
 )
 from himena_relion.pipeline import QRelionPipelineFlowChart
 from himena_relion.pipeline._gui_state import HimenaRelionGuiState
@@ -46,6 +49,8 @@ def on_himena_startup(ui: "MainWindow"):
                         f"Pipeline watcher lock file {_WATCHER_FILE_NAME} found, but "
                         "the process is not running. This lock is removed."
                     )
+                else:
+                    _replace_outdated_watcher(ui, cwd)
 
         # try to recover the last opened jobs
         if gui_state := HimenaRelionGuiState.try_from_project_directory(cwd):
@@ -64,6 +69,22 @@ def on_himena_startup(ui: "MainWindow"):
                     title="Recover Jobs?",
                     callbacks={"Open all": lambda: _open_jobs(ui, can_open)},
                 )
+
+
+def _replace_outdated_watcher(ui: "MainWindow", relion_dir: Path):
+    """Replace the running watcher of an older himena-relion with a new one."""
+    try:
+        stopped = stop_outdated_watcher(relion_dir)
+    except OutdatedWatcherError as e:
+        ui.show_notification(str(e), title="Outdated Pipeline Watcher")
+        return
+    if stopped:
+        run_watcher_new_process(relion_dir)
+        ui.show_notification(
+            "The pipeline watcher of an older himena-relion was running. It is "
+            "replaced with a new one.",
+            title="Outdated Pipeline Watcher",
+        )
 
 
 def _open_jobs(ui: "MainWindow", can_open: list[Path]):

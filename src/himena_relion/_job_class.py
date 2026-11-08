@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from contextlib import contextmanager
 from dataclasses import dataclass
 import inspect
 import logging
@@ -8,6 +9,7 @@ import os
 import subprocess
 import tempfile
 from types import NoneType, UnionType
+import warnings
 from typing import (
     Any,
     Callable,
@@ -42,7 +44,9 @@ from himena_relion._utils import (
 )
 from himena_relion.schemas import JobStarModel
 from himena_relion.pipeline_watcher import (
+    OutdatedWatcherError,
     run_watcher_new_process,
+    stop_outdated_watcher,
     execute_job,
     RelionJobExecution,
 )
@@ -186,22 +190,21 @@ class RelionJob(ABC):
         # RELION in WSL cannot read files in the Windows temporary directory, so the
         # temporary job.star is created inside the project directory in that case.
         tmp_root = _cwd if is_wsl_path(_cwd) else None
-        with tempfile.TemporaryDirectory(dir=tmp_root, prefix=".himena_") as tmpdir:
-            tmpdir = Path(tmpdir)
-            job_star_path = tmpdir / "job.star"
-            job_star_model = cls.prep_job_star(**kwargs)
-            job_star_model.to_star_dict().write(job_star_path, newline="\n")
-            # $ relion_pipeliner --addJobFromStar <job.star>
-            # This reformats the input job.star and creates a new job directory.
-            # The new job is scheduled but NOT run yet. To run the job, we need to
-            # call relion_pipeliner --RunJobs <job_dir>
-            _run_relion_pipeliner_add_job_from_star(job_star_path, _cwd)
+        with _scheduling_jobs(_cwd):
+            with tempfile.TemporaryDirectory(dir=tmp_root, prefix=".himena_") as tmp:
+                job_star_path = Path(tmp) / "job.star"
+                job_star_model = cls.prep_job_star(**kwargs)
+                job_star_model.to_star_dict().write(job_star_path, newline="\n")
+                # $ relion_pipeliner --addJobFromStar <job.star>
+                # This reformats the input job.star and creates a new job directory.
+                # The new job is scheduled but NOT run yet. To run the job, we need to
+                # call relion_pipeliner --RunJobs <job_dir>
+                _run_relion_pipeliner_add_job_from_star(job_star_path, _cwd)
 
-        d = last_job_directory(_cwd)  # FIXME: not thread-safe
-        # Some standard jobs are run in the himena main window. This must be done
-        # before starting the watcher.
-        _update_himena_impl_marker(_cwd / d, kwargs)
-        run_watcher_new_process(_cwd)
+            d = last_job_directory(_cwd)  # FIXME: not thread-safe
+            # Some standard jobs are run in the himena main window. This must be done
+            # before starting the watcher.
+            _update_himena_impl_marker(_cwd / d, kwargs)
         match is_all_inputs_ready(d):
             case ReadyState.READY:
                 return _cwd / d
@@ -224,35 +227,35 @@ class RelionJob(ABC):
         """Edit the existing job directory and run it."""
         self.prerun_check(**kwargs)
         job_dir = self.output_job_dir
-        job_star_model = self.prep_job_star(**kwargs)
-        job_star_model.to_star_dict().write(job_dir.job_star(), newline="\n")
-        _update_himena_impl_marker(job_dir, kwargs)
-        job_star_params = job_dir.get_job_params_as_dict()
-        new_input_edges = self.input_edges(**job_star_params)
         rln_dir = job_dir.relion_project_dir
-
-        # Old connections should be updated.
-        # For example, when overwriting job "Select/job013/", the line
-        #   Extract/job012/particles Select/job013/
-        # should be updated to the new input edges.
-        to_run = normalize_job_id(job_dir.path.relative_to(rln_dir))
         default_pipeline_star = rln_dir / DEFAULT_PIPELINE_STAR
-        with job_dir.path.joinpath("job_pipeline.star").open("r+") as f:
-            replace_input_edges(f, to_run, new_input_edges, default_pipeline_star)
-        with open_with_lock(default_pipeline_star) as f:
-            replace_input_edges(f, to_run, new_input_edges)
-            update_default_pipeline(f, to_run, state="Scheduled")
+        with _scheduling_jobs(rln_dir):
+            job_star_model = self.prep_job_star(**kwargs)
+            job_star_model.to_star_dict().write(job_dir.job_star(), newline="\n")
+            _update_himena_impl_marker(job_dir, kwargs)
+            job_star_params = job_dir.get_job_params_as_dict()
+            new_input_edges = self.input_edges(**job_star_params)
 
-        for fname in [
-            FileNames.EXIT_FAILURE,
-            FileNames.EXIT_ABORTED,
-            FileNames.EXIT_SUCCESS,
-            FileNames.ABORT_NOW,
-        ]:
-            if (path := job_dir.path / fname).exists():
-                path.unlink()
+            # Old connections should be updated.
+            # For example, when overwriting job "Select/job013/", the line
+            #   Extract/job012/particles Select/job013/
+            # should be updated to the new input edges.
+            to_run = normalize_job_id(job_dir.path.relative_to(rln_dir))
+            with job_dir.path.joinpath("job_pipeline.star").open("r+") as f:
+                replace_input_edges(f, to_run, new_input_edges, default_pipeline_star)
+            with open_with_lock(default_pipeline_star) as f:
+                replace_input_edges(f, to_run, new_input_edges)
+                update_default_pipeline(f, to_run, state="Scheduled")
 
-        run_watcher_new_process(rln_dir)
+            for fname in [
+                FileNames.EXIT_FAILURE,
+                FileNames.EXIT_ABORTED,
+                FileNames.EXIT_SUCCESS,
+                FileNames.ABORT_NOW,
+            ]:
+                if (path := job_dir.path / fname).exists():
+                    path.unlink()
+
         default_pipeline_star.touch()
 
     @classmethod
@@ -547,23 +550,23 @@ class _Relion5BuiltinContinue(_Relion5BuiltinJob):
         job_star_path = job_dir.job_star()
         # `kwargs` come from the scheduler widget. Argument names are not complete.
         self.prerun_check(**kwargs)
-        job_star = self.make_job_star(**kwargs)
-        job_star.to_star_dict().write(job_star_path, newline="\n")
-        _update_himena_impl_marker(job_dir, kwargs)
-
-        job_star_params = job_dir.get_job_params_as_dict()
-        new_input_edges = self.input_edges(**job_star_params)
         rln_dir = job_dir.relion_project_dir
-
-        # Old connections should be updated. See `edit_and_run_job`.
-        to_run = normalize_job_id(job_dir.path.relative_to(rln_dir))
         default_pipeline_star = rln_dir / DEFAULT_PIPELINE_STAR
-        with job_dir.path.joinpath("job_pipeline.star").open("r+") as f:
-            replace_input_edges(f, to_run, new_input_edges, default_pipeline_star)
-        with open_with_lock(default_pipeline_star) as f:
-            replace_input_edges(f, to_run, new_input_edges)
-            update_default_pipeline(f, to_run, state="Scheduled")
-        run_watcher_new_process(rln_dir)
+        with _scheduling_jobs(rln_dir):
+            job_star = self.make_job_star(**kwargs)
+            job_star.to_star_dict().write(job_star_path, newline="\n")
+            _update_himena_impl_marker(job_dir, kwargs)
+
+            job_star_params = job_dir.get_job_params_as_dict()
+            new_input_edges = self.input_edges(**job_star_params)
+
+            # Old connections should be updated. See `edit_and_run_job`.
+            to_run = normalize_job_id(job_dir.path.relative_to(rln_dir))
+            with job_dir.path.joinpath("job_pipeline.star").open("r+") as f:
+                replace_input_edges(f, to_run, new_input_edges, default_pipeline_star)
+            with open_with_lock(default_pipeline_star) as f:
+                replace_input_edges(f, to_run, new_input_edges)
+                update_default_pipeline(f, to_run, state="Scheduled")
         default_pipeline_star.touch()
 
     def input_edges(self, **kwargs) -> list[str]:
@@ -596,6 +599,28 @@ def continue_job_now(job_dir: _job_dir.JobDirectory) -> RelionJobExecution:
     with open_with_lock(rln_dir / DEFAULT_PIPELINE_STAR) as f:
         update_default_pipeline(f, to_run, state="Scheduled")
     return execute_job(to_run, cwd=rln_dir)
+
+
+@contextmanager
+def _scheduling_jobs(relion_dir: Path):
+    """Context to schedule jobs. The pipeline watcher is started at exit.
+
+    A watcher of an older himena-relion is stopped first, because it would run the
+    jobs scheduled in this context in its own way.
+    """
+    try:
+        stopped = stop_outdated_watcher(relion_dir)
+    except OutdatedWatcherError as e:
+        warnings.warn(str(e), RuntimeWarning, stacklevel=3)
+        stopped = False
+    try:
+        yield
+    except BaseException:
+        if stopped:
+            # the jobs scheduled before were handled by the stopped watcher
+            run_watcher_new_process(relion_dir)
+        raise
+    run_watcher_new_process(relion_dir)
 
 
 def _update_himena_impl_marker(

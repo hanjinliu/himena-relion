@@ -17,3 +17,8 @@ def main():
         run_watcher(relion_dir=relion_dir, locked_ok=locked_ok)
     else:
         run_function()
+
+
+if __name__ == "__main__":
+    # `python -m himena_relion watch ...` (see `run_watcher_new_process`)
+    main()
