@@ -26,6 +26,17 @@ class JobState(BaseModel):
     )
 
 
+class GroupState(BaseModel):
+    """A group of jobs that are collapsed into a single node in the flowchart."""
+
+    name: str
+    jobs: list[str] = Field(
+        default_factory=list,
+        description="The list of job IDs that belong to this group.",
+    )
+    id: uuid.UUID = Field(default_factory=uuid.uuid4)
+
+
 def _default_tag_choices() -> list[TagState]:
     return [
         TagState(name="Tag-1", color=Color("turquoise").hex),
@@ -48,6 +59,10 @@ class HimenaRelionGuiState(BaseModel):
     tag_choices: list[TagState] = Field(
         default_factory=_default_tag_choices,
         description="The list of available tags that can be assigned to jobs.",
+    )
+    groups: list[GroupState] = Field(
+        default_factory=list,
+        description="The list of job groups collapsed in the flowchart.",
     )
     jobs_opened: dict[str, list[str]] = Field(
         default_factory=dict,

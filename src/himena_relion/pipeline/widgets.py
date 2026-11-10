@@ -16,7 +16,7 @@ from himena.plugins import validate_protocol
 from himena.style import Theme
 from himena.types import is_subtype
 from himena.qt import QColoredToolButton
-from himena.qt._qflowchart import TagItem
+from himena.qt._qflowchart import TagItem, BaseNodeItem
 from himena.exceptions import Cancelled
 from himena.consts import MonospaceFontFamily
 from himena.workflow import LocalReaderMethod
@@ -33,7 +33,7 @@ from himena_relion._pipeline import (
     RelionJobInfo,
 )
 from himena_relion import _utils
-from himena_relion.pipeline._utils import split_job_info
+from himena_relion.pipeline._utils import split_job_info, RelionJobGroupNodeItem
 from himena_relion.pipeline._gui_state import HimenaRelionGuiState
 from himena_relion.pipeline._flowchart import (
     QRelionPipelineFlowChartView,
@@ -85,6 +85,7 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         # btn.add_action("Harsh clean all", self._harsh_clean_all)
         btn.add_action("Refresh", self._refresh_flowchart, shortcut="F5")
         btn.add_action("Copy Project Path", self._copy_project_path)
+        btn.add_action("Uncollapse All Groups", self._uncollapse_all_groups)
         btn.add_separator()
         btn.add_action("Open Running Jobs", self._open_all_running_jobs)
         btn.add_action("Open Last Completed Job", self._open_last_completed_job)
@@ -168,7 +169,12 @@ class QRelionPipelineFlowChart(QtW.QWidget):
     def sizeHint(self):
         return QtCore.QSize(350, 600)
 
-    def _on_item_left_pressed(self, item: RelionJobNodeItem):
+    def _on_item_left_pressed(self, item: BaseNodeItem):
+        if isinstance(item, RelionJobGroupNodeItem):
+            self._inout.clear_in_out()
+            self._content_info.clear_content_info()
+            status_tip = item.text().replace("\n", " ")
+            return self._ui().set_status_tip(status_tip, duration=5)
         if job_dir := item.job_dir(self._relion_project_dir):
             self._inout.initialize(job_dir)
             self._inout.update_item_colors(job_dir)
@@ -183,7 +189,9 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         self._content_info.clear_content_info()
         self._ui().set_status_tip("", duration=3)
 
-    def _on_item_double_clicked(self, item: RelionJobNodeItem):
+    def _on_item_double_clicked(self, item: BaseNodeItem):
+        if isinstance(item, RelionJobGroupNodeItem):
+            return self._flow_chart.uncollapse(item.group_id)
         path = self._relion_project_dir / item.id()
         if path.exists():
             _utils.read_or_show_job(self._ui(), path)
@@ -471,8 +479,8 @@ class QRelionPipelineFlowChart(QtW.QWidget):
 
     def _center_on_item(self, path: Path):
         if self._stacked_widget.currentWidget() is self._flow_chart:
-            if node := self._flow_chart._node_map.get(path):
-                self._flow_chart.center_on_item(node.item())
+            if item := self._flow_chart.display_item(path):
+                self._flow_chart.center_on_item(item)
         elif self._stacked_widget.currentWidget() is self._table_view:
             self._table_view.center_on_item(path)
 
@@ -575,9 +583,67 @@ class QRelionPipelineFlowChart(QtW.QWidget):
             ]
         return id_to_tags_map
 
-    def _on_right_clicked(self, item: RelionJobNodeItem):
-        menu = self._prep_right_click_menu(item)
+    def _on_right_clicked(self, item: BaseNodeItem):
+        if isinstance(item, RelionJobGroupNodeItem):
+            menu = self._prep_group_right_click_menu(item)
+        else:
+            menu = self._prep_right_click_menu(item)
         menu.exec(QtGui.QCursor.pos())
+
+    def _prep_group_right_click_menu(self, item: RelionJobGroupNodeItem):
+        fc = self._flow_chart
+        ui = self._ui()
+        menu = QtW.QMenu(self)
+        menu.setToolTipsVisible(True)
+        action = menu.addAction("Uncollapse", lambda: fc.uncollapse(item.group_id))
+        action.setToolTip("Dissolve this group and show all the jobs in it.")
+        menu.addAction("Rename Group ...", lambda: self._rename_group(item))
+        action = menu.addAction(
+            "Collapse All Children", lambda: fc.collapse_children(item)
+        )
+        action.setToolTip("Add all the downstream jobs to this group.")
+        action.setEnabled(len(fc.collapsible_children(item)) > 0)
+        menu.addSeparator()
+
+        job_menu = menu.addMenu("Jobs")
+        job_menu.setToolTipsVisible(True)
+        for job in item.jobs:
+            jobxxx, title = split_job_info(job)
+            if job.alias:
+                title = f"{job.alias} ({title})"
+            action = job_menu.addAction(
+                f"{jobxxx}: {title}",
+                lambda p=job.path: _utils.read_or_show_job(
+                    ui, self._relion_project_dir / p
+                ),
+            )
+            action.setToolTip(f"Open this job ({job.status.value}).")
+        running = [job for job in item.jobs if job.status is NodeStatus.RUNNING]
+        action = menu.addAction(
+            "Open Running Jobs",
+            lambda: [
+                _utils.read_or_show_job(ui, self._relion_project_dir / job.path)
+                for job in running
+            ],
+        )
+        action.setEnabled(len(running) > 0)
+        menu.addAction(
+            "Copy Job IDs",
+            lambda: ui.set_clipboard(
+                text="\n".join(_utils.normalize_job_id(j.path) for j in item.jobs)
+            ),
+        )
+        return menu
+
+    def _rename_group(self, item: RelionJobGroupNodeItem):
+        sig = {"name": Annotated[str, {"label": "Name", "value": item.name}]}
+        if out := self._ui().exec_user_input_dialog(sig, title="Rename Group"):
+            if name := out["name"].strip():
+                self._flow_chart.rename_group(item.group_id, name)
+
+    def _uncollapse_all_groups(self):
+        """Dissolve all the groups of collapsed jobs in the flowchart."""
+        self._flow_chart.uncollapse_all()
 
     def _prep_right_click_menu(self, item: RelionJobNodeItem):
         self._flow_chart.read_gui_state(self._pipeline())
@@ -714,6 +780,16 @@ class QRelionPipelineFlowChart(QtW.QWidget):
                 existing_ids.add(job_id)
         if len(item._job.children) == 0:
             child_menu.setEnabled(False)
+
+        if self._stacked_widget.currentWidget() is self._flow_chart:
+            action = menu.addAction(
+                "Collapse All Children",
+                lambda: self._flow_chart.collapse_children(item),
+            )
+            action.setToolTip(
+                "Collapse all the downstream jobs of this job into a single node."
+            )
+            action.setEnabled(len(self._flow_chart.collapsible_children(item)) > 0)
 
         return menu
 

@@ -225,3 +225,81 @@ def test_job_updates_are_throttled(himena_ui: MainWindow, qtbot: QtBot, tmpdir):
     widget.widget_closed_callback()
     assert not widget._update_timer.isActive()
     assert widget._pending_updates == {}
+
+
+def test_flowchart_collapse(himena_ui: MainWindow, qtbot: QtBot, tmpdir):
+    import json
+    from himena_relion.pipeline.widgets import QRelionPipelineFlowChart
+    from himena_relion.pipeline._gui_state import HimenaRelionGuiState
+    from himena_relion.pipeline._utils import RelionJobGroupNodeItem
+    from ._utils import DEFAULT_PIPELINES_DIR
+
+    # Import/job001 -> MotionCorr/job002 -> CtfFind/job003
+    _proj_dir = Path(tmpdir)
+    star = _proj_dir / DEFAULT_PIPELINE_STAR
+    shutil.copy(DEFAULT_PIPELINES_DIR / "full.star", star)
+    himena_ui.read_file(star)
+    assert isinstance(widget := himena_ui.dock_widgets[0].widget, QRelionPipelineFlowChart)
+    fc = widget._flow_chart
+    pipeline = widget._pipeline()
+    job1, job2, job3 = (Path(p) for p in ["Import/job001", "MotionCorr/job002", "CtfFind/job003"])
+    assert set(fc._node_map) == {job1, job2, job3}
+    assert fc.collapsible_children(fc.item(job3)) == []
+
+    # tags of the collapsed jobs must not be lost
+    fc.set_item_tags(job3, fc.tags()[:1])
+    fc.save_gui_state(pipeline)
+
+    def _saved_state() -> HimenaRelionGuiState:
+        return HimenaRelionGuiState.from_project_directory(_proj_dir)
+
+    # collapse the children of job002
+    group_item = fc.collapse_children(fc.item(job2))
+    assert isinstance(group_item, RelionJobGroupNodeItem)
+    assert [job.path for job in group_item.jobs] == [job3]
+    assert set(fc._node_map) == {job1, job2, group_item.id()}
+    assert fc.current_item() is None
+    assert fc.display_item(job3) is group_item
+    node = fc._node_map[group_item.id()]
+    assert [arrow.start_node.item().id() for arrow in node._connected_arrows_to] == [job2]
+    state = _saved_state()
+    assert [g.jobs for g in state.groups] == [["CtfFind/job003/"]]
+    assert state.jobs["CtfFind/job003/"].tags == [0]
+    assert "groups" in json.loads((_proj_dir / ".himena_gui_state.json").read_text())
+
+    # the group survives pipeline updates and reloading the GUI state
+    widget._on_pipeline_updated(pipeline)
+    assert set(fc._node_map) == {job1, job2, group_item.id()}
+    widget._center_on_item(job3)
+    assert fc._node_map[group_item.id()].isSelected()
+
+    # context menu, rename
+    group_item = fc.display_item(job3)
+    widget._on_item_left_pressed(group_item)
+    widget._prep_group_right_click_menu(group_item)
+    fc.rename_group(group_item.group_id, "My group")
+    group_item = fc.display_item(job3)
+    assert group_item.text().startswith("My group\n")
+    assert _saved_state().groups[0].name == "My group"
+
+    # collapsing from the upstream job takes the jobs from the existing group
+    group_item = fc.collapse_children(fc.item(job1))
+    assert [job.path for job in group_item.jobs] == [job2, job3]
+    assert set(fc._node_map) == {job1, group_item.id()}
+    assert len(_saved_state().groups) == 1
+
+    # uncollapse by double-click
+    widget._on_item_double_clicked(group_item)
+    assert set(fc._node_map) == {job1, job2, job3}
+    assert _saved_state().groups == []
+    assert [t.id for t in fc.item_tags(job3)] == [fc.tags()[0].id]
+
+    # a group can absorb the downstream jobs
+    group_item = fc.collapse_children(fc.item(job1))
+    fc._set_groups([fc.groups()[0].model_copy(update={"jobs": ["MotionCorr/job002/"]})])
+    group_item = fc.display_item(job2)
+    assert set(fc._node_map) == {job1, group_item.id(), job3}
+    group_item = fc.collapse_children(group_item)
+    assert [job.path for job in group_item.jobs] == [job2, job3]
+    widget._uncollapse_all_groups()
+    assert set(fc._node_map) == {job1, job2, job3}

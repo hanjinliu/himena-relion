@@ -81,7 +81,7 @@ class QMaskCreateViewer(QtW.QWidget):
         if in_map is not None:
             self._img_raw = in_map
             self._img_raw_scale = in_map_scale
-            self._viewer.set_image(in_map, update_now=False)
+            self._viewer.set_image(self._get_image_filtered(), update_now=False)
             self._viewer.auto_threshold(update_now=False)
         else:
             self._img_raw = None
