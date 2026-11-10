@@ -1,7 +1,10 @@
+from pathlib import Path
+import shutil
 import subprocess
 from typing import Annotated
 import mrcfile
 import numpy as np
+from starfile_rs import empty_star, read_star
 
 from himena_relion._job_class import connect_jobs
 from himena_relion.consts import MenuId
@@ -11,6 +14,9 @@ from himena_relion.relion5.extensions.transform import widgets as _wdg
 from himena_relion.relion5._builtins import Refine3DJob
 from . import _const as _c
 from scipy import ndimage as ndi
+
+_PARTICLES = "particles"
+_STAR_HEADER = "\n# version 50001\n"
 
 CENTER_BY = Annotated[
     str,
@@ -155,14 +161,16 @@ def _shift_star(path_in, path_out, shift_ang):
     determine the pixel size, but this causes confusion when the scale of particle
     images and the input map are different. Therefore, we set the pixel size to 1 and
     directly specify the shift in angstroms, along with the `--ignore_optics` option to
-    ignore the optics block.
+    ignore the optics block. The raw output of relion_star_handler, which does not have
+    the optics block, is kept next to the final output.
     """
+    path_no_optics = Path(path_out).with_name(_c.OUTPUT_PARTICLES_NO_OPTICS)
     args_star = [
         _c.RELION_STAR_HANDLER,
         "--i",
         str(path_in),
         "--o",
-        str(path_out),
+        str(path_no_optics),
         "--center",
         "--center_X",
         str(-shift_ang[0]),
@@ -175,6 +183,32 @@ def _shift_star(path_in, path_out, shift_ang):
         "--ignore_optics",
     ]
     subprocess.run(args_star, check=True)
+    _restore_optics(path_in, path_no_optics, path_out)
+
+
+def _restore_optics(path_in, path_no_optics, path_out):
+    """Write the star file with the optics block of the input star file restored.
+
+    `relion_star_handler --ignore_optics` writes only the particles table, which makes
+    the output unusable for the jobs that need the optics groups (such as joining star
+    files). Shifting the origins does not change any of the optics parameters, so that
+    the input optics block can be reused as is.
+    """
+    star_in = read_star(path_in)
+    star_handled = read_star(path_no_optics)
+    if star_in.get("optics") is None or star_handled.get("optics") is not None:
+        # star file without optics groups (before RELION 3.1), or nothing to restore
+        shutil.copyfile(path_no_optics, path_out)
+        return
+    if star_handled.get(_PARTICLES) is None:
+        star_handled = star_handled.rename({star_handled.first().name: _PARTICLES})
+    star_out = empty_star()
+    for name in ["general", "optics"]:
+        if (blk := star_in.get(name)) is not None:
+            star_out.with_block(blk)
+    star_out.with_block(star_handled[_PARTICLES])
+    text = _STAR_HEADER + star_out.to_string()
+    Path(path_out).write_text(text, newline="\n")
 
 
 def _img_center_of_mass(img: np.ndarray) -> tuple[float, float, float]:

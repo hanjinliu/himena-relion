@@ -45,6 +45,52 @@ def test_shift_map(qtbot, tmpdir):
     tester.prep_job_star(ext_dir, in_3dref=str(img_path), center_by="map-com")
     tester.prep_job_star(ext_dir, in_3dref=str(img_path), in_mask=str(mask_path), center_by="map-com")
 
+def test_shift_map_restores_optics(tmpdir):
+    from himena_relion.relion5.extensions.transform.jobs import _restore_optics
+
+    tmpdir = Path(tmpdir)
+    df_optics = pl.DataFrame(
+        {
+            "rlnOpticsGroupName": ["opticsGroup1", "opticsGroup2"],
+            "rlnOpticsGroup": [1, 2],
+            "rlnImagePixelSize": [1.05, 0.78],
+        }
+    )
+    df_parts = pl.DataFrame(
+        {
+            "rlnImageName": ["1@a.mrcs", "2@a.mrcs", "1@b.mrcs"],
+            "rlnOpticsGroup": [1, 1, 2],
+            "rlnOriginXAngst": [0.5, -1.25, 3.0],
+        }
+    )
+    path_in = tmpdir / "in.star"
+    as_star({"optics": df_optics, "particles": df_parts}).write(path_in)
+
+    # relion_star_handler --ignore_optics writes the particles table only
+    df_shifted = df_parts.with_columns(pl.col("rlnOriginXAngst") + 1.0)
+    for block_name in ["particles", ""]:
+        path_no_optics = tmpdir / "out_no_optics.star"
+        path_out = tmpdir / "out.star"
+        as_star({block_name: df_shifted}).write(path_no_optics)
+        text_no_optics = path_no_optics.read_text()
+        _restore_optics(path_in, path_no_optics, path_out)
+        assert path_no_optics.read_text() == text_no_optics
+
+        star_out = read_star(path_out)
+        assert list(star_out.keys()) == ["optics", "particles"]
+        assert star_out["optics"].trust_loop().to_polars().equals(df_optics)
+        assert star_out["particles"].trust_loop().to_polars().equals(df_shifted)
+
+    # input without the optics block is copied as is
+    path_in_old = tmpdir / "in_old.star"
+    as_star({"": df_parts}).write(path_in_old)
+    path_no_optics = tmpdir / "out_old_no_optics.star"
+    path_out = tmpdir / "out_old.star"
+    as_star({"": df_shifted}).write(path_no_optics)
+    _restore_optics(path_in_old, path_no_optics, path_out)
+    assert path_out.read_text() == path_no_optics.read_text()
+
+
 def test_inspect_particles_spa(qtbot, tmpdir):
     from himena_relion.relion5.extensions.inspect_particles import InspectParticlesSPA, InspectParticlesSPAWidget
 
