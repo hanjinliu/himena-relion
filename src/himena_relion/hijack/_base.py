@@ -377,7 +377,8 @@ def touch_output_node_files(job_dir: JobDirectory) -> list[Path]:
     is_this = pipeline.processes.process_name == job_id
     alias = pipeline.processes.alias.filter(is_this)
     alias = alias[0] if len(alias) > 0 else "None"
-    if pipeline.output_edges is None:
+    if pipeline.output_edges.block.shape[0] == 0:
+        # NOTE: columns of an empty block are of Null type, which don't support `==`
         return []
     outputs = set(
         pipeline.output_edges.to_node.filter(pipeline.output_edges.process == job_id)

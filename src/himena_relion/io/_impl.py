@@ -264,9 +264,12 @@ def trash_job(ui: MainWindow, job_dir: JobDirectory):
             else:
                 input_indices_to_remove.append(False)
 
-        input_indices_to_remove = pl.Series(input_indices_to_remove)
+        # NOTE: dtype must be given, otherwise empty series will be of Null type, which
+        # cannot be negated or used for filtering.
+        input_indices_to_remove = pl.Series(input_indices_to_remove, dtype=pl.Boolean)
         output_edges_to_remove = pl.Series(
-            [Path(from_) in to_trash for from_ in pipeline.output_edges.process]
+            [Path(from_) in to_trash for from_ in pipeline.output_edges.process],
+            dtype=pl.Boolean,
         )
 
         resp = ui.exec_choose_one_dialog(
@@ -279,7 +282,8 @@ def trash_job(ui: MainWindow, job_dir: JobDirectory):
 
         # determine other fields to remove
         process_name_to_remove = pl.Series(
-            [Path(name) in to_trash for name in pipeline.processes.process_name]
+            [Path(name) in to_trash for name in pipeline.processes.process_name],
+            dtype=pl.Boolean,
         )
         aliases_to_remove = pipeline.processes.dataframe.filter(process_name_to_remove)[
             "rlnPipeLineProcessAlias"
@@ -287,7 +291,8 @@ def trash_job(ui: MainWindow, job_dir: JobDirectory):
 
         # pipeline.nodes.name is e.g. Extract/job010/particles.star
         process_nodes_to_remove = pl.Series(
-            [Path(name).parent in to_trash for name in pipeline.nodes.name]
+            [Path(name).parent in to_trash for name in pipeline.nodes.name],
+            dtype=pl.Boolean,
         )
 
         output_edges_trashed = pipeline.output_edges.dataframe.filter(
@@ -377,12 +382,8 @@ def restore_trashed_jobs(relion_project_dir: Path, job_ids: list[str]):
         # initialize with the original pipeline
         all_processes = [pipeline.processes.dataframe]
         all_nodes = [pipeline.nodes.dataframe]
-        all_input_edges = []
-        all_output_edges = []
-        if pipeline.input_edges is not None:
-            all_input_edges.append(pipeline.input_edges.dataframe)
-        if pipeline.output_edges is not None:
-            all_output_edges.append(pipeline.output_edges.dataframe)
+        all_input_edges = [pipeline.input_edges.dataframe]
+        all_output_edges = [pipeline.output_edges.dataframe]
 
         # move directory and merge pipeline information
         for path_to_undo in all_jobs_to_undo:
@@ -414,7 +415,11 @@ def restore_trashed_jobs(relion_project_dir: Path, job_ids: list[str]):
                     )
 
         df_processes = _concat_and_reorder(all_processes, "rlnPipeLineProcessName")
-        df_nodes = _concat_and_reorder(all_nodes, "rlnPipeLineNodeName")
+        # NOTE: job_pipeline.star also has the input nodes of the job, which may already
+        # be in the pipeline.
+        df_nodes = _concat_and_reorder(all_nodes, "rlnPipeLineNodeName").unique(
+            subset="rlnPipeLineNodeName", keep="first", maintain_order=True
+        )
         df_input_edges = _concat_and_reorder(all_input_edges, "rlnPipeLineEdgeFromNode")
         df_output_edges = _concat_and_reorder(
             all_output_edges, "rlnPipeLineEdgeProcess"
@@ -543,7 +548,13 @@ def _get_pipeline_process_df(job_pipeline: RelionPipelineModel, path_to_undo: Pa
 def _concat_and_reorder(dfs: list[pl.DataFrame], column_name: str):
     """Concatenate dataframes and sort by the given column."""
     df_processes = pl.concat(dfs, how="vertical_relaxed")
-    order = df_processes[column_name].map_elements(_try_get_job_name).arg_sort()
+    # NOTE: the column is of Null type if all the dataframes are empty.
+    order = (
+        df_processes[column_name]
+        .cast(pl.String)
+        .map_elements(_try_get_job_name, return_dtype=pl.String)
+        .arg_sort()
+    )
     return df_processes[order]
 
 
