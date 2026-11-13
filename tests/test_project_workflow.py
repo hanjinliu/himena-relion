@@ -18,7 +18,8 @@ from starfile_rs import read_star
 from himena_relion import _job_class, pipeline_watcher
 from himena_relion._job_dir import JobDirectory
 from himena_relion._pipeline import NodeStatus, RelionDefaultPipeline
-from himena_relion.consts import DEFAULT_PIPELINE_STAR, FileNames
+from himena_relion.consts import DEFAULT_PIPELINE_STAR, NODES_DIR, FileNames
+from himena_relion.hijack import _base
 from himena_relion.io import _impl
 from himena_relion.relion5._builtins import ImportMoviesJob, MotionCorrOwnJob
 from himena_relion.schemas import JobStarModel, RelionPipelineModel
@@ -444,3 +445,53 @@ def test_trash_and_restore_jobs(
         (MOTIONCORR_JOB, MICROGRAPHS_STAR),
         (MOTIONCORR_JOB, LOGFILE_PDF),
     ]
+
+
+def test_overwrite_from_scheduler(
+    himena_ui: MainWindow, in_project: Path, relion: FakeRelionPipeliner
+):
+    _start_new_project(himena_ui, in_project)
+    _create_import_job(in_project)
+    _check_scheduled_jobs(in_project)
+    relion.finish(IMPORT_JOB)
+    import_dir = JobDirectory(in_project / IMPORT_JOB)
+
+    # no input edges in the project: overwritten without asking
+    scheduler = _impl.overwrite_relion_job(himena_ui, import_dir)
+    scheduler._exec_btn.click()
+    assert _statuses(_read_pipeline(in_project)) == {IMPORT_JOB: "Scheduled"}
+    _check_scheduled_jobs(in_project)
+    relion.finish(IMPORT_JOB)
+
+    # the output is used by MotionCorr: the user is asked
+    _create_motioncorr_job(in_project)
+    scheduler = _impl.overwrite_relion_job(himena_ui, import_dir)
+    with choose_one_dialog_response(himena_ui, True):  # cancel
+        scheduler._exec_btn.click()
+    assert _statuses(_read_pipeline(in_project))[IMPORT_JOB] == "Succeeded"
+    assert in_project.joinpath(MOVIES_STAR).exists()
+    with choose_one_dialog_response(himena_ui, False):  # overwrite
+        scheduler._exec_btn.click()
+    pipeline = _read_pipeline(in_project)
+    assert _statuses(pipeline) == {IMPORT_JOB: "Scheduled", MOTIONCORR_JOB: "Scheduled"}
+    assert _input_edges(pipeline) == [(MOVIES_STAR, MOTIONCORR_JOB)]
+
+
+def test_touch_output_node_files(
+    himena_ui: MainWindow, in_project: Path, relion: FakeRelionPipeliner
+):
+    _start_new_project(himena_ui, in_project)
+    _create_import_job(in_project)
+    _check_scheduled_jobs(in_project)
+    relion.finish(IMPORT_JOB)
+    import_dir = JobDirectory(in_project / IMPORT_JOB)
+    touched = _base.touch_output_node_files(import_dir)
+    assert touched == [in_project / NODES_DIR / "MicrographMoviesData" / MOVIES_STAR]
+    assert touched[0].exists()
+
+    # nothing to touch if the project does not have any output edges
+    counter, blocks = _read_blocks(relion.path)
+    blocks["pipeline_output_edges"] = []
+    _write_blocks(relion.path, counter, blocks)
+    assert "data_pipeline_output_edges" not in relion.path.read_text()
+    assert _base.touch_output_node_files(import_dir) == []
