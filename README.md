@@ -6,7 +6,7 @@
 
 -----
 
-`himena-relion` is a modern RELION GUI implemented as a [himena](https://github.com/hanjinliu/himena) plugin. Both SPA and tomography jobs are supported.
+`himena-relion` is a modern [RELION](https://github.com/3dem/relion) GUI implemented as a [himena](https://github.com/hanjinliu/himena) plugin. Both SPA and tomography jobs are supported.
 
 :warning: `himena-relion` is mainly tested with RELION 5.0.x and may not work with other
 versions.
