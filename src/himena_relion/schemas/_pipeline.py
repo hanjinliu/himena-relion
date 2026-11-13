@@ -78,12 +78,14 @@ class RelionPipelineModel(schema.StarModel):
 
     general: RelionPipelineGeneral = schema.Field("pipeline_general")
     processes: RelionPipelineProcesses = schema.Field("pipeline_processes")
-    nodes: RelionPipelineNodes = schema.Field("pipeline_nodes")
-    input_edges: RelionPipelineInputEdges | None = schema.Field(
-        "pipeline_input_edges", default=None
+    nodes: RelionPipelineNodes = schema.Field(
+        "pipeline_nodes", default_factory=RelionPipelineNodes.empty
     )
-    output_edges: RelionPipelineOutputEdges | None = schema.Field(
-        "pipeline_output_edges", default=None
+    input_edges: RelionPipelineInputEdges = schema.Field(
+        "pipeline_input_edges", default_factory=RelionPipelineInputEdges.empty
+    )
+    output_edges: RelionPipelineOutputEdges = schema.Field(
+        "pipeline_output_edges", default_factory=RelionPipelineOutputEdges.empty
     )
 
     General = RelionPipelineGeneral
@@ -98,8 +100,8 @@ class RelionPipelineModel(schema.StarModel):
             out += f"\n\n{self.processes.to_string()}\n\n"
         if self.nodes.block.shape[0] > 0:
             out += f"{self.nodes.to_string()}"
-        if self.input_edges is not None and self.input_edges.block.shape[0] > 0:
+        if self.input_edges.block.shape[0] > 0:
             out += f"\n\n{self.input_edges.to_string()}"
-        if self.output_edges is not None and self.output_edges.block.shape[0] > 0:
+        if self.output_edges.block.shape[0] > 0:
             out += f"\n\n{self.output_edges.to_string()}"
         return out
