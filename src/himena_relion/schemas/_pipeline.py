@@ -77,7 +77,11 @@ class RelionPipelineModel(schema.StarModel):
     """Complete RELION pipeline STAR file schema."""
 
     general: RelionPipelineGeneral = schema.Field("pipeline_general")
-    processes: RelionPipelineProcesses = schema.Field("pipeline_processes")
+    # NOTE: a project without any jobs (a new project, or all the jobs were trashed)
+    # does not have this block.
+    processes: RelionPipelineProcesses = schema.Field(
+        "pipeline_processes", default_factory=RelionPipelineProcesses.empty
+    )
     nodes: RelionPipelineNodes = schema.Field(
         "pipeline_nodes", default_factory=RelionPipelineNodes.empty
     )

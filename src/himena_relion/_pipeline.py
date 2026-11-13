@@ -73,22 +73,21 @@ class RelionDefaultPipeline(Sequence["RelionJobInfo"]):
             )
             nodes[Path(path)] = node
 
-        if mappers is not None:
-            for from_node, to_node in zip(
-                mappers.from_node,
-                mappers.process,
-                strict=True,
-            ):
-                # e.g.
-                # from_path = Import/job001/movies.star
-                # to_path = MotionCorr/job002/
-                from_path = Path(from_node)
-                to_path = Path(to_node)
-                if to_path in nodes and from_path.parent in nodes:
-                    job_from = RelionOutputFile(nodes[from_path.parent], from_path.name)
-                    job_to = RelionOutputFile(nodes[to_path], to_path.name)
-                    nodes[to_path].parents.append(job_from)
-                    nodes[from_path.parent].children.append(job_to)
+        for from_node, to_node in zip(
+            mappers.from_node,
+            mappers.process,
+            strict=True,
+        ):
+            # e.g.
+            # from_path = Import/job001/movies.star
+            # to_path = MotionCorr/job002/
+            from_path = Path(from_node)
+            to_path = Path(to_node)
+            if to_path in nodes and from_path.parent in nodes:
+                job_from = RelionOutputFile(nodes[from_path.parent], from_path.name)
+                job_to = RelionOutputFile(nodes[to_path], to_path.name)
+                nodes[to_path].parents.append(job_from)
+                nodes[from_path.parent].children.append(job_to)
 
         return cls(list(nodes.values()), project_dir=star_path.parent)
 
@@ -212,31 +211,24 @@ class RelionPipeline:
         # construct type map
         _type_map = pipeline.nodes.make_type_map()
 
-        if pipeline.input_edges is not None:
-            inputs = [
-                RelionJobPipelineNode.from_file_path(
-                    input_path_rel,
-                    _type_map.get(input_path_rel, None),
-                    to_job_id,
-                )
-                for input_path_rel, to_job_id in zip(
-                    pipeline.input_edges.from_node,
-                    pipeline.input_edges.process,
-                )
-            ]
-        else:
-            inputs = []
-
-        if pipeline.output_edges is not None:
-            outputs = [
-                RelionJobPipelineNode.from_file_path(
-                    output_path_rel,
-                    _type_map.get(output_path_rel, None),
-                )
-                for output_path_rel in pipeline.output_edges.to_node
-            ]
-        else:
-            outputs = []
+        inputs = [
+            RelionJobPipelineNode.from_file_path(
+                input_path_rel,
+                _type_map.get(input_path_rel, None),
+                to_job_id,
+            )
+            for input_path_rel, to_job_id in zip(
+                pipeline.input_edges.from_node,
+                pipeline.input_edges.process,
+            )
+        ]
+        outputs = [
+            RelionJobPipelineNode.from_file_path(
+                output_path_rel,
+                _type_map.get(output_path_rel, None),
+            )
+            for output_path_rel in pipeline.output_edges.to_node
+        ]
         if (depth := pipeline.nodes.type_label_depth) is not None and len(depth) > 0:
             process_type_label_depth = depth[0]
         else:

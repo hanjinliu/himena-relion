@@ -13,3 +13,12 @@ example, you can type "#ribosome" to filter the results to only show the jobs ta
 Some jobs display a one-line status tip at the bottom of the window, when clicked in
 the flowchart. The first line of the "note.txt" file in each job directory will also be
 displayed so you can use it for a short description of the job.
+
+## Grouping Jobs
+
+:sparkles: *New in v0.0.14*
+
+![](images/01_group_jobs.png){ width=400px loading=lazy }
+
+From right-click > Collapse All Children, you can collapse all child jobs under the
+selected job.

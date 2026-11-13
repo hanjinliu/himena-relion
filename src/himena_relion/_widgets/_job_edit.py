@@ -360,11 +360,10 @@ class EditMode(Mode):
         )
         job_id = self.job_dir.job_normal_id()
         need_warn = False
-        if pipeline_model.input_edges is not None:
-            for from_ in pipeline_model.input_edges.from_node:
-                if from_.startswith(job_id):
-                    need_warn = True
-                    break
+        for from_ in pipeline_model.input_edges.from_node:
+            if from_.startswith(job_id):
+                need_warn = True
+                break
         if need_warn and widget._ui.exec_choose_one_dialog(
             title="Overwrite?",
             message="This job's output nodes are used as inputs for other jobs, so "

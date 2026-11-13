@@ -326,11 +326,11 @@ def replace_input_edges(
     to_run = normalize_job_id(to_run)
     pipeline_input_edges = pipeline_model.input_edges
     new_from_node = [_assert_input_edge(n) for n in new_inputs]
-    if pipeline_input_edges is not None:
+    if pipeline_input_edges.block.shape[0] > 0:
         indices = pipeline_input_edges.process == to_run
         df = pipeline_input_edges.dataframe.filter(~indices)
     else:
-        df = RelionPipelineModel.InputEdges(from_node=[], process=[]).dataframe
+        df = pipeline_input_edges.dataframe
     if new_from_node:
         df_new = pipeline_model.InputEdges(
             from_node=new_from_node,
@@ -345,7 +345,8 @@ def replace_input_edges(
                 default_pipeline
             ).nodes.dataframe.filter(pl.col("rlnPipeLineNodeName").is_in(new_from_node))
             nodes_this = pipeline_model.nodes.dataframe.filter(
-                pl.col("rlnPipeLineNodeName").str.starts_with(to_run)
+                # NOTE: cast is needed because the column is Null type if empty
+                pl.col("rlnPipeLineNodeName").cast(pl.String).str.starts_with(to_run)
             )
             pipeline_model.nodes = pl.concat(
                 [nodes_full, nodes_this], how="vertical_relaxed"

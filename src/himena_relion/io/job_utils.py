@@ -251,7 +251,7 @@ def delete_all_subtomos(ui: MainWindow, model: WidgetDataModel):
 @register_function(
     menus=[],
     types=["relion_job.relion.aligntiltseries"],
-    title="Delete All Tomograms",
+    title="Delete All MRC Files",
     command_id="himena-relion:delete-all-aligntilts",
     run_async=True,
 )
