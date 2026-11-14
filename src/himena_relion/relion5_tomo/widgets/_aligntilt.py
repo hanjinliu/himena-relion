@@ -104,10 +104,10 @@ class QAlignTiltSeriesViewer(QJobScrollArea):
         for external_subdir in job_dir.path.joinpath(_EXTERNAL).glob("*"):
             if self._is_imod_fid or self._is_imod_patchtrack:
                 # IMOD output alignment file
-                filename = f"{external_subdir.name}.xf"
+                filename = "batchruntomo.log"
             elif self._is_aretomo2:
                 # AreTomo2 output aligned tilt series
-                filename = f"{external_subdir.name}_aligned.mrc"
+                filename = f"{external_subdir.name}.log"
             else:
                 continue
             if external_subdir.joinpath(filename).exists():
@@ -131,7 +131,12 @@ class QAlignTiltSeriesViewer(QJobScrollArea):
             self._ts_choice_changed_aretomo2(job_dir, text)
 
     def _ts_choice_changed_imod(self, job_dir: _job_dir.JobDirectory, text: str):
-        xf = xf_file(job_dir, text)
+        # update batchruntomo log
+        log_file = job_dir.path / _EXTERNAL / text / "batchruntomo.log"
+        if log_file.exists():
+            self._align_log.setPlainText(log_file.read_text())
+
+        xf = _xf_file(job_dir, text)
         if not xf.exists():
             return
 
@@ -157,12 +162,11 @@ class QAlignTiltSeriesViewer(QJobScrollArea):
             _LOGGER.error("Failed to load tilt series", exc_info=True)
             self._viewer.clear()
 
-        # update batchruntomo log
-        log_file = job_dir.path / _EXTERNAL / text / "batchruntomo.log"
+    def _ts_choice_changed_aretomo2(self, job_dir: _job_dir.JobDirectory, text: str):
+        log_file = job_dir.path / _EXTERNAL / text / f"{text}.log"
         if log_file.exists():
             self._align_log.setPlainText(log_file.read_text())
 
-    def _ts_choice_changed_aretomo2(self, job_dir: _job_dir.JobDirectory, text: str):
         aligned_file = job_dir.path / _EXTERNAL / text / f"{text}_aligned.mrc"
         if not aligned_file.exists():
             return
@@ -174,10 +178,6 @@ class QAlignTiltSeriesViewer(QJobScrollArea):
         except Exception:
             _LOGGER.error("Failed to load tilt series", exc_info=True)
             self._viewer.clear()
-
-        log_file = job_dir.path / _EXTERNAL / text / f"{text}.log"
-        if log_file.exists():
-            self._align_log.setPlainText(log_file.read_text())
 
     def _update_fiducials(self, tomo_name: str, aligner: ImodImageAligner):
         if self._is_imod_patchtrack:
@@ -219,7 +219,7 @@ class QAlignTiltSeriesViewer(QJobScrollArea):
             self._viewer.redraw()
 
     def _open_in_etomo(self):
-        edf = edf_file(self._job_dir, self._ts_list.current_text())
+        edf = _edf_file(self._job_dir, self._ts_list.current_text())
         _configs.open_in_imod_command(edf, "etomo")
 
     def _continue_job(self):
@@ -336,27 +336,27 @@ class QAlignJobLog(QtW.QPlainTextEdit):
         return QtCore.QSize(400, 300)
 
 
-def xf_file(jobdir: _job_dir.JobDirectory, tomoname: str) -> Path:
+def _xf_file(jobdir: _job_dir.JobDirectory, tomoname: str) -> Path:
     """Return the path to the .xf file for a given tomogram name."""
-    return etomo_project_dir(jobdir, tomoname) / f"{tomoname}.xf"
+    return _etomo_project_dir(jobdir, tomoname) / f"{tomoname}.xf"
 
 
 def _3dmod_file(jobdir: _job_dir.JobDirectory, tomoname: str) -> Path:
     """Return the path to the .prexf file for a given tomogram name."""
-    return etomo_project_dir(jobdir, tomoname) / f"{tomoname}.3dmod"
+    return _etomo_project_dir(jobdir, tomoname) / f"{tomoname}.3dmod"
 
 
 def _tlt_file(jobdir: _job_dir.JobDirectory, tomoname: str) -> Path:
     """Return the path to the .tlt file for a given tomogram name."""
-    return etomo_project_dir(jobdir, tomoname) / f"{tomoname}.tlt"
+    return _etomo_project_dir(jobdir, tomoname) / f"{tomoname}.tlt"
 
 
-def edf_file(jobdir: _job_dir.JobDirectory, tomoname: str) -> Path:
+def _edf_file(jobdir: _job_dir.JobDirectory, tomoname: str) -> Path:
     """Return the path to the .edf file for a given tomogram name."""
-    return etomo_project_dir(jobdir, tomoname) / f"{tomoname}.edf"
+    return _etomo_project_dir(jobdir, tomoname) / f"{tomoname}.edf"
 
 
-def etomo_project_dir(jobdir: _job_dir.JobDirectory, tomoname: str) -> Path:
+def _etomo_project_dir(jobdir: _job_dir.JobDirectory, tomoname: str) -> Path:
     """Return the path to the etomo project directory for a given tomogram name."""
     return jobdir.path / _EXTERNAL / tomoname
 
@@ -372,7 +372,7 @@ def image_shape_params(
     tomoname: str,
 ) -> tuple[int, int] | None:
     """Try to get image shape from tilt.com and prenewst.com files."""
-    path_tilt = etomo_project_dir(jobdir, tomoname) / "tilt.com"
+    path_tilt = _etomo_project_dir(jobdir, tomoname) / "tilt.com"
     with suppress(Exception):
         with path_tilt.open("r") as f:
             # FULLIMAGE 3838 3710
@@ -385,7 +385,7 @@ def image_shape_params(
 
 def _get_preali_bin(jobdir: _job_dir.JobDirectory, tomoname: str) -> int | None:
     """Try to get pre-alignment binning from prenewst.com file."""
-    path_align_com = etomo_project_dir(jobdir, tomoname) / "align.com"
+    path_align_com = _etomo_project_dir(jobdir, tomoname) / "align.com"
     with suppress(Exception):
         with path_align_com.open("r") as f:
             # ImagesAreBinned 4
@@ -393,11 +393,3 @@ def _get_preali_bin(jobdir: _job_dir.JobDirectory, tomoname: str) -> int | None:
                 if not line.startswith("#") and line.startswith("ImagesAreBinned"):
                     return int(line.split()[1])
     return None
-
-
-def _imod_output_align_file(subdir: Path) -> str:
-    return f"{subdir.name}.xf"
-
-
-def _aretomo2_output_align_file(subdir: Path) -> str:
-    return f"{subdir.name}_aligned.mrc"
