@@ -1,11 +1,11 @@
 from pathlib import Path
 import shutil
 from typing import Any
-from starfile_rs import read_star
+from starfile_rs import read_star, read_star_block
 from magicgui.widgets.bases import ValueWidget
 from himena_relion._job_class import _Relion5BuiltinJob, parse_string, InvalidInputError
 from himena_relion._widgets._magicgui import AutoFillableFloatEdit
-from himena_relion._job_dir import JobDirectory
+from himena_relion._job_dir import JobDirectory, try_get_particle_number
 from himena_relion import _configs, _annotated as _a
 from himena_relion._utils import command_not_found_err_msg, extract_input_edges
 from himena_relion.schemas import OptimisationSetModel
@@ -1536,6 +1536,9 @@ class _Class3DJobBase(_Relion5SpaJob):
 
     def status_tip(self) -> str:
         ncls = int(self.output_job_dir.get_job_param("nr_classes"))
+        nparts = try_get_particle_number(self.output_job_dir)
+        if nparts >= 0:
+            return f"{ncls} classes, {nparts} particles"
         return f"{ncls} classes"
 
 
@@ -1882,18 +1885,21 @@ class Refine3DJob(_Relion5SpaJob):
         return extract_input_edges(kwargs, ["fn_img", "fn_ref", "fn_mask"])
 
     def status_tip(self) -> str:
+        nparts = try_get_particle_number(self.output_job_dir)
+        if nparts < 0:
+            return ""
         if (path := self.output_job_dir.path.joinpath("run_model.star")).exists():
             crit = "0.143"
             niters = "final"
         else:
             paths = sorted(self.output_job_dir.path.glob("run_it*_half1_model.star"))
             if len(paths) == 0:
-                return super().status_tip()
+                return f"{nparts} particles"
             path = paths[-1]
             crit = "0.5"
             niters = str(int(path.stem.split("_")[1][2:]))
         res = read_star(path).first().trust_single()["rlnCurrentResolution"]
-        return f"FSC {crit} = {res} Å (iteration = {niters})"
+        return f"{nparts} particles, FSC {crit} = {res:.2f} Å (iteration = {niters})"
 
 
 class MultiBodyJob(_Relion5SpaJob):
@@ -2278,6 +2284,21 @@ class SelectRemoveDuplicatesJob(_SelectJob):
     def input_edges(self, **kwargs) -> list[str]:
         return [kwargs["fn_data"]]
 
+    def status_tip(self) -> str:
+        path_sel = self.output_job_dir.path / "particles.star"
+        path_rem = self.output_job_dir.path / "particles_removed.star"
+        if not (path_sel.exists() and path_rem.exists()):
+            return ""
+        try:
+            block_selected = read_star_block(path_sel, "particles").trust_loop()
+            block_removed = read_star(path_rem).first().trust_loop()
+        except Exception:
+            return ""
+        n_selected = len(block_selected)
+        n_removed = len(block_removed)
+        n_all = n_selected + n_removed
+        return f"{n_all} - {n_removed} = {n_selected} particles"
+
 
 class SelectDiscardJob(_SelectJob):
     """Discard particles by pixel value outliers.
@@ -2504,7 +2525,7 @@ class PostProcessJob(_Relion5SpaJob):
         try:
             post_path = self.output_job_dir.path / "postprocess.star"
             res = read_star(post_path).first().trust_single()["rlnFinalResolution"]
-            return f"FSC 0.143 = {res} Å"
+            return f"FSC 0.143 = {res:.2f} Å"
         except Exception:
             return super().status_tip()
 
