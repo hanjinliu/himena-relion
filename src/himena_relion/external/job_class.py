@@ -117,6 +117,8 @@ class RelionExternalJob(RelionJob):
     def input_edges(self, **kwargs) -> list[str]:
         sig = inspect.signature(self.run)
         out = []
+        # job.star uses different names for some inputs (e.g. "in_mic" for "in_mics")
+        arg_map = dict(ARG_NAME_REMAP)
         for param in sig.parameters.values():
             if param.name in (
                 "in_3dref",
@@ -126,7 +128,8 @@ class RelionExternalJob(RelionJob):
                 "in_movies",
                 "in_parts",
             ):
-                if edge := kwargs.get(param.name, ""):
+                remapped = arg_map.get(param.name, param.name)
+                if edge := kwargs.get(param.name, "") or kwargs.get(remapped, ""):
                     out.append(edge)
         return out
 

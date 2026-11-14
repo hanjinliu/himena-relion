@@ -13,6 +13,8 @@ from himena_relion.consts import (
     FileNames,
     NODES_DIR,
     DEFAULT_PIPELINE_STAR,
+    JOB_PIPELINE_STAR,
+    PIPELINE_NODE_NAME,
 )
 from himena_relion._configs import get_relion_pipeliner_args
 from himena_relion._wsl import is_wsl_path
@@ -202,10 +204,12 @@ def set_job_alias(ui: MainWindow, job_dir: JobDirectory):
     # Update the default_pipeline.star with the new alias, and create a symlink.
     with open_with_lock(job_dir.relion_project_dir / DEFAULT_PIPELINE_STAR) as f:
         # Update job_pipeline.star with the new alias.
-        if (job_pipe_path := job_dir.path.joinpath("job_pipeline.star")).exists():
+        if (job_pipe_path := job_dir.path.joinpath(JOB_PIPELINE_STAR)).exists():
             job_pipe = RelionPipelineModel.validate_file(job_pipe_path)
             job_pipe.processes = job_pipe.processes.dataframe.with_columns(
-                rlnPipeLineProcessAlias=pl.lit(alias)
+                rlnPipeLineProcessAlias=pl.lit(
+                    normalize_job_id(job_dir.path.parent / alias)
+                )
             )
             job_pipe.to_star_dict().write(job_pipe_path, newline="\n")
         else:
@@ -388,7 +392,7 @@ def restore_trashed_jobs(relion_project_dir: Path, job_ids: list[str]):
         # move directory and merge pipeline information
         for path_to_undo in all_jobs_to_undo:
             # RELION GUI also use the job_pipeline.star to undelete
-            job_pipeline_star = path_to_undo / "job_pipeline.star"
+            job_pipeline_star = path_to_undo / JOB_PIPELINE_STAR
             path_dest = relion_project_dir / path_to_undo.relative_to(trash_dir)
             if job_pipeline_star.exists():
                 job_pipeline = RelionPipelineModel.validate_file(job_pipeline_star)
@@ -417,8 +421,8 @@ def restore_trashed_jobs(relion_project_dir: Path, job_ids: list[str]):
         df_processes = _concat_and_reorder(all_processes, "rlnPipeLineProcessName")
         # NOTE: job_pipeline.star also has the input nodes of the job, which may already
         # be in the pipeline.
-        df_nodes = _concat_and_reorder(all_nodes, "rlnPipeLineNodeName").unique(
-            subset="rlnPipeLineNodeName", keep="first", maintain_order=True
+        df_nodes = _concat_and_reorder(all_nodes, PIPELINE_NODE_NAME).unique(
+            subset=PIPELINE_NODE_NAME, keep="first", maintain_order=True
         )
         df_input_edges = _concat_and_reorder(all_input_edges, "rlnPipeLineEdgeFromNode")
         df_output_edges = _concat_and_reorder(
@@ -511,8 +515,9 @@ def _trash_dir(relion_job_dir: Path) -> Path:
 def _make_node_to_type_map(df_node) -> dict[str, str]:
     node_to_type_map: dict[str, str] = {}
     for node_name, type_label in zip(
-        df_node["rlnPipeLineNodeName"], df_node["rlnPipeLineNodeTypeLabel"]
+        df_node[PIPELINE_NODE_NAME], df_node["rlnPipeLineNodeTypeLabel"]
     ):
+        assert isinstance(type_label, str)
         node_to_type_map[node_name] = type_label.split(".", maxsplit=1)[0]
     return node_to_type_map
 

@@ -72,9 +72,12 @@ class Plane(StrEnum):
 
 
 NODES_DIR = ".Nodes"
+JOB_PIPELINE_STAR = "job_pipeline.star"
 DEFAULT_PIPELINE_STAR = "default_pipeline.star"
 YES = "Yes"
 NO = "No"
+
+PIPELINE_NODE_NAME = "rlnPipeLineNodeName"
 
 JOB_ID_MAP = {
     # SPA

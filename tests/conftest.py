@@ -6,6 +6,7 @@ import gc
 
 if TYPE_CHECKING:
     from himena_relion._job_dir import JobDirectory
+    from ._fake_relion import FakeRelionPipeliner
 
 @fixture(autouse=True, scope="session")
 def import_all():
@@ -56,3 +57,26 @@ def jobs_dir_spa() -> Path:
 @fixture(scope="function")
 def jobs_dir_tomo() -> Path:
     return Path(__file__).parent / "jobs_tomo"
+
+@fixture
+def in_project(tmp_path: Path, monkeypatch) -> Path:
+    """A new RELION project directory, which is the current directory."""
+    # jobs are identified by the paths relative to the project directory
+    monkeypatch.chdir(tmp_path)
+    return tmp_path
+
+@fixture
+def relion(in_project: Path, monkeypatch) -> "FakeRelionPipeliner":
+    """Emulate `relion_pipeliner` in the project, instead of running RELION."""
+    from himena_relion import _job_class, pipeline_watcher
+    from ._fake_relion import FakeRelionPipeliner
+
+    fake = FakeRelionPipeliner(in_project)
+    monkeypatch.setattr(
+        _job_class, "_run_relion_pipeliner_add_job_from_star", fake.add_job_from_star
+    )
+    monkeypatch.setattr(pipeline_watcher.subprocess, "Popen", fake.popen)
+    # The watcher is not started as a new process. `check_scheduled_jobs` is called
+    # instead.
+    monkeypatch.setattr(_job_class, "run_watcher_new_process", lambda *_: None)
+    return fake
