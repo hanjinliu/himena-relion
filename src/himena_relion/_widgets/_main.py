@@ -55,9 +55,16 @@ class QRelionJobWidgetBase(QtW.QWidget):
         self._tab_widget.addTab(widget, widget.tab_title())
 
     def clear_tabs(self):
-        self._tab_widget.clear()
+        self._discard_tabs()
         self._state_widget.clear_content()
         self._job_dir = None
+
+    def _discard_tabs(self):
+        """Remove all the tabs and delete the widgets in them."""
+        widgets = [self._tab_widget.widget(i) for i in range(self._tab_widget.count())]
+        self._tab_widget.clear()
+        for widget in widgets:
+            _discard_widget(widget)
 
     def update_job(self, job_dir: _job_dir.JobDirectory):
         self._job_dir = job_dir
@@ -126,7 +133,6 @@ class QRelionJobWidget(QRelionJobWidgetBase):
     job_init_required = QtCore.Signal(_job_dir.JobDirectory)
     job_updated = QtCore.Signal(list)  # list of updated file paths
     __himena_ignore_file_updates__ = True
-    _instances = set["QRelionJobWidget"]()
 
     def __init__(self, ui: MainWindow):
         super().__init__()
@@ -143,7 +149,6 @@ class QRelionJobWidget(QRelionJobWidgetBase):
         self._update_timer.timeout.connect(self._on_update_timer_timeout)
         self.job_updated.connect(self._on_job_updated)
         self.job_init_required.connect(self._on_init_required)
-        self._instances.add(self)
 
     @validate_protocol
     def update_model(self, model: WidgetDataModel):
@@ -204,9 +209,7 @@ class QRelionJobWidget(QRelionJobWidgetBase):
         if (old := self._results_widget) is not None:
             if (index := self._tab_widget.indexOf(old)) >= 0:
                 self._tab_widget.removeTab(index)
-            if callback := getattr(old, "window_closed_callback", None):
-                callback()
-            old.deleteLater()
+            _discard_widget(old)
         if wdt := self._create_results_widget(job_dir):
             self._tab_widget.insertTab(0, wdt, wdt.tab_title())
             self._tab_widget.setCurrentIndex(0)
@@ -259,6 +262,14 @@ class QRelionJobWidget(QRelionJobWidgetBase):
     @validate_protocol
     def widget_closed_callback(self):
         """Callback when the widget is closed."""
+        self._stop_watching()
+        # The closed window is not always deleted by the main window. Delete the
+        # contents here, as they may hold large data such as density maps.
+        self._results_widget = None
+        self._discard_tabs()
+
+    def _stop_watching(self):
+        """Stop watching the job directory and discard the pending updates."""
         if self._watcher is not None:
             self._watcher.quit()
             self._watcher = None
@@ -338,7 +349,7 @@ class QRelionJobWidget(QRelionJobWidgetBase):
         if self._job_dir is None:
             return
         if not self._job_dir.path.exists():
-            self.widget_closed_callback()
+            self._stop_watching()
             raise RuntimeError(
                 f"Job directory {self._job_dir.path} has been deleted externally. This "
                 "widget will no longer respond to changes. Please close this widget."
@@ -358,6 +369,23 @@ class QRelionJobWidget(QRelionJobWidgetBase):
         """Handle the case when the job directory needs to be re-initialized."""
         self.initialize_widgets(job_dir)
         self.refresh_results_widget()
+
+
+def _discard_widget(widget: QtW.QWidget | None):
+    """Stop the background task of a removed job widget and delete it.
+
+    Removing a tab from a QTabWidget does not delete the widget in the tab.
+    """
+    if widget is None:
+        return
+    if callback := getattr(widget, "window_closed_callback", None):
+        try:
+            callback()
+        except Exception:
+            _LOGGER.error(
+                f"Failed to close job widget {type(widget).__name__!r}", exc_info=True
+            )
+    widget.deleteLater()
 
 
 class RelionJobViewRegistry:
