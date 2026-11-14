@@ -59,6 +59,10 @@ class _VispyBase:
         if path is not None:
             Image.fromarray(img).save(path)
 
+    def _event_to_canvas_scale(self) -> float:
+        """Ratio of the canvas coordinates to the mouse event positions."""
+        return 1.0
+
     def _on_mouse_press(self, event: MouseEvent):
         pass
 
@@ -283,7 +287,13 @@ class _Vispy3DDensityBase(_Vispy3DBase):
 
 
 class _Vispy3DTomogramBase(_Vispy3DBase):
+    """Vispy canvas for 3D tomogram visualization."""
+
     plane_position_changed = Signal(int)
+
+    # Spheres at the corners of the plane, used as handles to move the plane.
+    _HANDLE_SIZE = 14.0  # diameter in logical pixels
+    _HANDLE_COLOR = "#FFA726"
 
     def __init__(self, raycasting_mode: Literal["volume", "plane"] = "plane"):
         super().__init__()
@@ -308,6 +318,18 @@ class _Vispy3DTomogramBase(_Vispy3DBase):
         self._markers.set_gl_state("opaque")
         self._volume_visual.raycasting_mode = raycasting_mode
         self._volume_visual.relative_step_size = 0.8
+
+        self._plane_handles = VispyMarkers(
+            pos=np.zeros((4, 3), dtype=np.float32), spherical=True, scaling="fixed",
+            parent=self._viewbox.scene,
+        )  # fmt: skip
+        # Always draw the handles on top of the plane so that they can be grabbed.
+        self._plane_handles.update_gl_state(depth_test=False)
+        self._plane_handles.order = 10
+        self._plane_handles.visible = False
+        self._plane_handle_pos = np.zeros((4, 3), dtype=np.float32)
+        self._dragging_plane_handle = False
+
         self._plane_position: int = 0
         self._array_view = None
         self._current_image_slice: NDArray[np.float32] | None = None
@@ -339,6 +361,11 @@ class _Vispy3DTomogramBase(_Vispy3DBase):
     def motion_visual(self):
         return self._motion_visual
 
+    @property
+    def plane_handles_visual(self) -> VispyMarkers:
+        """Spheres at the plane corners that move the plane when dragged."""
+        return self._plane_handles
+
     def set_plane_position(self, zpos: int):
         zpos = max(0, min(self._array_view_nz - 1, zpos))
         arr_2d = self._array_view.get_slice(zpos)
@@ -347,18 +374,67 @@ class _Vispy3DTomogramBase(_Vispy3DBase):
         self._volume_visual.transform = STTransform(translate=(0, 0, zpos))
         self._volume_visual.plane_position = [0, 0, zpos]
         self._plane_position = zpos
+        self._update_plane_handles()
         self.plane_position_changed.emit(zpos)
         self._volume_visual.update()
 
+    def _update_plane_handles(self):
+        """Place the handles at the four corners of the displayed plane."""
+        ny, nx = self._current_image_slice.shape
+        d = 4
+        x0, y0, x1, y1 = -d, -d, nx - d, ny - d
+        z = self._plane_position
+        pos = np.array(
+            [[x0, y0, z], [x1, y0, z], [x1, y1, z], [x0, y1, z]], dtype=np.float32
+        )
+        self._plane_handle_pos = pos
+        self._plane_handles.set_data(
+            pos,
+            size=self._HANDLE_SIZE * self._event_to_canvas_scale(),
+            edge_width=0,
+            face_color=self._HANDLE_COLOR,
+        )
+        self._plane_handles.visible = True
+
+    def _is_on_plane_handle(self, event_pos) -> bool:
+        """True if the mouse event position is on one of the plane handles."""
+        if not (self._plane_handles.visible and self._volume_visual.visible):
+            return False
+        scale = self._event_to_canvas_scale()
+        # world coordinates -> canvas coordinates
+        tr = self._viewbox.scene.node_transform(self._scene.scene)
+        mapped = tr.map(self._plane_handle_pos)
+        handle_xy = mapped[:, :2] / mapped[:, 3:4]
+        dist = np.linalg.norm(handle_xy - np.asarray(event_pos[:2]) * scale, axis=1)
+        radius = (self._HANDLE_SIZE / 2 + 2) * scale  # small margin for easy grab
+        return bool(np.any(dist <= radius))
+
+    def _on_mouse_press(self, event: MouseEvent):
+        if event.button == 1 and self._is_on_plane_handle(event.pos):
+            self._dragging_plane_handle = True
+            # Mark handled so that the Qt event is accepted, and block the event so
+            # that the canvas does not pass it to the camera (no rotation).
+            event.handled = True
+            event.blocked = True
+
     def _on_mouse_move(self, event: MouseEvent):
-        if event.button == 1 and "control" in event.modifiers:
-            if (events := event.drag_events()) and len(events) >= 2:
-                prev = events[-2]
-                new = events[-1]
-                xy = new.pos - prev.pos
-                speed = 1
-                zpos = int(self._plane_position - xy[1] * speed)
-                self.set_plane_position(zpos)
+        if self._dragging_plane_handle:
+            event.handled = True
+            event.blocked = True
+        elif not (event.button == 1 and "control" in event.modifiers):
+            return
+        if (events := event.drag_events()) and len(events) >= 2:
+            prev = events[-2]
+            new = events[-1]
+            xy = new.pos - prev.pos
+            speed = 1
+            zpos = int(self._plane_position - xy[1] * speed)
+            self.set_plane_position(zpos)
+
+    def _on_mouse_release(self, event: MouseEvent):
+        if event.button == 1:
+            self._dragging_plane_handle = False
+        super()._on_mouse_release(event)
 
     def auto_fit(self):
         if self._array_view is None:

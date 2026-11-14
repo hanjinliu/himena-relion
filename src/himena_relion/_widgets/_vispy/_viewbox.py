@@ -117,6 +117,11 @@ class QOffScreenViewBox(QViewBox):
     def update_canvas(self):
         self._update_pixmap()
 
+    def _event_to_canvas_scale(self) -> float:
+        # The scene is rendered at the physical resolution (see `resizeEvent`) while
+        # mouse events are in logical pixels.
+        return self.devicePixelRatioF()
+
     def resizeEvent(self, a0: QtGui.QResizeEvent):
         ratio = self.devicePixelRatioF()
         # Both scene and viewbox need to be resized

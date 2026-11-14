@@ -664,6 +664,7 @@ class Q3DTomogramViewer(QViewer):
     - Shift + Left drag ... pan
     - Shift + Right drag ... change camera perspective
     - Ctrl + Left drag ... move z slice
+    - Left drag on a sphere at the plane corners ... move z slice
     """
 
     def __init__(self, parent=None):
@@ -760,6 +761,7 @@ class Q3DTomogramViewer(QViewer):
             edge_color=np.zeros(4),
         )
         self._canvas.markers_visual.visible = False
+        self._canvas.plane_handles_visual.visible = False
         self._canvas.motion_visual.set_data([])
         self._canvas.update_canvas()
         self._last_clim = None
