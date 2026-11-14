@@ -56,11 +56,11 @@ class ManualMaskCreation(RelionExternalJob):
                 "group": "I/O",
             },
         ] = "None",
-        other_scales: Annotated[
+        other_binning: Annotated[
             list[float],
             {
-                "label": "Also create masks with this pixel scale(s)",
-                "tooltip": ("Create additional masks with the specified pixel scale."),
+                "label": "Also create masks with this binning(s)",
+                "tooltip": ("Create additional masks with the specified binning(s). "),
                 "group": "I/O",
             },
         ] = [],
@@ -131,10 +131,10 @@ class ManualMaskCreation(RelionExternalJob):
         else:
             raise ValueError(f"Unknown blur method: {blur_method}")
 
-        other_scales = list(other_scales)
-        for other_scale in other_scales:
-            if other_scale <= 0:
-                raise ValueError(f"Invalid pixel scale: {other_scale}")
+        other_binning = list(other_binning)
+        for other_bin in other_binning:
+            if other_bin <= 0:
+                raise ValueError(f"Invalid binning: {other_bin}")
 
         if pre_lowpass is not None and pre_lowpass > 0:
             with mrcfile.open(out_job_dir.resolve_path(in_3dref)) as mrc:
@@ -216,14 +216,14 @@ class ManualMaskCreation(RelionExternalJob):
                 "Output mask not found. Please save the mask base as 'mask_base.mrc' "
                 "under the job directory and try again."
             )
-        for other_scale in other_scales:
-            mask_scaled_path = out_job_dir.path / f"mask_{other_scale}.mrc"
+        for b in other_binning:
+            mask_scaled_path = out_job_dir.path / f"mask_bin{b}.mrc"
             with mrcfile.new(mask_scaled_path, overwrite=True) as mrc:
-                zoom = scale / other_scale
+                zoom = 1 / b
                 mask_zoomed = ndi.zoom(blurred_mask, zoom, order=3)
                 mask_zoomed = np.clip(mask_zoomed, 0.0, 1.0, dtype=np.float32)
                 mrc.set_data(mask_zoomed)
-                mrc.voxel_size = (other_scale, other_scale, other_scale)
+                mrc.voxel_size = (scale * b, scale * b, scale * b)
 
     def provide_widget(self, job_dir):
         return QMaskCreateViewer(job_dir)
