@@ -56,9 +56,10 @@ def test_tomogram_plane_handles(qtbot: QtBot):
     assert canvas.plane_handles_visual.visible
     z0 = canvas._plane_position
     assert z0 == 19
+    d = 4
     np.testing.assert_allclose(
         canvas._plane_handle_pos,
-        [[-0.5, -0.5, z0], [79.5, -0.5, z0], [79.5, 59.5, z0], [-0.5, 59.5, z0]],
+        [[-d, -d, z0], [80 - d, -d, z0], [80 - d, 60 - d, z0], [-d, 60 - d, z0]],
     )
 
     # dragging a handle upward moves the plane up without rotating the camera
