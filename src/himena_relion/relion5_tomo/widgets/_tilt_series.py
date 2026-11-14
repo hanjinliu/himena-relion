@@ -3,7 +3,8 @@ from pathlib import Path
 from dataclasses import dataclass
 import logging
 import time
-from qtpy import QtWidgets as QtW
+from typing import Callable
+from qtpy import QtWidgets as QtW, QtCore
 from superqt.utils import thread_worker
 from starfile_rs import read_star
 from himena_relion._image_readers._array import ArrayFilteredView
@@ -20,6 +21,10 @@ from himena_relion.schemas import TSModel, TSGroupModel
 
 _LOGGER = logging.getLogger(__name__)
 TILT_VIEW_MIN_HEIGHT = 480
+EXCLUDED_VIEW_MIN_HEIGHT = 420
+EXCLUDED_VIEW_MAX_HEIGHT = 480
+SELECTED_TILT_SERIES_STAR = "selected_tilt_series.star"
+EXCLUDED_TILTS_STAR = "excluded_tilts.star"  # only written by the external job
 
 
 @dataclass
@@ -158,42 +163,73 @@ class QMotionCorrViewer(QJobScrollArea):
         self._filter_widget.set_label_text(f"{shape} {scale:.2f} Å/pix")
 
 
-@register_job("relion.excludetilts", is_tomo=True)
-class QExcludeTiltViewer(QJobScrollArea):
-    def __init__(self, job_dir: _job_dir.JobDirectory):
+class QExcludeTiltsWidget(QtW.QWidget):
+    """Excluded tilt images on top, the remaining tilt series below.
+
+    Shared by the builtin "Exclude Tilts" job and the "Auto Exclude Tilt Images"
+    external job. Both jobs write `selected_tilt_series.star`; only the way to list
+    the excluded micrographs differs, so it is given as `list_excluded`.
+    """
+
+    def __init__(
+        self,
+        job_dir: _job_dir.JobDirectory,
+        list_excluded: Callable[[_job_dir.JobDirectory], list[str]],
+    ):
         super().__init__()
         self._job_dir = job_dir
+        self._list_excluded = list_excluded
 
         self._filter_widget = Q2DFilterWidget(bin_default=8, lowpass_default=30)
+
+        self._excluded_list = QMicrographListWidget(["Micrograph"])
+        self._excluded_list.current_changed.connect(self._excluded_choice_changed)
+        self._excluded_viewer = Q2DViewer()
+        self._excluded_viewer.setMinimumHeight(EXCLUDED_VIEW_MIN_HEIGHT)
+        self._excluded_viewer.setMaximumHeight(EXCLUDED_VIEW_MAX_HEIGHT)
+
+        self._ts_choice = QMicrographListWidget(["Tilt Series", "Number of Tilts"])
+        self._ts_choice.current_changed.connect(self._ts_choice_changed)
         self._viewer = Q2DViewer(zlabel="Tilt index")
         self._viewer.setMinimumHeight(TILT_VIEW_MIN_HEIGHT)
         self._resizer = QResizer(self._viewer)
-        self._ts_choice = QMicrographListWidget(["Tilt Series", "Number of Tilts"])
-        self._ts_choice.current_changed.connect(self._ts_choice_changed)
 
-        self._layout.setSpacing(2)
-        self._layout.addWidget(QtW.QLabel("<b>&#9679; Selected tilt series</b>"))
-        self._layout.addWidget(self._ts_choice)
-        self._layout.addWidget(self._filter_widget)
-        self._layout.addWidget(self._viewer)
-        self._layout.addWidget(self._resizer)
-        self._filter_widget.value_changed.connect(self._viewer.redraw)
-        self._binsize_old = -1
+        layout = QtW.QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(2)
+        layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignTop)
+        layout.addWidget(QtW.QLabel("<b>&#9679; Excluded tilts</b>"))
+        layout.addWidget(self._excluded_list)
+        layout.addWidget(self._excluded_viewer)
+        layout.addWidget(QtW.QLabel("<b>&#9679; Selected tilt series</b>"))
+        layout.addWidget(self._ts_choice)
+        layout.addWidget(self._filter_widget)
+        layout.addWidget(self._viewer)
+        layout.addWidget(self._resizer)
+        # the filter is shared by both viewers
+        self._filter_widget.value_changed.connect(self._param_changed)
+        self._binsize_old = self._filter_widget.bin_factor()
 
     def on_job_updated(self, job_dir: _job_dir.JobDirectory, path: str):
         """Handle changes to the job directory."""
         fp = Path(path)
-        if fp.name.startswith("RELION_JOB_") or fp.name == "selected_tilt_series.star":
+        if fp.name.startswith("RELION_JOB_") or fp.name in (
+            SELECTED_TILT_SERIES_STAR,
+            EXCLUDED_TILTS_STAR,
+        ):
             self._process_update()
             _LOGGER.debug("%s Updated", job_dir.job_number)
 
     def _param_changed(self):
         """Handle changes to filter parameters."""
-        self._viewer.redraw()
+        viewers = [self._excluded_viewer, self._viewer]
+        for viewer in viewers:
+            viewer.redraw()
         new_binsize = self._filter_widget.bin_factor()
         if self._binsize_old != new_binsize:
             self._binsize_old = new_binsize
-            self._viewer.auto_fit()
+            for viewer in viewers:
+                viewer.auto_fit()
 
     def initialize(self, job_dir: _job_dir.JobDirectory):
         """Initialize the viewer with the job directory."""
@@ -201,6 +237,11 @@ class QExcludeTiltViewer(QJobScrollArea):
         self._viewer.auto_fit()
 
     def _process_update(self):
+        excluded = self._list_excluded(self._job_dir)
+        _set_choices_and_reload(self._excluded_list, [(mic,) for mic in excluded])
+        if len(excluded) == 0:
+            self._excluded_viewer.clear()
+
         choices: list[tuple[str, str]] = []
         for p in iter_tilt_series_excludetilt(self._job_dir):
             file = self._job_dir.resolve_path(p.tomo_tilt_series_star_file)
@@ -208,9 +249,21 @@ class QExcludeTiltViewer(QJobScrollArea):
             choices.append((file.stem, str(num_tilts)))
 
         choices.sort(key=lambda x: x[0])
-        self._ts_choice.set_choices(choices)
+        _set_choices_and_reload(self._ts_choice, choices)
         if len(choices) == 0:
             self._viewer.clear()
+
+    def _excluded_choice_changed(self, texts: tuple[str]):
+        """Update the viewer when the selected excluded micrograph changes."""
+        path = self._job_dir.resolve_path(texts[0])
+        if not path.exists():
+            self._excluded_viewer.clear()
+            return
+        mic_view = ArrayFilteredView.from_mrc(path)
+        self._filter_widget.set_image_scale(mic_view.get_scale())
+        self._excluded_viewer.set_array_view(
+            mic_view.with_filter(self._filter_widget.apply)
+        )
 
     def _ts_choice_changed(self, texts: tuple[str, str]):
         """Update the viewer when the selected tomogram changes."""
@@ -221,8 +274,12 @@ class QExcludeTiltViewer(QJobScrollArea):
                 break
         else:
             return
-        self._filter_widget.set_image_scale(info.tomo_tilt_series_pixel_size)
         ts_view = info.read_tilt_series(job_dir.relion_project_dir)
+        if ts_view.num_slices() == 0:  # all tilts excluded
+            self._viewer.clear()
+            self._filter_widget.set_label_text("")
+            return
+        self._filter_widget.set_image_scale(info.tomo_tilt_series_pixel_size)
         self._viewer.set_array_view(ts_view.with_filter(self._filter_widget.apply))
 
         scale = ts_view.get_scale()
@@ -230,11 +287,77 @@ class QExcludeTiltViewer(QJobScrollArea):
         self._filter_widget.set_label_text(f"{shape} {scale:.2f} Å/pix")
 
 
+@register_job("relion.excludetilts", is_tomo=True)
+class QExcludeTiltViewer(QJobScrollArea):
+    def __init__(self, job_dir: _job_dir.JobDirectory):
+        super().__init__()
+        self._job_dir = job_dir
+        self._content = QExcludeTiltsWidget(job_dir, list_excluded_by_comparison)
+        self._layout.addWidget(self._content)
+
+    def on_job_updated(self, job_dir: _job_dir.JobDirectory, path: str):
+        """Handle changes to the job directory."""
+        self._content.on_job_updated(job_dir, path)
+
+    def initialize(self, job_dir: _job_dir.JobDirectory):
+        """Initialize the viewer with the job directory."""
+        self._content.initialize(job_dir)
+
+
+def _set_choices_and_reload(
+    list_widget: QMicrographListWidget,
+    choices: list[tuple[str, ...]],
+):
+    """Set choices, and reload the selected row since its content may have changed."""
+    was_empty = list_widget.rowCount() == 0
+    list_widget.set_choices(choices)
+    if not was_empty:  # if empty, `set_choices` already selected and emitted row 0
+        list_widget._on_selection_changed()
+
+
 def iter_tilt_series_excludetilt(self: _job_dir.JobDirectory):
-    """Iterate over all excluded tilt series info."""
-    star_path = self.path / "selected_tilt_series.star"
+    """Iterate over all selected tilt series info."""
+    star_path = self.path / SELECTED_TILT_SERIES_STAR
     if not star_path.exists():
         return
     star = read_star(star_path).first().trust_loop().to_polars()
     for row in star.iter_rows(named=True):
         yield _job_dir.SelectedTiltSeriesInfo.from_dict(row)
+
+
+def list_excluded_by_comparison(job_dir: _job_dir.JobDirectory) -> list[str]:
+    """List micrographs that are in the input but not in the selected tilt series.
+
+    The builtin job does not write the excluded tilts, so they are listed by comparing
+    the input tilt series (`in_tiltseries`) with `selected_tilt_series.star`. A tilt
+    series missing from the output counts as fully excluded.
+    """
+    if not job_dir.path.joinpath(SELECTED_TILT_SERIES_STAR).exists():
+        return []  # not saved yet
+    in_path = job_dir.resolve_path(job_dir.get_job_param("in_tiltseries"))
+    if not in_path.is_file():
+        return []
+    kept: dict[str, set[str]] = {}
+    for info in iter_tilt_series_excludetilt(job_dir):
+        ts_path = job_dir.resolve_path(info.tomo_tilt_series_star_file)
+        kept[info.tomo_name] = set(_read_micrograph_names(ts_path))
+
+    df_in = read_star(in_path).first().trust_loop().to_polars()
+    excluded: list[str] = []
+    for tomo_name, ts_path in zip(
+        df_in["rlnTomoName"], df_in["rlnTomoTiltSeriesStarFile"]
+    ):
+        kept_mics = kept.get(tomo_name, set())
+        for mic in _read_micrograph_names(job_dir.resolve_path(ts_path)):
+            if mic not in kept_mics:
+                excluded.append(mic)
+    return excluded
+
+
+def _read_micrograph_names(ts_star_path: Path) -> list[str]:
+    if not ts_star_path.is_file():
+        return []
+    df = read_star(ts_star_path).first().trust_loop().to_polars()
+    if "rlnMicrographName" not in df.columns:
+        return []
+    return df["rlnMicrographName"].to_list()
