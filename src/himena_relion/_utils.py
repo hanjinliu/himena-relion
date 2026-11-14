@@ -14,7 +14,7 @@ import numpy as np
 import polars as pl
 
 from himena.types import is_subtype
-from himena_relion.consts import Type, DEFAULT_PIPELINE_STAR
+from himena_relion.consts import Type, DEFAULT_PIPELINE_STAR, PIPELINE_NODE_NAME
 from himena_relion.schemas import RelionPipelineModel
 from himena_relion._configs import get_relion_pipeliner_exe
 from himena_relion._wsl import is_wsl_path, wsl_prefix
@@ -343,10 +343,10 @@ def replace_input_edges(
         if default_pipeline:
             nodes_full = RelionPipelineModel.validate_file(
                 default_pipeline
-            ).nodes.dataframe.filter(pl.col("rlnPipeLineNodeName").is_in(new_from_node))
+            ).nodes.dataframe.filter(pl.col(PIPELINE_NODE_NAME).is_in(new_from_node))
             nodes_this = pipeline_model.nodes.dataframe.filter(
                 # NOTE: cast is needed because the column is Null type if empty
-                pl.col("rlnPipeLineNodeName").cast(pl.String).str.starts_with(to_run)
+                pl.col(PIPELINE_NODE_NAME).cast(pl.String).str.starts_with(to_run)
             )
             pipeline_model.nodes = pl.concat(
                 [nodes_full, nodes_this], how="vertical_relaxed"

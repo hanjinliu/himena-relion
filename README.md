@@ -6,7 +6,8 @@
 
 -----
 
-`himena-relion` is a modern [RELION](https://github.com/3dem/relion) GUI implemented as a [himena](https://github.com/hanjinliu/himena) plugin. Both SPA and tomography jobs are supported.
+`himena-relion` is a modern [RELION](https://github.com/3dem/relion) GUI that is fully
+compatible with the original RELION GUI. Both SPA and tomography jobs are supported.
 
 :warning: `himena-relion` is mainly tested with RELION 5.0.x and may not work with other
 versions.
@@ -28,7 +29,7 @@ pip install himena-relion[recommended]
 
 ## Highlights
 
-#### View, queue and run RELION single-particle and tomography jobs
+#### View, queue and run RELION jobs
 
 Outputs of most of the job types can be directly visualized in the GUI.
 
