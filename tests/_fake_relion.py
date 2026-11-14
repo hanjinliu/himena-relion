@@ -12,6 +12,7 @@ test process by `FakeRelionPipeliner.run_external`.
 
 import re
 import shutil
+import subprocess
 from pathlib import Path
 
 from himena import MainWindow
@@ -27,6 +28,7 @@ from himena_relion.external import run_function
 from himena_relion.schemas import JobStarModel, RelionPipelineModel
 
 
+_POPEN = subprocess.Popen  # the original one, before the `relion` fixture replaces it
 # type label -> (directory name, [(output file, node type label)], [input parameters])
 _JOB_SPECS = {
     "relion.import.movies": (
@@ -231,9 +233,12 @@ class FakeRelionPipeliner:
         blocks["pipeline_processes"][idx] = (*row[:3], status)
         write_blocks(path, counter, blocks)
 
-    def popen(self, args, **kwargs):
+    def popen(self, args, *other_args, **kwargs):
         """Replacement of `subprocess.Popen` for `relion_pipeliner --RunJobs`."""
-        assert args[-2] == "--RunJobs"
+        if not (isinstance(args, list) and args[-2:-1] == ["--RunJobs"]):
+            # `subprocess.Popen` is replaced for all the modules. Other programs (e.g.
+            # those matplotlib runs on Linux to find fonts) are run as usual.
+            return _POPEN(args, *other_args, **kwargs)
         job_id = args[-1]
         self.run_calls.append(job_id)
         self.set_status(job_id, "Running")
