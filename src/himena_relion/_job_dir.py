@@ -729,7 +729,9 @@ def _particle_num_refine3d(job_dir: JobDirectory) -> int:
 
 
 def _particle_num_class3d(job_dir: JobDirectory) -> int:
-    model_star = next(job_dir.path.glob("run_it*_model.star"))
+    model_star = next(job_dir.path.glob("run_it*_model.star"), None)
+    if model_star is None:
+        return -1
     return _particle_num_from_run_model(model_star)
 
 
