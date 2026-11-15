@@ -204,7 +204,89 @@ def test_exclude_tilts_job(
     widget = tester.provide_widget(ext_dir)
     qtbot.addWidget(widget)
 
+    # with the default threshold, about half of the pixels of random images are
+    # "dark", so all the tilts are excluded
     tester.test_run(ext_dir, widget=widget)
+    assert widget._excluded_list.rowCount() == 15
+    assert [widget._ts_choice.text(i, 1) for i in range(3)] == ["0", "0", "0"]
+    assert not widget._viewer.has_image
+
+    # only the first tilt of each tilt series is dark
+    tester.prep_job_star(
+        ext_dir,
+        in_mics=ctffind_dir_rel/"tilt_series_ctf.star",
+        dark_pixel_percentage=90.0,
+    )
+    tester.test_run(ext_dir, widget=widget)
+    assert [widget._excluded_list.text(i) for i in range(widget._excluded_list.rowCount())] == [
+        str(ctffind_dir_rel / f"frames/TS_0{i}_0.mrc") for i in range(3)
+    ]
+    assert widget._excluded_viewer.has_image
+    assert [widget._ts_choice.text(i, 1) for i in range(3)] == ["4", "4", "4"]
+    assert widget._viewer.has_image
+    widget._filter_widget.set_params(2, 0)
+    widget._excluded_list.set_current_row(2)
+
+
+def test_exclude_tilts_builtin_widget(
+    qtbot,
+    make_job_directory: Callable[[str, str], JobDirectory],
+    jobs_dir_tomo,
+):
+    from himena_relion.testing import JobWidgetTester
+    from himena_relion.relion5_tomo.widgets._tilt_series import QExcludeTiltViewer
+
+    star_text = Path(jobs_dir_tomo).joinpath("CtfFind/job001/job.star").read_text()
+    ctffind_dir = make_job_directory(star_text, "CtfFind")
+    _prep_ctffind_job(ctffind_dir)
+    ctffind_dir_rel = ctffind_dir.make_relative_path(ctffind_dir.path)
+    in_star_rel = (ctffind_dir_rel / "tilt_series_ctf.star").as_posix()
+
+    star_text = (
+        Path(jobs_dir_tomo)
+        .joinpath("ExcludeTiltImages/job001/job.star")
+        .read_text()
+        .replace("****", in_star_rel)
+    )
+    job_dir = make_job_directory(star_text, "ExcludeTiltImages")
+    job_dir.path.joinpath("tilt_series").mkdir()
+    job_dir_rel = job_dir.make_relative_path(job_dir.path)
+    tester = JobWidgetTester(QExcludeTiltViewer(job_dir), job_dir)
+    qtbot.addWidget(tester.widget)
+    content = tester.widget._content
+
+    # nothing is listed before the selection is saved
+    assert content._excluded_list.rowCount() == 0
+    assert content._ts_choice.rowCount() == 0
+
+    # TS_00 drops tilt 0, TS_01 drops tilts 0 and 4, TS_02 is dropped entirely
+    kept_indices = {"TS_00": [1, 2, 3, 4], "TS_01": [1, 2, 3]}
+    df_group = read_star(ctffind_dir.path / "tilt_series_ctf.star").first().trust_loop().to_polars()
+    for tomo_name, indices in kept_indices.items():
+        df_ts = read_star(ctffind_dir.path / f"tilt_series/{tomo_name}.star").first().trust_loop().to_polars()
+        txt = as_star({tomo_name: df_ts[indices]}).to_string()
+        tester.write_text(f"tilt_series/{tomo_name}.star", txt)
+    df_selected = df_group.filter(pl.col("rlnTomoName").is_in(list(kept_indices))).with_columns(
+        pl.col("rlnTomoName")
+        .map_elements(lambda n: (job_dir_rel / f"tilt_series/{n}.star").as_posix(), return_dtype=pl.String)
+        .alias("rlnTomoTiltSeriesStarFile")
+    )
+    tester.write_text("selected_tilt_series.star", as_star({"global": df_selected}).to_string())
+
+    excluded = [content._excluded_list.text(i) for i in range(content._excluded_list.rowCount())]
+    assert excluded == [
+        str(ctffind_dir_rel / f"frames/{name}.mrc")
+        for name in ["TS_00_0", "TS_01_0", "TS_01_4"] + [f"TS_02_{j}" for j in range(5)]
+    ]
+    assert content._excluded_viewer.has_image
+    assert content._ts_choice.rowCount() == 2
+    assert [content._ts_choice.text(i, 1) for i in range(2)] == ["4", "3"]
+    assert content._viewer.has_image
+    assert content._viewer._dims_slider.maximum() == 3
+    content._filter_widget.set_params(2, 0)
+    content._excluded_list.set_current_row(3)
+    content._ts_choice.set_current_row(1)
+    assert content._viewer._dims_slider.maximum() == 2
 
 def _findbeads3d_wrapped(
     exe: str,
