@@ -201,6 +201,13 @@ class QJobParameter(QtW.QScrollArea):
         super().__init__()
         self.setWidgetResizable(True)
         self._scroll_area_inner = QtW.QWidget()
+        # NOTE: setting one style sheet here is much faster than setting one to each
+        # group box, because each style sheet makes Qt re-resolve the style of the
+        # whole subtree when the group box is added.
+        fontsize = self._scroll_area_inner.font().pointSize() + 3
+        self._scroll_area_inner.setStyleSheet(
+            f"QGroupBox::title {{ font-size: {fontsize}pt; }}"
+        )
         self.setWidget(self._scroll_area_inner)
         self._param_layout = QtW.QVBoxLayout(self._scroll_area_inner)
         self._param_layout.setContentsMargins(0, 0, 0, 0)
@@ -235,8 +242,6 @@ class QJobParameter(QtW.QScrollArea):
 
         for group, widgets in groups.items():
             gb = QtW.QGroupBox(group)
-            fontsize = gb.font().pointSize() + 3
-            gb.setStyleSheet(f"QGroupBox::title {{ font-size: {fontsize}pt; }}")
             gb_layout = QtW.QVBoxLayout(gb)
             gb_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignTop)
             for widget in widgets:

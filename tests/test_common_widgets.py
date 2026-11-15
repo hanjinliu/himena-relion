@@ -51,6 +51,26 @@ def test_pipeline_viewer(qtbot: QtBot, tmpdir):
     viewer._tree_view._make_context_menu(viewer._tree_view.model().index(0, 0))
     viewer._tree_view._make_drag(viewer._tree_view.model().index(0, 0))
 
+def test_job_parameter_view_is_built_lazily(himena_ui: MainWindow, qtbot: QtBot):
+    from himena_relion._widgets._job_widgets import QJobParameterView
+
+    job_dir = JobDirectory(JOBS_DIR_SPA / "Refine3D" / "job001")
+    view = QJobParameterView()
+    qtbot.addWidget(view)
+    view.initialize(job_dir)
+    view.on_job_updated(job_dir, job_dir.job_star())
+    assert view._param_widget._mgui_widgets == {}  # not built until shown
+
+    view.show()
+    widgets = view._param_widget._mgui_widgets
+    assert len(widgets) > 0
+    assert all(not w.enabled for w in widgets.values())
+    view.copy_params()
+
+    # re-initializing a visible view builds the widgets immediately
+    view.initialize(job_dir)
+    assert len(view._param_widget._mgui_widgets) > 0
+
 def test_directory_tree_view_wsl(qtbot: QtBot, tmpdir, monkeypatch: pytest.MonkeyPatch):
     from himena_relion._widgets import _job_widgets
     from himena_relion._widgets._scandir_model import QScandirModel

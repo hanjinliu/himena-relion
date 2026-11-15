@@ -456,7 +456,13 @@ class QJobPipelineViewer(QtW.QWidget, JobWidgetBase):
 
 
 class QJobParameterView(QtW.QWidget, JobWidgetBase):
-    """Parameter view in the Parameters tab."""
+    """Parameter view in the Parameters tab.
+
+    Building the parameter widgets is expensive (~0.1-0.3 s for jobs with many
+    parameters), and the Parameters tab is not the tab shown first when a job is
+    opened. Therefore, the widgets are built lazily, when this widget is shown for the
+    first time after `initialize`.
+    """
 
     def __init__(self):
         super().__init__()
@@ -479,12 +485,14 @@ class QJobParameterView(QtW.QWidget, JobWidgetBase):
         layout.addLayout(self._header)
         layout.addWidget(self._param_widget)
         self._job_dir = None
+        self._needs_build = False
 
     def copy_params(self):
         """Copy the job parameters to clipboard in job.star format."""
         clipboard = QtW.QApplication.clipboard()
         if clipboard is None:
             return
+        self.ensure_built()
         params = self._param_widget.get_parameters()
         if job_dir := self._job_dir:
             if job_cls := job_dir._to_job_class():
@@ -494,6 +502,15 @@ class QJobParameterView(QtW.QWidget, JobWidgetBase):
     def initialize(self, job_dir: _job_dir.JobDirectory):
         self._param_widget.clear_content()
         self._job_dir = job_dir
+        self._needs_build = True
+        if self.isVisible():
+            self.ensure_built()
+
+    def ensure_built(self):
+        """Build the parameter widgets if they are not built yet."""
+        if not self._needs_build or (job_dir := self._job_dir) is None:
+            return
+        self._needs_build = False
         if job_cls := job_dir._to_job_class():
             self._param_widget.update_by_job(job_cls)
             self._update_params(job_dir, job_cls)
@@ -503,7 +520,16 @@ class QJobParameterView(QtW.QWidget, JobWidgetBase):
                 job_dir.job_normal_id(),
             )
 
+    def showEvent(self, a0):
+        try:
+            self.ensure_built()
+        except Exception:
+            _LOGGER.error("Failed to build the job parameter widgets", exc_info=True)
+        return super().showEvent(a0)
+
     def on_job_updated(self, job_dir, fp):
+        if self._needs_build:
+            return  # the latest parameters will be read when the widgets are built
         # "Use RELION GUI" is shown from the existence of USE_HIMENA_IMPL
         if fp.name in ("job.star", FileNames.USE_HIMENA_IMPL):
             if job_cls := job_dir._to_job_class():

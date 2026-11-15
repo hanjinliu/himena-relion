@@ -983,6 +983,7 @@ def test_use_relion_gui_in_widgets(himena_ui: MainWindow, in_project: Path):
     param_view = next(
         w for w in widget._iter_job_widgets() if isinstance(w, QJobParameterView)
     )
+    param_view.ensure_built()  # the widgets are built lazily
     toggle = param_view._param_widget._mgui_widgets[USE_RELION_GUI]
     assert toggle.value is False
 
