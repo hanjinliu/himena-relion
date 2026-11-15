@@ -14,8 +14,13 @@ from himena_relion._utils import lowpass_filter, invert_y
 
 
 class QTableModel(QtCore.QAbstractTableModel):
-    def __init__(self, data: list[tuple[str, ...]], columns: list[str]):
-        super().__init__()
+    def __init__(
+        self,
+        data: list[tuple[str, ...]],
+        columns: list[str],
+        parent: QtCore.QObject | None = None,
+    ):
+        super().__init__(parent)
         self._data = data
         self._columns = columns
 
@@ -52,7 +57,11 @@ class QMicrographListWidget(QtW.QTableView):
         super().__init__()
         self.setSelectionMode(QtW.QAbstractItemView.SelectionMode.SingleSelection)
         self.setSelectionBehavior(QtW.QAbstractItemView.SelectionBehavior.SelectRows)
-        self._model = QTableModel([], list(columns))
+        # NOTE: the model must be owned by the view. A parentless model is deleted
+        # when the Python wrapper is garbage-collected, which can happen before the
+        # view itself is deleted by `deleteLater`. Qt then warns "QItemSelectionModel:
+        # Selecting when no model has been set will result in a no-op."
+        self._model = QTableModel([], list(columns), self)
         self.setModel(self._model)
         self.horizontalHeader().setVisible(len(columns) > 1)
         self.horizontalHeader().setFixedHeight(15)

@@ -71,6 +71,38 @@ def test_job_parameter_view_is_built_lazily(himena_ui: MainWindow, qtbot: QtBot)
     view.initialize(job_dir)
     assert len(view._param_widget._mgui_widgets) > 0
 
+def test_micrograph_list_model_outlives_python_wrapper(qtbot: QtBot):
+    """A discarded job widget is deleted by `deleteLater`, and its Python wrappers may
+    be garbage-collected before that. The list model must stay alive until the view
+    is deleted, or Qt warns "QItemSelectionModel: Selecting when no model has been
+    set will result in a no-op." when the view resets itself."""
+    import gc
+    from PyQt6 import sip
+    from qtpy.QtCore import QEvent, qInstallMessageHandler
+    from himena_relion._widgets import QMicrographListWidget
+
+    parent = QtW.QWidget()
+    layout = QtW.QVBoxLayout(parent)
+    mic_list = QMicrographListWidget(["Micrograph"])
+    layout.addWidget(mic_list)
+    mic_list.set_choices([("a",), ("b",)])
+    parent.show()
+    QtW.QApplication.processEvents()
+
+    messages: list[str] = []
+    prev = qInstallMessageHandler(lambda mode, ctx, msg: messages.append(msg))
+    try:
+        sip.transferto(parent, None)  # C++ deletes it, not the Python wrapper
+        parent.close()
+        parent.deleteLater()
+        del parent, layout, mic_list
+        gc.collect()  # the Python wrappers are gone, the C++ widgets are not
+        QtW.QApplication.processEvents()  # timers run before the deferred delete
+        QtW.QApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete.value)
+    finally:
+        qInstallMessageHandler(prev)
+    assert not [msg for msg in messages if "QItemSelectionModel" in msg]
+
 def test_directory_tree_view_wsl(qtbot: QtBot, tmpdir, monkeypatch: pytest.MonkeyPatch):
     from himena_relion._widgets import _job_widgets
     from himena_relion._widgets._scandir_model import QScandirModel
