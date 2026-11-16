@@ -32,3 +32,28 @@ def test_startup(make_himena_ui: Callable[[], MainWindow], tmpdir):
     ui = make_himena_ui("qt")
     on_himena_startup(ui)
     on_himena_teardown(ui)
+
+def test_startup_ignores_numpy_attribute_setting_warnings(
+    make_himena_ui: Callable[[], MainWindow], tmpdir
+):
+    import warnings
+    import numpy as np
+
+    os.chdir(tmpdir)  # not a RELION project
+    ui = make_himena_ui("qt")
+    def set_attributes():
+        arr = np.zeros(4, dtype=np.float32)
+        arr.shape = (2, 2)
+        arr.dtype = np.int32
+        warnings.warn("other deprecation", DeprecationWarning, stacklevel=1)
+
+    with warnings.catch_warnings(record=True) as records:
+        warnings.simplefilter("always")
+        on_himena_startup(ui)
+        set_attributes()
+        # superqt's thread workers put "always" in front of all the filters while
+        # they are running. The warnings must not be shown even then.
+        warnings.simplefilter("always")
+        set_attributes()
+    messages = [str(r.message) for r in records]
+    assert messages == ["other deprecation", "other deprecation"]

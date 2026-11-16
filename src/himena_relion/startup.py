@@ -1,6 +1,8 @@
 """Useful startup function to use himena with RELION."""
 
+import re
 from typing import TYPE_CHECKING
+import warnings
 
 from pathlib import Path
 from himena_relion._job_dir import JobDirectory
@@ -24,6 +26,7 @@ if TYPE_CHECKING:
 
 def on_himena_startup(ui: "MainWindow"):
     """This function is called on himena startup."""
+    ignore_numpy_attribute_setting_warnings()
     cwd = Path.cwd()
     if (starpath := cwd.joinpath(DEFAULT_PIPELINE_STAR)).exists():
         if get_pipeline_widgets(ui) is None:
@@ -69,6 +72,43 @@ def on_himena_startup(ui: "MainWindow"):
                     title="Recover Jobs?",
                     callbacks={"Open all": lambda: _open_jobs(ui, can_open)},
                 )
+
+
+_NUMPY_ATTR_SETTING_MESSAGE = (
+    "Setting the (shape|dtype) on a NumPy array has been deprecated"
+)
+
+
+def ignore_numpy_attribute_setting_warnings():
+    """Ignore the deprecation of setting `arr.shape = ...` and `arr.dtype = ...`.
+
+    NumPy 2.5 deprecated them, but many dependencies (such as scikit-image) still do
+    it. The warnings are not actionable for users.
+
+    A warning filter alone is not enough. While superqt's thread workers are running,
+    they put an "always" filter in front of all the filters (and overlapping workers
+    can leave it there), so the warnings would still be shown in the himena
+    notification. Therefore, they are also dropped right before being shown.
+    """
+    warnings.filterwarnings(
+        "ignore",
+        message=_NUMPY_ATTR_SETTING_MESSAGE,
+        category=DeprecationWarning,
+    )
+    show_original = warnings._showwarnmsg
+    if getattr(show_original, "__himena_relion_wrapped__", False):
+        return
+    pattern = re.compile(_NUMPY_ATTR_SETTING_MESSAGE, re.IGNORECASE)
+
+    def _showwarnmsg(msg: warnings.WarningMessage):
+        if issubclass(msg.category, DeprecationWarning) and pattern.match(
+            str(msg.message)
+        ):
+            return None
+        return show_original(msg)
+
+    _showwarnmsg.__himena_relion_wrapped__ = True
+    warnings._showwarnmsg = _showwarnmsg
 
 
 def _replace_outdated_watcher(ui: "MainWindow", relion_dir: Path):
