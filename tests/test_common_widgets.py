@@ -355,3 +355,44 @@ def test_flowchart_collapse(himena_ui: MainWindow, qtbot: QtBot, tmpdir):
     assert [job.path for job in group_item.jobs] == [job2, job3]
     widget._uncollapse_all_groups()
     assert set(fc._node_map) == {job1, job2, job3}
+
+
+def test_flowchart_update_during_drag(himena_ui: MainWindow, qtbot: QtBot, tmpdir):
+    from qtpy.QtCore import QPoint, QPointF
+    from qtpy.QtTest import QTest
+    from himena_relion.pipeline.widgets import QRelionPipelineFlowChart
+    from ._utils import DEFAULT_PIPELINES_DIR
+
+    star = Path(tmpdir) / DEFAULT_PIPELINE_STAR
+    shutil.copy(DEFAULT_PIPELINES_DIR / "full.star", star)
+    himena_ui.read_file(star)
+    assert isinstance(widget := himena_ui.dock_widgets[0].widget, QRelionPipelineFlowChart)
+    fc = widget._flow_chart
+    pipeline = widget._pipeline()
+    job2 = Path("MotionCorr/job002")
+    viewport = fc.viewport()
+    fc.move_items(QPointF(0, 150))  # scroll the flowchart
+
+    def _center() -> QPoint:
+        return fc.mapFromScene(fc._node_map[job2].center())
+
+    def _drag(update: bool):
+        node = fc._node_map[job2]
+        p0 = _center()
+        QTest.mousePress(viewport, Qt.MouseButton.LeftButton, pos=p0)
+        QTest.mouseMove(viewport, p0 + QPoint(10, 5))
+        assert (_center() - p0 - QPoint(10, 5)).manhattanLength() <= 2
+        if update:
+            # the node being dragged must not be deleted by the pipeline update
+            widget._on_pipeline_updated(pipeline)
+            assert fc._node_map[job2] is node
+        QTest.mouseMove(viewport, p0 + QPoint(30, 10))
+        assert (_center() - p0 - QPoint(30, 10)).manhattanLength() <= 2
+        QTest.mouseRelease(viewport, Qt.MouseButton.LeftButton, pos=p0 + QPoint(30, 10))
+        # the update is applied after the mouse is released, keeping the position
+        assert (fc._node_map[job2] is node) is (not update)
+        assert (_center() - p0 - QPoint(30, 10)).manhattanLength() <= 2
+
+    _drag(update=True)
+    assert not fc._rebuild_pending
+    _drag(update=False)  # the node must not jump after the update
