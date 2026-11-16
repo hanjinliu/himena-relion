@@ -43,6 +43,9 @@ class FileNames:
     ABORT_NOW = "RELION_JOB_ABORT_NOW"
     # Marker file of standard jobs that are run by himena-relion's own implementation
     USE_HIMENA_IMPL = "USE_HIMENA_IMPL"
+    # Empty file that requests the pipeline watcher to run the scheduled job even if
+    # its inputs are not ready. Removed by the watcher when the job is started.
+    RUN_NOW = "HIMENA_RUN_THIS_JOB_NOW"
 
 
 class RelionNodeTypeLabels:

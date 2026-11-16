@@ -307,6 +307,59 @@ def test_jobs_are_not_run_while_relion_is_locked(
     assert relion.run_calls == [IMPORT_JOB]
 
 
+def test_run_scheduled_job_now(
+    himena_ui: MainWindow, in_project: Path, relion, monkeypatch
+):
+    from himena_relion.pipeline.widgets import QRelionPipelineFlowChart
+
+    start_new_project(himena_ui, in_project)
+    _create_import_job(in_project)
+    _create_motioncorr_job(in_project)
+    check_scheduled_jobs(in_project)
+    # Import is still running
+    assert relion.run_calls == [IMPORT_JOB]
+    assert _status(in_project, MOTIONCORR_JOB) == "Scheduled"
+
+    for dock in himena_ui.dock_widgets:
+        if isinstance(flowchart := dock.widget, QRelionPipelineFlowChart):
+            break
+    else:
+        raise AssertionError("flowchart not found")
+    started = []
+    monkeypatch.setattr(_job_class, "run_watcher_new_process", started.append)
+    run_now_path = in_project / MOTIONCORR_JOB / FileNames.RUN_NOW
+
+    # the job is not run by the main window, but by the watcher
+    flowchart._run_this_scheduled_job_now(Path(MOTIONCORR_JOB))
+    assert run_now_path.exists()
+    assert started == [in_project]
+    assert relion.run_calls == [IMPORT_JOB]
+
+    # not run while RELION is editing the pipeline; the request is kept
+    lock_dir = in_project / ".relion_lock"
+    lock_dir.mkdir()
+    watcher_lock = in_project / pipeline_watcher._WATCHER_FILE_NAME
+    watcher_lock.touch()
+    check_scheduled_jobs(in_project)
+    assert relion.run_calls == [IMPORT_JOB]
+    assert run_now_path.exists()
+    assert watcher_lock.exists()  # the watcher does not exit
+    watcher_lock.unlink()
+    lock_dir.rmdir()
+
+    check_scheduled_jobs(in_project)
+    assert relion.run_calls == [IMPORT_JOB, MOTIONCORR_JOB]
+    assert not run_now_path.exists()
+
+    # the request is not left if the pipeline could not be updated
+    relion.finish(MOTIONCORR_JOB)
+    lock_dir.mkdir()
+    with pytest.raises(Exception):
+        flowchart._run_this_scheduled_job_now(Path(MOTIONCORR_JOB))
+    assert not run_now_path.exists()
+    lock_dir.rmdir()
+
+
 def test_execute_missing_job(in_project: Path):
     with pytest.raises(FileNotFoundError):
         pipeline_watcher.execute_job("Import/job001/", cwd=in_project)

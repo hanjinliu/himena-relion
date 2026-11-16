@@ -832,14 +832,28 @@ class QRelionPipelineFlowChart(QtW.QWidget):
             self._flow_chart.save_gui_state(self._pipeline())
 
     def _run_this_scheduled_job_now(self, job_id: Path):
-        """Run this scheduled job immediately."""
-        from himena_relion.pipeline_watcher import execute_job
+        """Run this scheduled job immediately.
+
+        The job is not executed here. An empty file HIMENA_RUN_THIS_JOB_NOW is created
+        in the job directory, and the pipeline watcher runs the job when it finds the
+        file.
+        """
+        from himena_relion._job_class import _scheduling_jobs
 
         path = self._relion_project_dir / DEFAULT_PIPELINE_STAR
         job_id = _utils.normalize_job_id(job_id)
-        with _utils.open_with_lock(path) as f:
-            _utils.replace_input_edges(f, job_id)
-        execute_job(job_id, cwd=self._relion_project_dir)
+        run_now_path = self._relion_project_dir / job_id / FileNames.RUN_NOW
+        # the watcher is started if not running
+        with _scheduling_jobs(self._relion_project_dir):
+            # The file must be created before the pipeline is updated, because the
+            # watcher checks the scheduled jobs when the pipeline is updated.
+            run_now_path.touch()
+            try:
+                with _utils.open_with_lock(path) as f:
+                    _utils.replace_input_edges(f, job_id)
+            except BaseException:
+                run_now_path.unlink(missing_ok=True)
+                raise
         _utils.read_or_show_job(self._ui(), self._relion_project_dir / job_id)
 
 

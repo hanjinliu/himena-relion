@@ -41,7 +41,8 @@ _WATCHER_LOG_FILE_NAME = ".himena_pipeline_watcher.log"
 # older himena-relion is replaced by a new one (see `stop_outdated_watcher`).
 # 0: no "protocol" in the lock file
 # 1: jobs with USE_HIMENA_IMPL are not run by relion_pipeliner
-WATCHER_PROTOCOL = 1
+# 2: scheduled jobs with HIMENA_RUN_THIS_JOB_NOW are run even if inputs are not ready
+WATCHER_PROTOCOL = 2
 
 
 class RelionPipelineWatcher:
@@ -104,13 +105,21 @@ class RelionPipelineWatcher:
             return self._remove_lock()
 
         updated = False
+        pending = False  # True if a job requested to run now could not be started
         files_to_touch: list[Path] = []
         default_pipeline_path = self._relion_project_dir / DEFAULT_PIPELINE_STAR
         relion_lock_dir = self._relion_project_dir / ".relion_lock"
         for job in self._state_to_job_map[NodeStatus.SCHEDULED].values():
             # run all the scheduled jobs whose dependencies are met
             job_dir_path = self._relion_project_dir / job.path
-            match is_all_inputs_ready(job.path):
+            # "Run This Scheduled Job Now" of the main window creates this file
+            run_now_path = job_dir_path / FileNames.RUN_NOW
+            if run_now := run_now_path.exists():
+                _print_log(f"Job {job.path} is requested to run now.")
+                ready_state = ReadyState.READY
+            else:
+                ready_state = is_all_inputs_ready(job.path)
+            match ready_state:
                 case ReadyState.READY:
                     # This check may be needed?
                     # if filename := _job_state_file(job_dir_path):
@@ -123,6 +132,8 @@ class RelionPipelineWatcher:
                             f"Job {job.path} is scheduled and ready to run but "
                             "RELION lock file `.relion_lock/` exists. Skip."
                         )
+                        # keep watching until the requested job is started
+                        pending = pending or run_now
                     else:
                         _print_log(f"Job {job.path} is ready to run, executing.")
                         try:
@@ -139,6 +150,9 @@ class RelionPipelineWatcher:
                             _print_log(
                                 f"Pipeline is locked. Could not start {job.path}."
                             )
+                        else:
+                            if run_now:
+                                run_now_path.unlink(missing_ok=True)
                         updated = True
                         files_to_touch.append(job_dir_path / DEFAULT_PIPELINE_STAR)
                 case ReadyState.FILE_NOT_FOUND:
@@ -168,6 +182,8 @@ class RelionPipelineWatcher:
                 if fp.exists():
                     fp.touch()
 
+        elif pending:
+            pass  # checked again at the next update or timeout
         elif len(self._state_to_job_map[NodeStatus.RUNNING]) == 0:
             # All the scheduled jobs cannot be run until the user fixes the dependencies,
             # overwrites the failed jobs, or adds new jobs. Stop watching.
