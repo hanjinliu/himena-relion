@@ -4,6 +4,7 @@ import shutil
 from dataclasses import dataclass
 import subprocess
 from himena.plugins import register_config, config_field, get_config
+from himena_relion._proc import popen_detached
 from himena_relion._wsl import wsl_command, wsl_which, is_wsl_path, to_wsl_path
 
 
@@ -213,7 +214,7 @@ def open_in_external_app(
     else:
         args = [command, str(path), *more_args]
     if new_process:
-        subprocess.Popen(
+        popen_detached(
             args,
             start_new_session=True,
             stdout=subprocess.DEVNULL,

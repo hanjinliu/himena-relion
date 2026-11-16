@@ -249,6 +249,9 @@ class FakeRelionPipeliner:
         class _Proc:
             pid = 0
 
+            def poll(self):
+                return 0
+
         return _Proc()
 
     def run_external(self, job_id: str) -> Exception | None:

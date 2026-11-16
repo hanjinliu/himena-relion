@@ -613,6 +613,9 @@ def _record_popen(monkeypatch) -> list[list[str]]:
     class _Proc:
         pid = 0
 
+        def poll(self):
+            return 0
+
     monkeypatch.setattr(
         pipeline_watcher.subprocess,
         "Popen",

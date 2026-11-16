@@ -23,6 +23,7 @@ from himena_relion._utils import (
 )
 from himena_relion._configs import get_relion_pipeliner_args
 from himena_relion._wsl import is_wsl_path
+from himena_relion._proc import popen_detached
 from himena_relion import _job_dir
 
 from himena_relion._pipeline import (
@@ -392,8 +393,9 @@ def run_watcher_new_process(relion_dir: str | Path, locked_ok: bool = True):
     cmd = _watcher_command() + ["watch", str(relion_dir)]
     if locked_ok:
         cmd.append("--lock-ok")
-    # retain the process object.
-    run_watcher_new_process._proc = subprocess.Popen(
+    # NOTE: this function is called every time jobs are scheduled. The new
+    # process exits soon if another watcher is already running.
+    popen_detached(
         cmd,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
@@ -473,7 +475,7 @@ def execute_job(
     # like "pyqt6".
     env = os.environ.copy()
     env.pop("QT_API", None)
-    proc = subprocess.Popen(
+    proc = popen_detached(
         args,
         start_new_session=True,
         env=env,
@@ -482,7 +484,6 @@ def execute_job(
         stderr=subprocess.DEVNULL,
     )
     _print_log(f"Started RELION job {job_name} with PID {proc.pid}")
-    execute_job._proc = proc  # retain the process object to prevent it from gc
     return RelionJobExecution(proc, job_dir)
 
 
