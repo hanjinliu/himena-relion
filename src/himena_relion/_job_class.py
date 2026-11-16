@@ -130,6 +130,8 @@ class RelionJob(ABC):
             if param.name in args:
                 arg = args.pop(param.name)
                 annot = unwrap_annotated(param.annotation)
+                if arg is True:  # flag without value
+                    arg = _fix_empty_input(param.name, annot)
                 arg_parsed = parse_string(arg, annot)
                 func_args[param.name] = arg_parsed
             elif param.default is param.empty:
@@ -713,14 +715,20 @@ def parse_string(s: Any, typ: Any) -> Any:
     elif orig is list:
         _, elem = _split_list_and_arg(typ)
         if isinstance(s, str):
-            parts = s.split(",")
+            if s.strip() == "":
+                parts = []
+            else:
+                parts = s.split(",")
         else:
             parts = s
         return [parse_string(part, elem) for part in parts]
     elif orig is tuple:
         args = typ.__args__
         if isinstance(s, str):
-            parts = s.split(",")
+            if s.strip() == "":
+                parts = tuple()
+            else:
+                parts = s.split(",")
         else:
             parts = s
         if len(parts) != len(args):
@@ -732,6 +740,29 @@ def parse_string(s: Any, typ: Any) -> Any:
         return dict(s)
     else:
         raise TypeError(f"Unsupported type for parsing: {typ}")
+
+
+def _fix_empty_input(name: str, typ: Any) -> Any:
+    """Get the value of parameter `name` given as a flag without value.
+
+    RELION passes an empty value as `--argument` instead of `--argument ''`, which
+    is parsed as `True` by `parse_argv`.
+    """
+    if typ is bool:
+        return True  # a bool flag given by hand, such as `--fail`
+    orig = get_origin(typ)
+    if typ is str:
+        return ""
+    elif orig is list:
+        return []
+    elif orig is tuple:
+        return ()
+    elif orig is dict or typ is dict:
+        return {}
+    elif orig in (Union, UnionType) and NoneType in get_args(typ):
+        return None
+    type_name = getattr(typ, "__name__", str(typ))
+    raise ValueError(f"Parameter {name!r} ({type_name}) cannot be empty.")
 
 
 def to_string(value) -> str:

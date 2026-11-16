@@ -85,6 +85,31 @@ def test_parse_argv():
     args = parse_argv([COUNT_ID, "ignored", "--repeat", "3", "--fail"])
     assert args == {"class_id": COUNT_ID, "o": None, "j": 1, "repeat": "3", "fail": True}
 
+def _parse_cli(job_cls: type[RelionExternalJob], *argv: str) -> dict:
+    args = parse_argv(["class_id", "--o", "External/job002/", *argv])
+    args.pop("class_id")
+    return job_cls._parse_args(args)
+
+def test_parse_empty_values():
+    """RELION passes an empty value as `--param`, without the value."""
+    from himena_relion.relion5.extensions.volume_tools.jobs import ManualMaskCreation
+
+    # list[float] and float | None
+    args = _parse_cli(ManualMaskCreation, "--other_binning", "--pre_lowpass")
+    assert args["other_binning"] == []
+    assert args["pre_lowpass"] is None
+    args = _parse_cli(ManualMaskCreation, "--other_binning", "2,4", "--pre_lowpass")
+    assert args["other_binning"] == [2.0, 4.0]
+    assert args["pre_lowpass"] is None
+    # str
+    assert _parse_cli(TouchJob, "--in_parts", "a.star", "--name")["name"] == ""
+    # a bool flag given by hand still means True
+    args = _parse_cli(CountLinesJob, "--in_mics", "a.star", "--fail")
+    assert args["fail"] is True
+    # int cannot be empty
+    with pytest.raises(ValueError, match="'repeat' \\(int\\) cannot be empty"):
+        _parse_cli(CountLinesJob, "--in_mics", "a.star", "--repeat")
+
 
 def test_run_external_job(himena_ui: MainWindow, project: Path, relion):
     job_path = CountLinesJob.create_job(

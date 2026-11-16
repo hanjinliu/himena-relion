@@ -1899,7 +1899,7 @@ class Refine3DJob(_Relion5SpaJob):
             crit = "0.5"
             niters = str(int(path.stem.split("_")[1][2:]))
         res = read_star(path).first().trust_single()["rlnCurrentResolution"]
-        return f"{nparts} particles, FSC {crit} = {res:.2f} Å (iteration = {niters})"
+        return f"{nparts} particles, FSC {crit} = {_round_res(res)} Å (iteration = {niters})"
 
 
 class MultiBodyJob(_Relion5SpaJob):
@@ -2525,7 +2525,7 @@ class PostProcessJob(_Relion5SpaJob):
         try:
             post_path = self.output_job_dir.path / "postprocess.star"
             res = read_star(post_path).first().trust_single()["rlnFinalResolution"]
-            return f"FSC 0.143 = {res:.2f} Å"
+            return f"FSC 0.143 = {_round_res(res)} Å"
         except Exception:
             return super().status_tip()
 
@@ -3315,3 +3315,13 @@ def _setup_helix_params(widgets: dict[str, ValueWidget]) -> None:
         widgets["helical_twist_range"].enabled = False
     if "helical_rise_range" in widgets:
         widgets["helical_rise_range"].enabled = False
+
+
+def _round_res(resolution: str) -> str:
+    try:
+        val = float(resolution)
+        if val >= 998:
+            return "NA"
+        return f"{val:.2f}"
+    except ValueError:
+        return resolution
