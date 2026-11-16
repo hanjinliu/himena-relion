@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 
 def on_himena_startup(ui: "MainWindow"):
     """This function is called on himena startup."""
-    ignore_numpy_attribute_setting_warnings()
+    _ignore_numpy_attribute_setting_warnings()
     cwd = Path.cwd()
     if (starpath := cwd.joinpath(DEFAULT_PIPELINE_STAR)).exists():
         if get_pipeline_widgets(ui) is None:
@@ -79,7 +79,7 @@ _NUMPY_ATTR_SETTING_MESSAGE = (
 )
 
 
-def ignore_numpy_attribute_setting_warnings():
+def _ignore_numpy_attribute_setting_warnings():
     """Ignore the deprecation of setting `arr.shape = ...` and `arr.dtype = ...`.
 
     NumPy 2.5 deprecated them, but many dependencies (such as scikit-image) still do
