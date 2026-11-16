@@ -1,5 +1,4 @@
 from pathlib import Path
-import subprocess
 import time
 import os
 import shutil
@@ -10,6 +9,7 @@ import numpy as np
 
 from himena.qt.magicgui import ToggleButtons
 from himena_relion._job_class import connect_jobs
+from himena_relion._proc import popen_detached
 from himena_relion.consts import MenuId
 from himena_relion.external import RelionExternalJob
 from himena_relion._utils import relion_python_executable, lowpass_filter
@@ -160,7 +160,7 @@ class ManualMaskCreation(RelionExternalJob):
                 raise FileNotFoundError(
                     "Neither ChimeraX nor Chimera executable found in PATH."
                 )
-            subprocess.Popen(
+            popen_detached(
                 [chimerax, input_path],
                 cwd=out_job_dir.path,
                 start_new_session=True,  # open in a new terminal on Linux
@@ -171,7 +171,7 @@ class ManualMaskCreation(RelionExternalJob):
             script_path = (
                 Path(__file__).parent.parent / "scripts" / "mask_creation_napari.py"
             )
-            subprocess.Popen(
+            popen_detached(
                 [
                     python_exe,
                     script_path.as_posix(),

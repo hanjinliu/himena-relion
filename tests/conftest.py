@@ -50,6 +50,15 @@ def make_job_directory(tmpdir) -> "Iterator[Callable[[str], JobDirectory]]":
         QApplication.processEvents()
     gc.collect()
 
+@fixture(autouse=True)
+def no_detached_processes():
+    """Do not carry the (possibly fake) processes over to the next test."""
+    from himena_relion import _proc
+
+    _proc._DETACHED_PROCESSES.clear()
+    yield
+    _proc._DETACHED_PROCESSES.clear()
+
 @fixture(scope="function")
 def jobs_dir_spa() -> Path:
     return Path(__file__).parent / "jobs_spa"

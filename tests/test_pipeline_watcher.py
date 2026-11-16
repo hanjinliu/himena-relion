@@ -123,6 +123,9 @@ def test_watcher_runs_jobs_after_killed_watcher(project: Path, monkeypatch):
     class _Proc:
         pid = 0
 
+        def poll(self):
+            return 0
+
     monkeypatch.setattr(
         pipeline_watcher.subprocess,
         "Popen",
