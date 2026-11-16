@@ -34,6 +34,8 @@ class QRelionPipelineFlowChartView(QFlowChartView):
         self._last_selection_highlight_rect = None
         self._dodge_distance = 64
         self._id_added = set()
+        self._mouse_pressed = False
+        self._rebuild_pending = False
 
         # groups of collapsed jobs
         self._groups: list[GroupState] = []
@@ -56,6 +58,14 @@ class QRelionPipelineFlowChartView(QFlowChartView):
 
     def _rebuild(self) -> None:
         """Rebuild all the nodes, keeping the positions of the existing nodes."""
+        if self._mouse_pressed and self.scene().mouseGrabberItem() is not None:
+            # NOTE: A node is being pressed or dragged. Deleting the node here not
+            # only aborts dragging, but also leaves the initial positions of the
+            # moving items in the scene, which makes the node dragged next jump to
+            # a wrong position. Rebuild after the mouse is released.
+            self._rebuild_pending = True
+            return
+        self._rebuild_pending = False
         # If the flowchart has been dragged, item positions are different from default.
         old_positions = {
             node.item().id(): node.pos() for node in self._node_map.values()
@@ -344,12 +354,21 @@ class QRelionPipelineFlowChartView(QFlowChartView):
             node.setSelected(True)
 
     def mousePressEvent(self, event):
+        self._mouse_pressed = True
         self._update_selection_rect()
         return super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
         self._update_selection_rect()
         return super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        self._mouse_pressed = event.buttons() != QtCore.Qt.MouseButton.NoButton
+        super().mouseReleaseEvent(event)
+        if self._rebuild_pending and not self._mouse_pressed:
+            # the pipeline was updated during dragging a node.
+            self._rebuild()
+            self.read_gui_state(self._pipeline)  # restore the tags
 
     def wheelEvent(self, event):
         self._update_selection_rect()
