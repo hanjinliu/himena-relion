@@ -6,6 +6,7 @@ from collections import defaultdict
 from contextlib import contextmanager
 import datetime
 from dataclasses import dataclass
+import logging
 from pathlib import Path
 import socket
 import subprocess
@@ -18,6 +19,7 @@ from himena_relion._watch import watch, Change
 from himena_relion._utils import (
     RelionPipelineLockError,
     normalize_job_id,
+    relion_lock,
     update_default_pipeline,
     open_with_lock,
 )
@@ -51,6 +53,7 @@ class RelionPipelineWatcher:
         self._state_to_job_map = defaultdict[NodeStatus, dict[str, RelionJobInfo]](dict)
         # time.monotonic() when each scheduled job was found by this watcher
         self._found_at: dict[str, float] = {}
+        self._parse_failed = False
 
     def run(self):
         """Watch the job directory for changes."""
@@ -59,8 +62,7 @@ class RelionPipelineWatcher:
             raise FileNotFoundError(f"Pipeline file not found at {path}")
         with self._acquire_lock():
             _print_log("Start new pipeline watcher")
-            pipeline = RelionDefaultPipeline.from_pipeline_star(path)
-            self._on_job_state_changed(pipeline)
+            self._check_pipeline(path)
             _timeout_count = 0
             for changes in watch(path):
                 if not self._lock_file_path().exists():
@@ -79,14 +81,22 @@ class RelionPipelineWatcher:
                     _timeout_count = 0
 
                 if has_changes:
-                    try:
-                        pipeline = RelionDefaultPipeline.from_pipeline_star(path)
-                    except Exception as e:
-                        _print_log(f"Failed to parse pipeline file: {e}")
-                    else:
-                        # Update the internal data (thus, the flow chart)
-                        self._on_job_state_changed(pipeline)
+                    self._check_pipeline(path)
         _print_log("End pipeline watcher")
+
+    def _check_pipeline(self, path: Path):
+        """Read the pipeline and run the scheduled jobs that are ready."""
+        try:
+            # A broken (e.g. empty) file must not be taken as "no scheduled jobs",
+            # otherwise this watcher exits and the scheduled jobs are never run.
+            pipeline = RelionDefaultPipeline.from_pipeline_star(path, allow_empty=False)
+        except Exception as e:
+            if not self._parse_failed:  # do not repeat the same message
+                _print_log(f"Failed to parse pipeline file: {e}")
+            self._parse_failed = True
+        else:
+            self._parse_failed = False
+            self._on_job_state_changed(pipeline)
 
     def _on_job_state_changed(self, pipeline: RelionDefaultPipeline):
         self._state_to_job_map.clear()
@@ -150,6 +160,11 @@ class RelionPipelineWatcher:
                             _print_log(
                                 f"Pipeline is locked. Could not start {job.path}."
                             )
+                        except Exception as e:
+                            # e.g. the pipeline could not be written. This watcher exits
+                            # if no other job is running, like when inputs are missing.
+                            _print_log(f"Failed to start {job.path}: {e!r}")
+                            continue
                         else:
                             if run_now:
                                 run_now_path.unlink(missing_ok=True)
@@ -171,6 +186,11 @@ class RelionPipelineWatcher:
                         _print_log(
                             "Failed to update default_pipeline.star to mark job "
                             f"{job.path} as Failed because `.relion_lock` exists."
+                        )
+                    except Exception as e:
+                        _print_log(
+                            "Failed to update default_pipeline.star to mark job "
+                            f"{job.path} as Failed: {e!r}"
                         )
                     else:
                         updated = True
@@ -350,14 +370,15 @@ def stop_outdated_watcher(relion_dir: str | Path, timeout: float = 5.0) -> bool:
             raise OutdatedWatcherError("it is running on another machine")
         proc = psutil.Process(pid)
         if _is_watcher_process(proc):
-            # the watcher should not be killed while editing default_pipeline.star
-            _wait_relion_lock_released(Path(relion_dir))
-            proc.terminate()
+            # The watcher must not be killed while editing default_pipeline.star (the
+            # file would be left empty), so it is stopped while holding the lock.
             try:
-                proc.wait(timeout)
-            except psutil.TimeoutExpired:
-                proc.kill()
-                proc.wait(timeout)
+                with relion_lock(relion_dir, wait_sec=2.0):
+                    _terminate(proc, timeout)
+            except RelionPipelineLockError:
+                # The lock may be left by a crashed process. Stop the watcher anyway,
+                # otherwise the jobs scheduled from now on are run in its old way.
+                _terminate(proc, timeout)
         else:
             # Old lock files have no "create_time", so a reused PID looks alive.
             message = f"Removed the lock of a {desc}, whose PID is reused"
@@ -386,11 +407,30 @@ def _is_watcher_process(proc: psutil.Process) -> bool:
     return "watch" in cmdline and any("himena" in arg.lower() for arg in cmdline)
 
 
-def _wait_relion_lock_released(relion_dir: Path, timeout: float = 2.0):
-    lock_dir = relion_dir / ".relion_lock"
-    deadline = time.monotonic() + timeout
-    while lock_dir.exists() and time.monotonic() < deadline:
-        time.sleep(0.05)
+def _terminate(proc: psutil.Process, timeout: float):
+    proc.terminate()
+    try:
+        proc.wait(timeout)
+    except psutil.TimeoutExpired:
+        proc.kill()
+        proc.wait(timeout)
+
+
+def log_warnings_to_watcher_log():
+    """Write the warnings of himena-relion to the watcher log.
+
+    The stderr of the watcher process is discarded (`run_watcher_new_process`), so
+    warnings such as failures to update default_pipeline.star would be lost.
+    """
+    handler = logging.FileHandler(_WATCHER_LOG_FILE_NAME, delay=True)
+    handler.setLevel(logging.WARNING)
+    handler.setFormatter(
+        logging.Formatter(
+            "[%(asctime)s] %(levelname)s (%(name)s) %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
+    )
+    logging.getLogger("himena_relion").addHandler(handler)
 
 
 def run_watcher(relion_dir: str | Path, locked_ok: bool = True):

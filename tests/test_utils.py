@@ -56,9 +56,9 @@ def test_lock(tmpdir):
     with _utils.open_with_lock(pipeline_star) as f:
         assert tmpdir.joinpath(".relion_lock").exists()
         f.read()  # make sure the file is readable
-        f.seek(0)
         f.write("pipeline_general\n_rlnPipeLineJobCounter 6\n")
     assert not tmpdir.joinpath(".relion_lock").exists()
+    assert pipeline_star.read_bytes() == b"pipeline_general\n_rlnPipeLineJobCounter 6\n"
 
     with _utils.open_with_lock(pipeline_star) as f:
         assert tmpdir.joinpath(".relion_lock").exists()
@@ -67,8 +67,7 @@ def test_lock(tmpdir):
                 pass
         assert tmpdir.joinpath(".relion_lock").exists()
         f.read()  # make sure the file is readable
-        f.seek(0)
-        f.write("pipeline_general\n_rlnPipeLineJobCounter 6\n")
+        f.write("pipeline_general\n_rlnPipeLineJobCounter 7\n")
     assert not tmpdir.joinpath(".relion_lock").exists()
 
     with pytest.raises(ValueError):

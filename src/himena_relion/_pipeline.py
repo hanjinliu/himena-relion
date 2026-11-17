@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import Iterator, Sequence
 import logging
+import time
 from enum import Enum
 from pathlib import Path
 from dataclasses import dataclass, field
@@ -40,15 +41,38 @@ class RelionDefaultPipeline(Sequence["RelionJobInfo"]):
 
     @classmethod
     def from_pipeline_star(
-        cls, star_path: Path, allow_empty: bool = True
+        cls,
+        star_path: Path,
+        allow_empty: bool = True,
+        *,
+        num_retry: int = 5,
+        retry_delay: float = 0.1,
     ) -> RelionDefaultPipeline:
-        """Construct a RelionDefaultPipeline from a default_pipeline.star file."""
-        try:
-            pipeline_star = RelionPipelineModel.validate_file(star_path)
-        except ValidationError:
-            if allow_empty:
-                return cls.empty()  # project without any jobs
-            raise
+        """Construct a RelionDefaultPipeline from a default_pipeline.star file.
+
+        RELION rewrites the file in place, so it may be empty or incomplete for a
+        moment. Reading is retried up to `num_retry` times in that case. If the file
+        is still invalid, an empty pipeline is returned if `allow_empty` is True,
+        otherwise the error is raised. A project without any jobs is a valid file, so
+        `allow_empty=False` must be used where a broken file must not be taken as a
+        project without jobs (e.g. the pipeline watchers).
+        """
+        for i_trial in range(num_retry):
+            try:
+                return cls._from_pipeline_star(star_path)
+            except FileNotFoundError:
+                raise
+            except Exception as e:
+                if i_trial == num_retry - 1:
+                    if allow_empty and isinstance(e, ValidationError):
+                        return cls.empty()
+                    raise
+                time.sleep(retry_delay)
+        raise RuntimeError("unreachable")  # pragma: no cover
+
+    @classmethod
+    def _from_pipeline_star(cls, star_path: Path) -> RelionDefaultPipeline:
+        pipeline_star = RelionPipelineModel.validate_file(star_path)
         processes = pipeline_star.processes
         mappers = pipeline_star.input_edges
 

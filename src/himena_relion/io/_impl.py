@@ -330,8 +330,6 @@ def trash_job(ui: MainWindow, job_dir: JobDirectory):
         except Exception:
             _LOGGER.warning("Failed to close tabs for trashed jobs.", exc_info=True)
 
-        f.seek(0)
-        f.truncate(0)
         f.write(pipeline.to_string())
 
         # move the job to trash
@@ -433,8 +431,6 @@ def restore_trashed_jobs(relion_project_dir: Path, job_ids: list[str]):
         pipeline.nodes = df_nodes
         pipeline.input_edges = df_input_edges
         pipeline.output_edges = df_output_edges
-        f.seek(0)
-        f.truncate(0)
         f.write(pipeline.to_string())
 
         # if the trash sub directory is empty, remove it.

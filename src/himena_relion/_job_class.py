@@ -34,6 +34,7 @@ from himena_relion._wsl import is_wsl_path
 from himena_relion._pipeline import is_all_inputs_ready, ReadyState
 from himena_relion.consts import FileNames, Type, MenuId, JOB_ID_MAP, YES, NO
 from himena_relion._utils import (
+    PipelineFile,
     last_job_directory,
     normalize_job_id,
     open_with_lock,
@@ -243,8 +244,12 @@ class RelionJob(ABC):
             #   Extract/job012/particles Select/job013/
             # should be updated to the new input edges.
             to_run = normalize_job_id(job_dir.path.relative_to(rln_dir))
-            with job_dir.path.joinpath("job_pipeline.star").open("r+") as f:
-                replace_input_edges(f, to_run, new_input_edges, default_pipeline_star)
+            replace_input_edges(
+                PipelineFile(job_dir.job_pipeline()),
+                to_run,
+                new_input_edges,
+                default_pipeline_star,
+            )
             with open_with_lock(default_pipeline_star) as f:
                 replace_input_edges(f, to_run, new_input_edges)
                 update_default_pipeline(f, to_run, state="Scheduled")
@@ -564,8 +569,12 @@ class _Relion5BuiltinContinue(_Relion5BuiltinJob):
 
             # Old connections should be updated. See `edit_and_run_job`.
             to_run = normalize_job_id(job_dir.path.relative_to(rln_dir))
-            with job_dir.path.joinpath("job_pipeline.star").open("r+") as f:
-                replace_input_edges(f, to_run, new_input_edges, default_pipeline_star)
+            replace_input_edges(
+                PipelineFile(job_dir.job_pipeline()),
+                to_run,
+                new_input_edges,
+                default_pipeline_star,
+            )
             with open_with_lock(default_pipeline_star) as f:
                 replace_input_edges(f, to_run, new_input_edges)
                 update_default_pipeline(f, to_run, state="Scheduled")
