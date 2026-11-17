@@ -132,7 +132,7 @@ def test_watcher_runs_jobs_after_killed_watcher(project: Path, monkeypatch):
         lambda args, **_: calls.append(args) or _Proc(),
     )
     # the job stays scheduled because relion is not run. Stop after the first check.
-    monkeypatch.setattr(pipeline_watcher, "watch", lambda path: iter([]))
+    monkeypatch.setattr(pipeline_watcher, "watch_file", lambda path: iter([]))
     pipeline_watcher.run_watcher(project)
     assert len(calls) == 1
     assert "--RunJobs" in calls[0]

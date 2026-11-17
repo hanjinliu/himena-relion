@@ -15,7 +15,7 @@ import time
 from typing import Any
 import warnings
 import psutil
-from himena_relion._watch import watch, Change
+from himena_relion._watch import watch_file, Change
 from himena_relion._utils import (
     RelionPipelineLockError,
     normalize_job_id,
@@ -44,7 +44,8 @@ _WATCHER_LOG_FILE_NAME = ".himena_pipeline_watcher.log"
 # 0: no "protocol" in the lock file
 # 1: jobs with USE_HIMENA_IMPL are not run by relion_pipeliner
 # 2: scheduled jobs with HIMENA_RUN_THIS_JOB_NOW are run even if inputs are not ready
-WATCHER_PROTOCOL = 2
+# 3: default_pipeline.star replaced atomically is detected (its directory is watched)
+WATCHER_PROTOCOL = 3
 
 
 class RelionPipelineWatcher:
@@ -64,7 +65,7 @@ class RelionPipelineWatcher:
             _print_log("Start new pipeline watcher")
             self._check_pipeline(path)
             _timeout_count = 0
-            for changes in watch(path):
+            for changes in watch_file(path):
                 if not self._lock_file_path().exists():
                     _print_log("Lock file removed, exiting")
                     break
