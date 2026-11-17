@@ -337,7 +337,10 @@ class QRelionPipelineFlowChart(QtW.QWidget):
                     continue
                 _LOGGER.info("default_pipeline.star updated.")
                 try:
-                    pipeline = RelionDefaultPipeline.from_pipeline_star(path)
+                    # Keep the current flow chart if the file is broken.
+                    pipeline = RelionDefaultPipeline.from_pipeline_star(
+                        path, allow_empty=False
+                    )
                 except Exception:
                     _LOGGER.warning(
                         "Failed to read default_pipeline.star", exc_info=True

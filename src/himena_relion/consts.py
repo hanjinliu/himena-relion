@@ -77,6 +77,8 @@ class Plane(StrEnum):
 NODES_DIR = ".Nodes"
 JOB_PIPELINE_STAR = "job_pipeline.star"
 DEFAULT_PIPELINE_STAR = "default_pipeline.star"
+# The content of default_pipeline.star before the last edit by himena-relion
+DEFAULT_PIPELINE_BACKUP = ".himena_default_pipeline_backup.star"
 YES = "Yes"
 NO = "No"
 

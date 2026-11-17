@@ -1,7 +1,7 @@
 from pathlib import Path
 import sys
 from himena_relion.external import run_function
-from himena_relion.pipeline_watcher import run_watcher
+from himena_relion.pipeline_watcher import log_warnings_to_watcher_log, run_watcher
 
 
 def main():
@@ -14,6 +14,7 @@ def main():
         locked_ok = False
         if len(argv) > 2 and argv[2] == "--lock-ok":
             locked_ok = True
+        log_warnings_to_watcher_log()
         run_watcher(relion_dir=relion_dir, locked_ok=locked_ok)
     else:
         run_function()

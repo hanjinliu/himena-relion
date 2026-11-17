@@ -216,6 +216,23 @@ def test_stop_outdated_watcher(project: Path, old_watcher: subprocess.Popen):
     assert "Stopped the pipeline watcher of an older himena-relion" in log
 
 
+def test_outdated_watcher_is_stopped_holding_relion_lock(
+    project: Path, old_watcher: subprocess.Popen, monkeypatch
+):
+    # The watcher must not be killed while editing default_pipeline.star.
+    locked: list[bool] = []
+    _terminate = pipeline_watcher._terminate
+
+    def _terminate_spy(proc, timeout):
+        locked.append(project.joinpath(".relion_lock").is_dir())
+        _terminate(proc, timeout)
+
+    monkeypatch.setattr(pipeline_watcher, "_terminate", _terminate_spy)
+    assert stop_outdated_watcher(project)
+    assert locked == [True]
+    assert not project.joinpath(".relion_lock").exists()
+
+
 def test_up_to_date_watcher_is_not_stopped(project: Path):
     proc = _sleeping_process("himena-relion", "watch", str(project), "--lock-ok")
     try:

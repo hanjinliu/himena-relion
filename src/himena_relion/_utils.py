@@ -3,18 +3,34 @@ from __future__ import annotations
 from contextlib import contextmanager, suppress
 import os
 import shutil
+import stat
 import subprocess
+import tempfile
 from pathlib import Path
 import logging
 import time
-from typing import Annotated, Any, Iterable, TextIO, get_args, get_origin, TYPE_CHECKING
+from typing import (
+    Annotated,
+    Any,
+    Iterable,
+    Iterator,
+    TextIO,
+    get_args,
+    get_origin,
+    TYPE_CHECKING,
+)
 from functools import lru_cache
 
 import numpy as np
 import polars as pl
 
 from himena.types import is_subtype
-from himena_relion.consts import Type, DEFAULT_PIPELINE_STAR, PIPELINE_NODE_NAME
+from himena_relion.consts import (
+    Type,
+    DEFAULT_PIPELINE_BACKUP,
+    DEFAULT_PIPELINE_STAR,
+    PIPELINE_NODE_NAME,
+)
 from himena_relion.schemas import RelionPipelineModel
 from himena_relion._configs import get_relion_pipeliner_exe
 from himena_relion._wsl import is_wsl_path, wsl_prefix
@@ -34,6 +50,110 @@ def write_text_lf(path: str | Path, text: str) -> None:
     `Path.write_text` on Windows.
     """
     Path(path).write_text(text, newline="\n")
+
+
+def write_bytes_atomic(
+    path: str | Path,
+    data: bytes,
+    *,
+    replace_timeout: float = 2.0,
+) -> None:
+    """Replace the content of a file so that it is never empty or partially written.
+
+    `data` is written to a temporary file in the same directory, which then replaces
+    `path` by `os.replace`. Readers see either the old or the new content, and `path`
+    is left unchanged if anything fails (or the process is killed) before that.
+
+    On Windows, `os.replace` fails while another process has `path` open (e.g. a
+    pipeline watcher reading it), so it is retried for `replace_timeout` seconds. If it
+    still fails, `path` is overwritten in place. The new content is written before the
+    rest of the file is truncated, so that it does not become empty in that case either.
+    """
+    path = Path(path)
+    try:
+        tmp = _write_temp_file(path, data)
+    except PermissionError:
+        # e.g. the file is writable but its directory is not
+        _overwrite_in_place(path, data)
+        return
+    try:
+        if not _replace_with_retry(tmp, path, replace_timeout):
+            _LOGGER.warning("Could not replace %s, overwriting it in place.", path)
+            _overwrite_in_place(path, data)
+    finally:
+        tmp.unlink(missing_ok=True)
+
+
+def write_text_atomic(path: str | Path, text: str) -> None:
+    """Write text in UTF-8 atomically (see `write_bytes_atomic`), keeping newlines."""
+    write_bytes_atomic(path, text.encode("utf-8"))
+
+
+def _write_temp_file(path: Path, data: bytes) -> Path:
+    fd, tmp_name = tempfile.mkstemp(
+        dir=path.parent, prefix=f".{path.name}.", suffix=".tmp"
+    )
+    tmp = Path(tmp_name)
+    try:
+        with os.fdopen(fd, "wb") as f:
+            f.write(data)
+            f.flush()
+            with suppress(OSError):
+                os.fsync(f.fileno())
+        _copy_permissions(path, tmp)
+    except BaseException:
+        tmp.unlink(missing_ok=True)
+        raise
+    return tmp
+
+
+def _copy_permissions(src: Path, dst: Path) -> None:
+    """Give the temporary file `dst` the permissions of the file it will replace.
+
+    `mkstemp` creates files only accessible by the owner, which would prevent other
+    users from running jobs in a shared project.
+    """
+    try:
+        st = src.stat()
+    except FileNotFoundError:
+        # a new file: same as the directory but not executable
+        mode = stat.S_IMODE(src.parent.stat().st_mode) & 0o666
+        gid = None
+    else:
+        mode = stat.S_IMODE(st.st_mode)
+        gid = st.st_gid
+    with suppress(OSError):
+        os.chmod(dst, mode)
+    if gid is not None and hasattr(os, "chown"):
+        with suppress(OSError):
+            os.chown(dst, -1, gid)
+
+
+def _replace_with_retry(src: Path, dst: Path, timeout: float) -> bool:
+    deadline = time.monotonic() + timeout
+    while True:
+        try:
+            os.replace(src, dst)
+        except PermissionError:
+            # On Windows, `dst` is opened by another process.
+            if time.monotonic() >= deadline:
+                return False
+            time.sleep(0.01)
+        else:
+            return True
+
+
+def _overwrite_in_place(path: Path, data: bytes) -> None:
+    try:
+        f = path.open("r+b")
+    except FileNotFoundError:
+        f = path.open("xb")
+    with f:
+        f.write(data)  # write first, so that the file is never empty
+        f.truncate()
+        f.flush()
+        with suppress(OSError):
+            os.fsync(f.fileno())
 
 
 def bin_image(img: np.ndarray, nbin: int) -> np.ndarray:
@@ -256,42 +376,106 @@ def remove_alias_link(rln_dir: Path, alias: str) -> None:
         alias_path.unlink()
 
 
+class PipelineFile:
+    """A pipeline STAR file that is read and rewritten as a whole.
+
+    This is what `open_with_lock` yields. Unlike a file object, `write` replaces the
+    file atomically (see `write_bytes_atomic`), so that the file never becomes empty
+    or partially written, even if an error occurs or the process is killed. If
+    `backup` is given, the current content is saved there before it is rewritten.
+    """
+
+    def __init__(self, path: str | Path, backup: str | Path | None = None):
+        self.path = Path(path)
+        self._backup = None if backup is None else Path(backup)
+
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}({self.path.as_posix()!r})"
+
+    @property
+    def name(self) -> str:
+        return str(self.path)
+
+    def read(self) -> str:
+        """Read the whole content (UTF-8, newlines are not translated)."""
+        return self.path.read_bytes().decode("utf-8")
+
+    def write(self, text: str) -> None:
+        """Replace the whole content with `text`."""
+        if self._backup is not None:
+            _backup_pipeline(self.path, self._backup)
+        write_text_atomic(self.path, text)
+
+
+def _backup_pipeline(path: Path, backup: Path) -> None:
+    try:
+        data = path.read_bytes()
+        # do not overwrite the last good backup with a broken file
+        if b"data_pipeline_general" in data:
+            write_bytes_atomic(backup, data)
+    except Exception:
+        _LOGGER.warning("Failed to back up %s", path, exc_info=True)
+
+
+def _read_pipeline_text(f: PipelineFile | TextIO) -> str:
+    if not isinstance(f, PipelineFile):
+        f.seek(0)
+    return f.read()
+
+
+def _write_pipeline_text(f: PipelineFile | TextIO, text: str) -> None:
+    """Replace the content of a pipeline file.
+
+    A plain file object is overwritten in place. The new text is written before the
+    rest is truncated, so that the file does not become empty if writing fails.
+    """
+    if isinstance(f, PipelineFile):
+        f.write(text)
+    else:
+        f.seek(0)
+        f.write(text)
+        f.truncate()
+
+
 def update_default_pipeline(
-    f: TextIO,
-    job_id: str,
+    f: PipelineFile | TextIO,
+    job_id: str | Path,
     state: str | None = None,
     alias: str | None = None,
     *,
     check_state: bool = True,
 ):
+    """Update the status and/or the alias of a job in a pipeline STAR file.
+
+    Problems in reading the pipeline (broken file, job not found etc.) are logged and
+    the file is left unchanged. Errors in writing the file are raised.
+    """
     if (
         check_state
         and state is not None
         and state not in ("Scheduled", "Running", "Failed", "Succeeded", "Aborted")
     ):
         raise ValueError(f"State {state!r} is not a valid RELION job state.")
-    f.seek(0)
+    job_id = normalize_job_id(job_id)
     try:
-        pipeline_star = RelionPipelineModel.validate_text(f.read())
-        pos_sl = pipeline_star.processes.process_name == normalize_job_id(job_id)
-        if len(true_ids := np.where(pos_sl)) == 1:
-            if len(true_ids[0]) == 0:
-                _LOGGER.warning("%s not found in pipeline", normalize_job_id(job_id))
-                return
-            true_id = int(true_ids[0][0])
-            df = pipeline_star.processes.dataframe
-            if state is not None:
-                ic = df.columns.index("rlnPipeLineProcessStatusLabel")
-                df[true_id, ic] = state
-            if alias is not None:
-                ic = df.columns.index("rlnPipeLineProcessAlias")
-                df[true_id, ic] = alias
-            pipeline_star.processes = df
-            f.seek(0)
-            f.truncate(0)
-            f.write(pipeline_star.to_string())
+        pipeline_star = RelionPipelineModel.validate_text(_read_pipeline_text(f))
+        matched = np.where(pipeline_star.processes.process_name == job_id)[0]
+        if len(matched) == 0:
+            _LOGGER.warning("%s not found in pipeline", job_id)
+            return
+        row = int(matched[0])
+        df = pipeline_star.processes.dataframe
+        if state is not None:
+            df[row, df.columns.index("rlnPipeLineProcessStatusLabel")] = state
+        if alias is not None:
+            df[row, df.columns.index("rlnPipeLineProcessAlias")] = alias
+        pipeline_star.processes = df
+        # The text must be ready before the file is modified.
+        text = pipeline_star.to_string()
     except Exception:
         _LOGGER.warning("Failed to update job state for %s", job_id, exc_info=True)
+        return
+    _write_pipeline_text(f, text)
 
 
 def _assert_input_edge(val) -> str:
@@ -301,7 +485,7 @@ def _assert_input_edge(val) -> str:
 
 
 def replace_input_edges(
-    f: TextIO,
+    f: PipelineFile | TextIO,
     to_run: str,
     new_inputs: Iterable[str] = (),
     default_pipeline: str | Path | None = None,
@@ -310,8 +494,8 @@ def replace_input_edges(
 
     Parameters
     ----------
-    f : TextIO
-        The file object for the pipeline STAR file to be modified.
+    f : PipelineFile or TextIO
+        The pipeline STAR file to be modified.
     to_run : str
         The job identifier (e.g. "Refine3D/job010/") for which the input edges will be
         updated
@@ -321,8 +505,7 @@ def replace_input_edges(
     default_pipeline : path-like, optional
         The path to the default_pipeline.star file.
     """
-    f.seek(0)
-    pipeline_model = RelionPipelineModel.validate_text(f.read())
+    pipeline_model = RelionPipelineModel.validate_text(_read_pipeline_text(f))
     to_run = normalize_job_id(to_run)
     pipeline_input_edges = pipeline_model.input_edges
     new_from_node = [_assert_input_edge(n) for n in new_inputs]
@@ -353,9 +536,7 @@ def replace_input_edges(
             )
 
     pipeline_model.input_edges = df
-    f.seek(0)
-    f.truncate()
-    f.write(pipeline_model.to_string())
+    _write_pipeline_text(f, pipeline_model.to_string())
 
 
 def read_or_show_job(ui: MainWindow, path: Path):
@@ -465,43 +646,61 @@ def invert_y(img):
 
 
 @contextmanager
-def open_with_lock(
-    pipeline_path: str | Path,
-    mode: str = "r+",
-    wait_sec: float = 1.5,
-):
-    """Open a file with a lock to prevent concurrent access."""
-    pipeline_path = Path(pipeline_path)
-    lock_dir = pipeline_path.parent / ".relion_lock"
+def relion_lock(relion_project_dir: str | Path, wait_sec: float = 1.5):
+    """Hold the RELION lock `.relion_lock/` of the project.
+
+    RELION creates this directory before reading the pipeline to edit it, and removes
+    it after writing (`PipeLine::read/write` with DO_LOCK). Raises
+    `RelionPipelineLockError` if the lock is not acquired within `wait_sec` seconds.
+    """
+    lock_dir = Path(relion_project_dir) / ".relion_lock"
     each_wait = 0.05
     num_trial = int(wait_sec / each_wait) + 1
+    for _ in range(num_trial):
+        try:
+            lock_dir.mkdir(exist_ok=False)
+        except FileNotFoundError:
+            raise  # FileNotFoundError is a subclass of OSError.
+        except OSError:
+            time.sleep(each_wait)
+        else:
+            break
+    else:
+        raise RelionPipelineLockError(
+            f"Failed to acquire the lock {lock_dir}. Another instance may be editing "
+            "the pipeline, or the previous run may have crashed."
+        )
+    try:
+        yield
+    finally:
+        with suppress(Exception):
+            lock_dir.rmdir()
+
+
+@contextmanager
+def open_with_lock(
+    pipeline_path: str | Path,
+    wait_sec: float = 1.5,
+) -> Iterator[PipelineFile]:
+    """Edit a pipeline STAR file while holding the RELION lock.
+
+    The yielded `PipelineFile` replaces the file atomically, so that RELION and the
+    pipeline watchers never read an empty or partially written file. The content of
+    default_pipeline.star before each edit is saved to `DEFAULT_PIPELINE_BACKUP`. The
+    file is touched after the lock is released, to notify the watchers.
+    """
+    pipeline_path = Path(pipeline_path)
+    if pipeline_path.name == DEFAULT_PIPELINE_STAR:
+        backup = pipeline_path.with_name(DEFAULT_PIPELINE_BACKUP)
+    else:
+        backup = None
     lock_acquired = False
     try:
-        for _ in range(num_trial):
-            try:
-                lock_dir.mkdir(exist_ok=False)
-            except FileNotFoundError:
-                raise  # FileNotFoundError is a subclass of OSError.
-            except OSError:
-                time.sleep(each_wait)
-            else:
-                lock_acquired = True
-                break
-        if not lock_acquired:
-            raise RelionPipelineLockError(
-                f"Failed to acquire lock for {pipeline_path}. Another instance may be "
-                "editing the pipeline, or the previous run may have crashed. "
-            )
-
-        # newline="" disables newline translation, so that the file is written with
-        # LF even on Windows (RELION cannot read CRLF files).
-        with pipeline_path.open(mode, newline="") as f:
-            yield f
-
+        with relion_lock(pipeline_path.parent, wait_sec=wait_sec):
+            lock_acquired = True
+            yield PipelineFile(pipeline_path, backup=backup)
     finally:
         if lock_acquired:
-            with suppress(Exception):
-                lock_dir.rmdir()
             with suppress(Exception):
                 pipeline_path.touch()
 

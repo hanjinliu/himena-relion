@@ -24,7 +24,6 @@ from abc import ABC, abstractmethod
 import datetime
 import json
 import logging
-import shutil
 import time
 import tomllib
 from importlib import import_module
@@ -33,9 +32,11 @@ from typing import TYPE_CHECKING, Any
 
 from himena_relion._job_dir import JobDirectory
 from himena_relion._utils import (
+    PipelineFile,
     RelionPipelineLockError,
     open_with_lock,
     update_default_pipeline,
+    write_bytes_atomic,
 )
 from himena_relion.consts import (
     DEFAULT_PIPELINE_STAR,
@@ -339,13 +340,16 @@ def set_job_status(job_dir: JobDirectory, status: str, wait_sec: float = 5.0):
     default_pipeline = rln_dir / DEFAULT_PIPELINE_STAR
     with open_with_lock(default_pipeline, wait_sec=wait_sec) as f:
         update_default_pipeline(f, job_id, state=status)
-    if status == "Running":
-        # RELION writes job_pipeline.star with the "Running" status, and copies the
-        # default_pipeline.star to the job directory when a job starts.
-        if (job_pipeline := job_dir.job_pipeline()).exists():
-            with job_pipeline.open("r+", newline="") as f:
-                update_default_pipeline(f, job_id, state=status)
-        shutil.copyfile(default_pipeline, job_dir.path / DEFAULT_PIPELINE_STAR)
+        if status == "Running":
+            # RELION copies default_pipeline.star to the job directory when a job
+            # starts. It is copied before the lock is released, so that the copy is
+            # not affected by other processes editing the pipeline.
+            write_bytes_atomic(
+                job_dir.path / DEFAULT_PIPELINE_STAR, default_pipeline.read_bytes()
+            )
+    if status == "Running" and (job_pipeline := job_dir.job_pipeline()).exists():
+        # RELION writes job_pipeline.star with the "Running" status.
+        update_default_pipeline(PipelineFile(job_pipeline), job_id, state=status)
 
 
 def append_run_out(job_dir: JobDirectory, msg: str):
