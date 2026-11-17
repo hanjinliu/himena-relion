@@ -7,7 +7,7 @@ import mrcfile
 import numpy as np
 import polars as pl
 from starfile_rs import as_star, read_star
-from himena_relion._job_dir import JobDirectory
+from himena_relion._job_dir import ExternalJobDirectory, JobDirectory
 from himena_relion.testing import ExternalJobTester
 from himena_relion.schemas import (
     TSGroupModel,
@@ -44,6 +44,43 @@ def test_shift_map(qtbot, tmpdir):
     tester.prep_job_star(ext_dir, in_3dref=str(img_path), center_by="angstrom", new_center=(1, 0, -1.2))
     tester.prep_job_star(ext_dir, in_3dref=str(img_path), center_by="map-com")
     tester.prep_job_star(ext_dir, in_3dref=str(img_path), in_mask=str(mask_path), center_by="map-com")
+
+def test_shift_map_widget_retry(qtbot, tmpdir):
+    from himena_relion.relion5.extensions import ShiftMapJob
+    from himena_relion.relion5.extensions.transform import _const as _c
+
+    tmpdir = Path(tmpdir)
+    ext_dir = tmpdir / "External/job010"
+    ext_dir.mkdir(parents=True, exist_ok=True)
+    job_dir = ExternalJobDirectory(ext_dir)
+    widget = ExternalJobTester(ShiftMapJob).provide_widget(ext_dir)
+    qtbot.addWidget(widget)
+    timer = widget._retry_timer
+    fp = ext_dir / _c.OUTPUT_MAP
+    with mrcfile.new(fp) as mrc:
+        mrc.set_data(np.random.normal(size=(8, 8, 8)).astype(np.float32))
+    content = fp.read_bytes()
+
+    # file is not completely written yet
+    fp.write_bytes(content[: len(content) // 2])
+    widget.on_job_updated(job_dir, str(fp))
+    assert not widget._viewer.has_image
+    assert timer.isActive()
+
+    # retried after the file is written
+    fp.write_bytes(content)
+    qtbot.waitUntil(lambda: widget._viewer.has_image, timeout=3000)
+    assert not timer.isActive()
+    assert timer.num_retry == 0
+
+    # retry stops if the file stays broken
+    timer.setInterval(10)
+    fp.write_bytes(content[: len(content) // 2])
+    widget.on_job_updated(job_dir, str(fp))
+    qtbot.waitUntil(
+        lambda: timer.num_retry == timer.max_retry and not timer.isActive(),
+        timeout=3000,
+    )
 
 def test_shift_map_restores_optics(tmpdir):
     from himena_relion.relion5.extensions.transform.jobs import _restore_optics
