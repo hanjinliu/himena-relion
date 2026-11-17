@@ -400,7 +400,7 @@ def test_watcher_loop(himena_ui: MainWindow, in_project: Path, relion, monkeypat
         yield {(pipeline_watcher.Change.modified, path)}
         raise AssertionError("The watcher must exit when the lock is removed")
 
-    monkeypatch.setattr(pipeline_watcher, "watch", _watch)
+    monkeypatch.setattr(pipeline_watcher, "watch_file", _watch)
     monkeypatch.setattr(pipeline_watcher.time, "sleep", lambda *_: None)
     pipeline_watcher.run_watcher(in_project)
     assert seen == [("start", True), ("end", False)]
