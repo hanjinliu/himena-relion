@@ -2,7 +2,7 @@ from typing import Callable
 from pathlib import Path
 
 import mrcfile
-from qtpy import QtWidgets as QtW, QtCore
+from qtpy import QtWidgets as QtW
 from himena_relion._job_dir import JobDirectory
 from himena_relion import _impl_objects
 from himena_relion.relion5_tomo.widgets._reconstruct import (
@@ -11,15 +11,6 @@ from himena_relion.relion5_tomo.widgets._reconstruct import (
     _ReadResult,
 )
 from himena_relion.testing import JobWidgetTester
-
-def _delete_widgets_of_previous_tests():
-    """Delete the widgets that previous tests scheduled for deletion.
-
-    `processEvents` does not delete them, so more than 10,000 widgets are left after
-    the other tests. `qtbot.waitUntil` deletes them all in its first wait, which may
-    use up the whole timeout before the retry timer fires.
-    """
-    QtCore.QCoreApplication.sendPostedEvents(None, QtCore.QEvent.Type.DeferredDelete)
 
 def test_reconstruct_particle_widget(
     qtbot,
@@ -71,7 +62,6 @@ def test_reconstruct_particle_widget_retry(
     star_text = Path(jobs_dir_tomo / "Reconstruct" / "job001" / "job.star").read_text()
     job_dir = make_job_directory(star_text, "Reconstruct")
 
-    _delete_widgets_of_previous_tests()
     tester = JobWidgetTester(QReconstructViewer(job_dir), job_dir)
     widget = tester.widget
     qtbot.addWidget(widget)
@@ -111,7 +101,6 @@ def test_reconstruct_particle_widget_hidden(
     star_text = Path(jobs_dir_tomo / "Reconstruct" / "job001" / "job.star").read_text()
     job_dir = make_job_directory(star_text, "Reconstruct")
 
-    _delete_widgets_of_previous_tests()
     tester = JobWidgetTester(QReconstructViewer(job_dir), job_dir)
     widget = tester.widget
     tab_widget = QtW.QTabWidget()
@@ -231,7 +220,6 @@ def test_reconstruct_particle_widget_in_thread(
     star_text = Path(jobs_dir_tomo / "Reconstruct" / "job001" / "job.star").read_text()
     job_dir = make_job_directory(star_text, "Reconstruct")
 
-    _delete_widgets_of_previous_tests()
     tester = JobWidgetTester(QReconstructViewer(job_dir), job_dir)
     widget = tester.widget
     qtbot.addWidget(widget)

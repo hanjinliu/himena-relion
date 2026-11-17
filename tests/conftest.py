@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import TYPE_CHECKING, Callable, Iterator
 from pytest import fixture
+from qtpy.QtCore import QEvent
 from qtpy.QtWidgets import QApplication
 import gc
 
@@ -49,6 +50,20 @@ def make_job_directory(tmpdir) -> "Iterator[Callable[[str], JobDirectory]]":
     for _ in range(10):
         QApplication.processEvents()
     gc.collect()
+
+@fixture(autouse=True)
+def delete_widgets_later():
+    """Delete the widgets scheduled for deletion (`deleteLater`) after each test.
+
+    `QApplication.processEvents` does not delete them, so they are left until an event
+    loop runs, such as `qtbot.wait`. Without this, more than 10,000 widgets were left
+    during the test session, and deleting all of them in one `qtbot.waitUntil` could
+    take longer than its timeout. The widgets added by `qtbot.addWidget` are closed
+    before the fixtures are torn down, so they are deleted here too.
+    """
+    yield
+    if QApplication.instance() is not None:
+        QApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
 
 @fixture(autouse=True)
 def no_detached_processes():
