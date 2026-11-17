@@ -93,6 +93,14 @@ class QJobScrollArea(QtW.QScrollArea, JobWidgetBase):
         return super().closeEvent(a0)
 
     def window_closed_callback(self):
+        self._stop_worker()
+
+    def _stop_worker(self):
+        """Stop the running worker, if any.
+
+        Note that the worker stops at its next `yield`, and the values it has already
+        yielded may still be delivered to the main thread.
+        """
         if self._worker is not None:
             self._worker.quit()
             self._worker = None
