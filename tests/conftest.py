@@ -1,9 +1,11 @@
 from pathlib import Path
 from typing import TYPE_CHECKING, Callable, Iterator
 from pytest import fixture
+from pytestqt.qtbot import QtBot
 from qtpy.QtCore import QEvent
-from qtpy.QtWidgets import QApplication
+from qtpy.QtWidgets import QApplication, QWidget
 import gc
+import sys
 
 if TYPE_CHECKING:
     from himena_relion._job_dir import JobDirectory
@@ -64,6 +66,32 @@ def delete_widgets_later():
     yield
     if QApplication.instance() is not None:
         QApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+
+@fixture(autouse=True)
+def keep_widgets_alive(monkeypatch):
+    """Keep the widgets added by `qtbot.addWidget` alive until the test is torn down.
+
+    pytest-qt only keeps weak references to them, so they are deleted when the test
+    function returns, unless something else refers to the test frame. vispy fails to
+    draw without a usable OpenGL context (as on the Windows CI) and stores the error
+    in `sys.last_traceback`, which keeps the frame of the test that caused it. The
+    next error replaces it, so the widgets of that test were deleted in the middle of
+    painting the canvas, which crashed the test process with an access violation.
+    """
+    widgets: list[QWidget] = []
+    add_widget = QtBot.addWidget
+
+    def _add_widget(self: QtBot, widget: QWidget, **kwargs):
+        widgets.append(widget)
+        return add_widget(self, widget, **kwargs)
+
+    monkeypatch.setattr(QtBot, "addWidget", _add_widget)
+    yield
+    # Do not keep the test frame until the next error.
+    for name in ["last_type", "last_value", "last_traceback", "last_exc"]:
+        if hasattr(sys, name):
+            setattr(sys, name, None)
+    widgets.clear()
 
 @fixture(autouse=True)
 def no_detached_processes():
