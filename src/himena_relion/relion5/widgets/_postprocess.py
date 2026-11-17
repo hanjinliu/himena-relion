@@ -16,6 +16,7 @@ from himena_relion._widgets import (
 )
 from himena_relion import _job_dir
 from himena_relion._widgets._shared.resizer import QResizer
+from himena_relion._widgets._shared.retry import QRetryTimer
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -61,6 +62,8 @@ class QPostProcessViewer(QJobScrollArea):
         self._use_mask.toggled.connect(self._on_use_mask_toggled)
 
         self._current_map_path = None
+        # A file event may come before RELION finishes writing the map.
+        self._retry_timer = QRetryTimer(self._load_map, parent=self)
 
     def on_job_updated(self, job_dir: _job_dir.JobDirectory, path: str):
         """Handle changes to the job directory."""
@@ -71,27 +74,10 @@ class QPostProcessViewer(QJobScrollArea):
     def initialize(self, job_dir: _job_dir.JobDirectory):
         """Initialize the viewer with the job directory."""
         # show map
-        if self._use_mask.isChecked():
-            mrc_path = job_dir.path / "postprocess_masked.mrc"
-        else:
-            mrc_path = job_dir.path / "postprocess.mrc"
-        if wait_for_file(mrc_path):
-            with mrcfile.open(mrc_path, mode="r") as mrc:
-                img = mrc.data
-            self._viewer.set_image(img, update_now=False)
-            self._viewer.auto_threshold(update_now=False)
-            self._viewer.auto_fit()
-            self._current_map_path = mrc_path
-
-            # look for the particle number
-            if not self._num_particles_label.num_known():
-                num = _job_dir.try_get_particle_number(self._job_dir)
-                self._num_particles_label.set_number(num)
-        else:
-            self._viewer.set_image(None)
+        self._retry_timer.reset()
+        if not self._load_map(job_dir):
             self._canvas_fsc.clear()
             self._canvas_guinier.clear()
-            self._current_map_path = None
 
         # show FSC
         if wait_for_file(starpath := job_dir.path / "postprocess.star", delay=0.02):
@@ -104,6 +90,37 @@ class QPostProcessViewer(QJobScrollArea):
                 star_postprocess["guinier"].trust_loop().to_polars(),
             )
 
+    def _load_map(self, job_dir: _job_dir.JobDirectory) -> bool:
+        """Show the sharpened map, and return False if the map does not exist.
+
+        If the map exists but cannot be read, reading it is retried later.
+        """
+        if self._use_mask.isChecked():
+            mrc_path = job_dir.path / "postprocess_masked.mrc"
+        else:
+            mrc_path = job_dir.path / "postprocess.mrc"
+        if not wait_for_file(mrc_path):
+            self._viewer.set_image(None)
+            self._current_map_path = None
+            return False
+        try:
+            with mrcfile.open(mrc_path, mode="r") as mrc:
+                img = mrc.data
+        except Exception as e:
+            self._retry_timer.retry(job_dir, mrc_path, e)
+            return True
+        self._retry_timer.reset()
+        self._viewer.set_image(img, update_now=False)
+        self._viewer.auto_threshold(update_now=False)
+        self._viewer.auto_fit()
+        self._current_map_path = mrc_path
+
+        # look for the particle number
+        if not self._num_particles_label.num_known():
+            num = _job_dir.try_get_particle_number(self._job_dir)
+            self._num_particles_label.set_number(num)
+        return True
+
     def _on_use_mask_toggled(self, *_):
         """Handle toggling between masked and unmasked maps."""
         self.initialize(self._job_dir)
@@ -111,3 +128,7 @@ class QPostProcessViewer(QJobScrollArea):
     def widget_added_callback(self):
         self._canvas_fsc.widget_added_callback()
         self._canvas_guinier.widget_added_callback()
+
+    def window_closed_callback(self):
+        self._retry_timer.reset()
+        super().window_closed_callback()

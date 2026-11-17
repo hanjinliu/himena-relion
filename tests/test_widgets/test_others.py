@@ -1,5 +1,6 @@
 from typing import Callable
 from pathlib import Path
+import mrcfile
 from himena_relion._job_dir import JobDirectory
 from himena_relion.relion5.widgets._postprocess import QPostProcessViewer
 from himena_relion.relion5.widgets._mask_create import QMaskCreateViewer
@@ -21,6 +22,53 @@ def test_postprocess_widget(
     tester.write_text("postprocess.star", POSTPROCESS_STAR)
     tester.widget._use_mask.setChecked(True)
     tester.widget._use_mask.setChecked(False)
+
+def test_postprocess_widget_retry(
+    qtbot,
+    make_job_directory: Callable[[str, str], JobDirectory],
+    jobs_dir_spa,
+):
+    star_text = Path(jobs_dir_spa / "PostProcess" / "job001" / "job.star").read_text()
+    job_dir = make_job_directory(star_text, "PostProcess")
+
+    tester = JobWidgetTester(QPostProcessViewer(job_dir), job_dir)
+    widget = tester.widget
+    qtbot.addWidget(widget)
+    timer = widget._retry_timer
+    fp = job_dir.path / "postprocess_masked.mrc"
+    with mrcfile.new(fp) as mrc:
+        mrc.set_data(tester.make_random_mrc((32, 32, 32)))
+    content = fp.read_bytes()
+
+    # file is not completely written yet
+    fp.write_bytes(content[: len(content) // 2])
+    widget.on_job_updated(job_dir, str(fp))
+    assert not widget._viewer.has_image
+    assert widget._current_map_path is None
+    assert timer.isActive()
+
+    # retried after the file is written
+    fp.write_bytes(content)
+    qtbot.waitUntil(lambda: widget._viewer.has_image, timeout=3000)
+    assert widget._current_map_path == fp
+    assert not timer.isActive()
+    assert timer.num_retry == 0
+
+    # retry stops if the file stays broken
+    timer.setInterval(10)
+    fp.write_bytes(content[: len(content) // 2])
+    widget.on_job_updated(job_dir, str(fp))
+    qtbot.waitUntil(
+        lambda: timer.num_retry == timer.max_retry and not timer.isActive(),
+        timeout=3000,
+    )
+    assert widget._viewer.has_image  # the previous map is kept
+
+    # the pending retry is cancelled when the window is closed
+    widget.on_job_updated(job_dir, str(fp))
+    assert timer.isActive()
+    widget.window_closed_callback()
+    assert not timer.isActive()
 
 POSTPROCESS_STAR = """
 # version 50001
