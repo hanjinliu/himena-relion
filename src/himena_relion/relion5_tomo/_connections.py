@@ -71,6 +71,10 @@ def _recon_diameter_a(path: Path) -> float:
     return round(diameter_a, 1)
 
 
+def _always_true(path: Path) -> bool:
+    return True
+
+
 def _should_do_fourier(path: Path) -> bool:
     if (tilt_series_dir := path.joinpath("tilt_series")).exists():
         for path_star in tilt_series_dir.glob("*.star"):
@@ -353,7 +357,10 @@ for class3d_job in [_tomo.Class3DTomoJob, _tomo.Class3DNoAlignmentTomoJob]:
             _tomo.ReconstructParticlesJob.get_trajectory: "in_optim.in_trajectories",
             "merged.mrc": "fn_ref",
         },
-        value_mapping={_recon_diameter_a: "particle_diameter"},
+        value_mapping={
+            _recon_diameter_a: "particle_diameter",
+            _always_true: "ref_correct_greyscale",
+        },
     )
     connect_jobs(
         _tomo.Refine3DTomoJob,
@@ -424,6 +431,7 @@ connect_jobs(
     },
     value_mapping={
         _recon_diameter_a: "particle_diameter",
+        _always_true: "ref_correct_greyscale",
     },
 )
 

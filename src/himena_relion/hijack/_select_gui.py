@@ -326,8 +326,8 @@ class QClassSelector(QtW.QWidget):
         hint.setStyleSheet("color: gray;")
         layout.addWidget(hint)
         bottom = QtW.QHBoxLayout()
-        bottom.addStretch()
         bottom.addWidget(self._save_btn)
+        bottom.addStretch()
         layout.addLayout(bottom)
         layout.addWidget(self._summary)
 
