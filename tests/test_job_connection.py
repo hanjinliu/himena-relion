@@ -182,6 +182,7 @@ def test_tomo_refinement_cycle(himena_ui: MainWindow, in_project: Path, relion):
         "in_optim": {"in_optimisation": optim},
         "fn_ref": "Reconstruct/job001/merged.mrc",
         "particle_diameter": 200.0,  # pixel size is unknown
+        "ref_correct_greyscale": True,
     }
     # the mask is inherited from the parent CtfRefine job
     ctx = _contexts(himena_ui, in_project / "Reconstruct/job007")
