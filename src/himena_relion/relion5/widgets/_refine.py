@@ -43,7 +43,7 @@ class QRefine3DViewer(QJobScrollArea):
             "generate the arrows."
         )
         self._symmetry_label = QSymmetryLabel()
-        self._viewer._canvas.arrow_visual.visible = _arrow_visible_default
+        self._viewer.set_arrows_visible(_arrow_visible_default, update_now=False)
         max_width = 400
         self._viewer.setMaximumWidth(max_width)
         self._fsc_plot = QPlotCanvas(self)
@@ -180,7 +180,7 @@ class QRefine3DViewer(QJobScrollArea):
     @thread_worker
     def _read_items(self, niter):
         is_final = self._show_run_class001_btn.isChecked()
-        yield self._viewer._canvas.set_arrows, []  # clear arrows first
+        yield self._viewer.set_arrows, []  # clear arrows first
 
         ### Read the map and update the viewer ###
         map_out = None
@@ -255,14 +255,13 @@ class QRefine3DViewer(QJobScrollArea):
             )
         if scale is not None and wait_for_file(bild_path):
             tubes = res.angdist(1, scale)
-            yield self._viewer._canvas.set_arrows, tubes
+            yield self._viewer.set_arrows, tubes
 
         ### Done ###
         self._worker = None
 
     def _on_arrow_visible_toggled(self, checked: bool):
-        self._viewer._canvas.arrow_visual.visible = checked
-        self._viewer._canvas.update_canvas()
+        self._viewer.set_arrows_visible(checked)
 
     def _set_fsc(self, val: tuple[pl.DataFrame, float] | None):
         if val is not None:
