@@ -106,6 +106,43 @@ These parameters do not need type annotations.
 - `in_parts` ... Particles
 - `j` ... Number of threads to use
 
+### Continue the job
+
+To make your job continuable, like the "Continue" button of the RELION GUI, define a
+subclass of `RelionExternalContinue`. `original_class` is the job class to continue,
+and `run()` runs the continued job in the same job directory. You can define multiple
+continue classes for one job class; all of them are suggested from the job window.
+
+```python
+from himena_relion.external import RelionExternalContinue, RelionExternalJob
+
+class MyJob(RelionExternalJob):
+    ...
+
+    def run(self, in_parts, niter: int = 10):
+        ...
+
+class MyJobContinue(RelionExternalContinue):
+    original_class = MyJob
+
+    def run(self, in_parts, niter: int = 10, niter_more: int = 5):
+        # continue from the files that the previous run left in the job directory
+        ...
+```
+
+- The parameters of `run()` are shown when continuing the job, with the values of the
+  job.
+- `run()` can have parameters that are not in `original_class.run()`, like
+  `niter_more` above. They are written to job.star only when the job is continued by
+  this class, and their values are the ones of the last continue, or the defaults.
+  Note that RELION external jobs can have at most 10 parameters, including these.
+- The input nodes (`in_parts` etc.) cannot be changed, as in the RELION GUI. They must
+  be parameters of `original_class.run()`.
+- The continued job.star has `rlnJobIsContinue = 1`, and its executable is changed to
+  the continue class. The job directory is still a job of `original_class`, so the
+  widget of `original_class` is used.
+- `output_nodes()` is the same as the one of `original_class` by default.
+
 ## Widget For Your Job
 
 If defined, `provide_widget()` will be called when the job window is opened. This method

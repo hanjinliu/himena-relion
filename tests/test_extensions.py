@@ -549,3 +549,165 @@ def test_manually_create_mask(
     tester.test_run(ext_dir, widget=widget)
     assert (ext_dir / "mask.mrc").exists()
     assert (ext_dir / "mask_base.mrc").exists()
+
+
+def _save_mrc_later(path: Path, data: np.ndarray) -> threading.Thread:
+    """Save an MRC file after a while, as the user does in an external app."""
+
+    def _save():
+        time.sleep(0.5)
+        with mrcfile.new(path, overwrite=True) as mrc:
+            mrc.set_data(data)
+            mrc.voxel_size = (0.78, 0.78, 0.78)
+
+    thread = threading.Thread(target=_save, daemon=True)
+    thread.start()
+    return thread
+
+
+def _read_mrc(path: Path) -> np.ndarray:
+    with mrcfile.open(path) as mrc:
+        return np.asarray(mrc.data)
+
+
+def test_continue_drawing_mask(qtbot, himena_ui, tmp_path: Path, monkeypatch):
+    import pytest
+    from himena_relion import _job_class
+    from himena_relion.consts import FileNames
+    from himena_relion.relion5.extensions.volume_tools import jobs as _jobs
+    from himena_relion.relion5.extensions.volume_tools import (
+        ManualMaskCreation,
+        ManualMaskCreationContinue,
+    )
+    from himena_relion.relion5.extensions.volume_tools.widgets import QMaskCreateViewer
+    from himena_relion.schemas import JobStarModel
+
+    monkeypatch.setattr(ManualMaskCreation, "_max_wait_time_sec", 5)
+    launched: list[list[str]] = []
+    monkeypatch.setattr(_jobs, "popen_detached", lambda args, **_: launched.append(args))
+    monkeypatch.setattr(_jobs, "_find_chimera_exec", lambda: "chimerax")
+    monkeypatch.setattr(_jobs, "relion_python_executable", lambda: "python")
+
+    template_path = tmp_path / "in_3dref.mrc"
+    with mrcfile.new(template_path) as mrc:
+        mrc.set_data(np.random.normal(size=(8, 8, 8)).astype(np.float32))
+        mrc.voxel_size = (0.78, 0.78, 0.78)
+    ext_dir = tmp_path / "External/job010"
+    ext_dir.mkdir(parents=True)
+    mask_path = ext_dir / "mask.mrc"
+    mask_base_path = ext_dir / "mask_base.mrc"
+    tester = ExternalJobTester(ManualMaskCreation)
+    tester.prep_job_star(ext_dir, in_3dref=str(template_path), use_app="Napari")
+    widget: QMaskCreateViewer = tester.provide_widget(ext_dir)
+    qtbot.addWidget(widget)
+
+    # a new job starts from no mask
+    small = np.zeros((8, 8, 8), dtype=np.uint8)
+    small[3:5, 3:5, 3:5] = 1
+    _save_mrc_later(mask_base_path, small)
+    tester.test_run(ext_dir, widget=widget)
+    assert launched[-1][2:] == [
+        template_path.as_posix(),
+        ext_dir.as_posix(),
+        "--threshold",
+        "0.5",
+    ]
+    mask_small = _read_mrc(mask_path)
+
+    # continue editing in napari, starting from mask_base.mrc
+    tester = ExternalJobTester(ManualMaskCreationContinue)
+    large = np.zeros((8, 8, 8), dtype=np.uint8)
+    large[1:7, 1:7, 1:7] = 1
+    _save_mrc_later(mask_base_path, large)
+    tester.test_continue(ext_dir, widget=widget, threshold=0.3, other_binning=[2.0])
+    args = launched[-1]
+    assert args[args.index("--mask") + 1] == mask_base_path.as_posix()
+    assert args[args.index("--threshold") + 1] == "0.3"
+    assert JobStarModel.validate_file(ext_dir / "job.star").job.job_is_continue == 1
+    job_dir = ExternalJobDirectory(ext_dir)
+    params = job_dir.get_job_params_as_dict()
+    assert params["fn_exe"] == (
+        "himena-relion himena_relion.relion5:ManualMaskCreationContinue"
+    )
+    assert params["in_3dref"] == str(template_path)
+    assert (params["threshold"], params["use_app"]) == ("0.3", "Napari")
+    assert job_dir._to_job_class() is ManualMaskCreation
+    assert _read_mrc(mask_path).sum() > mask_small.sum()
+    assert _read_mrc(ext_dir / "mask_bin2.0.mrc").shape == (4, 4, 4)
+
+    # continue in ChimeraX, with a filtered map (created twice)
+    for _ in range(2):
+        _save_mrc_later(mask_base_path, small)
+        tester.test_continue(ext_dir, use_app="Chimera/ChimeraX", pre_lowpass=10.0)
+        filtered_path = ext_dir / "map_filtered.mrc"
+        assert launched[-1] == [
+            "chimerax",
+            filtered_path.as_posix(),
+            mask_base_path.as_posix(),
+        ]
+    np.testing.assert_allclose(_read_mrc(mask_path), mask_small)
+
+    # mask.mrc given by the user is used as is
+    user_mask = np.full((8, 8, 8), 0.25, dtype=np.float32)
+    _save_mrc_later(mask_path, user_mask)
+    tester.test_continue(ext_dir, use_app="None")
+    np.testing.assert_allclose(_read_mrc(mask_path), user_mask)
+    np.testing.assert_allclose(_read_mrc(ext_dir / "mask_bin2.0.mrc"), 0.25, atol=1e-5)
+
+    # the continued job waits for the mask to be saved again
+    monkeypatch.setattr(ManualMaskCreation, "_max_wait_time_sec", 0)
+    with pytest.raises(TimeoutError):
+        tester.test_continue(ext_dir)
+
+    # continue from the widget
+    assert not widget._continue_btn.isEnabled()  # running
+    assert "Editing the mask" in widget._message.text()
+    ext_dir.joinpath(FileNames.EXIT_SUCCESS).touch()
+    widget.on_job_updated(job_dir, str(ext_dir / FileNames.EXIT_SUCCESS))
+    assert widget._continue_btn.isEnabled()
+    assert widget._message.text() == "mask.mrc"
+    widget._continue_btn.click()
+    scheduler = _job_class.scheduler_widget(himena_ui)
+    assert scheduler._exec_btn.text() == "Continue Job"
+    widgets = scheduler._job_param_widget._mgui_widgets
+    assert not widgets["in_3dref"].enabled  # the input cannot be changed
+    assert widgets["in_3dref"].value == str(template_path)
+    assert scheduler.get_parameters()["threshold"] == pytest.approx(0.3)
+
+
+def test_napari_mask_script(tmp_path: Path, monkeypatch):
+    """Functions of the napari script, which is run in another process."""
+    import importlib.util
+    import sys
+    import types
+    from himena_relion.relion5.extensions import volume_tools
+
+    # napari is not needed to test the functions
+    monkeypatch.setitem(sys.modules, "napari", types.ModuleType("napari"))
+    scripts_dir = Path(volume_tools.__file__).parent.parent / "scripts"
+    spec = importlib.util.spec_from_file_location(
+        "_mask_creation_napari", scripts_dir / "mask_creation_napari.py"
+    )
+    script = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(script)
+
+    args = script.parse_args(["map.mrc", "External/job001"])
+    assert (args.mask, args.threshold) == (None, 0.5)
+    args = script.parse_args(
+        ["map.mrc", "External/job001", "--mask", "m.mrc", "--threshold", "0.3"]
+    )
+    assert (args.mask, args.threshold) == ("m.mrc", 0.3)
+
+    data = np.zeros((4, 4, 4), dtype=np.float32)
+    assert not script.initial_labels(data, None, 0.5).any()
+    mask = np.full((4, 4, 4), 0.2, dtype=np.float32)
+    mask[1:3] = 0.8
+    with mrcfile.new(tmp_path / "mask.mrc") as mrc:
+        mrc.set_data(mask)
+    labels = script.initial_labels(data, str(tmp_path / "mask.mrc"), 0.5)
+    assert labels.dtype == np.uint8
+    np.testing.assert_array_equal(labels, mask > 0.5)
+    assert script.initial_labels(data, str(tmp_path / "mask.mrc"), 0.1).all()
+    # shape mismatch
+    labels = script.initial_labels(np.zeros((2, 2, 2)), str(tmp_path / "mask.mrc"), 0.5)
+    assert labels.shape == (2, 2, 2) and not labels.any()

@@ -11,6 +11,7 @@ from himena_relion.relion5.extensions import (
     ShiftMapJob,
     InspectParticlesSPA,
     ManualMaskCreation,
+    ManualMaskCreationContinue,
 )
 
 del widgets, _builtins, _connections, _continues, _commands
@@ -21,4 +22,5 @@ __all__ = [
     "ShiftMapJob",
     "InspectParticlesSPA",
     "ManualMaskCreation",
+    "ManualMaskCreationContinue",
 ]

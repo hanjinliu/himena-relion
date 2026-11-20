@@ -5,7 +5,7 @@ import mrcfile
 import numpy as np
 from himena_relion._widgets._job_widgets import JobWidgetBase
 from himena_relion._job_dir import ExternalJobDirectory, JobDirectory
-from himena_relion.external.job_class import RelionExternalJob
+from himena_relion.external.job_class import RelionExternalContinue, RelionExternalJob
 from himena_relion.consts import ARG_NAME_REMAP
 from himena_relion._utils import write_text_lf
 
@@ -83,7 +83,23 @@ class ExternalJobTester:
             )
         return widget
 
+    def test_continue(self, directory: Path, widget=None, **kwargs):
+        """Continue the job in `directory`, by a `RelionExternalContinue` subclass.
+
+        job.star is updated by the parameters in `kwargs` as the job is continued from
+        the scheduler widget, and then the job is run.
+        """
+        if not issubclass(self._job_cls, RelionExternalContinue):
+            raise TypeError(
+                f"{self._job_cls.__name__} is not a subclass of RelionExternalContinue."
+            )
+        job = self.create_job_instance(directory)
+        job_star = job.make_job_star(**kwargs)
+        write_text_lf(directory.joinpath("job.star"), job_star.to_string())
+        self.test_run(directory, widget=widget)
+
     def test_run(self, directory: Path, widget=None):
+        """Run the job with the parameters in job.star of `directory`."""
         job_dir = ExternalJobDirectory(directory)
         job = self._job_cls(job_dir)
         if not isinstance(job.import_path(), str):

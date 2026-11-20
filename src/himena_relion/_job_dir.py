@@ -153,7 +153,7 @@ class JobDirectory:
         return RelionPipeline.from_star(self.job_pipeline())
 
     def _to_job_class(self) -> type[RelionJob] | None:
-        from himena_relion._job_class import iter_relion_jobs, _Relion5BuiltinContinue
+        from himena_relion._job_class import iter_relion_jobs
 
         job_star_path = self.job_star()
         try:
@@ -167,7 +167,7 @@ class JobDirectory:
             if subcls.type_label() == job_type and subcls.param_matches(
                 job_star.joboptions_values.to_dict()
             ):
-                if issubclass(subcls, _Relion5BuiltinContinue):
+                if subcls._is_continue_job():
                     continue
                 if subcls.job_is_tomo() == is_tomo:
                     return subcls
@@ -298,6 +298,9 @@ class ExternalJobDirectory(JobDirectory):
 
         if import_path := self.job_import_path():
             job_cls = pick_job_class(import_path)
+            if job_cls is not None and job_cls._is_continue_job():
+                # a continued job is still a job of the original class
+                return job_cls.original_class
             return job_cls
         return None
 
@@ -310,7 +313,17 @@ class ExternalJobDirectory(JobDirectory):
     def himena_model_type(self) -> str:
         """Model type string specific to this job."""
         if import_path := self.job_import_path():
-            subtype = import_path.replace(".", "-").replace("/", "-").replace(":", "-")
+            try:
+                job_cls = self._to_job_class()
+            except Exception:
+                job_cls = None
+            if job_cls is not None:
+                subtype = job_cls.himena_model_type()
+            else:
+                # the job class may not be installed
+                subtype = (
+                    import_path.replace(".", "-").replace("/", "-").replace(":", "-")
+                )
         else:
             subtype = "unknown"
         return Type.RELION_JOB + "." + subtype

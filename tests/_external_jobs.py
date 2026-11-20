@@ -1,6 +1,6 @@
 """External jobs for testing, picked by "tests._external_jobs:<class name>"."""
 
-from himena_relion.external import RelionExternalJob
+from himena_relion.external import RelionExternalContinue, RelionExternalJob
 
 
 class CountLinesJob(RelionExternalJob):
@@ -23,6 +23,46 @@ class CountLinesJob(RelionExternalJob):
         if fail:
             raise ValueError("failed as requested")
         job_dir.path.joinpath("count.txt").write_text(str(len(lines) * repeat))
+
+
+class AccumulateJob(RelionExternalJob):
+    """Write `value` to total.txt. The total is updated by continuing the job."""
+
+    def output_nodes(self):
+        return [("total.txt", "LogFile.txt.himena.total")]
+
+    def run(self, in_mics, value: int = 1, label: str = "a", j=1):
+        self.output_job_dir.path.joinpath("total.txt").write_text(str(value))
+        yield
+
+
+def _update_total(job: RelionExternalJob, func) -> None:
+    path = job.output_job_dir.path.joinpath("total.txt")
+    path.write_text(str(func(int(path.read_text()))))
+
+
+class AddToTotal(RelionExternalContinue):
+    """Add the value to the total `repeat` times (`repeat` is only for continuing)."""
+
+    original_class = AccumulateJob
+
+    def run(self, in_mics, value: int = 1, repeat: int = 1):
+        _update_total(self, lambda total: total + value * repeat)
+        self.output_job_dir.path.joinpath("continued_with.txt").write_text(in_mics)
+        yield
+
+
+class MultiplyTotal(RelionExternalContinue):
+    """Multiply the total by the value (not a generator)."""
+
+    original_class = AccumulateJob
+
+    @classmethod
+    def job_title(cls) -> str:
+        return "Multiply Total"
+
+    def run(self, value: int = 2):
+        _update_total(self, lambda total: total * value)
 
 
 class TouchJob(RelionExternalJob):
