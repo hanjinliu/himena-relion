@@ -580,6 +580,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#continue-the-job" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Continue the job
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -699,6 +710,17 @@
     <span class="md-ellipsis">
       
         The reserved parameter names
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#continue-the-job" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Continue the job
       
     </span>
   </a>
@@ -853,6 +875,40 @@ These parameters do not need type annotations.</p>
 <li><code>in_movies</code> ... Movies</li>
 <li><code>in_parts</code> ... Particles</li>
 <li><code>j</code> ... Number of threads to use</li>
+</ul>
+<h3 id="continue-the-job">Continue the job</h3>
+<p>To make your job continuable, like the "Continue" button of the RELION GUI, define a
+subclass of <code>RelionExternalContinue</code>. <code>original_class</code> is the job class to continue,
+and <code>run()</code> runs the continued job in the same job directory. You can define multiple
+continue classes for one job class; all of them are suggested from the job window.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">himena_relion.external</span><span class="w"> </span><span class="kn">import</span> <span class="n">RelionExternalContinue</span><span class="p">,</span> <span class="n">RelionExternalJob</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">MyJob</span><span class="p">(</span><span class="n">RelionExternalJob</span><span class="p">):</span>
+    <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">in_parts</span><span class="p">,</span> <span class="n">niter</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">):</span>
+        <span class="o">...</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">MyJobContinue</span><span class="p">(</span><span class="n">RelionExternalContinue</span><span class="p">):</span>
+    <span class="n">original_class</span> <span class="o">=</span> <span class="n">MyJob</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">in_parts</span><span class="p">,</span> <span class="n">niter</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span> <span class="n">niter_more</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">):</span>
+        <span class="c1"># continue from the files that the previous run left in the job directory</span>
+        <span class="o">...</span>
+</code></pre></div>
+<ul>
+<li>The parameters of <code>run()</code> are shown when continuing the job, with the values of the
+  job.</li>
+<li><code>run()</code> can have parameters that are not in <code>original_class.run()</code>, like
+  <code>niter_more</code> above. They are written to job.star only when the job is continued by
+  this class, and their values are the ones of the last continue, or the defaults.
+  Note that RELION external jobs can have at most 10 parameters, including these.</li>
+<li>The input nodes (<code>in_parts</code> etc.) cannot be changed, as in the RELION GUI. They must
+  be parameters of <code>original_class.run()</code>.</li>
+<li>The continued job.star has <code>rlnJobIsContinue = 1</code>, and its executable is changed to
+  the continue class. The job directory is still a job of <code>original_class</code>, so the
+  widget of <code>original_class</code> is used.</li>
+<li><code>output_nodes()</code> is the same as the one of <code>original_class</code> by default.</li>
 </ul>
 <h2 id="widget-for-your-job">Widget For Your Job</h2>
 <p>If defined, <code>provide_widget()</code> will be called when the job window is opened. This method
