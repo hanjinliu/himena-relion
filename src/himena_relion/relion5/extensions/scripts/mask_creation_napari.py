@@ -1,4 +1,4 @@
-import sys
+import argparse
 import numpy as np
 import napari
 import mrcfile
@@ -42,16 +42,51 @@ class QNapariActions(QtW.QWidget):
         return spinbox
 
 
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Draw a mask in napari.")
+    parser.add_argument("map_path", help="Map to draw the mask on.")
+    parser.add_argument("output_job_dir", help="mask_base.mrc is saved here.")
+    parser.add_argument(
+        "--mask", default=None, help="Mask to start from, such as mask_base.mrc."
+    )
+    parser.add_argument(
+        "--threshold",
+        type=float,
+        default=0.5,
+        help="Threshold to binarize the mask given by --mask.",
+    )
+    return parser.parse_args(argv)
+
+
+def initial_labels(
+    data: np.ndarray, mask_path: str | None, threshold: float
+) -> np.ndarray:
+    """Labels to start from: the binarized mask, or zeros."""
+    if mask_path is not None:
+        with mrcfile.open(mask_path) as mrc:
+            mask = np.asarray(mrc.data)
+        if mask.shape == data.shape:
+            return (mask > threshold).astype(np.uint8)
+        print(
+            f"Shape of {mask_path} {mask.shape} does not match the map {data.shape}. "
+            "Starting from no mask."
+        )
+    return np.zeros_like(data, dtype=np.uint8)
+
+
 def main():
-    map_path, output_job_dir = sys.argv[1:]
+    args = parse_args()
+    output_job_dir = args.output_job_dir
     viewer = napari.Viewer()
 
-    with mrcfile.open(map_path) as mrc:
+    with mrcfile.open(args.map_path) as mrc:
         data = mrc.data
         scale = mrc.voxel_size.x
     layer_image = viewer.add_image(data, name="Map", scale=(scale, scale, scale))
     layer_label = viewer.add_labels(
-        np.zeros_like(data, dtype=np.uint8), name="Mask", scale=(scale, scale, scale)
+        initial_labels(data, args.mask, args.threshold),
+        name="Mask",
+        scale=(scale, scale, scale),
     )
     layer_label.n_edit_dimensions = 3
     layer_label.mode = "paint"

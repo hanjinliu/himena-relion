@@ -2,7 +2,6 @@ from __future__ import annotations
 from qtpy import QtWidgets as QtW
 from himena_relion._widgets._job_widgets import JobWidgetBase
 from himena_relion import _job_dir
-from himena_relion.external import pick_job_class
 
 
 class QExternalJobView(QtW.QScrollArea, JobWidgetBase):
@@ -29,8 +28,8 @@ class QExternalJobView(QtW.QScrollArea, JobWidgetBase):
         """Initialize the viewer with the job directory."""
         fn_exe = job_dir.get_job_param("fn_exe")
         if fn_exe.startswith("himena-relion "):
-            import_path = fn_exe[len("himena-relion ") :].strip()
-            if job_cls := pick_job_class(import_path):
+            # NOTE: the job class of a continued job is the original job class
+            if job_cls := job_dir._to_job_class():
                 external_job = job_cls(job_dir)
                 # set widget
                 widget = external_job.provide_widget(job_dir)

@@ -8,15 +8,28 @@ from pathlib import Path
 
 import pytest
 from himena import MainWindow
+from himena.plugins import when_reader_used
+from himena.workflow import LocalReaderMethod
 
 from himena_relion._job_dir import ExternalJobDirectory, JobDirectory
 from himena_relion.consts import FileNames, Type
-from himena_relion.external import RelionExternalJob, pick_job_class, run_function
+from himena_relion.external import (
+    RelionExternalContinue,
+    RelionExternalJob,
+    pick_job_class,
+    run_function,
+)
 from himena_relion.external.argparser import parse_argv
 from himena_relion.relion5._builtins import ImportMoviesJob
-from himena_relion.schemas import RelionPipelineModel
+from himena_relion.schemas import JobStarModel, RelionPipelineModel
 
-from ._external_jobs import CountLinesJob, TouchJob
+from ._external_jobs import (
+    AccumulateJob,
+    AddToTotal,
+    CountLinesJob,
+    MultiplyTotal,
+    TouchJob,
+)
 from ._fake_relion import (
     FakeRelionPipeliner,
     check_scheduled_jobs,
@@ -307,3 +320,225 @@ def test_external_job_without_class(tmp_path: Path):
         "in_mic": "mics.star",
         "threshold": "0.5",
     }
+
+
+ACC_JOB = "External/job002/"
+ACC_ID = "tests._external_jobs:AccumulateJob"
+ADD_ID = "tests._external_jobs:AddToTotal"
+MULTIPLY_ID = "tests._external_jobs:MultiplyTotal"
+
+
+def _write_job_options(job_dir: JobDirectory, **options: str):
+    """Change the job options in job.star."""
+    job_star = JobStarModel.validate_file(job_dir.job_star())
+    values = job_star.joboptions_values.to_dict()
+    values.update(options)
+    job_star.joboptions_values = JobStarModel.Options(
+        variable=list(values), value=list(values.values())
+    ).dataframe
+    job_star.to_star_dict().write(job_dir.job_star(), newline="\n")
+
+
+def _param_slots(options: dict[str, str]) -> dict[str, str]:
+    """Label -> value of the parameter slots (param1_label etc.) in job.star."""
+    out = {}
+    for ith in range(1, 11):
+        if label := options.get(f"param{ith}_label", ""):
+            out[label] = options[f"param{ith}_value"]
+    return out
+
+
+def _suggested_contexts(ui: MainWindow, job_dir: JobDirectory) -> dict[str, dict]:
+    """Command ID -> context of the commands suggested from the job window."""
+    model_type = job_dir.himena_model_type()
+    meth = LocalReaderMethod(output_model_type=model_type, path=job_dir.path)
+    reg = when_reader_used(model_type)._registry
+    return {
+        s.command_id: s.user_context(ui, meth)
+        for s in reg.iter_suggestion(model_type, meth)
+    }
+
+
+def test_continue_job_class():
+    from himena_relion._job_class import RelionJob
+
+    assert AddToTotal._is_continue_job()
+    assert not AccumulateJob._is_continue_job()
+    assert AddToTotal.command_id() == f"himena-relion:external:{ADD_ID}"
+    assert MultiplyTotal.command_id() == f"himena-relion:external:{MULTIPLY_ID}"
+    assert AddToTotal.command_palette_title_prefix() == "Continue -"
+    assert AddToTotal.job_title() == "AccumulateJob"
+    assert MultiplyTotal.job_title() == "Multiply Total"
+    assert AddToTotal.himena_model_type() == AccumulateJob.himena_model_type()
+    assert AddToTotal.type_label() == "relion.external"
+    assert pick_job_class(ADD_ID) is AddToTotal
+    # continue jobs are not registered as new jobs
+    new_jobs = {cmd.command_id for cmd in RelionJob.__relion_job_commands__}
+    assert AccumulateJob.command_id() in new_jobs
+    assert AddToTotal.command_id() not in new_jobs
+
+
+def test_continue_external_job(himena_ui: MainWindow, project: Path, relion):
+    from himena_relion import _job_class
+    from himena_relion._job_class import _JOB_DIR_ARGS_NAME
+
+    job_path = AccumulateJob.create_job(
+        _cwd=project,
+        **default_kwargs(AccumulateJob, in_mics=MOVIES_STAR, value=2, label="x", j=3),
+    )
+    job_dir = JobDirectory.from_job_star(job_path / "job.star")
+    model_type = job_dir.himena_model_type()
+    assert model_type == f"{Type.RELION_JOB}.tests-_external_jobs-AccumulateJob"
+    check_scheduled_jobs(project)
+    assert relion.run_external(ACC_JOB) is None
+    assert job_path.joinpath("total.txt").read_text() == "2"
+    assert _status(project, ACC_JOB) == "Succeeded"
+
+    # all the continue jobs are suggested from the job window
+    contexts = _suggested_contexts(himena_ui, job_dir)
+    context = contexts[AddToTotal.command_id()]
+    assert context[_JOB_DIR_ARGS_NAME].path == job_dir.path
+    assert MultiplyTotal.command_id() in contexts
+
+    # the queue settings are not the parameters, and are kept
+    _write_job_options(job_dir, qsub="my_qsub")
+
+    # the suggested command shows the scheduler to continue the job
+    himena_ui.exec_action(AddToTotal.command_id(), user_context=context)
+    scheduler = _job_class.scheduler_widget(himena_ui)
+    assert scheduler._current_job_cls is AddToTotal
+    # `repeat` is not a parameter of the original job, so the default is used
+    assert scheduler.get_parameters() == {
+        "in_mics": MOVIES_STAR,
+        "value": 2,
+        "repeat": 1,
+    }
+
+    # continue from the scheduler
+    scheduler = AddToTotal._show_scheduler_widget_for_continue(
+        himena_ui, {**context, "value": 5, "repeat": 2}
+    )
+    assert scheduler.get_parameters() == {
+        "in_mics": MOVIES_STAR,
+        "value": 5,
+        "repeat": 2,
+    }
+    # the input nodes cannot be changed
+    assert not scheduler._job_param_widget._mgui_widgets["in_mics"].enabled
+    assert scheduler._job_param_widget._mgui_widgets["value"].enabled
+    assert scheduler._exec_btn.text() == "Continue Job"
+    assert "Continue" in scheduler._title_label.text()
+    scheduler.preview_job_star()
+    preview = JobStarModel.validate_text(himena_ui.current_model.value)
+    assert preview.job.job_is_continue == 1
+    assert preview.joboptions_values.to_dict()["fn_exe"] == f"himena-relion {ADD_ID}"
+    scheduler._exec_btn.click()
+
+    job_star = JobStarModel.validate_file(job_dir.job_star())
+    assert job_star.job.job_is_continue == 1
+    assert job_star.job.job_type_label == "relion.external"
+    assert job_star.joboptions_values.to_dict()["qsub"] == "my_qsub"
+    params = job_dir.get_job_params_as_dict()
+    assert params["fn_exe"] == f"himena-relion {ADD_ID}"
+    assert params["in_mic"] == MOVIES_STAR
+    assert (params["value"], params["label"], params["nr_threads"]) == ("5", "x", "3")
+    assert params["repeat"] == "2"
+    assert _status(project, ACC_JOB) == "Scheduled"
+    assert not job_path.joinpath(FileNames.EXIT_SUCCESS).exists()
+    assert input_edges(read_pipeline(project)) == [(MOVIES_STAR, ACC_JOB)]
+    # the continued job is still a job of the original class
+    assert job_dir.job_import_path() == ADD_ID
+    assert job_dir._to_job_class() is AccumulateJob
+    assert job_dir.himena_model_type() == model_type
+    assert job_dir.job_title() == "AccumulateJob"
+
+    # RELION runs the program of the continue job
+    check_scheduled_jobs(project)
+    assert relion.run_calls == [IMPORT_JOB, ACC_JOB, ACC_JOB]
+    assert relion.run_external(ACC_JOB) is None
+    assert job_path.joinpath("total.txt").read_text() == "12"
+    assert job_path.joinpath("continued_with.txt").read_text() == MOVIES_STAR
+    assert _status(project, ACC_JOB) == "Succeeded"
+    # the output node is not added twice
+    job_pipeline = RelionPipelineModel.validate_file(job_dir.job_pipeline())
+    assert output_edges(job_pipeline) == [(ACC_JOB, f"{ACC_JOB}total.txt")]
+
+    # the value of `repeat` of the last continue is used
+    scheduler = AddToTotal._show_scheduler_widget_for_continue(himena_ui, context)
+    assert scheduler.get_parameters()["repeat"] == 2
+    scheduler.clear_content()
+
+    # continue by another continue job
+    assert MultiplyTotal.command_id() in _suggested_contexts(himena_ui, job_dir)
+    MultiplyTotal(job_dir).continue_job(value=3)
+    assert job_dir.get_job_param("fn_exe") == f"himena-relion {MULTIPLY_ID}"
+    assert job_dir.get_job_param("value") == "3"
+    # `repeat` is not passed to MultiplyTotal
+    assert "repeat" not in job_dir.get_job_params_as_dict()
+    check_scheduled_jobs(project)
+    assert relion.run_external(ACC_JOB) is None
+    assert job_path.joinpath("total.txt").read_text() == "36"
+    # "Continue" in RELION GUI runs the same program again
+    assert relion.run_external(ACC_JOB) is None
+    assert job_path.joinpath("total.txt").read_text() == "108"
+
+    # the input nodes are kept, and `repeat` is the default as it was not used last
+    job_star = AddToTotal(job_dir).make_job_star(in_mics="Job/job009/a.star", value=1)
+    options = job_star.joboptions_values.to_dict()
+    assert options["in_mic"] == MOVIES_STAR
+    assert _param_slots(options) == {"value": "1", "label": "x", "repeat": "1"}
+    # the command line has the parameters of the original job
+    with pytest.raises(ValueError, match="Unknown arguments"):
+        run_function(
+            [ADD_ID, "--o", ACC_JOB, "--in_mics", MOVIES_STAR, "--label", "x"]
+            + ["--unknown", "1"]
+        )
+
+    # overwriting the job runs the original job again
+    AccumulateJob(job_dir).edit_and_run_job(
+        **default_kwargs(AccumulateJob, in_mics=MOVIES_STAR, value=4)
+    )
+    job_star = JobStarModel.validate_file(job_dir.job_star())
+    assert job_star.job.job_is_continue == 0
+    assert job_dir.get_job_param("fn_exe") == f"himena-relion {ACC_ID}"
+    assert "repeat" not in job_dir.get_job_params_as_dict()
+
+
+def test_continue_mode_needs_continue_job(
+    himena_ui: MainWindow, project: Path, relion
+):
+    from himena_relion._widgets._job_edit import ContinueMode
+
+    job_path = CountLinesJob.create_job(
+        _cwd=project, **default_kwargs(CountLinesJob, in_mics=MOVIES_STAR)
+    )
+    job_dir = JobDirectory.from_job_star(job_path / "job.star")
+    scheduler = CountLinesJob._show_scheduler_widget(himena_ui, {})
+    scheduler._mode = ContinueMode(job_dir)
+    with pytest.raises(RuntimeError, match="Cannot continue"):
+        scheduler._mode.exec(scheduler)
+
+
+def test_invalid_continue_job_classes():
+    with pytest.raises(TypeError, match="original_class must be"):
+
+        class NoOriginal(RelionExternalContinue):
+            def run(self, value: int = 1):
+                pass
+
+    with pytest.raises(TypeError, match="original_class must be"):
+
+        class ContinueOfContinue(RelionExternalContinue):
+            original_class = AddToTotal
+
+            def run(self, value: int = 1):
+                pass
+
+    # input nodes cannot be added
+    with pytest.raises(TypeError, match="'in_parts' of NewInput.run"):
+
+        class NewInput(RelionExternalContinue):
+            original_class = AccumulateJob
+
+            def run(self, in_parts, value: int = 1):
+                pass

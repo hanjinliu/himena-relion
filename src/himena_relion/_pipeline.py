@@ -219,8 +219,13 @@ class RelionPipeline:
         return None
 
     def append_output(self, path, type_label: str):
-        """Append an output node."""
+        """Append an output node, or update the one of the same path."""
         node = RelionJobPipelineNode.from_file_path(path, type_label)
+        for i, output in enumerate(self.outputs):
+            # a job continued (or run again) adds the same output node
+            if output.path == node.path:
+                self.outputs[i] = node
+                return
         self.outputs.append(node)
 
     @classmethod

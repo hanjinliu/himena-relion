@@ -8,7 +8,7 @@ import inspect
 
 from himena_relion.consts import FileNames
 from himena_relion._job_dir import ExternalJobDirectory
-from himena_relion.external.job_class import pick_job_class
+from himena_relion.external.job_class import RelionExternalContinue, pick_job_class
 
 
 class RelionExternalArgParser(argparse.ArgumentParser):
@@ -88,7 +88,12 @@ def run_function(argv: list[str] | None = None) -> None:
     func_args = job._parse_args(args)
 
     # check if undefined arguments remain
-    if unknown := set(args.keys()) - {"o", "j"}:
+    known = {"o", "j"}
+    if isinstance(job, RelionExternalContinue):
+        # the command line of a continued job has all the parameters of the original
+        # job, and `run` only uses some of them.
+        known.update(job.original_class._signature().parameters)
+    if unknown := set(args.keys()) - known:
         func_name = class_id.rsplit(".", 1)[-1]
         sig = job._signature()
         raise ValueError(

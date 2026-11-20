@@ -22,6 +22,7 @@ from himena_relion._job_class import (
     parse_string,
     _Relion5BuiltinContinue,
 )
+from himena_relion.external.job_class import RelionExternalContinue
 from himena_relion._widgets._misc import QMoreActionButton
 from himena_relion.consts import DEFAULT_PIPELINE_STAR
 from himena_relion.schemas import JobStarModel
@@ -107,7 +108,7 @@ class QJobScheduler(QtW.QWidget):
         """Update the widget based on the job directory.
 
         This method does NOT update the parameters; call `set_parameters` after this."""
-        if issubclass(job_cls, _Relion5BuiltinContinue):
+        if job_cls._is_continue_job():
             prefix = "Continue &mdash; "
         else:
             prefix = "Job: "
@@ -149,11 +150,9 @@ class QJobScheduler(QtW.QWidget):
     def _get_job_star_model(self) -> JobStarModel:
         job_cls = self._assert_job_class_selected()
         params = self.get_parameters()
-        # continue job uses self.make_job_star to generate job.star, because it requires
-        # a job instance to create new job.star.
+        # continue job needs a job instance to create new job.star from the current one.
         if isinstance(self._mode, ContinueMode):
-            job_ins = job_cls(self._mode.job_dir)
-            assert isinstance(job_ins, _Relion5BuiltinContinue)
+            job_ins = _continue_job_instance(job_cls, self._mode.job_dir)
             return job_ins.make_job_star(**params)
         return job_cls.prep_job_star(**params)
 
@@ -336,19 +335,28 @@ class ContinueMode(Mode):
         self.orig_params = dict(orig_params)
 
     def exec(self, widget: QJobScheduler):
-        if not issubclass(job_cls := widget._current_job_cls, _Relion5BuiltinContinue):
-            raise RuntimeError(f"Cannot continue this job type {job_cls!r}.")
+        job_cls = widget._assert_job_class_selected()
+        job = _continue_job_instance(job_cls, self.job_dir)
         params = self.orig_params.copy()
         params.update(widget.get_parameters())
         if _warn_relion_lock_exists(widget._ui, widget.cwd):
             return
-        proc = job_cls(self.job_dir).continue_job(**params)
+        proc = job.continue_job(**params)
         widget.clear_content()
         if isinstance(proc, RelionJobExecution):
             widget._ui.show_notification(f"Job {job_cls.job_title()!r} continued.")
 
     def button_text(self) -> str:
         return "Continue Job"
+
+
+def _continue_job_instance(
+    job_cls: type[RelionJob], job_dir: _job_dir.JobDirectory
+) -> _Relion5BuiltinContinue | RelionExternalContinue:
+    """Create the job instance to continue the job in `job_dir`."""
+    if issubclass(job_cls, (_Relion5BuiltinContinue, RelionExternalContinue)):
+        return job_cls(job_dir)
+    raise RuntimeError(f"Cannot continue this job type {job_cls!r}.")
 
 
 class EditMode(Mode):

@@ -123,6 +123,15 @@ class RelionJob(ABC):
         return inspect.signature(cls.run.__get__(object()))
 
     @classmethod
+    def _is_continue_job(cls) -> bool:
+        """True if this class is to continue an existing job of `original_class`.
+
+        The `run` method of a "continue" job class has the parameters that can be
+        changed when continuing the job.
+        """
+        return False
+
+    @classmethod
     def _parse_args(cls, args: dict[str, Any]) -> dict[str, Any]:
         sig = cls._signature()
         func_args = {}
@@ -152,8 +161,9 @@ class RelionJob(ABC):
         if (
             cls.__name__.startswith("_")
             or cls.__name__ == "RelionExternalJob"
-            or issubclass(cls, _Relion5BuiltinContinue)
+            or cls._is_continue_job()
         ):
+            # continue jobs register their own commands
             return
         command_id = cls.command_id()
         _LOGGER.info(
@@ -229,41 +239,9 @@ class RelionJob(ABC):
     def edit_and_run_job(self, **kwargs) -> None:
         """Edit the existing job directory and run it."""
         self.prerun_check(**kwargs)
-        job_dir = self.output_job_dir
-        rln_dir = job_dir.relion_project_dir
-        default_pipeline_star = rln_dir / DEFAULT_PIPELINE_STAR
-        with _scheduling_jobs(rln_dir):
-            job_star_model = self.prep_job_star(**kwargs)
-            job_star_model.to_star_dict().write(job_dir.job_star(), newline="\n")
-            _update_himena_impl_marker(job_dir, kwargs)
-            job_star_params = job_dir.get_job_params_as_dict()
-            new_input_edges = self.input_edges(**job_star_params)
-
-            # Old connections should be updated.
-            # For example, when overwriting job "Select/job013/", the line
-            #   Extract/job012/particles Select/job013/
-            # should be updated to the new input edges.
-            to_run = normalize_job_id(job_dir.path.relative_to(rln_dir))
-            replace_input_edges(
-                PipelineFile(job_dir.job_pipeline()),
-                to_run,
-                new_input_edges,
-                default_pipeline_star,
-            )
-            with open_with_lock(default_pipeline_star) as f:
-                replace_input_edges(f, to_run, new_input_edges)
-                update_default_pipeline(f, to_run, state="Scheduled")
-
-            for fname in [
-                FileNames.EXIT_FAILURE,
-                FileNames.EXIT_ABORTED,
-                FileNames.EXIT_SUCCESS,
-                FileNames.ABORT_NOW,
-            ]:
-                if (path := job_dir.path / fname).exists():
-                    path.unlink()
-
-        default_pipeline_star.touch()
+        _schedule_existing_job(
+            self, self.prep_job_star(**kwargs), kwargs, remove_exit_files=True
+        )
 
     @classmethod
     def _show_scheduler_widget(cls, ui: MainWindow, context: AnyContext, cwd=None):
@@ -431,6 +409,10 @@ class _Relion5BuiltinContinue(_Relion5BuiltinJob):
     original_class: type[RelionJob]
 
     @classmethod
+    def _is_continue_job(cls) -> bool:
+        return True
+
+    @classmethod
     def command_id(cls) -> str:
         return cls.original_class.command_id() + ".continue"
 
@@ -473,11 +455,7 @@ class _Relion5BuiltinContinue(_Relion5BuiltinJob):
             cls.original_class,
             cls,
             node_mapping=cls.more_node_mappings(),
-            other_context={
-                _JOB_DIR_ARGS_NAME: lambda path: _job_dir.JobDirectory.from_job_star(
-                    path / "job.star"
-                )
-            },
+            other_context={_JOB_DIR_ARGS_NAME: _job_dir_from_path},
         )
 
     @classmethod
@@ -495,37 +473,9 @@ class _Relion5BuiltinContinue(_Relion5BuiltinJob):
         ui: MainWindow,
         context: AnyContext,
     ):
-        scheduler = scheduler_widget(ui)
-        context = dict(context)
-        if job_dir := context.pop(_JOB_DIR_ARGS_NAME, None):
-            pass
-        else:
-            job_dir = ui.current_model.value
-
-        if not isinstance(job_dir, _job_dir.JobDirectory):
-            raise RuntimeError("Widget model does not contain a job directory.")
-        scheduler.update_by_job(
-            cls,
-            cwd=job_dir.relion_project_dir,
-            subtitle=f"In {job_dir.job_normal_id()}",
+        return show_scheduler_for_continue(
+            ui, cls, context, cls.original_class.normalize_kwargs_inv
         )
-        from himena_relion.hijack import job_params_with_marker
-
-        orig_params_raw = job_params_with_marker(job_dir)
-        orig_params = cls.original_class.normalize_kwargs_inv(**orig_params_raw)
-        try:
-            sig = cls._signature()
-            keys_to_remove = set(orig_params.keys()) - set(sig.parameters.keys())
-            for key in keys_to_remove:
-                orig_params.pop(key)
-            for orig_key, orig_val in orig_params.items():
-                if orig_key in sig.parameters:
-                    context.setdefault(orig_key, orig_val)
-            if context:
-                scheduler.set_parameters(context)
-        finally:
-            scheduler.set_continue_mode(job_dir, orig_params)
-        return scheduler
 
     def make_job_star(self, **kwargs) -> JobStarModel:
         job_dir = self.output_job_dir
@@ -553,36 +503,115 @@ class _Relion5BuiltinContinue(_Relion5BuiltinJob):
     def continue_job(self, **kwargs) -> RelionJobExecution | None:
         """Continue this job with updated parameters."""
         # This will be called when the "Continue" button is clicked.
-        job_dir = self.output_job_dir
-        job_star_path = job_dir.job_star()
         # `kwargs` come from the scheduler widget. Argument names are not complete.
         self.prerun_check(**kwargs)
-        rln_dir = job_dir.relion_project_dir
-        default_pipeline_star = rln_dir / DEFAULT_PIPELINE_STAR
-        with _scheduling_jobs(rln_dir):
-            job_star = self.make_job_star(**kwargs)
-            job_star.to_star_dict().write(job_star_path, newline="\n")
-            _update_himena_impl_marker(job_dir, kwargs)
-
-            job_star_params = job_dir.get_job_params_as_dict()
-            new_input_edges = self.input_edges(**job_star_params)
-
-            # Old connections should be updated. See `edit_and_run_job`.
-            to_run = normalize_job_id(job_dir.path.relative_to(rln_dir))
-            replace_input_edges(
-                PipelineFile(job_dir.job_pipeline()),
-                to_run,
-                new_input_edges,
-                default_pipeline_star,
-            )
-            with open_with_lock(default_pipeline_star) as f:
-                replace_input_edges(f, to_run, new_input_edges)
-                update_default_pipeline(f, to_run, state="Scheduled")
-        default_pipeline_star.touch()
+        _schedule_existing_job(self, self.make_job_star(**kwargs), kwargs)
 
     def input_edges(self, **kwargs) -> list[str]:
         """Continue job should have the same input edges as the original job."""
         return self.original_class(self.output_job_dir).input_edges(**kwargs)
+
+
+def show_scheduler_for_continue(
+    ui: MainWindow,
+    job_cls: type[RelionJob],
+    context: AnyContext,
+    normalize_kwargs_inv: Callable[..., dict[str, Any]],
+) -> QJobScheduler:
+    """Show the scheduler widget to continue an existing job.
+
+    The job directory is given by `context["_job_dir"]`, or the current window. The
+    parameters are initialized by the values in `context`, and then by the values in
+    job.star normalized by `normalize_kwargs_inv`.
+    """
+    scheduler = scheduler_widget(ui)
+    context = dict(context)
+    if job_dir := context.pop(_JOB_DIR_ARGS_NAME, None):
+        pass
+    else:
+        job_dir = ui.current_model.value
+
+    if not isinstance(job_dir, _job_dir.JobDirectory):
+        raise RuntimeError("Widget model does not contain a job directory.")
+    scheduler.update_by_job(
+        job_cls,
+        cwd=job_dir.relion_project_dir,
+        subtitle=f"In {job_dir.job_normal_id()}",
+    )
+    from himena_relion.hijack import job_params_with_marker
+
+    orig_params_raw = job_params_with_marker(job_dir)
+    orig_params = normalize_kwargs_inv(**orig_params_raw)
+    try:
+        sig = job_cls._signature()
+        keys_to_remove = set(orig_params.keys()) - set(sig.parameters.keys())
+        for key in keys_to_remove:
+            orig_params.pop(key)
+        for orig_key, orig_val in orig_params.items():
+            context.setdefault(orig_key, orig_val)
+        if context:
+            scheduler.set_parameters(context)
+    finally:
+        scheduler.set_continue_mode(job_dir, orig_params)
+    return scheduler
+
+
+def _job_dir_from_path(path: Path) -> _job_dir.JobDirectory:
+    return _job_dir.JobDirectory.from_job_star(path / "job.star")
+
+
+def _remove_exit_files(job_dir: _job_dir.JobDirectory) -> None:
+    """Remove the files that tell the job has finished or should be aborted."""
+    for fname in [
+        FileNames.EXIT_FAILURE,
+        FileNames.EXIT_ABORTED,
+        FileNames.EXIT_SUCCESS,
+        FileNames.ABORT_NOW,
+    ]:
+        if (path := job_dir.path / fname).exists():
+            path.unlink()
+
+
+def _schedule_existing_job(
+    job: RelionJob,
+    job_star: JobStarModel,
+    params: dict[str, Any],
+    *,
+    remove_exit_files: bool = False,
+) -> None:
+    """Write `job_star` to the existing job directory and schedule the job.
+
+    This is used to overwrite or continue a job. `params` are the parameters from the
+    widgets, which is used to decide whether the job is run in the himena main window.
+    """
+    job_dir = job.output_job_dir
+    rln_dir = job_dir.relion_project_dir
+    default_pipeline_star = rln_dir / DEFAULT_PIPELINE_STAR
+    with _scheduling_jobs(rln_dir):
+        job_star.to_star_dict().write(job_dir.job_star(), newline="\n")
+        _update_himena_impl_marker(job_dir, params)
+        job_star_params = job_dir.get_job_params_as_dict()
+        new_input_edges = job.input_edges(**job_star_params)
+
+        # Old connections should be updated.
+        # For example, when overwriting job "Select/job013/", the line
+        #   Extract/job012/particles Select/job013/
+        # should be updated to the new input edges.
+        to_run = normalize_job_id(job_dir.path.relative_to(rln_dir))
+        replace_input_edges(
+            PipelineFile(job_dir.job_pipeline()),
+            to_run,
+            new_input_edges,
+            default_pipeline_star,
+        )
+        with open_with_lock(default_pipeline_star) as f:
+            replace_input_edges(f, to_run, new_input_edges)
+            update_default_pipeline(f, to_run, state="Scheduled")
+
+        if remove_exit_files:
+            _remove_exit_files(job_dir)
+
+    default_pipeline_star.touch()
 
 
 def continue_job_now(job_dir: _job_dir.JobDirectory) -> RelionJobExecution:
@@ -596,14 +625,7 @@ def continue_job_now(job_dir: _job_dir.JobDirectory) -> RelionJobExecution:
     job_star = JobStarModel.validate_file(job_star_path)
     job_star.job.job_is_continue = 1
     job_star.to_star_dict().write(job_star_path, newline="\n")
-    for fname in [
-        FileNames.EXIT_FAILURE,
-        FileNames.EXIT_ABORTED,
-        FileNames.EXIT_SUCCESS,
-        FileNames.ABORT_NOW,
-    ]:
-        if (path := job_dir.path / fname).exists():
-            path.unlink()
+    _remove_exit_files(job_dir)
 
     rln_dir = job_dir.relion_project_dir
     to_run = normalize_job_id(job_dir.path.relative_to(rln_dir))
@@ -671,7 +693,7 @@ def _iter_subclasses_recursive(cls: type) -> Generator[type, None, None]:
     for cls in cls.__subclasses__():
         if (
             cls.__name__.startswith("_")
-            or cls.__name__ == "RelionExternalJob"
+            or cls.__name__ in ("RelionExternalJob", "RelionExternalContinue")
             or cls is RelionJob
         ):
             pass  # these classes are abstract or internal
