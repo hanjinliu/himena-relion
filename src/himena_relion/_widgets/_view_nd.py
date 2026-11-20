@@ -1,6 +1,6 @@
 from __future__ import annotations
 from concurrent.futures import Future, ThreadPoolExecutor
-from typing import Literal, NamedTuple
+from typing import Literal, NamedTuple, TYPE_CHECKING
 from himena import StandardType, WidgetDataModel
 from cmap import Color, Colormap
 import numpy as np
@@ -29,6 +29,9 @@ from himena_relion._widgets._vispy import (
     IsoSurface,
 )
 from himena_relion import _utils
+
+if TYPE_CHECKING:
+    from himena_relion._impl_objects import TubeObject
 
 
 class SliceResult(NamedTuple):
@@ -558,6 +561,18 @@ class Q3DViewer(Q3DViewerBase):
             # need to force update
             self._hist_view.set_clim(clim)
             self._canvas.contrast_limits = clim
+        if update_now:
+            self._canvas.update_canvas()
+
+    def set_arrows(self, tubes: list[TubeObject], update_now: bool = True):
+        """Set the arrows (such as the angle distribution) to be displayed."""
+        self._canvas.set_arrows(tubes)
+        if update_now:
+            self._canvas.update_canvas()
+
+    def set_arrows_visible(self, visible: bool, update_now: bool = True):
+        """Show or hide the arrows."""
+        self._canvas.arrows_visible = visible
         if update_now:
             self._canvas.update_canvas()
 

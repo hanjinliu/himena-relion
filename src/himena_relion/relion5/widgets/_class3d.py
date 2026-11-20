@@ -49,7 +49,7 @@ class QClass3DViewer(QJobScrollArea):
 
         self._viewer = Q3DViewer()
         _arrow_visible_default = False
-        self._viewer._canvas.arrow_visual.visible = _arrow_visible_default
+        self._viewer.set_arrows_visible(_arrow_visible_default, update_now=False)
         self._arrow_visible = QToggleSwitch("Angle distribution")
         self._arrow_visible.setChecked(_arrow_visible_default)
         self._arrow_visible.toggled.connect(self._on_arrow_visible_toggled)
@@ -240,8 +240,11 @@ class QClass3DViewer(QJobScrollArea):
         self._list_widget.set_choices(choices)
 
     def _on_arrow_visible_toggled(self, checked: bool):
-        self._viewer._canvas.arrow_visual.visible = checked
-        self._viewer._canvas.update_canvas()
+        self._viewer.set_arrows_visible(checked)
+
+    def _clear_arrows(self, *_):
+        # the canvas will be updated by the following `set_image` call
+        self._viewer.set_arrows([], update_now=False)
 
     def _set_image_no_clim_update(self, img):
         self._viewer.set_image(img, update_now=True, update_clim=self._last_niter == 0)
@@ -251,12 +254,12 @@ class QClass3DViewer(QJobScrollArea):
         res = self._job_dir.get_result(niter)
         map0, scale = res.class_map(class_id - self._index_start)
         was_empty = not self._viewer.has_image
-        yield self._viewer._canvas.set_arrows, []  # clear arrows first
+        yield self._clear_arrows, None
         yield self._set_image_no_clim_update, map0
         if was_empty:
             yield self._auto_threshold_and_fit, None
         tubes = res.angdist(class_id, scale)
-        yield self._viewer._canvas.set_arrows, tubes
+        yield self._viewer.set_arrows, tubes
 
         ### Read current optimiser and sampling info ###
         optimiser_star = self._job_dir.path / f"run{res.it_str}_optimiser.star"

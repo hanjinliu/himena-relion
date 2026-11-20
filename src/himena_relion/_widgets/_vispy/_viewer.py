@@ -227,11 +227,30 @@ class _Vispy3DDensityBase(_Vispy3DBase):
             parent=self._viewbox.scene,
         )
         self._arrow_visual.set_gl_state(preset="translucent")
+        self._arrow_visual.visible = False
+        self._arrows_visible = False
+        self._has_arrows = False
         self._iso_threshold = 0.5
 
     @property
     def arrow_visual(self) -> VispyArrow:
         return self._arrow_visual
+
+    @property
+    def arrows_visible(self) -> bool:
+        """Whether the arrows are requested to be shown."""
+        return self._arrows_visible
+
+    @arrows_visible.setter
+    def arrows_visible(self, visible: bool):
+        self._arrows_visible = bool(visible)
+        self._update_arrow_visibility()
+
+    def _update_arrow_visibility(self):
+        # vispy raises an error when drawing an arrow visual without any data, which
+        # breaks the rendering of the whole canvas (the off-screen canvas becomes
+        # completely transparent). Keep the visual hidden while there is no arrow.
+        self._arrow_visual.visible = self._arrows_visible and self._has_arrows
 
     def set_rendering_mode(self, mode: str):
         mode = mode.title()
@@ -254,28 +273,22 @@ class _Vispy3DDensityBase(_Vispy3DBase):
         self._volume_visual.update()
 
     def set_arrows(self, tubes: list[TubeObject]):
-        colors = []
-        arrow_colors = []
-        arrows = []
-        positions = []
-        for tube in tubes:
-            # NOTE: Vispy Arrow is in xyz order.
-            arrows.append(np.concatenate([tube.start, tube.end]))
-            arrow_colors.append(tube.color)
-            positions.append(tube.start)
-            positions.append(tube.end)
-            colors.append(tube.color)
-            colors.append(tube.color)
-        if colors:
-            colors = np.stack(colors, axis=0)
-            arrow_colors = np.stack(arrow_colors, axis=0)
-            arrows = np.stack(arrows, axis=0)
-            pos = np.stack(positions, axis=0)
-        else:
-            colors = np.zeros((0, 4), dtype=np.float32)
-            arrow_colors = np.zeros((0, 4), dtype=np.float32)
-            arrows = np.zeros((0, 6), dtype=np.float32)
-            pos = np.zeros((0, 3), dtype=np.float32)
+        if len(tubes) == 0:
+            # Empty data cannot be drawn by vispy. Just hide the visual.
+            self._has_arrows = False
+            self._update_arrow_visibility()
+            return
+        # NOTE: Vispy Arrow is in xyz order.
+        starts = np.stack([tube.start for tube in tubes], axis=0)
+        ends = np.stack([tube.end for tube in tubes], axis=0)
+        # vispy raises an error for color values out of [0, 1] at draw time
+        arrow_colors = np.clip(
+            np.stack([tube.color for tube in tubes], axis=0), 0.0, 1.0
+        ).astype(np.float32)
+        arrows = np.concatenate([starts, ends], axis=1).astype(np.float32)
+        # positions and colors of each line segment: start0, end0, start1, end1, ...
+        pos = arrows.reshape(-1, 3)
+        colors = np.repeat(arrow_colors, 2, axis=0)
         self._arrow_visual.set_data(
             pos=pos,
             color=colors,
@@ -284,6 +297,8 @@ class _Vispy3DDensityBase(_Vispy3DBase):
             arrows=arrows,
         )
         self._arrow_visual.arrow_color = arrow_colors
+        self._has_arrows = True
+        self._update_arrow_visibility()
 
 
 class _Vispy3DTomogramBase(_Vispy3DBase):
