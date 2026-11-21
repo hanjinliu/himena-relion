@@ -106,6 +106,10 @@ These parameters do not need type annotations.
 - `in_parts` ... Particles
 - `j` ... Number of threads to use
 
+`pipeline_control` cannot be used as a parameter name. RELION appends
+`--pipeline_control <job directory>` to any command that contains `relion_` (e.g. a
+class ID such as `my_relion_plugin.jobs:MyJob`), and `himena-relion` ignores it.
+
 ### Continue the job
 
 To make your job continuable, like the "Continue" button of the RELION GUI, define a

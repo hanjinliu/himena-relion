@@ -274,6 +274,10 @@ class FakeRelionPipeliner:
                 if value := params[f"param{i}_value"]:
                     argv.append(value)
         argv += ["--j", params["nr_threads"]]
+        # RELION (`RelionJob::prepareFinalCommand`) appends this to any command that
+        # contains "relion_" anywhere.
+        if "relion_" in " ".join([params["fn_exe"], *argv]):
+            argv += ["--pipeline_control", job_id]
         try:
             run_function(argv)
         except Exception as e:
