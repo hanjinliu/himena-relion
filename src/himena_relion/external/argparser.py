@@ -34,10 +34,23 @@ class RelionExternalArgParser(argparse.ArgumentParser):
     """
 
     def __init__(self, *args, **kwargs):
+        # job parameters such as `--p` must not be taken as abbreviations of the
+        # arguments below (e.g. `--pipeline_control`).
+        kwargs.setdefault("allow_abbrev", False)
         super().__init__(*args, **kwargs)
         self.add_argument("class_id", type=str)
         self.add_argument("--o", type=str)
         self.add_argument("--j", type=int, default=1)
+        # RELION appends `--pipeline_control <job dir>` to any command that contains
+        # "relion_" anywhere, e.g. in the class ID `my_relion_plugin.jobs:MyJob` or in
+        # a file path (`--pipeline-control` for Python programs).
+        self.add_argument(
+            "--pipeline_control",
+            "--pipeline-control",
+            dest="pipeline_control",
+            type=str,
+            default=argparse.SUPPRESS,
+        )
 
 
 def parse_argv(argv: list[str] | None = None) -> dict[str, Any]:
@@ -75,6 +88,10 @@ def run_function(argv: list[str] | None = None) -> None:
     """Run the selected function with parsed arguments."""
     args = parse_argv(argv)
     class_id = str(args.pop("class_id"))  # ID to determine job class
+    # RELION looks for the RELION_JOB_EXIT_* files in the pipeline control directory,
+    # which is the job directory given by `--o` for External jobs. The files are
+    # written there below, so the argument is not needed.
+    args.pop("pipeline_control", None)
     job_cls = pick_job_class(class_id)
 
     if args.get("o", None) is None:

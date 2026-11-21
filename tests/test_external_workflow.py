@@ -98,6 +98,20 @@ def test_parse_argv():
     args = parse_argv([COUNT_ID, "ignored", "--repeat", "3", "--fail"])
     assert args == {"class_id": COUNT_ID, "o": None, "j": 1, "repeat": "3", "fail": True}
 
+
+@pytest.mark.parametrize("flag", ["--pipeline_control", "--pipeline-control"])
+def test_parse_argv_pipeline_control(flag: str):
+    """RELION appends `--pipeline_control <job dir>` to commands with "relion_"."""
+    args = parse_argv([COUNT_ID, "--o", COUNT_JOB, "--p", "3", flag, COUNT_JOB])
+    assert args == {
+        "class_id": COUNT_ID,
+        "o": COUNT_JOB,
+        "j": 1,
+        "p": "3",  # not an abbreviation of --pipeline_control
+        "pipeline_control": COUNT_JOB,
+    }
+
+
 def _parse_cli(job_cls: type[RelionExternalJob], *argv: str) -> dict:
     args = parse_argv(["class_id", "--o", "External/job002/", *argv])
     args.pop("class_id")
@@ -263,9 +277,17 @@ def test_invalid_command_lines(himena_ui: MainWindow, project: Path, relion):
     assert not project.joinpath(COUNT_JOB, FileNames.EXIT_SUCCESS).exists()
 
 
-def test_single_file_job(himena_ui: MainWindow, project: Path, relion):
+@pytest.mark.parametrize(
+    "filename",
+    [
+        "my_job.py",
+        # RELION appends `--pipeline_control` because the command contains "relion_"
+        "relion_job.py",
+    ],
+)
+def test_single_file_job(himena_ui: MainWindow, project: Path, relion, filename: str):
     """Job classes defined in a .py file, which is not a module."""
-    py_file = project / "my_job.py"
+    py_file = project / filename
     py_file.write_text(
         "from himena_relion.external import RelionExternalJob\n\n"
         "class CopyJob(RelionExternalJob):\n"
@@ -277,7 +299,7 @@ def test_single_file_job(himena_ui: MainWindow, project: Path, relion):
         "        job_dir.path.joinpath('copied.star').write_text(text)\n"
     )
     # NOTE: absolute paths of Windows cannot be used because of the drive letter
-    class_id = "my_job.py:CopyJob"
+    class_id = f"{filename}:CopyJob"
     job_cls = pick_job_class(class_id)
     assert issubclass(job_cls, RelionExternalJob)
     assert job_cls.import_path() == class_id
