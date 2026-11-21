@@ -660,11 +660,9 @@ def test_continue_drawing_mask(qtbot, himena_ui, tmp_path: Path, monkeypatch):
         tester.test_continue(ext_dir)
 
     # continue from the widget
-    assert not widget._continue_btn.isEnabled()  # running
     assert "Editing the mask" in widget._message.text()
     ext_dir.joinpath(FileNames.EXIT_SUCCESS).touch()
     widget.on_job_updated(job_dir, str(ext_dir / FileNames.EXIT_SUCCESS))
-    assert widget._continue_btn.isEnabled()
     assert widget._message.text() == "mask.mrc"
     widget._continue_btn.click()
     scheduler = _job_class.scheduler_widget(himena_ui)

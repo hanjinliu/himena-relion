@@ -805,6 +805,14 @@ class _ReconstructTomogramBaseJob(_Relion5TomoJob):
     def input_edges(self, **kwargs) -> list[str]:
         return extract_input_edges(kwargs, ["in_tiltseries"])
 
+    def status_tip(self) -> str:
+        params = self.output_job_dir.get_job_params_as_dict()
+        xdim = params["xdim"]
+        ydim = params["ydim"]
+        zdim = params["zdim"]
+        binned_angpix = params["binned_angpix"]
+        return f"({xdim}, {ydim}, {zdim}), {binned_angpix} A/pix"
+
 
 class ReconstructTomogramJob(_ReconstructTomogramBaseJob):
     """Reconstruct tomograms from aligned tilt series by back projection."""
