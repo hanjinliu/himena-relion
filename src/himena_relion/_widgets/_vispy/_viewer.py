@@ -5,6 +5,7 @@ import numpy as np
 from numpy.typing import NDArray
 from psygnal import Signal
 from PIL import Image
+from qtpy import QtWidgets as QtW
 
 from vispy import scene, use
 from vispy.scene import ViewBox
@@ -34,6 +35,27 @@ def is_egl_available() -> bool:
         return True
     except Exception:
         return False
+
+
+def prepare_opengl_window(window: QtW.QWidget) -> None:
+    """Switch the top-level window to OpenGL composition in advance.
+
+    When the first QOpenGLWidget (the native vispy canvas) is added to a window, Qt
+    has to recreate the native window to switch it to OpenGL composition, which makes
+    the main window disappear and reappear (very visible on Windows). Adding a hidden
+    QOpenGLWidget forces this to happen now (at startup) instead of when the first
+    vispy canvas is created. Nothing is needed for the offscreen EGL rendering.
+    """
+    if is_egl_available():
+        return
+    from qtpy.QtOpenGLWidgets import QOpenGLWidget
+
+    # The hidden widget is kept as a child, so that the window is never switched back.
+    # It is never shown, so no OpenGL context is created for it.
+    dummy = QOpenGLWidget(window)
+    dummy.setObjectName("himena_relion_opengl_warmup")
+    dummy.setFixedSize(0, 0)
+    dummy.hide()
 
 
 class _VispyBase:
