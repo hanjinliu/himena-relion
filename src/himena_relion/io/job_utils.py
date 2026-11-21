@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 from contextlib import nullcontext, suppress, AbstractContextManager
 from himena import MainWindow, WidgetDataModel
 from himena.exceptions import Cancelled
+from himena._descriptors import SaveToPath
 from himena.plugins import register_function
 from himena_relion.consts import Type, MenuId, DEFAULT_PIPELINE_STAR
 from himena_relion.io import _impl
@@ -215,6 +216,30 @@ def open_trash_directory(ui: MainWindow):
     if cur_widget := get_pipeline_widgets(ui):
         relion_project_dir = cur_widget._relion_project_dir
         ui.read_file(relion_project_dir / "Trash", append_history=False)
+    else:
+        ui.show_notification("No RELION project is currently open.")
+
+
+@register_function(
+    menus=[MenuId.RELION],
+    title="Open Project Note",
+    command_id="himena-relion:open-project-note",
+)
+def open_project_note(ui: MainWindow):
+    """Open and edit the project note file."""
+    if cur_widget := get_pipeline_widgets(ui):
+        relion_project_dir = cur_widget._relion_project_dir
+        path = relion_project_dir / "project_note.txt"
+        if not path.exists():
+            path.touch()  # create an empty project_note.txt if it doesn't exist
+        text = path.read_text()
+        model = WidgetDataModel(
+            value=text,
+            type="text",
+            title="Project Note",
+            save_behavior_override=SaveToPath(path=path, ask_overwrite=False),
+        ).use_tab()
+        ui.add_data_model(model)
     else:
         ui.show_notification("No RELION project is currently open.")
 

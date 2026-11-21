@@ -218,10 +218,7 @@ class QRelionPipelineFlowChart(QtW.QWidget):
 
     def _open_project_note(self):
         """Open and edit the project note file."""
-        path = self._relion_project_dir / "project_note.txt"
-        if not path.exists():
-            path.touch()  # create an empty project_note.txt if it doesn't exist
-        self._ui().read_file(path, append_history=False)
+        self._ui().exec_action("himena-relion:open-project-note")
 
     def _refresh_flowchart(self):
         """Manually trigger a refresh of the pipeline data."""
@@ -547,7 +544,7 @@ class QRelionPipelineFlowChart(QtW.QWidget):
 
     def _open_trash(self):
         """Open a widget that shows the contents of the RELION Trash directory."""
-        self._ui().read_file(self._relion_project_dir / "Trash", append_history=False)
+        self._ui().exec_action("himena-relion:open-trash-directory")
 
     def _trash_job(self, item: RelionJobNodeItem):
         """Move a job to the RELION Trash directory."""

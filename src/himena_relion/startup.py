@@ -1,5 +1,6 @@
 """Useful startup function to use himena with RELION."""
 
+import logging
 import re
 from typing import TYPE_CHECKING
 import warnings
@@ -23,10 +24,13 @@ from himena_relion.consts import DEFAULT_PIPELINE_STAR
 if TYPE_CHECKING:
     from himena.widgets import MainWindow
 
+_LOGGER = logging.getLogger(__name__)
+
 
 def on_himena_startup(ui: "MainWindow"):
     """This function is called on himena startup."""
     _ignore_numpy_attribute_setting_warnings()
+    _prepare_opengl_window(ui)
     cwd = Path.cwd()
     if (starpath := cwd.joinpath(DEFAULT_PIPELINE_STAR)).exists():
         if get_pipeline_widgets(ui) is None:
@@ -109,6 +113,16 @@ def _ignore_numpy_attribute_setting_warnings():
 
     _showwarnmsg.__himena_relion_wrapped__ = True
     warnings._showwarnmsg = _showwarnmsg
+
+
+def _prepare_opengl_window(ui: "MainWindow"):
+    """Recreate the main window for OpenGL now, not when the first canvas is shown."""
+    from himena_relion._widgets._vispy._viewer import prepare_opengl_window
+
+    try:
+        prepare_opengl_window(ui._backend_main_window)
+    except Exception as e:
+        _LOGGER.warning(f"Failed to prepare the main window for OpenGL: {e!r}")
 
 
 def _replace_outdated_watcher(ui: "MainWindow", relion_dir: Path):
