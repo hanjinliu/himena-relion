@@ -8,7 +8,7 @@ from himena_relion._widgets._magicgui import AutoFillableFloatEdit
 from himena_relion._job_dir import JobDirectory, try_get_particle_number
 from himena_relion import _configs, _annotated as _a
 from himena_relion._utils import command_not_found_err_msg, extract_input_edges
-from himena_relion.schemas import OptimisationSetModel
+from himena_relion.schemas import OptimisationSetModel, ParticleMetaModel
 from himena_relion.consts import MenuId, YES, NO
 from himena_relion._adapt import norm_blush_reg, norm_blush_reg_inv
 
@@ -2695,6 +2695,15 @@ class JoinParticlesJob(_JoinStarBase):
         return extract_input_edges(
             kwargs, ["fn_part1", "fn_part2", "fn_part3", "fn_part4"]
         )
+
+    def status_tip(self) -> str:
+        try:
+            path = self.output_job_dir.path / "join_particles.star"
+            model = ParticleMetaModel.validate_file(path)
+            num = model.particles.tomo_name.len()
+            return f"{num} particles"
+        except Exception:
+            return ""
 
 
 class JoinMicrographsJob(_JoinStarBase):

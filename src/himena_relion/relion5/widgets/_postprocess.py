@@ -80,7 +80,11 @@ class QPostProcessViewer(QJobScrollArea):
             self._canvas_guinier.clear()
 
         # show FSC
-        if wait_for_file(starpath := job_dir.path / "postprocess.star", delay=0.02):
+        if wait_for_file(
+            starpath := job_dir.path / "postprocess.star",
+            delay=0.02,
+            more_wait=0.02,
+        ):
             star_postprocess = read_star(starpath)
             self._canvas_fsc.plot_fsc_postprocess(
                 star_postprocess["fsc"].trust_loop().to_polars(),

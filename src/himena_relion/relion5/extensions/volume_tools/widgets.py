@@ -57,13 +57,13 @@ class QMaskCreateViewer(QtW.QWidget):
         self._message.setTextInteractionFlags(
             QtCore.Qt.TextInteractionFlag.TextSelectableByMouse
         )
-        self._continue_btn = QtW.QPushButton("Continue drawing ...")
+        self._continue_btn = QtW.QPushButton("Continue drawing")
         self._continue_btn.setToolTip(
             "Continue this job to edit the mask again, starting from mask_base.mrc."
         )
         self._continue_btn.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
         self._continue_btn.clicked.connect(self._continue_clicked)
-        self._continue_btn.setEnabled(False)
+        self._continue_btn.setVisible(False)
         self._job_dir = job_dir
         header = QtW.QWidget()
         header_layout = QtW.QHBoxLayout(header)
@@ -128,7 +128,7 @@ class QMaskCreateViewer(QtW.QWidget):
     def _update_message(self, job_dir: _job_dir.JobDirectory):
         """Update the message and the button for the job state."""
         running = job_dir.state() is RelionJobState.RUNNING
-        self._continue_btn.setEnabled(not running)
+        self._continue_btn.setVisible(not running)
         has_mask = job_dir.path.joinpath("mask.mrc").exists()
         mask_base_path = _make_relative_path(job_dir.path, "mask_base.mrc")
         mask_path = _make_relative_path(job_dir.path, "mask.mrc")

@@ -141,6 +141,7 @@ def main():
         viewer.close()
 
     viewer.window.add_dock_widget(dock, area="right")
+    viewer.title = f"Draw mask ({Path(output_job_dir).name})"
     napari.run()
 
 

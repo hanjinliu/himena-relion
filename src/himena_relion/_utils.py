@@ -563,7 +563,12 @@ def read_or_show_job(ui: MainWindow, path: Path):
     ui.read_file(path, append_history=False)
 
 
-def wait_for_file(path, num_retry: int = 5, delay: float = 0.1) -> bool:
+def wait_for_file(
+    path,
+    num_retry: int = 5,
+    delay: float = 0.1,
+    more_wait: float = 0.0,
+) -> bool:
     """Wait for a file to be created, return False if failed.
 
     Examples
@@ -576,6 +581,8 @@ def wait_for_file(path, num_retry: int = 5, delay: float = 0.1) -> bool:
     path = Path(path)
     for _ in range(num_retry):
         if path.exists():
+            if more_wait > 0:
+                time.sleep(more_wait)
             return True
         time.sleep(delay)
     return False
