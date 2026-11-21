@@ -448,6 +448,12 @@ class QRelionPipelineFlowChart(QtW.QWidget):
             for item in self._iter_selected_items():
                 self._trash_job(item)
             return
+        elif key == QtCore.Qt.Key.Key_P:
+            for item in self._iter_selected_items():
+                if job_dir := item.job_dir(self._relion_project_dir):
+                    _impl.peek_job(self._ui(), job_dir)
+                    return
+            return
         return super().keyPressEvent(a0)
 
     def _iter_selected_items(self) -> Iterable[RelionJobNodeItem]:

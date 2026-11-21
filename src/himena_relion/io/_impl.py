@@ -26,6 +26,7 @@ from himena_relion._utils import (
     update_default_pipeline,
 )
 from himena_relion.schemas._pipeline import RelionPipelineModel
+from himena_relion.io._io import read_relion_job
 
 if TYPE_CHECKING:
     from himena_relion._job_dir import JobDirectory
@@ -502,6 +503,34 @@ def mark_as_failed(job_dir: JobDirectory):
             path = job_dir.path / fname
             if path.exists():
                 path.unlink()
+
+
+def peek_job(ui: MainWindow, job_dir: JobDirectory):
+    """Peek into a RELION job directory."""
+    model = read_relion_job(job_dir.path)
+    model.title = job_dir.path.name
+    ui.add_data_model_as_popup(model)
+    _remove_last_popup_shadow(ui)
+
+
+def _remove_last_popup_shadow(ui: MainWindow):
+    """Remove the drop shadow effect from the popup that was just added.
+
+    A QGraphicsEffect renders its widget (including children) through a cached
+    pixmap, so the updates of OpenGL child widgets (vispy canvas) only reach the
+    screen when the popup itself is repainted. This makes mouse dragging on the
+    canvas look frozen.
+    """
+    from qtpy import QtCore
+    from himena.qt._qpopup_view import QPopupView
+
+    popups = ui._backend_main_window.findChildren(
+        QPopupView, options=QtCore.Qt.FindChildOption.FindDirectChildrenOnly
+    )
+    if popups:
+        popup: QPopupView = popups[-1]
+        popup.setGraphicsEffect(None)
+        popup.resize(600, popup.height())
 
 
 def _trash_dir(relion_job_dir: Path) -> Path:
