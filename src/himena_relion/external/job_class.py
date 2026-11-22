@@ -38,11 +38,11 @@ _INPUT_NODE_PARAMS = (
     "in_movies",
     "in_parts",
 )
-# job options that are kept when continuing the job (not given by the parameters)
+# job options that are kept when continuing the job (not given by the parameters).
+# `other_args` is not kept, as it has the parameters that do not fit in the slots.
 _OPTIONS_KEPT_ON_CONTINUE = (
     "do_queue",
     "min_dedicated",
-    "other_args",
     "qsub",
     "qsubscript",
     "queuename",
@@ -395,8 +395,9 @@ class RelionExternalContinue(RelionExternalJob):
         if missing := [name for name in cont_params if name not in params]:
             raise ValueError(f"Missing required arguments to continue: {missing}.")
 
-        # RELION runs this class to continue the job. The parameter slots are made from
-        # scratch, so that parameters of other continue jobs are not passed.
+        # RELION runs this class to continue the job. The parameter slots (and
+        # `other_args` for the overflow) are made from scratch, so that parameters of
+        # other continue jobs are not passed.
         values = prep_job_star_external(
             fn_exe=f"himena-relion {type(self).import_path()}",
             **params,

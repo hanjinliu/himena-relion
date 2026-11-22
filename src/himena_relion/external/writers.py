@@ -3,6 +3,7 @@ from __future__ import annotations
 from himena_relion import _job_dir
 from himena_relion._job_class import to_string
 from himena_relion.consts import ARG_NAME_REMAP
+from himena_relion.external._other_args import NUM_PARAM_SLOTS, format_other_args
 from himena_relion.schemas import JobStarModel
 
 
@@ -47,6 +48,8 @@ def prep_job_star_external(
         "queuename": "openmpi",
     }
     current_param_index = 1
+    # parameters that do not fit in the slots, passed by "Additional arguments"
+    params_overflow: dict[str, str] = {}
 
     arg_map = dict(ARG_NAME_REMAP)
     for key, value in kwargs.items():
@@ -67,14 +70,15 @@ def prep_job_star_external(
             pass  # output job dir
         elif key == "j":
             params["nr_threads"] = value
+        elif current_param_index > NUM_PARAM_SLOTS:
+            params_overflow[key] = value
         else:
-            if current_param_index > 10:
-                raise ValueError("Maximum of 10 additional parameters supported.")
             param_label_key = f"param{current_param_index}_label"
             param_value_key = f"param{current_param_index}_value"
             params[param_label_key] = key
             params[param_value_key] = value
             current_param_index += 1
+    params["other_args"] = format_other_args(params_overflow)
 
     variables = []
     values = []

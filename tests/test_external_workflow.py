@@ -4,6 +4,8 @@ The program of the external job (`himena-relion <class ID> --o ...`) is run in t
 process by `FakeRelionPipeliner.run_external`.
 """
 
+import json
+import shlex
 from pathlib import Path
 
 import pytest
@@ -19,6 +21,7 @@ from himena_relion.external import (
     pick_job_class,
     run_function,
 )
+from himena_relion.external._other_args import format_other_args, parse_other_args
 from himena_relion.external.argparser import parse_argv
 from himena_relion.relion5._builtins import ImportMoviesJob
 from himena_relion.schemas import JobStarModel, RelionPipelineModel
@@ -27,6 +30,8 @@ from ._external_jobs import (
     AccumulateJob,
     AddToTotal,
     CountLinesJob,
+    ManyParamsContinue,
+    ManyParamsJob,
     MultiplyTotal,
     TouchJob,
 )
@@ -342,6 +347,90 @@ def test_external_job_without_class(tmp_path: Path):
         "in_mic": "mics.star",
         "threshold": "0.5",
     }
+
+
+def test_other_args():
+    """Parameters that do not fit in the slots are passed by "Additional arguments"."""
+    params = {"a": "1", "path": "Movies/x_01.tiff", "text": "a b;c", "empty": ""}
+    other_args = format_other_args(params)
+    assert other_args == r"--a 1 --path Movies/x_01.tiff --text a\ b\;c --empty"
+    # the shell splits it as RELION runs the command by `system()`
+    assert shlex.split(other_args) == [
+        "--a", "1", "--path", "Movies/x_01.tiff", "--text", "a b;c", "--empty"
+    ]  # fmt: skip
+    assert parse_other_args(other_args) == params
+    assert parse_other_args("") == {}
+    assert parse_other_args("--a 'b") == {}  # cannot be split
+
+
+MANY_JOB = "External/job002/"
+MANY_ID = "tests._external_jobs:ManyParamsJob"
+MANY_CONTINUE_ID = "tests._external_jobs:ManyParamsContinue"
+
+
+def test_more_params_than_slots(himena_ui: MainWindow, project: Path, relion):
+    """RELION external jobs have 10 parameter slots. Others go to `other_args`."""
+    job_path = ManyParamsJob.create_job(
+        _cwd=project,
+        **default_kwargs(
+            ManyParamsJob,
+            in_mics=MOVIES_STAR,
+            p10=100,
+            text="hello world",
+            empty="",
+            flag=True,
+            j=2,
+        ),
+    )
+    assert job_path == project / MANY_JOB
+    job_dir = JobDirectory.from_job_star(job_path / "job.star")
+    options = JobStarModel.validate_file(job_dir.job_star()).joboptions_values
+    options = options.to_dict()
+    slots = {f"p{i}": str(i) for i in range(1, 10)}
+    assert _param_slots(options) == {**slots, "p10": "100"}
+    assert options["other_args"] == r"--text hello\ world --empty --flag Yes"
+    # the parameters in `other_args` are read as the ones in the slots
+    params = job_dir.get_job_params_as_dict()
+    assert (params["p10"], params["text"], params["empty"]) == ("100", "hello world", "")
+    assert (params["flag"], params["nr_threads"]) == ("Yes", "2")
+    expected = {
+        "in_mics": MOVIES_STAR,
+        **{f"p{i}": i for i in range(1, 10)},
+        "p10": 100,
+        "text": "hello world",
+        "empty": "",
+        "flag": True,
+        "j": 2,
+    }
+    kwargs = ManyParamsJob._parse_args(ManyParamsJob.normalize_kwargs_inv(**params))
+    assert kwargs == expected
+
+    # all the parameters are passed to the program
+    check_scheduled_jobs(project)
+    assert relion.run_external(MANY_JOB) is None
+    assert _status(project, MANY_JOB) == "Succeeded"
+    expected.pop("in_mics")
+    assert json.loads(job_path.joinpath("params.json").read_text()) == expected
+
+    # `other_args` is made from the parameters when continuing, not kept
+    ManyParamsContinue(job_dir).continue_job(text="new text", flag=False, more=3)
+    options = JobStarModel.validate_file(job_dir.job_star()).joboptions_values
+    options = options.to_dict()
+    assert options["fn_exe"] == f"himena-relion {MANY_CONTINUE_ID}"
+    assert _param_slots(options) == {**slots, "p10": "100"}
+    assert options["other_args"] == r"--text new\ text --empty --flag No --more 3"
+    check_scheduled_jobs(project)
+    assert relion.run_external(MANY_JOB) is None
+    assert json.loads(job_path.joinpath("continued.json").read_text()) == {
+        "text": "new text",
+        "flag": False,
+        "more": 3,
+    }
+    # the values of the last continue are used
+    params = job_dir.get_job_params_as_dict()
+    assert (params["text"], params["more"]) == ("new text", "3")
+    job_star = ManyParamsContinue(job_dir).make_job_star()
+    assert job_star.joboptions_values.to_dict()["other_args"] == options["other_args"]
 
 
 ACC_JOB = "External/job002/"

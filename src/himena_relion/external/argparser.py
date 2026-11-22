@@ -8,6 +8,7 @@ import inspect
 
 from himena_relion.consts import FileNames
 from himena_relion._job_dir import ExternalJobDirectory
+from himena_relion.external._other_args import iter_options
 from himena_relion.external.job_class import RelionExternalContinue, pick_job_class
 
 
@@ -60,23 +61,12 @@ def parse_argv(argv: list[str] | None = None) -> dict[str, Any]:
     parser = RelionExternalArgParser()
     args, unknown = parser.parse_known_args(argv)
 
-    # Parse unknown arguments as additional key-value pairs
-    additional_args = {}
-    i = 0
-    while i < len(unknown):
-        arg = unknown[i]
-        if arg.startswith("--"):
-            key = arg[2:]  # Remove '--' prefix
-            if i + 1 < len(unknown) and not unknown[i + 1].startswith("--"):
-                # Next item is the value
-                additional_args[key] = unknown[i + 1]
-                i += 2
-            else:
-                # Flag without value, set to True
-                additional_args[key] = True
-                i += 1
-        else:
-            i += 1
+    # Parse unknown arguments as additional key-value pairs. These are given by the
+    # parameter slots and "Additional arguments" (`other_args`) of the job. A flag
+    # without value is set to True.
+    additional_args = {
+        key: True if value is None else value for key, value in iter_options(unknown)
+    }
 
     # Merge additional arguments into parsed args
     result = vars(args)
