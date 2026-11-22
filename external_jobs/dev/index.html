@@ -581,6 +581,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#number-of-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Number of parameters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#continue-the-job" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -710,6 +721,17 @@
     <span class="md-ellipsis">
       
         The reserved parameter names
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#number-of-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Number of parameters
       
     </span>
   </a>
@@ -879,6 +901,12 @@ These parameters do not need type annotations.</p>
 <p><code>pipeline_control</code> cannot be used as a parameter name. RELION appends
 <code>--pipeline_control &lt;job directory&gt;</code> to any command that contains <code>relion_</code> (e.g. a
 class ID such as <code>my_relion_plugin.jobs:MyJob</code>), and <code>himena-relion</code> ignores it.</p>
+<h3 id="number-of-parameters">Number of parameters</h3>
+<p>RELION external jobs have only 10 parameter slots (<code>param1_label</code> to <code>param10_label</code>).
+The reserved parameters above do not use the slots. If <code>run()</code> has more than 10 other
+parameters, the 11th and later ones are written to "Additional arguments"
+(<code>other_args</code>) of the job as <code>--name value</code>. RELION appends them to the command line,
+so <code>run()</code> gets all the parameters either way.</p>
 <h3 id="continue-the-job">Continue the job</h3>
 <p>To make your job continuable, like the "Continue" button of the RELION GUI, define a
 subclass of <code>RelionExternalContinue</code>. <code>original_class</code> is the job class to continue,
@@ -904,8 +932,7 @@ continue classes for one job class; all of them are suggested from the job windo
   job.</li>
 <li><code>run()</code> can have parameters that are not in <code>original_class.run()</code>, like
   <code>niter_more</code> above. They are written to job.star only when the job is continued by
-  this class, and their values are the ones of the last continue, or the defaults.
-  Note that RELION external jobs can have at most 10 parameters, including these.</li>
+  this class, and their values are the ones of the last continue, or the defaults.</li>
 <li>The input nodes (<code>in_parts</code> etc.) cannot be changed, as in the RELION GUI. They must
   be parameters of <code>original_class.run()</code>.</li>
 <li>The continued job.star has <code>rlnJobIsContinue = 1</code>, and its executable is changed to
