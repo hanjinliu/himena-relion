@@ -362,26 +362,61 @@ def test_write_selection_3d(tmp_path: Path):
     assert df.height == 30 + 6
 
 
-def test_data_and_model_star_path(tmp_path: Path):
+def test_data_star_path_and_model_star_path(tmp_path: Path):
+    fn_opt = "Class2D/job009/run_it025_optimiser.star"
+    fn_data = "Class2D/job009/run_it025_data.star"
+    fn_model = "Class2D/job009/run_it025_model.star"
+    header = "\n# version 50001\n\ndata_optimiser_general\n\n"
+
+    # the paths written in the optimiser.star
     _write(
-        tmp_path / "Class2D/job009/run_it025_optimiser.star",
-        "\n# version 50001\n\ndata_optimiser_general\n\n"
-        "_rlnModelStarFile Class2D/job009/run_it025_model.star\n"
+        tmp_path / fn_opt,
+        header + "_rlnModelStarFile Class2D/job009/other_model.star\n"
         "_rlnExperimentalDataStarFile Class2D/job009/other_data.star\n",
     )
-    # the data.star is the one written in the optimiser.star
-    assert _sel.data_and_model_star_path(
-        "Class2D/job009/run_it025_optimiser.star", tmp_path
-    ) == ("Class2D/job009/other_data.star", "Class2D/job009/run_it025_model.star")
-    # a model.star does not have the path, so it is derived from the file name
-    assert _sel.data_and_model_star_path(
-        "Class2D/job009/run_it025_model.star", tmp_path
-    ) == ("Class2D/job009/run_it025_data.star", "Class2D/job009/run_it025_model.star")
+    assert _sel.data_star_path(fn_opt, tmp_path) == "Class2D/job009/other_data.star"
+    assert _sel.model_star_path(fn_opt, tmp_path) == "Class2D/job009/other_model.star"
+
+    # derived from the file name if the entry is missing ...
+    _write(tmp_path / fn_opt, header + "_rlnModelStarFile Class2D/job009/m.star\n")
+    assert _sel.data_star_path(fn_opt, tmp_path) == fn_data
+    assert _sel.model_star_path(fn_opt, tmp_path) == "Class2D/job009/m.star"
+    # ... the optimiser.star is empty ...
+    _write(tmp_path / fn_opt, "")
+    assert _sel.data_star_path(fn_opt, tmp_path) == fn_data
+    assert _sel.model_star_path(fn_opt, tmp_path) == fn_model
+    # ... or the optimiser.star does not exist
+    (tmp_path / fn_opt).unlink()
+    assert _sel.data_star_path(fn_opt, tmp_path) == fn_data
+    assert _sel.model_star_path(fn_opt, tmp_path) == fn_model
+
+    # a model.star does not have the path to the data.star
+    for suffix in ["_model.star", "_half1_model.star"]:
+        fn = f"Class2D/job009/run_it025{suffix}"
+        assert _sel.data_star_path(fn, tmp_path) == fn_data
+        assert _sel.model_star_path(fn, tmp_path) == fn
+
+    for func in [_sel.data_star_path, _sel.model_star_path]:
+        with pytest.raises(ValueError):
+            func("Class2D/job009/particles.star", tmp_path)
+
+
+def _viewer_items(qtbot, job_dir: JobDirectory) -> tuple[str, int]:
+    """Return the HTML and the number of tables of the results viewer."""
+    viewer = QSelectInteractiveViewer(job_dir)
+    qtbot.addWidget(viewer)
+    items = list(viewer.insert_html(job_dir))
+    html = "".join(s for s in items if isinstance(s, str))
+    return html, sum(isinstance(s, np.ndarray) for s in items)
 
 
 def test_results_viewer_3d(qtbot, tmp_path: Path):
     # the current directory is not the project directory
     job_dir = _make_project(tmp_path, is_3d=True)
+    cdir = tmp_path / "Class3D/job009"
+    # nothing to show before the selection
+    html, num_tables = _viewer_items(qtbot, job_dir)
+    assert (html, num_tables) == ("Not enough output files to display results.", 0)
     _sel.write_selection(
         job_dir,
         _load(job_dir),
@@ -389,10 +424,9 @@ def test_results_viewer_3d(qtbot, tmp_path: Path):
         write_class_averages=False,
         log=lambda _: None,
     )
-    tmp_path.joinpath("Class3D/job009/run_it025_class004.mrc").unlink()
-    viewer = QSelectInteractiveViewer(job_dir)
-    qtbot.addWidget(viewer)
-    html = "".join(s for s in viewer.insert_html(job_dir) if isinstance(s, str))
+    cdir.joinpath("run_it025_class004.mrc").unlink()
+    html, num_tables = _viewer_items(qtbot, job_dir)
+    assert num_tables == 1
     selected, removed = html.split("Removed Classes")
 
     def _name(i: int) -> str:
@@ -404,6 +438,41 @@ def test_results_viewer_3d(qtbot, tmp_path: Path):
     assert selected.count("<img") == 2 * 3  # XY, XZ and YZ projections
     assert removed.count("<img") == 2 * 3
     assert removed.count("No image data.") == 1  # the deleted class004.mrc
+
+    # the class maps do not need the data.star
+    cdir.joinpath("run_it025_data.star").unlink()
+    html, num_tables = _viewer_items(qtbot, job_dir)
+    assert num_tables == 0
+    assert "Not enough output files" in html
+    assert html.count("<img") == 4 * 3
+
+    # the model.star is found from the file name without the optimiser.star
+    cdir.joinpath("run_it025_optimiser.star").unlink()
+    html, _ = _viewer_items(qtbot, job_dir)
+    assert html.count("<img") == 4 * 3
+
+
+def test_results_viewer_2d(qtbot, tmp_path: Path):
+    job_dir = _make_project(tmp_path)
+    _sel.write_selection(
+        job_dir,
+        _load(job_dir),
+        np.array([1, 0, 0, 1, 0], dtype=bool),
+        write_class_averages=True,
+        log=lambda _: None,
+    )
+    html, num_tables = _viewer_items(qtbot, job_dir)
+    assert num_tables == 1
+    selected, removed = html.split("Removed Classes")
+    assert selected.count("<img") == 2
+    assert removed.count("<img") == 3
+
+    # the class averages do not need the data.star
+    tmp_path.joinpath("Class2D/job009/run_it025_data.star").unlink()
+    html, num_tables = _viewer_items(qtbot, job_dir)
+    assert num_tables == 0
+    assert "Not enough output files" in html
+    assert html.count("<img") == 5
 
 
 def test_recenter(tmp_path: Path):

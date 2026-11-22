@@ -11,8 +11,8 @@ from starfile_rs import read_star, read_star_block
 
 from himena_relion._widgets import QJobScrollArea, register_job, QImageViewTextEdit
 from himena_relion import _job_dir
-from himena_relion.hijack.select_interactive import data_and_model_star_path
-from himena_relion.schemas import ModelClasses, RelionPipelineModel, ModelStarModel
+from himena_relion.hijack.select_interactive import data_star_path, model_star_path
+from himena_relion.schemas import ModelClasses, RelionPipelineModel
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -131,49 +131,52 @@ class QSelectInteractiveViewer(QSelectJobBase):
             _LOGGER.debug("%s Updated", job_dir.job_number)
 
     def insert_html(self, job_dir: _job_dir.JobDirectory):
-        is_2d = job_dir.path.joinpath("class_averages.star").exists()
-        if is_2d:
-            yield from self._insert_html_class2d(job_dir)
+        # The summary and the class images need different files, so each of them is
+        # shown if its files are available.
+        class_avg_path = job_dir.path / "class_averages.star"
+        outputs = [job_dir.path / "particles.star", _backup_selection_path(job_dir)]
+        if not any(p.exists() for p in [class_avg_path, *outputs]):
+            yield _NOT_ENOUGH_MSG
+            return
+        yield from self._insert_summary(job_dir)
+        if class_avg_path.exists():
+            yield from self._insert_html_class2d(job_dir, class_avg_path)
         else:
             yield from self._insert_html_class3d(job_dir)
 
-    def _insert_html_class2d(self, job_dir: _job_dir.JobDirectory):
-        class_avg_path = job_dir.path.joinpath("class_averages.star")
-        if not class_avg_path.exists():
-            yield _NOT_ENOUGH_MSG
-            return
+    def _insert_summary(self, job_dir: _job_dir.JobDirectory):
+        """Insert the number of selected and removed particles."""
+        yield "<h2>Summary</h2>"
         path_all = get_particles_star_before(job_dir)
         path_sel = job_dir.path / "particles.star"
         if path_all is None or not (path_sel.exists() and path_all.exists()):
-            yield _NOT_ENOUGH_MSG
+            yield f"{_NOT_ENOUGH_MSG}<br>"
             return
-        model = ModelClasses.validate_file(class_avg_path)
-        # model.ref_image[0] is like:
-        # 00000002@Class2D/job010/run_it200_classes.mrcs
-        class2d_path = model.ref_image[0].split("@")[1]
-        class2d_selected = {int(_id.split("@")[0]) - 1 for _id in model.ref_image}
-
-        with mrcfile.open(self._job_dir.resolve_path(class2d_path)) as mrc:
-            class2d_arr = np.asarray(mrc.data, dtype=np.float32)
-
-        yield "<h2>Summary</h2>"
         try:
-            block_all = read_star_block(path_all, "particles").trust_loop()
-            block_selected = read_star_block(path_sel, "particles").trust_loop()
+            n_all = len(read_star_block(path_all, "particles").trust_loop())
+            n_selected = len(read_star_block(path_sel, "particles").trust_loop())
         except Exception:
-            return "Output file is broken or missing."
-        n_all = len(block_all)
-        if n_all == 0:
+            _LOGGER.debug("Failed to read the particles", exc_info=True)
+            yield "Output file is broken or missing.<br>"
             return
-        n_selected = len(block_selected)
-        n_removed = n_all - n_selected
+        if n_all > 0:
+            n_removed = n_all - n_selected
+            yield self._get_summary_table(n_selected, n_removed, n_all)
 
-        yield self._get_summary_table(n_selected, n_removed, n_all)
-
-        is_selected = get_is_selected(job_dir)
-        if is_selected is None:
-            yield "Could not determine which particles are selected."
+    def _insert_html_class2d(
+        self, job_dir: _job_dir.JobDirectory, class_avg_path: Path
+    ):
+        try:
+            ref_images = ModelClasses.validate_file(class_avg_path).ref_image
+            # ref_images[0] is like: 00000002@Class2D/job010/run_it200_classes.mrcs
+            class2d_path = job_dir.resolve_path(ref_images[0].split("@")[1])
+            with mrcfile.open(class2d_path) as mrc:
+                class2d_arr = np.asarray(mrc.data, dtype=np.float32)
+        except Exception:
+            _LOGGER.debug("Failed to read the class averages", exc_info=True)
+            yield "Could not read the class averages."
             return
+        class2d_selected = {int(_id.split("@")[0]) - 1 for _id in ref_images}
 
         # print selected and removed HTML images in the text edit
         images_selected: list[tuple[np.ndarray, str]] = []
@@ -195,28 +198,9 @@ class QSelectInteractiveViewer(QSelectJobBase):
                 yield f'<img src="data:image/png;base64,{img_str}"/>'
 
     def _insert_html_class3d(self, job_dir: _job_dir.JobDirectory):
-        path_all = get_particles_star_before(job_dir)
-        path_sel = job_dir.path / "particles.star"
-        if path_all is None or not (path_sel.exists() and path_all.exists()):
-            yield _NOT_ENOUGH_MSG
-            return
-        yield "<h2>Summary</h2>"
-        try:
-            block_all = read_star_block(path_all, "particles").trust_loop()
-            block_selected = read_star_block(path_sel, "particles").trust_loop()
-        except Exception:
-            return "Output file is broken or missing."
-        n_all = len(block_all)
-        if n_all == 0:
-            return
-        n_selected = len(block_selected)
-        n_removed = n_all - n_selected
-
-        yield self._get_summary_table(n_selected, n_removed, n_all)
-
         is_selected = get_is_selected(job_dir)
         if is_selected is None:
-            yield "Could not determine which particles are selected."
+            yield "Could not determine which classes are selected."
             return
 
         try:
@@ -374,26 +358,29 @@ class QSelectOnValueViewer(QSelectJobBase):
 _NOT_ENOUGH_MSG = "Not enough output files to display results."
 
 
-def _input_data_and_model_star(job_dir: _job_dir.JobDirectory) -> tuple[Path, Path]:
-    """Return the data.star and model.star of the classification job of the input."""
+def _input_fn_model(job_dir: _job_dir.JobDirectory) -> str:
+    """Return the input optimiser.star (or model.star) of the selection job."""
     pipeline = RelionPipelineModel.validate_file(job_dir.job_pipeline())
-    fn_model = pipeline.input_edges.from_node[0]
-    rln_dir = job_dir.relion_project_dir
-    fn_data, fn_model_star = data_and_model_star_path(fn_model, rln_dir)
-    return rln_dir / fn_data, rln_dir / fn_model_star
+    return pipeline.input_edges.from_node[0]
 
 
 def get_particles_star_before(job_dir: _job_dir.JobDirectory) -> Path | None:
     """Return the path to the data.star of the input, or None if not found."""
+    rln_dir = job_dir.relion_project_dir
     try:
-        return _input_data_and_model_star(job_dir)[0]
+        fn_data = data_star_path(_input_fn_model(job_dir), rln_dir)
     except Exception:
         _LOGGER.debug("Failed to find the input data.star", exc_info=True)
         return None
+    return rln_dir / fn_data
+
+
+def _backup_selection_path(job_dir: _job_dir.JobDirectory) -> Path:
+    return job_dir.path / "backup_selection.star"
 
 
 def get_is_selected(job_dir: _job_dir.JobDirectory) -> NDArray[np.bool_] | None:
-    path = job_dir.path / "backup_selection.star"
+    path = _backup_selection_path(job_dir)
     try:
         df = read_star(path).first().trust_loop().to_polars()
         return df["rlnSelected"].to_numpy() > 0
@@ -431,7 +418,8 @@ def read_subtomo_as_2d(image_name: str, relion_dir: Path) -> NDArray[np.float32]
 
 def class_map_paths(job_dir: _job_dir.JobDirectory) -> list[Path]:
     """Return the absolute paths to the class maps listed in the input model.star."""
-    _, model_star_path = _input_data_and_model_star(job_dir)
-    model_star = ModelStarModel.validate_file(model_star_path)
     rln_dir = job_dir.relion_project_dir
-    return [rln_dir / p for p in model_star.classes.ref_image]
+    fn_model_star = model_star_path(_input_fn_model(job_dir), rln_dir)
+    # only the model_classes table is needed
+    block = read_star_block(rln_dir / fn_model_star, "model_classes").trust_loop()
+    return [rln_dir / p for p in block.to_polars()["rlnReferenceImage"]]

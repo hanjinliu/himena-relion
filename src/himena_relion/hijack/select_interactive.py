@@ -67,9 +67,8 @@ class ClassSelectionInput:
     def from_fn_model(cls, fn_model: str, rln_dir: str | Path) -> ClassSelectionInput:
         """Load the input, in the same way as `relion_display` does."""
         rln_dir = Path(rln_dir)
-        fn_data, fn_model_star = data_and_model_star_path(fn_model, rln_dir)
-        model_star = _resolve(rln_dir, fn_model_star)
-        data_star = _resolve(rln_dir, fn_data)
+        model_star = _resolve(rln_dir, model_star_path(fn_model, rln_dir))
+        data_star = _resolve(rln_dir, data_star_path(fn_model, rln_dir))
         star_model = read_star(model_star)
         if "model_classes" not in star_model:
             raise ValueError(f"model_classes table not found in {model_star}.")
@@ -444,29 +443,56 @@ def _is_yes(value) -> bool:
     return str(value).strip().lower() in ("yes", "true", "1")
 
 
-def data_and_model_star_path(fn_model: str, rln_dir: Path) -> tuple[str, str]:
-    """Return (data.star, model.star) for the input of a class selection.
+_MODEL_STAR_SUFFIXES = ("_half1_model.star", "_half2_model.star", "_model.star")
+_OPTIMISER_STAR_SUFFIX = "_optimiser.star"
 
-    The paths are relative to the RELION project directory, as written in the files.
-    For an optimiser.star, both of them are read from its optimiser_general block. A
-    model.star does not have the path to the data.star, so it is derived from the file
-    name, same as Displayer::initialise.
+
+def data_star_path(fn_model: str, rln_dir: Path) -> str:
+    """Return the data.star of the input (optimiser.star or model.star) of a selection.
+
+    The path is relative to the RELION project directory, as written in the files. For
+    an optimiser.star, it is read from the file if available. A model.star does not
+    have the path, so it is derived from the file name, same as Displayer::initialise.
+    This function does not check if the data.star exists.
     """
-    for suffix in ["_half1_model.star", "_half2_model.star", "_model.star"]:
+    for suffix in _MODEL_STAR_SUFFIXES:
         if suffix in fn_model:
-            return fn_model.replace(suffix, "_data.star", 1), fn_model
-    if "_optimiser.star" in fn_model:
-        star = read_star(_resolve(rln_dir, fn_model))
-        if (block := star.get("optimiser_general")) is None:
-            block = star.first()
-        params = block.trust_single().to_dict()
-        fn_data = params["rlnExperimentalDataStarFile"]
-        fn_model_star = params["rlnModelStarFile"]
-        return str(fn_data), str(fn_model_star)
-    raise ValueError(
-        f"Input {fn_model!r} must be an optimiser.star or model.star file of a "
-        "classification job."
+            return fn_model.replace(suffix, "_data.star", 1)
+    return _path_in_optimiser(
+        fn_model, rln_dir, "rlnExperimentalDataStarFile", "_data.star"
     )
+
+
+def model_star_path(fn_model: str, rln_dir: Path) -> str:
+    """Return the model.star of the input (optimiser.star or model.star) of a selection.
+
+    The path is relative to the RELION project directory, as written in the files. For
+    an optimiser.star, it is read from the file if available. This function does not
+    check if the model.star exists.
+    """
+    if any(suffix in fn_model for suffix in _MODEL_STAR_SUFFIXES):
+        return fn_model
+    return _path_in_optimiser(fn_model, rln_dir, "rlnModelStarFile", "_model.star")
+
+
+def _path_in_optimiser(fn_opt: str, rln_dir: Path, key: str, suffix: str) -> str:
+    """Return the path of `key` in the optimiser.star.
+
+    If the optimiser.star does not exist or does not have the entry, the path is
+    derived from the file name by replacing "_optimiser.star" with `suffix`.
+    """
+    if _OPTIMISER_STAR_SUFFIX not in fn_opt:
+        raise ValueError(
+            f"Input {fn_opt!r} must be an optimiser.star or model.star file of a "
+            "classification job."
+        )
+    if (path := _resolve(rln_dir, fn_opt)).exists():
+        star = read_star(path)
+        if (block := star.get("optimiser_general")) is None and len(star) > 0:
+            block = star.first()
+        if block is not None and (value := block.trust_single().to_dict().get(key)):
+            return str(value)
+    return fn_opt.replace(_OPTIMISER_STAR_SUFFIX, suffix, 1)
 
 
 def _resolve(rln_dir: Path, path: str | Path) -> Path:
