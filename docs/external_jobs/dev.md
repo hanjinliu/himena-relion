@@ -110,6 +110,14 @@ These parameters do not need type annotations.
 `--pipeline_control <job directory>` to any command that contains `relion_` (e.g. a
 class ID such as `my_relion_plugin.jobs:MyJob`), and `himena-relion` ignores it.
 
+### Number of parameters
+
+RELION external jobs have only 10 parameter slots (`param1_label` to `param10_label`).
+The reserved parameters above do not use the slots. If `run()` has more than 10 other
+parameters, the 11th and later ones are written to "Additional arguments"
+(`other_args`) of the job as `--name value`. RELION appends them to the command line,
+so `run()` gets all the parameters either way.
+
 ### Continue the job
 
 To make your job continuable, like the "Continue" button of the RELION GUI, define a
@@ -139,7 +147,6 @@ class MyJobContinue(RelionExternalContinue):
 - `run()` can have parameters that are not in `original_class.run()`, like
   `niter_more` above. They are written to job.star only when the job is continued by
   this class, and their values are the ones of the last continue, or the defaults.
-  Note that RELION external jobs can have at most 10 parameters, including these.
 - The input nodes (`in_parts` etc.) cannot be changed, as in the RELION GUI. They must
   be parameters of `original_class.run()`.
 - The continued job.star has `rlnJobIsContinue = 1`, and its executable is changed to

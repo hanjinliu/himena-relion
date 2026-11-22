@@ -11,6 +11,7 @@ test process by `FakeRelionPipeliner.run_external`.
 """
 
 import re
+import shlex
 import shutil
 import subprocess
 from pathlib import Path
@@ -274,6 +275,8 @@ class FakeRelionPipeliner:
                 if value := params[f"param{i}_value"]:
                     argv.append(value)
         argv += ["--j", params["nr_threads"]]
+        # "Additional arguments" are appended as is, and split by the shell
+        argv += shlex.split(params["other_args"])
         # RELION (`RelionJob::prepareFinalCommand`) appends this to any command that
         # contains "relion_" anywhere.
         if "relion_" in " ".join([params["fn_exe"], *argv]):

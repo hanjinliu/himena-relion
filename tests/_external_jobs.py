@@ -1,5 +1,7 @@
 """External jobs for testing, picked by "tests._external_jobs:<class name>"."""
 
+import json
+
 from himena_relion.external import RelionExternalContinue, RelionExternalJob
 
 
@@ -63,6 +65,47 @@ class MultiplyTotal(RelionExternalContinue):
 
     def run(self, value: int = 2):
         _update_total(self, lambda total: total * value)
+
+
+class ManyParamsJob(RelionExternalJob):
+    """More parameters than the 10 parameter slots of RELION external jobs."""
+
+    def output_nodes(self):
+        return [("params.json", "LogFile.json.himena.params")]
+
+    def run(
+        self,
+        in_mics,
+        p1: int = 1,
+        p2: int = 2,
+        p3: int = 3,
+        p4: int = 4,
+        p5: int = 5,
+        p6: int = 6,
+        p7: int = 7,
+        p8: int = 8,
+        p9: int = 9,
+        p10: int = 10,
+        text: str = "a",
+        empty: str = "b",
+        flag: bool = False,
+        j=1,
+    ):
+        slots = [p1, p2, p3, p4, p5, p6, p7, p8, p9, p10]
+        params = {f"p{i}": value for i, value in enumerate(slots, start=1)}
+        params.update(text=text, empty=empty, flag=flag, j=j)
+        path = self.output_job_dir.path.joinpath("params.json")
+        path.write_text(json.dumps(params))
+
+
+class ManyParamsContinue(RelionExternalContinue):
+    """Continue `ManyParamsJob` (`more` is only for continuing)."""
+
+    original_class = ManyParamsJob
+
+    def run(self, in_mics, text: str = "a", flag: bool = False, more: int = 0):
+        path = self.output_job_dir.path.joinpath("continued.json")
+        path.write_text(json.dumps({"text": text, "flag": flag, "more": more}))
 
 
 class TouchJob(RelionExternalJob):

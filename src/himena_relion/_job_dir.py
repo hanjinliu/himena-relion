@@ -337,6 +337,8 @@ class ExternalJobDirectory(JobDirectory):
         return None
 
     def get_job_params_as_dict(self) -> dict[str, str]:
+        from himena_relion.external._other_args import NUM_PARAM_SLOTS, parse_other_args
+
         param_dict = super().get_job_params_as_dict()
         out = {}
         for k in [
@@ -345,12 +347,15 @@ class ExternalJobDirectory(JobDirectory):
         ]:  # fmt: skip
             if k in param_dict:
                 out[k] = param_dict[k]
-        for ith in range(1, 11):
+        for ith in range(1, NUM_PARAM_SLOTS + 1):
             label_key = f"param{ith}_label"
             value_key = f"param{ith}_value"
             if label_key in param_dict and value_key in param_dict:
                 out[param_dict[label_key]] = param_dict[value_key]
         out.pop("", None)  # when there are empty param labels
+        # Parameters that do not fit in the slots are in "Additional arguments". They
+        # come after the slots in the command line, so they win as in `parse_argv`.
+        out.update(parse_other_args(param_dict.get("other_args", "")))
         return out
 
 
