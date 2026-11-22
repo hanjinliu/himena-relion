@@ -8,7 +8,8 @@ from himena_relion.relion5.widgets._class3d import QClass3DViewer
 from himena_relion.schemas import ParticleMetaModel
 from himena_relion.testing import JobWidgetTester
 
-_BILD_TEXT = """
+# no leading blank line: the bild reader stops at the first blank line
+_BILD_TEXT = """\
 .color 0.166667 0 0.833333
 .cylinder 192.261 192.261 132.16 215.955 215.955 137.824 7.41416
 .color 0.166667 0 0.833333
@@ -48,6 +49,15 @@ def test_class3d_widget(
     assert tester.widget._iter_choice.maximum() == 0
     assert tester.widget._list_widget.rowCount() == 3
 
+    # arrows are read from the bild file, and shown only while toggled on
+    canvas = tester.widget._viewer._canvas
+    assert canvas.arrow_visual.arrows.shape == (3, 6)
+    assert not canvas.arrow_visual.visible
+    tester.widget._arrow_visible.setChecked(True)
+    assert canvas.arrow_visual.visible
+    tester.widget._arrow_visible.setChecked(False)
+    assert not canvas.arrow_visual.visible
+
     ### Prepare iteration 1 ###
 
     tester.write_text(
@@ -56,7 +66,9 @@ def test_class3d_widget(
     )
     for class_id in [1, 2, 3]:
         tester.write_random_mrc(f"run_it001_class00{class_id}.mrc", (6, 6, 6))
-        tester.write_text(f"run_it001_class00{class_id}_angdist.bild", _BILD_TEXT)
+        # RELION writes an empty bild file for a class without particles
+        bild_text = _BILD_TEXT if class_id != 3 else ""
+        tester.write_text(f"run_it001_class00{class_id}_angdist.bild", bild_text)
 
         tester.widget._arrow_visible.setChecked(True)
         tester.widget._arrow_visible.setChecked(False)
@@ -82,6 +94,20 @@ def test_class3d_widget(
     tester.widget._list_widget.set_current_row(1)
     QApplication.processEvents()
     assert tester.widget._list_widget.rowCount() == 3
+
+    tester.widget._arrow_visible.setChecked(True)
+    assert canvas.arrow_visual.visible
+    assert canvas.arrow_visual.arrows.shape == (3, 6)
+    # class 3 has an empty bild file: hide the arrows but keep the map
+    tester.widget._list_widget.set_current_row(2)
+    QApplication.processEvents()
+    assert canvas.arrows_visible
+    assert not canvas.arrow_visual.visible
+    assert tester.widget._viewer.has_image
+    tester.widget._list_widget.set_current_row(0)
+    QApplication.processEvents()
+    assert canvas.arrow_visual.visible
+    assert canvas.arrow_visual.arrows.shape == (3, 6)
 
     with pytest.raises(FileNotFoundError):
         tester.widget._continue_from_here_clicked()
