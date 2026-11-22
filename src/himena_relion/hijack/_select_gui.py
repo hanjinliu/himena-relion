@@ -280,6 +280,9 @@ class QClassSelector(QtW.QWidget):
         )
 
         self._save_btn = QtW.QPushButton("Save selection", self)
+        font = self._save_btn.font()
+        font.setPointSize(12)
+        self._save_btn.setFont(font)
         self._save_btn.setToolTip(
             "Save the selected classes and their particles, and finish this job."
         )

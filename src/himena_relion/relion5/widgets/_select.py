@@ -11,7 +11,7 @@ from starfile_rs import read_star, read_star_block
 
 from himena_relion._widgets import QJobScrollArea, register_job, QImageViewTextEdit
 from himena_relion import _job_dir
-from himena_relion.schemas import ModelClasses, RelionPipelineModel
+from himena_relion.schemas import ModelClasses, RelionPipelineModel, ModelStarModel
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -222,15 +222,14 @@ class QSelectInteractiveViewer(QSelectJobBase):
         images_selected: list[tuple[str, np.ndarray]] = []
         images_removed: list[tuple[str, np.ndarray]] = []
         texts = ["XY", "XZ", "YZ"]
-        for path, is_sel in zip(
-            class_map_paths(job_dir, is_selected.size), is_selected
-        ):
+        for path, is_sel in zip(class_map_paths(job_dir), is_selected):
             if path is not None:
                 with mrcfile.open(path) as mrc:
                     array = np.asarray(mrc.data)
+                path_rel = job_dir.make_relative_path(path)
             else:
+                path_rel = None
                 array = None
-            path_rel = job_dir.make_relative_path(path)
             if is_sel:
                 images_selected.append((path_rel, array))
             else:
@@ -412,29 +411,12 @@ def read_subtomo_as_2d(image_name: str, relion_dir: Path) -> NDArray[np.float32]
     return None
 
 
-def class_map_paths(
-    job_dir: _job_dir.JobDirectory, num_classes: int
-) -> list[Path | None]:
+def class_map_paths(job_dir: _job_dir.JobDirectory) -> list[Path]:
     """Return the paths to the class maps."""
     pipeline = RelionPipelineModel.validate_file(job_dir.path / "job_pipeline.star")
     optimizer_star_path = Path(pipeline.input_edges.from_node[0])
-    new_stem = optimizer_star_path.stem[: -len("optimiser")] + "optimisation_set"
-    path_opt_star = (
-        job_dir.relion_project_dir / optimizer_star_path.parent / f"{new_stem}.star"
-    )
 
-    # path_opt_star is something like .../run_it0XX_optimisation_set.star
-    nchars = len("optimisation_set")
-    mrc_paths = []
-    prefix = path_opt_star.stem[:-nchars]
-    for i in range(num_classes):
-        path = (
-            job_dir.relion_project_dir
-            / path_opt_star.parent
-            / (prefix + f"class{i + 1:0>3}.mrc")
-        )
-        if path.exists():
-            mrc_paths.append(path)
-        else:
-            mrc_paths.append(None)
-    return mrc_paths
+    opt_params = read_star(optimizer_star_path).first().trust_single()
+    model_star_path = job_dir.relion_project_dir / opt_params["rlnModelStarFile"]
+    model_star = ModelStarModel.validate_file(model_star_path)
+    return [job_dir.make_relative_path(p) for p in model_star.classes.ref_image]
