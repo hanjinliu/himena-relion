@@ -67,7 +67,7 @@ class ClassSelectionInput:
     def from_fn_model(cls, fn_model: str, rln_dir: str | Path) -> ClassSelectionInput:
         """Load the input, in the same way as `relion_display` does."""
         rln_dir = Path(rln_dir)
-        fn_data, fn_model_star = _data_and_model_star_path(fn_model, rln_dir)
+        fn_data, fn_model_star = data_and_model_star_path(fn_model, rln_dir)
         model_star = _resolve(rln_dir, fn_model_star)
         data_star = _resolve(rln_dir, fn_data)
         star_model = read_star(model_star)
@@ -444,18 +444,25 @@ def _is_yes(value) -> bool:
     return str(value).strip().lower() in ("yes", "true", "1")
 
 
-def _data_and_model_star_path(fn_model: str, rln_dir: Path) -> tuple[str, str]:
-    """Return (data.star, model.star) for the input, same as Displayer::initialise."""
+def data_and_model_star_path(fn_model: str, rln_dir: Path) -> tuple[str, str]:
+    """Return (data.star, model.star) for the input of a class selection.
+
+    The paths are relative to the RELION project directory, as written in the files.
+    For an optimiser.star, both of them are read from its optimiser_general block. A
+    model.star does not have the path to the data.star, so it is derived from the file
+    name, same as Displayer::initialise.
+    """
     for suffix in ["_half1_model.star", "_half2_model.star", "_model.star"]:
         if suffix in fn_model:
             return fn_model.replace(suffix, "_data.star", 1), fn_model
     if "_optimiser.star" in fn_model:
-        fn_data = fn_model.replace("_optimiser.star", "_data.star", 1)
         star = read_star(_resolve(rln_dir, fn_model))
         if (block := star.get("optimiser_general")) is None:
             block = star.first()
-        fn_model_star = block.trust_single().to_dict()["rlnModelStarFile"]
-        return fn_data, str(fn_model_star)
+        params = block.trust_single().to_dict()
+        fn_data = params["rlnExperimentalDataStarFile"]
+        fn_model_star = params["rlnModelStarFile"]
+        return str(fn_data), str(fn_model_star)
     raise ValueError(
         f"Input {fn_model!r} must be an optimiser.star or model.star file of a "
         "classification job."

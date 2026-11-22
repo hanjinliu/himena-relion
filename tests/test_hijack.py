@@ -362,6 +362,50 @@ def test_write_selection_3d(tmp_path: Path):
     assert df.height == 30 + 6
 
 
+def test_data_and_model_star_path(tmp_path: Path):
+    _write(
+        tmp_path / "Class2D/job009/run_it025_optimiser.star",
+        "\n# version 50001\n\ndata_optimiser_general\n\n"
+        "_rlnModelStarFile Class2D/job009/run_it025_model.star\n"
+        "_rlnExperimentalDataStarFile Class2D/job009/other_data.star\n",
+    )
+    # the data.star is the one written in the optimiser.star
+    assert _sel.data_and_model_star_path(
+        "Class2D/job009/run_it025_optimiser.star", tmp_path
+    ) == ("Class2D/job009/other_data.star", "Class2D/job009/run_it025_model.star")
+    # a model.star does not have the path, so it is derived from the file name
+    assert _sel.data_and_model_star_path(
+        "Class2D/job009/run_it025_model.star", tmp_path
+    ) == ("Class2D/job009/run_it025_data.star", "Class2D/job009/run_it025_model.star")
+
+
+def test_results_viewer_3d(qtbot, tmp_path: Path):
+    # the current directory is not the project directory
+    job_dir = _make_project(tmp_path, is_3d=True)
+    _sel.write_selection(
+        job_dir,
+        _load(job_dir),
+        np.array([0, 1, 0, 0, 1], dtype=bool),
+        write_class_averages=False,
+        log=lambda _: None,
+    )
+    tmp_path.joinpath("Class3D/job009/run_it025_class004.mrc").unlink()
+    viewer = QSelectInteractiveViewer(job_dir)
+    qtbot.addWidget(viewer)
+    html = "".join(s for s in viewer.insert_html(job_dir) if isinstance(s, str))
+    selected, removed = html.split("Removed Classes")
+
+    def _name(i: int) -> str:
+        return str(Path(f"Class3D/job009/run_it025_class{i:03d}.mrc"))
+
+    # class maps are those listed in the model.star
+    assert all(_name(i) in selected for i in [2, 5])
+    assert all(_name(i) in removed for i in [1, 3, 4])
+    assert selected.count("<img") == 2 * 3  # XY, XZ and YZ projections
+    assert removed.count("<img") == 2 * 3
+    assert removed.count("No image data.") == 1  # the deleted class004.mrc
+
+
 def test_recenter(tmp_path: Path):
     img = np.zeros((16, 16), dtype=np.float32)
     img[2:5, 10:13] = 1.0  # center of mass at (3, 11)

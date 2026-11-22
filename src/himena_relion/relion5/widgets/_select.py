@@ -11,6 +11,7 @@ from starfile_rs import read_star, read_star_block
 
 from himena_relion._widgets import QJobScrollArea, register_job, QImageViewTextEdit
 from himena_relion import _job_dir
+from himena_relion.hijack.select_interactive import data_and_model_star_path
 from himena_relion.schemas import ModelClasses, RelionPipelineModel, ModelStarModel
 
 _LOGGER = logging.getLogger(__name__)
@@ -218,17 +219,23 @@ class QSelectInteractiveViewer(QSelectJobBase):
             yield "Could not determine which particles are selected."
             return
 
+        try:
+            map_paths = class_map_paths(job_dir)
+        except Exception:
+            _LOGGER.debug("Failed to read the input model.star", exc_info=True)
+            yield "Could not find the class maps of the input job."
+            return
+
         # print selected and removed HTML images in the text edit
-        images_selected: list[tuple[str, np.ndarray]] = []
-        images_removed: list[tuple[str, np.ndarray]] = []
+        images_selected: list[tuple[Path, np.ndarray | None]] = []
+        images_removed: list[tuple[Path, np.ndarray | None]] = []
         texts = ["XY", "XZ", "YZ"]
-        for path, is_sel in zip(class_map_paths(job_dir), is_selected):
-            if path is not None:
+        for path, is_sel in zip(map_paths, is_selected):
+            path_rel = job_dir.make_relative_path(path)
+            if path.exists():
                 with mrcfile.open(path) as mrc:
                     array = np.asarray(mrc.data)
-                path_rel = job_dir.make_relative_path(path)
             else:
-                path_rel = None
                 array = None
             if is_sel:
                 images_selected.append((path_rel, array))
@@ -367,11 +374,22 @@ class QSelectOnValueViewer(QSelectJobBase):
 _NOT_ENOUGH_MSG = "Not enough output files to display results."
 
 
-def get_particles_star_before(job_dir: _job_dir.JobDirectory) -> Path:
-    pipeline = RelionPipelineModel.validate_file(job_dir.path / "job_pipeline.star")
-    optimizer_star_path = Path(pipeline.input_edges.from_node[0])
-    new_stem = optimizer_star_path.stem[: -len("optimiser")] + "data"
-    return job_dir.resolve_path(optimizer_star_path.parent / f"{new_stem}.star")
+def _input_data_and_model_star(job_dir: _job_dir.JobDirectory) -> tuple[Path, Path]:
+    """Return the data.star and model.star of the classification job of the input."""
+    pipeline = RelionPipelineModel.validate_file(job_dir.job_pipeline())
+    fn_model = pipeline.input_edges.from_node[0]
+    rln_dir = job_dir.relion_project_dir
+    fn_data, fn_model_star = data_and_model_star_path(fn_model, rln_dir)
+    return rln_dir / fn_data, rln_dir / fn_model_star
+
+
+def get_particles_star_before(job_dir: _job_dir.JobDirectory) -> Path | None:
+    """Return the path to the data.star of the input, or None if not found."""
+    try:
+        return _input_data_and_model_star(job_dir)[0]
+    except Exception:
+        _LOGGER.debug("Failed to find the input data.star", exc_info=True)
+        return None
 
 
 def get_is_selected(job_dir: _job_dir.JobDirectory) -> NDArray[np.bool_] | None:
@@ -412,11 +430,8 @@ def read_subtomo_as_2d(image_name: str, relion_dir: Path) -> NDArray[np.float32]
 
 
 def class_map_paths(job_dir: _job_dir.JobDirectory) -> list[Path]:
-    """Return the paths to the class maps."""
-    pipeline = RelionPipelineModel.validate_file(job_dir.path / "job_pipeline.star")
-    optimizer_star_path = Path(pipeline.input_edges.from_node[0])
-
-    opt_params = read_star(optimizer_star_path).first().trust_single()
-    model_star_path = job_dir.relion_project_dir / opt_params["rlnModelStarFile"]
+    """Return the absolute paths to the class maps listed in the input model.star."""
+    _, model_star_path = _input_data_and_model_star(job_dir)
     model_star = ModelStarModel.validate_file(model_star_path)
-    return [job_dir.make_relative_path(p) for p in model_star.classes.ref_image]
+    rln_dir = job_dir.relion_project_dir
+    return [rln_dir / p for p in model_star.classes.ref_image]
