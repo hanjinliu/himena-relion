@@ -56,10 +56,17 @@ def test_refine3d_widget(
     assert tester.widget._viewer.has_image
     assert tester.widget._iter_choice.maximum() == 1
     assert tester.widget._iter_choice.value() == 1
+    canvas = tester.widget._viewer._canvas
     tester.widget._iter_choice.setValue(0)
     QApplication.processEvents()
+    # no run_it000_half1_class001_angdist.bild
+    assert canvas.arrows_visible
+    assert not canvas.arrow_visual.visible
+    assert tester.widget._viewer.has_image
     tester.widget._iter_choice.setValue(1)
     QApplication.processEvents()
+    assert canvas.arrow_visual.visible
+    assert canvas.arrow_visual.arrows.shape == (3, 6)
     with pytest.raises(FileNotFoundError):
         tester.widget._continue_from_here_clicked()
     tester.write_text("run_it001_optimiser.star", _OPTIMISER_TEXT)
@@ -87,19 +94,23 @@ def test_refine3d_widget_final_data(
     assert not tester.widget._viewer.has_image
 
     tester.write_random_mrc("run_class001.mrc", (6, 6, 6))
+    tester.write_text("run_class001_angdist.bild", _BILD_TEXT)
     tester.write_text(
         "run_data.star",
         ParticleMetaModel.example(size=4).to_string()
     )
 
-    tester.write_text("run_class001_angdist.bild", _BILD_TEXT)
     tester.widget._arrow_visible.setChecked(True)
     QApplication.processEvents()
 
     assert tester.widget._viewer.has_image
+    canvas = tester.widget._viewer._canvas
+    assert canvas.arrow_visual.visible
+    assert canvas.arrow_visual.arrows.shape == (3, 6)
 
 
-_BILD_TEXT = """
+# no leading blank line: the bild reader stops at the first blank line
+_BILD_TEXT = """\
 .color 0.166667 0 0.833333
 .cylinder 192.261 192.261 132.16 215.955 215.955 137.824 7.41416
 .color 0.166667 0 0.833333

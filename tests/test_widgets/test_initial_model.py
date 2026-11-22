@@ -7,7 +7,8 @@ from himena_relion.relion5.widgets._initial_model import QInitialModelViewer
 from himena_relion.schemas import ParticleMetaModel, ModelStarModel
 from himena_relion.testing import JobWidgetTester
 
-_BILD_TEXT = """
+# no leading blank line: the bild reader stops at the first blank line
+_BILD_TEXT = """\
 .color 0.166667 0 0.833333
 .cylinder 192.261 192.261 132.16 215.955 215.955 137.824 7.41416
 .color 0.166667 0 0.833333
