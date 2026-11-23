@@ -372,6 +372,7 @@ for class3d_job in [_tomo.Class3DTomoJob, _tomo.Class3DNoAlignmentTomoJob]:
         value_mapping={
             inherit_particle_diameter: "particle_diameter",
             inherit_mask: "fn_mask",
+            _always_true: "ref_correct_greyscale",
         },
     )
 

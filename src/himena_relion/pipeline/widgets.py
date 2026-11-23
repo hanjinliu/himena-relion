@@ -466,7 +466,7 @@ class QRelionPipelineFlowChart(QtW.QWidget):
             self._node_id_to_tags_map(),
         )
         if resp := self._ui().exec_choose_one_dialog(
-            title="Select the root job.",
+            title="Find Job.",
             message="Search by name, @state, #tag",
             choices=choices,
             how="palette",
