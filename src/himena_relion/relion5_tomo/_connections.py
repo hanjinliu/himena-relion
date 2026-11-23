@@ -480,6 +480,16 @@ connect_jobs(
         inherit_mask: "fn_mask",
     },
 )
+connect_jobs(
+    _tomo.ReconstructParticlesJob,
+    _spa.LocalResolutionResmapJob,
+    node_mapping={"half1.mrc": "fn_in"},
+)
+connect_jobs(
+    _tomo.ReconstructParticlesJob,
+    _spa.LocalResolutionOwnJob,
+    node_mapping={"half1.mrc": "fn_in"},
+)
 
 
 def _mask_create_search_optim(path: Path) -> str | None:
