@@ -383,6 +383,23 @@ connect_jobs(
     node_mapping={"opt_params_all_groups.txt": "opt_params"},
 )
 
+connect_jobs(
+    _spa.Refine3DJob,
+    _spa.LocalResolutionResmapJob,
+    node_mapping={"run_half1_class001_unfil.mrc": "fn_in"},
+    value_mapping={
+        inherit_mask: "fn_mask",
+    },
+)
+connect_jobs(
+    _spa.Refine3DJob,
+    _spa.LocalResolutionOwnJob,
+    node_mapping={"run_half1_class001_unfil.mrc": "fn_in"},
+    value_mapping={
+        inherit_mask: "fn_mask",
+    },
+)
+
 
 def mask_create_search_halfmap(path: Path) -> str | None:
     parents = JobDirectory(path).parent_jobs()

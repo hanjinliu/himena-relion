@@ -597,10 +597,7 @@ class Q3DViewer(Q3DViewerBase):
 
     def auto_fit(self, update_now: bool = True):
         """Automatically fit the camera to the image."""
-        img = self._canvas.image
-        self._canvas.camera.center = np.array(img.shape) / 2
-        self._canvas.camera.scale_factor = max(img.shape)
-        self._canvas.camera.update()
+        self._canvas.camera.fit_to_shape(self._canvas.image.shape)
         if update_now:
             self._canvas.update_canvas()
 
@@ -865,9 +862,11 @@ class Q3DLocalResViewer(Q3DViewerBase):
 
     def _on_camera_change(self):
         if self._surface.shading_filter is not None:
-            # Set light direction parallel to camera view direction
+            # Headlight: the light travels along the camera view direction, so the
+            # side of the surface facing the user is always lit.
             view_direction = self._canvas.camera.view_direction()
-            self._surface.shading_filter.light_dir = -view_direction
+            if np.all(np.isfinite(view_direction)):
+                self._surface.shading_filter.light_dir = view_direction
 
     def _on_auto_clicked(self):
         if self._canvas._volume_visual.method == "iso":
@@ -893,10 +892,7 @@ class Q3DLocalResViewer(Q3DViewerBase):
 
     def auto_fit(self, update_now: bool = True):
         """Automatically fit the camera to the image."""
-        img = self._surface._data
-        self._canvas.camera.center = np.array(img.shape) / 2
-        self._canvas.camera.scale_factor = max(img.shape)
-        self._canvas.camera.update()
+        self._canvas.camera.fit_to_shape(self._surface._data.shape)
         if update_now:
             self._canvas.update_canvas()
 
@@ -950,6 +946,8 @@ class Q3DLocalResViewer(Q3DViewerBase):
         if shading == "none":
             shading = None
         self._surface.shading = shading
+        # the shading filter may have just been created with vispy's default light
+        self._on_camera_change()
         self._surface.update()
         self._canvas.update_canvas()
 

@@ -221,10 +221,7 @@ class _Vispy3DBase(_VispyBase):
         self._volume_visual.clim = float(c0), float(c1)
 
     def auto_fit(self):
-        img = self._image_data
-        self._camera.center = np.array(img.shape) / 2
-        self._camera.scale_factor = max(img.shape)
-        self._camera.update()
+        self._camera.fit_to_shape(self._image_data.shape)
 
 
 class _Vispy3DDensityBase(_Vispy3DBase):
@@ -478,10 +475,7 @@ class _Vispy3DTomogramBase(_Vispy3DBase):
             return
         nz = self._array_view_nz
         ny, nx = self._array_view.get_shape()
-        img_shape = (nx, ny, nz)
-        self._camera.center = np.array(img_shape) / 2
-        self._camera.scale_factor = max(img_shape)
-        self._camera.update()
+        self._camera.fit_to_shape((nx, ny, nz))
 
 
 ##########################################################

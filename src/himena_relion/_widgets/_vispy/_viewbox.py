@@ -346,8 +346,38 @@ class ArcballCamera(scene.ArcballCamera):
         self._quaternion = Quaternion(w, x, y, z)
         self.view_changed()
 
-    def view_direction(self):
-        return -self.rotation.as_matrix()[0]
+    def fit_to_shape(self, shape: tuple[float, ...]):
+        """Center the camera on a box of `shape` (in scene axis order) and fit it.
+
+        The depth range is also scaled to the box size. vispy's default
+        ``depth_value=1e6`` assumes a 24-bit depth buffer, but offscreen (EGL)
+        rendering via ``SceneCanvas.render`` uses a 16-bit one, where the default
+        makes one depth step ~30 voxels wide and breaks the depth test (stripe
+        artifacts, back faces drawn over front faces).
+        """
+        size = max(float(max(shape)), 1.0)
+        self.center = np.asarray(shape, dtype=np.float64) / 2
+        self.scale_factor = size
+        # orthographic: near/far planes at +/- depth_value around the center, which
+        # covers the box diagonal (~0.87 * size) with margin for panning.
+        self.depth_value = size * 4
+        self.update()
+
+    def view_direction(self) -> NDArray[np.float64]:
+        """Unit vector in scene coordinates pointing from the camera into the scene.
+
+        This is derived from the actual scene transform (the same way as the eye
+        vector in vispy's ShadingFilter), because ArcballCamera does not apply the
+        quaternion as a plain rotation of the scene coordinates.
+        """
+        tr = self._viewbox.scene.transform  # scene -> viewbox (z is depth)
+        pos = tr.map(np.append(np.asarray(self.center, dtype=np.float64), 1.0))
+        pos = pos / pos[3]
+        dz = np.array([0.0, 0.0, 1e-3, 0.0])
+        front = tr.imap(pos - dz)
+        back = tr.imap(pos + dz)
+        vec = back[:3] / back[3] - front[:3] / front[3]
+        return vec / np.linalg.norm(vec)
 
 
 BUTTONMAP = {

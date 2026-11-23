@@ -401,13 +401,22 @@ def test_data_star_path_and_model_star_path(tmp_path: Path):
             func("Class2D/job009/particles.star", tmp_path)
 
 
-def _viewer_items(qtbot, job_dir: JobDirectory) -> tuple[str, int]:
-    """Return the HTML and the number of tables of the results viewer."""
+def _viewer_items(qtbot, job_dir: JobDirectory) -> tuple[str, int, list[str]]:
+    """Return the HTML, the number of tables and the texts drawn on the images of
+    the results viewer."""
     viewer = QSelectInteractiveViewer(job_dir)
     qtbot.addWidget(viewer)
+    texts: list[str] = []
+    to_base64 = viewer._text_edit.image_to_base64
+
+    def _image_to_base64(img, text=""):
+        texts.append(text)
+        return to_base64(img, text)
+
+    viewer._text_edit.image_to_base64 = _image_to_base64
     items = list(viewer.insert_html(job_dir))
     html = "".join(s for s in items if isinstance(s, str))
-    return html, sum(isinstance(s, np.ndarray) for s in items)
+    return html, sum(isinstance(s, np.ndarray) for s in items), texts
 
 
 def test_results_viewer_3d(qtbot, tmp_path: Path):
@@ -415,7 +424,7 @@ def test_results_viewer_3d(qtbot, tmp_path: Path):
     job_dir = _make_project(tmp_path, is_3d=True)
     cdir = tmp_path / "Class3D/job009"
     # nothing to show before the selection
-    html, num_tables = _viewer_items(qtbot, job_dir)
+    html, num_tables, _ = _viewer_items(qtbot, job_dir)
     assert (html, num_tables) == ("Not enough output files to display results.", 0)
     _sel.write_selection(
         job_dir,
@@ -425,12 +434,12 @@ def test_results_viewer_3d(qtbot, tmp_path: Path):
         log=lambda _: None,
     )
     cdir.joinpath("run_it025_class004.mrc").unlink()
-    html, num_tables = _viewer_items(qtbot, job_dir)
+    html, num_tables, _ = _viewer_items(qtbot, job_dir)
     assert num_tables == 1
     selected, removed = html.split("Removed Classes")
 
     def _name(i: int) -> str:
-        return str(Path(f"Class3D/job009/run_it025_class{i:03d}.mrc"))
+        return f"Class3D/job009/run_it025_class{i:03d}.mrc"
 
     # class maps are those listed in the model.star
     assert all(_name(i) in selected for i in [2, 5])
@@ -441,18 +450,47 @@ def test_results_viewer_3d(qtbot, tmp_path: Path):
 
     # the class maps do not need the data.star
     cdir.joinpath("run_it025_data.star").unlink()
-    html, num_tables = _viewer_items(qtbot, job_dir)
+    html, num_tables, _ = _viewer_items(qtbot, job_dir)
     assert num_tables == 0
     assert "Not enough output files" in html
     assert html.count("<img") == 4 * 3
 
     # the model.star is found from the file name without the optimiser.star
     cdir.joinpath("run_it025_optimiser.star").unlink()
-    html, _ = _viewer_items(qtbot, job_dir)
+    html, _, _ = _viewer_items(qtbot, job_dir)
     assert html.count("<img") == 4 * 3
 
 
-def test_results_viewer_2d(qtbot, tmp_path: Path):
+@pytest.mark.parametrize("do_recenter", [False, True])
+def test_results_viewer_2d(qtbot, tmp_path: Path, do_recenter: bool):
+    job_dir = _make_project(tmp_path)
+    _sel.write_selection(
+        job_dir,
+        _load(job_dir),
+        np.array([1, 0, 0, 1, 0], dtype=bool),
+        write_class_averages=True,
+        do_recenter=do_recenter,
+        log=lambda _: None,
+    )
+    # recentered images of the selected classes are written in a new stack
+    assert job_dir.path.joinpath("class_averages.mrcs").exists() == do_recenter
+    html, num_tables, texts = _viewer_items(qtbot, job_dir)
+    assert num_tables == 1
+    # all the classes of the input model.star, labeled with the class numbers
+    assert texts == ["1", "4", "2", "3", "5"]
+    selected, removed = html.split("Removed Classes")
+    assert selected.count("<img") == 2
+    assert removed.count("<img") == 3
+
+    # the class averages do not need the data.star
+    tmp_path.joinpath("Class2D/job009/run_it025_data.star").unlink()
+    html, num_tables, texts = _viewer_items(qtbot, job_dir)
+    assert num_tables == 0
+    assert "Not enough output files" in html
+    assert texts == ["1", "4", "2", "3", "5"]
+
+
+def test_results_viewer_2d_without_backup(qtbot, tmp_path: Path):
     job_dir = _make_project(tmp_path)
     _sel.write_selection(
         job_dir,
@@ -461,18 +499,16 @@ def test_results_viewer_2d(qtbot, tmp_path: Path):
         write_class_averages=True,
         log=lambda _: None,
     )
-    html, num_tables = _viewer_items(qtbot, job_dir)
-    assert num_tables == 1
-    selected, removed = html.split("Removed Classes")
-    assert selected.count("<img") == 2
-    assert removed.count("<img") == 3
+    # the classes in class_averages.star are regarded as selected
+    job_dir.path.joinpath("backup_selection.star").unlink()
+    _, _, texts = _viewer_items(qtbot, job_dir)
+    assert texts == ["1", "4", "2", "3", "5"]
 
-    # the class averages do not need the data.star
-    tmp_path.joinpath("Class2D/job009/run_it025_data.star").unlink()
-    html, num_tables = _viewer_items(qtbot, job_dir)
-    assert num_tables == 0
-    assert "Not enough output files" in html
-    assert html.count("<img") == 5
+    # a missing image is shown as such
+    tmp_path.joinpath("Class2D/job009/run_it025_classes.mrcs").unlink()
+    html, _, texts = _viewer_items(qtbot, job_dir)
+    assert texts == []
+    assert html.count("No image data.") == 5
 
 
 def test_recenter(tmp_path: Path):
