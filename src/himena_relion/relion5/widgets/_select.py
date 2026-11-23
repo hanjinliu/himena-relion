@@ -1,4 +1,5 @@
 from __future__ import annotations
+from contextlib import suppress
 from pathlib import Path
 import logging
 from typing import Iterator
@@ -12,7 +13,7 @@ from starfile_rs import read_star, read_star_block
 from himena_relion._widgets import QJobScrollArea, register_job, QImageViewTextEdit
 from himena_relion import _job_dir
 from himena_relion.hijack.select_interactive import data_star_path, model_star_path
-from himena_relion.schemas import ModelClasses, RelionPipelineModel
+from himena_relion.schemas import RelionPipelineModel
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -133,16 +134,16 @@ class QSelectInteractiveViewer(QSelectJobBase):
     def insert_html(self, job_dir: _job_dir.JobDirectory):
         # The summary and the class images need different files, so each of them is
         # shown if its files are available.
-        class_avg_path = job_dir.path / "class_averages.star"
-        outputs = [job_dir.path / "particles.star", _backup_selection_path(job_dir)]
-        if not any(p.exists() for p in [class_avg_path, *outputs]):
+        outputs = [
+            job_dir.path / "particles.star",
+            _backup_selection_path(job_dir),
+            _class_averages_path(job_dir),
+        ]
+        if not any(p.exists() for p in outputs):
             yield _NOT_ENOUGH_MSG
             return
         yield from self._insert_summary(job_dir)
-        if class_avg_path.exists():
-            yield from self._insert_html_class2d(job_dir, class_avg_path)
-        else:
-            yield from self._insert_html_class3d(job_dir)
+        yield from self._insert_classes(job_dir)
 
     def _insert_summary(self, job_dir: _job_dir.JobDirectory):
         """Insert the number of selected and removed particles."""
@@ -163,85 +164,52 @@ class QSelectInteractiveViewer(QSelectJobBase):
             n_removed = n_all - n_selected
             yield self._get_summary_table(n_selected, n_removed, n_all)
 
-    def _insert_html_class2d(
-        self, job_dir: _job_dir.JobDirectory, class_avg_path: Path
-    ):
+    def _insert_classes(self, job_dir: _job_dir.JobDirectory):
+        """Insert the images of the selected and removed classes.
+
+        The images are those of the input model.star, not those in
+        class_averages.star, which may be recentered and only has the selected ones.
+        """
         try:
-            ref_images = ModelClasses.validate_file(class_avg_path).ref_image
-            # ref_images[0] is like: 00000002@Class2D/job010/run_it200_classes.mrcs
-            class2d_path = job_dir.resolve_path(ref_images[0].split("@")[1])
-            with mrcfile.open(class2d_path) as mrc:
-                class2d_arr = np.asarray(mrc.data, dtype=np.float32)
+            refs = class_reference_images(job_dir)
         except Exception:
-            _LOGGER.debug("Failed to read the class averages", exc_info=True)
-            yield "Could not read the class averages."
+            _LOGGER.debug("Failed to read the input model.star", exc_info=True)
+            yield "Could not find the classes of the input job."
             return
-        class2d_selected = {int(_id.split("@")[0]) - 1 for _id in ref_images}
-
-        # print selected and removed HTML images in the text edit
-        images_selected: list[tuple[np.ndarray, str]] = []
-        images_removed: list[tuple[np.ndarray, str]] = []
-        for ith in range(len(class2d_arr)):
-            img = class2d_arr[ith]
-            if ith in class2d_selected:
-                images_selected.append((img, str(ith)))
-            else:
-                images_removed.append((img, str(ith)))
-
-        for images, msg in [
-            (images_selected, "<h2>Selected Classes</h2><br>"),
-            (images_removed, "<br><h2>Removed Classes</h2><br>"),
-        ]:
-            yield msg
-            for img, text in images:
-                img_str = self._text_edit.image_to_base64(img, text)
-                yield f'<img src="data:image/png;base64,{img_str}"/>'
-
-    def _insert_html_class3d(self, job_dir: _job_dir.JobDirectory):
-        is_selected = get_is_selected(job_dir)
+        is_selected = get_is_selected(job_dir, refs)
         if is_selected is None:
             yield "Could not determine which classes are selected."
             return
 
-        try:
-            map_paths = class_map_paths(job_dir)
-        except Exception:
-            _LOGGER.debug("Failed to read the input model.star", exc_info=True)
-            yield "Could not find the class maps of the input job."
-            return
-
-        # print selected and removed HTML images in the text edit
-        images_selected: list[tuple[Path, np.ndarray | None]] = []
-        images_removed: list[tuple[Path, np.ndarray | None]] = []
-        texts = ["XY", "XZ", "YZ"]
-        for path, is_sel in zip(map_paths, is_selected):
-            path_rel = job_dir.make_relative_path(path)
-            if path.exists():
-                with mrcfile.open(path) as mrc:
-                    array = np.asarray(mrc.data)
-            else:
-                array = None
-            if is_sel:
-                images_selected.append((path_rel, array))
-            else:
-                images_removed.append((path_rel, array))
-
-        for images, msg in [
-            (images_selected, "<h2>Selected Classes</h2><br>"),
-            (images_removed, "<br><h2>Removed Classes</h2><br>"),
+        rln_dir = job_dir.relion_project_dir
+        num_classes = min(len(refs), len(is_selected))
+        stacks: dict[str, NDArray[np.floating] | None] = {}
+        images = [_read_class_image(ref, rln_dir, stacks) for ref in refs[:num_classes]]
+        is_selected = is_selected[:num_classes]
+        for msg, indices in [
+            ("<h2>Selected Classes</h2><br>", np.flatnonzero(is_selected)),
+            ("<br><h2>Removed Classes</h2><br>", np.flatnonzero(~is_selected)),
         ]:
             yield msg
-            for path, array in images:
-                yield f"<b>{path}</b><br>"
-                if array is None:
-                    yield "No image data."
-                else:
-                    for axis in range(3):
-                        proj = self._text_edit.image_to_base64(
-                            array.max(axis=axis), texts[axis]
-                        )
-                        yield f'<img src="data:image/png;base64,{proj}"/>'
-                yield "<br>"
+            for ith in indices:
+                yield from self._class_image_html(ith, refs[ith], images[ith])
+
+    def _class_image_html(self, ith: int, ref: str, img: NDArray | None):
+        if "@" in ref:  # 2D class average in a stack
+            if img is None or img.ndim != 2:
+                yield f"<b>{ith + 1}</b>: No image data. "
+            else:
+                img_str = self._text_edit.image_to_base64(img, str(ith + 1))
+                yield f'<img src="data:image/png;base64,{img_str}"/>'
+        else:  # 3D class map
+            yield f"<b>{ref}</b><br>"
+            if img is None or img.ndim != 3:
+                yield "No image data."
+            else:
+                for axis, text in enumerate(["XY", "XZ", "YZ"]):
+                    proj = self._text_edit.image_to_base64(img.max(axis=axis), text)
+                    yield f'<img src="data:image/png;base64,{proj}"/>'
+            yield "<br>"
 
 
 @register_job("relion.select.discard")
@@ -379,13 +347,63 @@ def _backup_selection_path(job_dir: _job_dir.JobDirectory) -> Path:
     return job_dir.path / "backup_selection.star"
 
 
-def get_is_selected(job_dir: _job_dir.JobDirectory) -> NDArray[np.bool_] | None:
-    path = _backup_selection_path(job_dir)
-    try:
-        df = read_star(path).first().trust_loop().to_polars()
-        return df["rlnSelected"].to_numpy() > 0
-    except Exception:
-        return None
+def _class_averages_path(job_dir: _job_dir.JobDirectory) -> Path:
+    return job_dir.path / "class_averages.star"
+
+
+def get_is_selected(
+    job_dir: _job_dir.JobDirectory, refs: list[str]
+) -> NDArray[np.bool_] | None:
+    """Return whether each class is selected, or None if unknown.
+
+    `refs` is the rlnReferenceImage of the input model.star. The flags are read from
+    backup_selection.star. If it is not available, the classes in class_averages.star
+    are regarded as selected, matched by the reference image.
+    """
+    with suppress(Exception):
+        df = read_star(_backup_selection_path(job_dir)).first().trust_loop()
+        return df.to_polars()["rlnSelected"].to_numpy() > 0
+    with suppress(Exception):
+        df = read_star(_class_averages_path(job_dir)).first().trust_loop()
+        selected_keys = {_ref_key(ref) for ref in df.to_polars()["rlnReferenceImage"]}
+        return np.array([_ref_key(ref) in selected_keys for ref in refs], dtype=bool)
+    return None
+
+
+def _ref_key(ref: str) -> tuple[int, str]:
+    """Normalize a reference image such as "000001@Class2D/job009/classes.mrcs"."""
+    if "@" in ref:
+        index, path = ref.split("@", 1)
+        return int(index), Path(path).as_posix()
+    return 0, Path(ref).as_posix()
+
+
+def _read_class_image(
+    ref: str, rln_dir: Path, stacks: dict[str, NDArray[np.floating] | None]
+) -> NDArray[np.floating] | None:
+    """Read the image of a reference image, or None if not found.
+
+    The 2D class averages are in one stack, so `stacks` caches the stacks that are
+    already read.
+    """
+    if "@" in ref:
+        index, path_rel = ref.split("@", 1)
+    else:
+        index, path_rel = None, ref
+    if path_rel not in stacks:
+        stacks[path_rel] = None
+        if (path := rln_dir / path_rel).exists():
+            with suppress(Exception), mrcfile.open(path) as mrc:
+                stacks[path_rel] = np.asarray(mrc.data)
+    data = stacks[path_rel]
+    if data is None or index is None:
+        return data
+    if data.ndim == 2:  # a stack of one image
+        data = data[np.newaxis]
+    ith = int(index) - 1
+    if 0 <= ith < data.shape[0]:
+        return data[ith]
+    return None
 
 
 def read_image_as_2d(image_name: str, relion_dir: Path) -> NDArray[np.float32] | None:
@@ -416,10 +434,15 @@ def read_subtomo_as_2d(image_name: str, relion_dir: Path) -> NDArray[np.float32]
     return None
 
 
-def class_map_paths(job_dir: _job_dir.JobDirectory) -> list[Path]:
-    """Return the absolute paths to the class maps listed in the input model.star."""
+def class_reference_images(job_dir: _job_dir.JobDirectory) -> list[str]:
+    """Return the rlnReferenceImage of all the classes in the input model.star.
+
+    They are like "000001@Class2D/job009/run_it025_classes.mrcs" for 2D classes and
+    "Class3D/job009/run_it025_class001.mrc" for 3D classes, relative to the RELION
+    project directory.
+    """
     rln_dir = job_dir.relion_project_dir
     fn_model_star = model_star_path(_input_fn_model(job_dir), rln_dir)
     # only the model_classes table is needed
     block = read_star_block(rln_dir / fn_model_star, "model_classes").trust_loop()
-    return [rln_dir / p for p in block.to_polars()["rlnReferenceImage"]]
+    return [str(ref) for ref in block.to_polars()["rlnReferenceImage"]]

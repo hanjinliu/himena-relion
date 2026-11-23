@@ -464,6 +464,23 @@ connect_jobs(
     value_mapping={inherit_mask: "fn_mask"},
 )
 
+connect_jobs(
+    _tomo.Refine3DTomoJob,
+    _spa.LocalResolutionResmapJob,
+    node_mapping={"run_half1_class001_unfil.mrc": "fn_in"},
+    value_mapping={
+        inherit_mask: "fn_mask",
+    },
+)
+connect_jobs(
+    _tomo.Refine3DTomoJob,
+    _spa.LocalResolutionOwnJob,
+    node_mapping={"run_half1_class001_unfil.mrc": "fn_in"},
+    value_mapping={
+        inherit_mask: "fn_mask",
+    },
+)
+
 
 def _mask_create_search_optim(path: Path) -> str | None:
     parents = JobDirectory(path).parent_jobs()
