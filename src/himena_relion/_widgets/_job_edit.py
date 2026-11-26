@@ -70,6 +70,7 @@ class QJobScheduler(QtW.QWidget):
         btn.add_action("Preview job.star", self.preview_job_star)
         btn.add_action("Copy job.star to clipboard", self.copy_job_star)
         btn.add_action("Paste parameters from job.star text", self.paste_from_job_star)
+        btn.add_action("Cancel job", self.clear_content)
         _button_layout.addWidget(self._exec_btn, stretch=100)
         _button_layout.addWidget(btn, alignment=QtCore.Qt.AlignmentFlag.AlignRight)
         layout.addWidget(self._title_label)
@@ -93,10 +94,12 @@ class QJobScheduler(QtW.QWidget):
         self._subtitle_label.setText(f"<span style='color: gray;'>{subtitle}</span>")
         self._subtitle_label.setVisible(subtitle.strip() != "")
         self._job_param_widget.clear_content()
+        self._buttons.setVisible(job_cls is not None)
+        if job_cls is None:
+            self._job_param_widget.build_buttons(self._ui)
 
     def clear_content(self):
         self._set_content(None, "No job selected")
-        self._buttons.setVisible(False)
 
     def update_by_job(
         self,
@@ -209,16 +212,40 @@ class QJobParameter(QtW.QScrollArea):
         )
         self.setWidget(self._scroll_area_inner)
         self._param_layout = QtW.QVBoxLayout(self._scroll_area_inner)
+        self._param_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignTop)
         self._param_layout.setContentsMargins(0, 0, 0, 0)
         self._mgui_widgets: dict[str, ValueWidget] = {}
         self._groupboxes: list[QtW.QGroupBox] = []
+        self._action_btns: list[QtW.QPushButton] = []
 
     def clear_content(self):
         for groupbox in self._groupboxes:
             self._param_layout.removeWidget(groupbox)
             groupbox.deleteLater()
+        for btn in self._action_btns:
+            self._param_layout.removeWidget(btn)
+            btn.deleteLater()
         self._mgui_widgets.clear()
         self._groupboxes.clear()
+        self._action_btns.clear()
+
+    def build_buttons(self, ui: MainWindow):
+        from himena_relion.io import _impl
+
+        btn_new_job = QtW.QPushButton(
+            "New Job", clicked=lambda: _impl.new_job(ui, ignore_cancelled=True)
+        )
+        btn_new_job.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
+        self._param_layout.addWidget(btn_new_job)
+        self._action_btns.append(btn_new_job)
+
+        btn_open_note = QtW.QPushButton(
+            "Open Project Note",
+            clicked=lambda: ui.exec_action("himena-relion:open-project-note"),
+        )
+        btn_open_note.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
+        self._param_layout.addWidget(btn_open_note)
+        self._action_btns.append(btn_open_note)
 
     def update_by_job(self, job_cls: type[RelionJob]):
         """Update the widget based on the job directory."""

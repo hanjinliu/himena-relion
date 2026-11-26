@@ -860,6 +860,8 @@ class Q3DLocalResViewer(Q3DViewerBase):
         # mesh lighting
         self._canvas.camera.changed.connect(self._on_camera_change)
 
+        self._canvas.camera.flip = (False, True, False)
+
     def _on_camera_change(self):
         if self._surface.shading_filter is not None:
             # Headlight: the light travels along the camera view direction, so the
