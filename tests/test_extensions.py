@@ -709,3 +709,265 @@ def test_napari_mask_script(tmp_path: Path, monkeypatch):
     # shape mismatch
     labels = script.initial_labels(np.zeros((2, 2, 2)), str(tmp_path / "mask.mrc"), 0.5)
     assert labels.shape == (2, 2, 2) and not labels.any()
+
+
+_TOMOGRAMS_STAR = """
+# version 50001
+
+data_global
+
+loop_
+_rlnTomoName #1
+_rlnTomoTiltSeriesPixelSize #2
+_rlnTomoTiltSeriesStarFile #3
+_rlnEtomoDirectiveFile #4
+_rlnTomoReconstructedTomogram #5
+TS_01	2.000000	Tomograms/job010/tilt_series/TS_01.star	""	Tomograms/job010/tomograms/rec_TS_01.mrc
+TS_02	2.000000	Tomograms/job010/tilt_series/TS_02.star	""	Tomograms/job010/tomograms/rec_TS_02.mrc
+001	2.000000	Tomograms/job010/tilt_series/001.star	""	Tomograms/job010/tomograms/rec_001.mrc
+"""
+_IN_TOMOGRAMS = "Tomograms/job010/tomograms.star"
+
+
+def _prep_tomograms(project_dir: Path) -> Path:
+    """Prepare the tomograms.star of a Reconstruct tomograms job and the tomograms."""
+    tomo_dir = project_dir / "Tomograms/job010/tomograms"
+    tomo_dir.mkdir(parents=True)
+    for name in ["TS_01", "TS_02", "001"]:
+        with mrcfile.new(tomo_dir / f"rec_{name}.mrc") as mrc:
+            mrc.set_data(np.random.normal(size=(4, 16, 16)).astype(np.float32))
+            mrc.voxel_size = (2.0, 2.0, 2.0)
+    star_path = project_dir / _IN_TOMOGRAMS
+    star_path.write_text(_TOMOGRAMS_STAR, newline="\n")
+    ext_dir = project_dir / "External/job020"
+    ext_dir.mkdir(parents=True)
+    return ext_dir
+
+
+def _selected_tomo_names(path: Path) -> list[str]:
+    df = read_star(path).first().trust_loop().to_polars(string_columns=["rlnTomoName"])
+    return df["rlnTomoName"].to_list()
+
+
+def _save_selection_later(ext_dir: Path, selection: dict[str, bool]) -> threading.Thread:
+    """Save the selection after a while, as the user does in the job widget."""
+    from himena_relion.relion5_tomo.extensions.select_tomograms._impl import (
+        save_selection,
+    )
+
+    def _save():
+        time.sleep(0.5)
+        save_selection(ExternalJobDirectory(ext_dir), selection)
+
+    thread = threading.Thread(target=_save, daemon=True)
+    thread.start()
+    return thread
+
+
+def test_select_tomograms(qtbot, himena_ui, tmp_path: Path, monkeypatch):
+    import pytest
+    from qtpy import QtCore
+    from himena_relion import _job_class
+    from himena_relion.consts import FileNames
+    from himena_relion.relion5_tomo import SelectTomograms, SelectTomogramsContinue
+    from himena_relion.relion5_tomo.extensions.select_tomograms._impl import (
+        OUTPUT_STAR,
+        SELECTION_STAR,
+    )
+    from himena_relion.relion5_tomo.extensions.select_tomograms.widgets import (
+        QSelectTomogramsViewer,
+    )
+    from himena_relion.schemas import JobStarModel
+
+    check_role = QtCore.Qt.ItemDataRole.CheckStateRole
+    checked = QtCore.Qt.CheckState.Checked
+    monkeypatch.setattr(SelectTomograms, "_poll_interval_sec", 0.01)
+    monkeypatch.setattr(SelectTomograms, "_max_wait_time_sec", 5)
+    ext_dir = _prep_tomograms(tmp_path)
+    job_dir = ExternalJobDirectory(ext_dir)
+    tester = ExternalJobTester(SelectTomograms)
+    tester.prep_job_star(ext_dir, in_mics=_IN_TOMOGRAMS)
+    widget: QSelectTomogramsViewer = tester.provide_widget(ext_dir)
+    qtbot.addWidget(widget)
+    widget.initialize(job_dir)
+
+    # the job is running, and no tomograms are selected yet
+    tomo_list = widget._tomo_list
+    assert tomo_list.rowCount() == 3
+    assert tomo_list.text(2) == "001"
+    assert tomo_list.text(0, 1) == "full tomogram"
+    assert tomo_list.checked() == [False, False, False]
+    assert widget._viewer.has_image
+    assert not widget._save_btn.isEnabled()
+    assert widget._continue_btn.isHidden()
+    assert "Save selection" in widget._message.text()
+
+    # check by the space key, the check box and the buttons
+    qtbot.keyClick(tomo_list, QtCore.Qt.Key.Key_Space)
+    assert tomo_list.checked() == [True, False, False]
+    qtbot.keyClick(tomo_list, QtCore.Qt.Key.Key_Space)
+    assert tomo_list.checked() == [False, False, False]
+    model = tomo_list.model()
+    assert model.flags(model.index(0, 0)) & QtCore.Qt.ItemFlag.ItemIsUserCheckable
+    assert model.setData(model.index(1, 0), checked.value, check_role)
+    assert tomo_list.checked() == [False, True, False]
+    assert widget._count_label.text() == "1 / 3 selected"
+    assert widget._save_btn.isEnabled()
+    widget._select_all_btn.click()
+    assert tomo_list.checked() == [True, True, True]
+    widget._deselect_all_btn.click()
+    assert tomo_list.checked() == [False, False, False]
+    assert not widget._save_btn.isEnabled()
+    tomo_list.set_current_row(1)
+    assert widget._filter_widget._spacer.text() == "(4, 16, 16) 2.00 Å/pix"
+
+    # the job waits for the selection to be saved in the widget
+    job = tester.create_job_instance(ext_dir)
+    run = job.run(in_mics=_IN_TOMOGRAMS)
+    next(run)
+    next(run)
+    assert not (ext_dir / OUTPUT_STAR).exists()
+    model.setData(model.index(0, 0), checked, check_role)
+    model.setData(model.index(2, 0), checked, check_role)
+    widget._save_btn.click()
+    assert (ext_dir / SELECTION_STAR).exists()
+    assert "Selection saved" in widget._message.text()
+    with pytest.raises(StopIteration):
+        next(run)
+    assert _selected_tomo_names(ext_dir / OUTPUT_STAR) == ["TS_01", "001"]
+    # values are written as they are
+    out_text = (ext_dir / OUTPUT_STAR).read_text()
+    assert "TS_02" not in out_text
+    assert '001\t2.000000\tTomograms/job010/tilt_series/001.star\t""\t' in out_text
+
+    # the job finished
+    ext_dir.joinpath(FileNames.EXIT_SUCCESS).touch()
+    widget.on_job_updated(job_dir, str(ext_dir / FileNames.EXIT_SUCCESS))
+    assert widget._message.text() == f"2 tomograms saved in {OUTPUT_STAR}."
+    assert not widget._continue_btn.isHidden()
+    assert widget._save_btn.isHidden()
+    qtbot.keyClick(tomo_list, QtCore.Qt.Key.Key_Space)  # not checkable any more
+    assert tomo_list.checked() == [True, False, True]
+    assert not model.flags(model.index(0, 0)) & QtCore.Qt.ItemFlag.ItemIsUserCheckable
+    assert not model.setData(model.index(1, 0), checked, check_role)
+
+    # a new widget shows the saved selection
+    widget_new: QSelectTomogramsViewer = tester.provide_widget(ext_dir)
+    qtbot.addWidget(widget_new)
+    widget_new.initialize(job_dir)
+    assert widget_new._tomo_list.checked() == [True, False, True]
+
+    # continue from the widget
+    widget._continue_btn.click()
+    scheduler = _job_class.scheduler_widget(himena_ui)
+    assert scheduler._exec_btn.text() == "Continue Job"
+    widgets = scheduler._job_param_widget._mgui_widgets
+    assert not widgets["in_mics"].enabled  # the input cannot be changed
+    assert widgets["in_mics"].value == _IN_TOMOGRAMS
+
+    # continued job starts from the last selection
+    ext_dir.joinpath(FileNames.EXIT_SUCCESS).unlink()
+    widget.on_job_updated(job_dir, str(ext_dir / FileNames.EXIT_SUCCESS))
+    assert tomo_list.checked() == [True, False, True]
+    assert tomo_list.is_checkable()
+    assert widget._continue_btn.isHidden()
+    tester = ExternalJobTester(SelectTomogramsContinue)
+    _save_selection_later(ext_dir, {"TS_01": False, "TS_02": True, "001": False})
+    tester.test_continue(ext_dir, widget=widget)
+    assert _selected_tomo_names(ext_dir / OUTPUT_STAR) == ["TS_02"]
+    assert JobStarModel.validate_file(ext_dir / "job.star").job.job_is_continue == 1
+    assert job_dir.get_job_param("fn_exe") == (
+        "himena-relion himena_relion.relion5_tomo:SelectTomogramsContinue"
+    )
+    assert job_dir._to_job_class() is SelectTomograms
+
+    # tomograms not in the input are ignored, and some must be selected
+    _save_selection_later(ext_dir, {"TS_01": True, "TS_99": True})
+    tester.test_continue(ext_dir)
+    assert _selected_tomo_names(ext_dir / OUTPUT_STAR) == ["TS_01"]
+    _save_selection_later(ext_dir, {"TS_01": False, "TS_02": False, "001": False})
+    with pytest.raises(ValueError, match="No tomograms selected"):
+        tester.test_continue(ext_dir)
+
+    # the job waits for the selection to be saved again
+    monkeypatch.setattr(SelectTomograms, "_max_wait_time_sec", 0)
+    with pytest.raises(TimeoutError):
+        tester.test_continue(ext_dir)
+
+
+def test_select_tomograms_inputs(qtbot, tmp_path: Path):
+    import pytest
+    from himena_relion.relion5_tomo import SelectTomograms
+    from himena_relion.relion5_tomo.extensions.select_tomograms._impl import (
+        TomogramSet,
+    )
+    from himena_relion.relion5_tomo.extensions.select_tomograms.widgets import (
+        QSelectTomogramsViewer,
+    )
+
+    ext_dir = _prep_tomograms(tmp_path)
+    df = pl.DataFrame(
+        {
+            "rlnTomoName": ["TS_01", "TS_02"],
+            "rlnTomoReconstructedTomogramHalf1": [
+                "Tomograms/job010/tomograms/rec_TS_01.mrc",
+                "Tomograms/job010/tomograms/rec_TS_02.mrc",
+            ],
+            "rlnTomoReconstructedTomogramHalf2": [
+                "Tomograms/job010/tomograms/rec_TS_01.mrc",
+                "Tomograms/job010/tomograms/missing.mrc",
+            ],
+        }
+    )
+    halves_path = tmp_path / "halves.star"
+    as_star({"global": df}).write(halves_path)
+    entries = TomogramSet.from_file(halves_path).entries()
+    assert [e.kind for e in entries] == ["half tomograms"] * 2
+    assert len(entries[1].paths) == 2
+
+    denoised_path = tmp_path / "denoised.star"
+    df_denoised = df.with_columns(
+        pl.Series("rlnTomoReconstructedTomogramDenoised", ["a.mrc", "b.mrc"])
+    )
+    as_star({"global": df_denoised}).write(denoised_path)
+    entries = TomogramSet.from_file(denoised_path).entries()
+    assert [e.kind for e in entries] == ["denoised tomogram"] * 2
+
+    no_tomo_path = tmp_path / "no_tomo.star"
+    as_star({"global": df.select("rlnTomoName")}).write(no_tomo_path)
+    entries = TomogramSet.from_file(no_tomo_path).entries()
+    assert [e.kind for e in entries] == ["not reconstructed"] * 2
+
+    no_name_path = tmp_path / "no_name.star"
+    as_star({"global": df.drop("rlnTomoName")}).write(no_name_path)
+    with pytest.raises(ValueError, match="rlnTomoName"):
+        TomogramSet.from_file(no_name_path)
+
+    # the widget shows each kind of input
+    tester = ExternalJobTester(SelectTomograms)
+    job_dir = ExternalJobDirectory(ext_dir)
+    tester.prep_job_star(ext_dir, in_mics=str(halves_path))
+    widget: QSelectTomogramsViewer = tester.provide_widget(ext_dir)
+    qtbot.addWidget(widget)
+    widget.initialize(job_dir)
+    assert widget._viewer.has_image
+    widget._tomo_list.set_current_row(1)  # one of the halves is missing
+    assert widget._viewer.has_image
+
+    tester.prep_job_star(ext_dir, in_mics=str(denoised_path))
+    widget.initialize(job_dir)  # tomogram names are the same
+    widget._tomo_list.set_current_row(0)
+    assert not widget._viewer.has_image
+    assert widget._filter_widget._spacer.text() == "Tomogram file not found."
+
+    tester.prep_job_star(ext_dir, in_mics=str(no_tomo_path))
+    widget.initialize(job_dir)
+    widget._tomo_list.set_current_row(1)
+    assert widget._filter_widget._spacer.text() == "Tomogram is not reconstructed."
+
+    tester.prep_job_star(ext_dir, in_mics=str(no_name_path))
+    widget.initialize(job_dir)
+    assert widget._tomo_list.rowCount() == 0
+    assert "Failed to read" in widget._message.text()
+    with pytest.raises(ValueError, match="rlnTomoName"):
+        tester.test_run(ext_dir)

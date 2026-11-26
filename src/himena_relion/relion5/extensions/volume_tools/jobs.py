@@ -12,7 +12,12 @@ from himena_relion._job_class import connect_jobs
 from himena_relion._proc import popen_detached
 from himena_relion.consts import MenuId
 from himena_relion.external import RelionExternalContinue, RelionExternalJob
-from himena_relion._utils import relion_python_executable, lowpass_filter
+from himena_relion._utils import (
+    file_stamp,
+    is_file_updated,
+    lowpass_filter,
+    relion_python_executable,
+)
 from himena_relion._annotated.io import MAP_TYPE
 from himena_relion.relion5.extensions.volume_tools.widgets import QMaskCreateViewer
 from himena_relion.relion5._connections import mask_create_search_halfmap
@@ -228,7 +233,7 @@ def _create_mask(
     # to be overwritten, starting from the existing mask_base.mrc.
     initial_mask: Path | None = None
     if continued:
-        stamp_mask, stamp_mask_base = _stamp(mask_path), _stamp(mask_base_path)
+        stamp_mask, stamp_mask_base = file_stamp(mask_path), file_stamp(mask_base_path)
         if mask_base_path.exists():
             initial_mask = mask_base_path
             job.console.log("Waiting for user to update the mask_base.mrc.")
@@ -280,8 +285,8 @@ def _create_mask(
         )
     # wait for user to create mask
     while not (
-        _is_updated(mask_path, stamp_mask)
-        or _is_updated(mask_base_path, stamp_mask_base)
+        is_file_updated(mask_path, stamp_mask)
+        or is_file_updated(mask_base_path, stamp_mask_base)
     ):
         time.sleep(1)
         yield
@@ -289,7 +294,7 @@ def _create_mask(
             job.console.log("Mask creation timed out.")
             raise TimeoutError("Mask creation timed out.")
     blurred_mask = None
-    if _is_updated(mask_base_path, stamp_mask_base):
+    if is_file_updated(mask_base_path, stamp_mask_base):
         job.console.log("mask_base.mrc found. Applying soft edge.")
         time.sleep(1)  # make sure that the file is fully writtencp
         with mrcfile.open(mask_base_path) as mrc:
@@ -325,20 +330,6 @@ def _create_mask(
             mask_zoomed = np.clip(mask_zoomed, 0.0, 1.0, dtype=np.float32)
             mrc.set_data(mask_zoomed)
             mrc.voxel_size = (scale * b, scale * b, scale * b)
-
-
-def _stamp(path: Path) -> tuple[int, int] | None:
-    """Modification time and size of the file, or None if it does not exist."""
-    try:
-        stat = path.stat()
-    except FileNotFoundError:
-        return None
-    return stat.st_mtime_ns, stat.st_size
-
-
-def _is_updated(path: Path, stamp_before: tuple[int, int] | None) -> bool:
-    """True if the file is created or overwritten since `stamp_before` was taken."""
-    return (stamp := _stamp(path)) is not None and stamp != stamp_before
 
 
 def _make_footprint(radius: float):

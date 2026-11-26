@@ -89,6 +89,20 @@ def write_text_atomic(path: str | Path, text: str) -> None:
     write_bytes_atomic(path, text.encode("utf-8"))
 
 
+def file_stamp(path: str | Path) -> tuple[int, int] | None:
+    """Modification time and size of the file, or None if it does not exist."""
+    try:
+        stat_result = Path(path).stat()
+    except FileNotFoundError:
+        return None
+    return stat_result.st_mtime_ns, stat_result.st_size
+
+
+def is_file_updated(path: str | Path, stamp_before: tuple[int, int] | None) -> bool:
+    """True if the file is created or overwritten since `stamp_before` was taken."""
+    return (stamp := file_stamp(path)) is not None and stamp != stamp_before
+
+
 def _write_temp_file(path: Path, data: bytes) -> Path:
     fd, tmp_name = tempfile.mkstemp(
         dir=path.parent, prefix=f".{path.name}.", suffix=".tmp"
