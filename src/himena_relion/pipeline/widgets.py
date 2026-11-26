@@ -83,7 +83,7 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         # TODO: add these actions
         # btn.add_action("Gentle clean all", self._gentle_clean_all)
         # btn.add_action("Harsh clean all", self._harsh_clean_all)
-        btn.add_action("Refresh", self._refresh_flowchart, shortcut="F5")
+        btn.add_action("Refresh", self._refresh_flowchart)
         btn.add_action("Copy Project Path", self._copy_project_path)
         btn.add_action("Uncollapse All Groups", self._uncollapse_all_groups)
         btn.add_separator()
@@ -438,9 +438,6 @@ class QRelionPipelineFlowChart(QtW.QWidget):
         ):
             self._new_job_palette()
             return
-        elif key == QtCore.Qt.Key.Key_F5:
-            self._refresh_flowchart()
-            return
         elif key == QtCore.Qt.Key.Key_Delete:
             for item in self._iter_selected_items():
                 self._trash_job(item)
@@ -466,7 +463,7 @@ class QRelionPipelineFlowChart(QtW.QWidget):
             self._node_id_to_tags_map(),
         )
         if resp := self._ui().exec_choose_one_dialog(
-            title="Select the root job.",
+            title="Find Job.",
             message="Search by name, @state, #tag",
             choices=choices,
             how="palette",

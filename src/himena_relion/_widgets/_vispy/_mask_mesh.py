@@ -34,7 +34,7 @@ class MaskMeshVisual(MeshVisual):
             self.set_data(data)
         self.attach(self._wireframe)
         self.attach(self._alpha_filter)
-        self.set_gl_state(preset="additive")
+        self.set_gl_state(preset="translucent")
 
     @property
     def level(self):

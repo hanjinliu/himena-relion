@@ -2799,6 +2799,10 @@ class LocalResolutionResmapJob(_LocalResolutionJobBase):
         return "relion.localres.resmap"
 
     @classmethod
+    def job_title(cls):
+        return "Local Resolution (ResMap)"
+
+    @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
         kwargs = super().normalize_kwargs(**kwargs)
         kwargs["do_resmap_locres"] = True
@@ -2846,6 +2850,10 @@ class LocalResolutionOwnJob(_LocalResolutionJobBase):
     @classmethod
     def type_label(cls):
         return "relion.localres.own"
+
+    @classmethod
+    def job_title(cls):
+        return "Local Resolution (RELION)"
 
     @classmethod
     def normalize_kwargs(cls, **kwargs) -> dict[str, Any]:
