@@ -123,27 +123,29 @@ connect_jobs(
     node_mapping={"model_epoch9.sav": "topaz_model"},
 )
 
-for extract_job in [_spa.ExtractJob, _spa.ReExtractJob]:
-    connect_jobs(
-        extract_job,
-        _spa.Class2DJob,
-        node_mapping={"particles.star": "fn_img"},
-    )
-    connect_jobs(
-        extract_job,
-        _spa.InitialModelJob,
-        node_mapping={"particles.star": "fn_img"},
-    )
-    connect_jobs(
-        extract_job,
-        _spa.SelectDiscardJob,
-        node_mapping={"particles.star": "fn_data"},
-    )
-    connect_jobs(
-        extract_job,
-        _spa.SelectSplitJob,
-        node_mapping={"particles.star": "fn_data"},
-    )
+# NOTE: These are also suggested from ReExtractJob, because its type
+# (relion.extract.reextract) is a subtype of that of ExtractJob (relion.extract).
+# Connecting ReExtractJob too would suggest them twice.
+connect_jobs(
+    _spa.ExtractJob,
+    _spa.Class2DJob,
+    node_mapping={"particles.star": "fn_img"},
+)
+connect_jobs(
+    _spa.ExtractJob,
+    _spa.InitialModelJob,
+    node_mapping={"particles.star": "fn_img"},
+)
+connect_jobs(
+    _spa.ExtractJob,
+    _spa.SelectDiscardJob,
+    node_mapping={"particles.star": "fn_data"},
+)
+connect_jobs(
+    _spa.ExtractJob,
+    _spa.SelectSplitJob,
+    node_mapping={"particles.star": "fn_data"},
+)
 connect_jobs(
     _spa.ReExtractJob,
     _spa.Refine3DJob,

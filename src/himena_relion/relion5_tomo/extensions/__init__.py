@@ -8,6 +8,10 @@ from himena_relion.relion5_tomo.extensions.reconstruct import (
     ReconstructTomoIMOD,
     ReconstructHalfTomoIMOD,
 )
+from himena_relion.relion5_tomo.extensions.select_tomograms import (
+    SelectTomograms,
+    SelectTomogramsContinue,
+)
 
 __all__ = [
     "FindBeads3D",
@@ -17,6 +21,8 @@ __all__ = [
     "InspectParticles",
     "ReconstructTomoIMOD",
     "ReconstructHalfTomoIMOD",
+    "SelectTomograms",
+    "SelectTomogramsContinue",
 ]
 
 

@@ -8,7 +8,7 @@ from himena_relion.consts import Type
 from himena_relion.relion5 import _builtins as _spa
 from himena_relion.relion5_tomo import _builtins as _tomo
 from ._fake_relion import default_kwargs, start_new_project
-from ._utils import JOBS_DIR_SPA
+from ._utils import JOBS_DIR_SPA, JOBS_DIR_TOMO
 
 def _iter_execute_suggestion(ui: MainWindow, path):
     job_dir = JobDirectory(path)
@@ -19,6 +19,48 @@ def _iter_execute_suggestion(ui: MainWindow, path):
     ui.read_file(path)
     for suggest in reg.iter_suggestion(type_pre, meth):
         suggest.execute(ui, meth)
+
+def _suggested_command_ids(model_type: str) -> list[str]:
+    """Command IDs suggested in the window of a job of the model type."""
+    reg = when_reader_used(model_type)._registry
+    meth = LocalReaderMethod(output_model_type=model_type, path=Path("dummy"))
+    return [suggest.command_id for suggest in reg.iter_suggestion(model_type, meth)]
+
+def test_no_duplicated_suggestions():
+    """A job must not be suggested twice in a job window.
+
+    Jobs connected from a type are also suggested for its subtypes (relion.extract and
+    relion.extract.reextract), and some job classes share a type (full and half
+    tomogram reconstruction).
+    """
+    from collections import Counter
+    from himena_relion._job_class import CONNECTED_JOBS
+
+    pre_types = {Type.RELION_JOB + "." + pre.himena_model_type() for pre, _ in CONNECTED_JOBS}
+    for model_type in pre_types:
+        counts = Counter(_suggested_command_ids(model_type))
+        assert [cid for cid, n in counts.items() if n > 1] == [], model_type
+
+def test_suggestions_of_subtypes():
+    from himena_relion.relion5_tomo import SelectTomograms
+
+    def suggested(job_path: Path) -> list[str]:
+        return _suggested_command_ids(JobDirectory(job_path).himena_model_type())
+
+    select_tomo = SelectTomograms.command_id()
+    pick = _tomo.PickJob.command_id()
+    # tomograms are reconstructed by AreTomo2
+    assert {select_tomo, pick} <= set(suggested(JOBS_DIR_TOMO / "AlignTiltSeries/job004"))
+    # tilt series alignment does not output tomograms
+    for job in ["job001", "job002", "job003"]:
+        ids = suggested(JOBS_DIR_TOMO / "AlignTiltSeries" / job)
+        assert select_tomo not in ids and pick not in ids, job
+    # jobs connected from Extract are also suggested from Re-extract
+    ids_extract = suggested(JOBS_DIR_SPA / "Extract/job001")
+    ids_reextract = suggested(JOBS_DIR_SPA / "Extract/job002")
+    assert _spa.Class2DJob.command_id() in ids_extract
+    assert set(ids_extract) <= set(ids_reextract)
+    assert _spa.Refine3DJob.command_id() in ids_reextract
 
 def test_initial_model_to_refine(himena_ui):
     _iter_execute_suggestion(himena_ui, JOBS_DIR_SPA / "InitialModel" / "job001")

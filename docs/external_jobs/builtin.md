@@ -49,3 +49,14 @@ jobs.
 
 This job automatically excludes bad tilt images based on the dark pixel percentage,
 defocus, total motion, and ice thickness value.
+
+#### Select Tomograms
+
+This job keeps only some of the tomograms in a `tomograms.star` file, such as the output
+of a "Reconstruct tomograms" or "Denoise tomograms" job. While the job is running, the
+job window shows the Z slices of the tomograms with check boxes. Check the tomograms to
+keep (the Space key toggles the current tomogram) and click "Save selection". The job
+then saves the checked tomograms as `tomograms_selected.star` and finishes.
+
+To change the selection later, click "Continue selection" in the job window. The
+continued job starts from the last selection.

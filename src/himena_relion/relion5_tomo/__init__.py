@@ -7,6 +7,8 @@ from himena_relion.relion5_tomo.extensions import (
     # TakeZeroTiltMicrographs,
     ReconstructTomoIMOD,
     ReconstructHalfTomoIMOD,
+    SelectTomograms,
+    SelectTomogramsContinue,
 )
 
 del widgets, _builtins, _connections, _continues
@@ -19,4 +21,6 @@ __all__ = [
     "AutoExcludeTiltImages",
     "ReconstructTomoIMOD",
     "ReconstructHalfTomoIMOD",
+    "SelectTomograms",
+    "SelectTomogramsContinue",
 ]
