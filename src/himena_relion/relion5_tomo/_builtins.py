@@ -695,6 +695,12 @@ class ReconstructTomoByAreTomo2(_AlignTiltSeriesJobBase):
         return super().command_id() + ".aretomo2-reconstruct"
 
     @classmethod
+    def himena_model_type(cls):
+        # NOTE: without a subtype, the jobs connected from this job are also suggested
+        # from the tilt series alignment jobs, whose types are the subtypes.
+        return super().himena_model_type() + ".aretomo2-reconstruct"
+
+    @classmethod
     def param_matches(cls, job_params: dict[str, str]) -> bool:
         is_aretomo = job_params.get("do_aretomo2", NO) == YES
         is_skip_align = job_params.get("do_skip_aretomo_align", NO) == YES
