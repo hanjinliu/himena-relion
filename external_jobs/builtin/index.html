@@ -615,6 +615,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#select-tomograms" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Select Tomograms
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -796,6 +807,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#select-tomograms" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Select Tomograms
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -855,6 +877,14 @@ jobs.</p>
 <h4 id="auto-exclude-tilt-images">Auto-exclude Tilt Images</h4>
 <p>This job automatically excludes bad tilt images based on the dark pixel percentage,
 defocus, total motion, and ice thickness value.</p>
+<h4 id="select-tomograms">Select Tomograms</h4>
+<p>This job keeps only some of the tomograms in a <code>tomograms.star</code> file, such as the output
+of a "Reconstruct tomograms" or "Denoise tomograms" job. While the job is running, the
+job window shows the Z slices of the tomograms with check boxes. Check the tomograms to
+keep (the Space key toggles the current tomogram) and click "Save selection". The job
+then saves the checked tomograms as <code>tomograms_selected.star</code> and finishes.</p>
+<p>To change the selection later, click "Continue selection" in the job window. The
+continued job starts from the last selection.</p>
 
 
 
